@@ -125,14 +125,21 @@ export function armedCard(armed, sp, o) {
   return cardPickable(sp, card, o) ? armed : null;
 }
 
+/** A hidden draft reopens when the round, family or deciding player changes. */
+export function choiceVisibilityKey(pub, sp) {
+  return sp ? JSON.stringify([pub?.round, sp.family, sp.turnPid, sp.cards.map((c) => c.id ?? c.idx)]) : null;
+}
+export function bountyCanHide(sp) { return /^bounty(?:_s)?$/.test(sp?.family || ''); }
+
 /**
  * The overlay: keeps the two-tap selection and renders ChoiceView. `onPick(idx)` sends the confirmed card (g.choice).
- * @param {{ pub:any, sp:any, myId:string, solo:boolean, onPick:(idx:number)=>void, busyIdx?:number|null, total?:number|null }} props
+ * @param {{ pub:any, sp:any, myId:string, solo:boolean, onPick:(idx:number)=>void, busyIdx?:number|null, total?:number|null,
+ *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void }} props
  */
 export function ChoiceOverlay(props) {
-  const { sp, myId, solo, busyIdx = null, onPick } = props;
+  const { sp, myId, solo, busyIdx = null, onPick, minimized = false, onMinimize = () => {} } = props;
   const [sel, setSel] = useState(null);
-  const armed = armedCard(sel, sp, { myId, solo, busyIdx });
+  const armed = minimized ? null : armedCard(sel, sp, { myId, solo, busyIdx });
   // a selection whose card cannot be picked any more (taken, the turn moved on, a pick in flight) is dropped
   useEffect(() => { if (sel != null && armed == null) setSel(null); }, [sel, armed]);
   useEffect(() => {
@@ -149,15 +156,17 @@ export function ChoiceOverlay(props) {
     if (r.pick != null) onPick(r.pick);
   };
   return html`<${ChoiceView} ...${props} armed=${armed} onTap=${tap}
-    onConfirm=${() => { if (armed != null) tap(armed); }} onDisarm=${() => setSel(null)} />`;
+    onConfirm=${() => { if (armed != null) tap(armed); }} onDisarm=${() => setSel(null)}
+    onMinimize=${(hidden) => { setSel(null); onMinimize(hidden); }} />`;
 }
 
 /**
  * The overlay's view (pure: no hooks — test/ui renders it as a function).
  * @param {{ pub:any, sp:any, myId:string, solo:boolean, busyIdx?:number|null, total?:number|null, armed?:number|null,
- *   onTap?:(idx:number)=>void, onConfirm?:()=>void, onDisarm?:()=>void }} props
+ *   onTap?:(idx:number)=>void, onConfirm?:()=>void, onDisarm?:()=>void,
+ *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void }} props
  */
-export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, armed = null, onTap = () => {}, onConfirm = () => {}, onDisarm = () => {} }) {
+export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, armed = null, onTap = () => {}, onConfirm = () => {}, onDisarm = () => {}, minimized = false, onMinimize = () => {} }) {
   if (!sp) return null;
   const fam = data.get('choices')?.families?.[sp.family] || null;
   const rawFam = data.getRaw('choices')?.families?.[sp.family] || null;
@@ -170,6 +179,14 @@ export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, 
   const timed = !solo && !sp.untimed;
   const armedCardRec = armed != null ? sp.cards.find((c) => c && c.idx === armed) : null;
   const armedName = armedCardRec ? resolveSpCard(armedCardRec, sp.family).name : null;
+  const canHide = bountyCanHide(sp);
+  if (canHide && minimized) return html`<div class="spov-folded" role="group" aria-label=${t('悬赏选择已隐藏')}>
+    <button type="button" class="spov-folded__open" aria-expanded="false" onClick=${() => onMinimize(false)}>
+      <${Icon} name="eye" /><span>${t('继续选择悬赏')}</span>
+      <small>${mine != null ? t('已完成选择') : myTurn ? t('轮到你决策') : t('等待队友')}</small>
+    </button>
+    ${timed ? html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="sm" />` : null}
+  </div>`;
   // a press anywhere but a card or the confirm button drops the selection
   const onDown = (e) => {
     if (armed == null) return;
@@ -187,6 +204,7 @@ export function ChoiceView({ pub, sp, myId, solo, busyIdx = null, total = null, 
           <p class="spov__sub">${timed ? t('倒计时结束后仍未选定将自动分配') : t('选择一项（无时间限制）')}${mine == null && myTurn ? t(' · 点击卡牌选中，再次点击确认') : ''}</p>
         </div>
         <div class="spov__turn">
+          ${canHide ? html`<${Button} variant="ghost" icon="collapse" class="spov__hide" aria-expanded="true" onClick=${() => onMinimize(true)}>${t('隐藏悬赏')}<//>` : null}
           ${mine != null ? html`<span class="spov__turntxt is-done"><${Icon} name="check" />${t('已完成选择')}</span>`
             : myTurn ? html`<span class="spov__turntxt is-mine">${t('当前轮到你决策')}</span>`
             : html`<span class="spov__turntxt">${t('{turnName} 正在决策…', { turnName })}<${Icon} name="hourglass" /></span>`}

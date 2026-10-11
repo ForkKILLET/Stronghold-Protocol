@@ -1253,5 +1253,9 @@
   "1–{n} 名博士 · 可邀请或匹配队友": "1–{n} Doctors · Invite or find teammates",
   "单人加入 · 自动匹配队友": "Join alone · Find teammates automatically",
   "{name}博士通过控制台获得了{item}": "Doctor {name} obtained {item} through the console",
-  "{name}博士通过控制台获得了{item} {n} 层": "Doctor {name} obtained {n} layers of {item} through the console"
+  "{name}博士通过控制台获得了{item} {n} 层": "Doctor {name} obtained {n} layers of {item} through the console",
+  "隐藏悬赏": "Hide bounties",
+  "悬赏选择已隐藏": "Bounty selection hidden",
+  "继续选择悬赏": "Resume bounty selection",
+  "等待队友": "Waiting for teammates"
 }

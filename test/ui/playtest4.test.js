@@ -105,7 +105,7 @@ describe('2: 机变 cards take two taps (select → confirm), like buying in the
     assert.equal(cards[1].props['aria-pressed'], 'true');
     assert.match(cards[1].props['aria-label'], /已选中，再次点击确认/);
     assert.equal(textOf(nodes.find((n) => hasClass(n, 'spcard__confirm'))), '确认选择再次点击');
-    const btn = nodes.find((n) => n.type === Button);
+    const btn = nodes.find((n) => n.type === Button && hasClass(n, 'spov__confirm'));
     assert.ok(btn && textOf(btn.props.children).includes('确认选择'), 'the header confirm');
     btn.props.onClick();
     assert.equal(confirmed, 1);
@@ -117,7 +117,7 @@ describe('2: 机变 cards take two taps (select → confirm), like buying in the
     // nothing selected: no strip, no confirm button, the hint says how it works
     const idle = [...walk(ChoiceView({ pub: { players: [] }, sp: s, ...me }))];
     assert.ok(!idle.some((n) => hasClass(n, 'spcard__confirm')));
-    assert.ok(!idle.some((n) => n.type === Button));
+    assert.ok(!idle.some((n) => n.type === Button && hasClass(n, 'spov__confirm')));
     assert.match(textOf(idle.find((n) => hasClass(n, 'spov__sub'))), /点击卡牌选中，再次点击确认/);
   });
 
