@@ -42,10 +42,19 @@ test('hiding remains local to the same draft turn and round; ordinary state upda
   assert.equal(choiceVisibilityKey(pub, null), null);
 });
 test('other contingency families retain their existing full overlay', () => {
-  for (const family of ['shop', 'supply', 'tactic']) {
+  for (const family of ['tactic']) {
     assert.equal(bountyCanHide({ family }), false);
     const nodes = [...walk(ChoiceView({ ...props, sp: { ...sp, family }, minimized: true }))];
     assert.ok(nodes.some((n) => n.props?.role === 'dialog'));
     assert.ok(!nodes.some((n) => n.props?.class === 'spov__hide'));
   }
+});
+
+test('equipment drafts share disclosure controls and keep their own caption', () => {
+ for (const family of ['shop', 'shop_s', 'supply', 'supply_s']) {
+  assert.equal(bountyCanHide({family}),true);
+  const nodes=[...walk(ChoiceView({...props,sp:{...sp,family},minimized:true}))];
+  assert.ok(nodes.some(n=>n.props?.class==='spov-folded__open'));
+  assert.equal(nodes[0].props['aria-label'],'装备选择已隐藏');
+ }
 });
