@@ -1260,5 +1260,11 @@
   "等待队友": "Waiting for teammates",
   "装备选择已隐藏": "Equipment selection hidden",
   "继续选择装备": "Resume equipment selection",
-  "隐藏装备": "Hide equipment"
+  "隐藏装备": "Hide equipment",
+  "逐回合": "By round",
+  "回合记录": "Round history",
+  "上一回合": "Previous round",
+  "下一回合": "Next round",
+  "第 {round} 回合": "Round {round}",
+  "实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。已结束战斗按回合保存在当前浏览器。": "Effective damage and healing; DPS / HPS use your combat time. Completed battles are saved by round in this browser."
 }

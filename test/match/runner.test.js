@@ -28,7 +28,7 @@ function fakeNet() {
   return n;
 }
 
-function rig({ hidden = false } = {}) {
+function rig({ hidden = false, storage = null } = {}) {
   let t = 1000;
   const frames = [];
   const intervals = [];
@@ -36,7 +36,7 @@ function rig({ hidden = false } = {}) {
   const net = fakeNet();
   const store = createStore(initialState);
   const runner = createBattleRunner({
-    net, store, doc,
+    net, store, doc, storage,
     now: () => t,
     raf: (fn) => { frames.push(fn); return frames.length; },
     caf: () => {},
@@ -544,3 +544,22 @@ test('1× and 4× pacing produce the same battle state after the same number of 
   assert.deepEqual(a.battle.snapshot(),b.battle.snapshot());
  }finally{slow.runner.dispose();fast.runner.dispose();}
 });
+
+ test('completed per-round statistics reload from browser cache without counting replays twice', async () => {
+ const data = new Map(); const storage = {getItem:k=>data.get(k), setItem:(k,v)=>data.set(k,v)};
+ const r = rig({storage}); const start = realStart(7355);
+ r.store.patch('match', {public:{phase:PHASE.COMBAT, round:2, combatHistoryKey:'cache-match'}});
+ await r.runner.onStart(start); await r.settle(); r.advance(240000); await r.settle();
+ const ownerId = start.spec.players[0].playerId;
+ const expected = r.runner.combatMetrics({scope:'round', round:2, ownerId});
+ assert.ok(expected.damage > 0); assert.deepEqual(r.runner.combatRounds({ownerId}), [2]);
+ r.store.patch('match', {public:{phase:PHASE.PREP, round:3, combatHistoryKey:'cache-match'}});
+ r.runner.dispose();
+ const reload = rig({storage});
+ reload.store.patch('match', {public:{phase:PHASE.PREP, round:3, combatHistoryKey:'cache-match'}});
+ assert.deepEqual(reload.runner.combatMetrics({scope:'round', round:2, ownerId}), expected);
+ assert.equal(reload.runner.combatMetrics({scope:'round', round:3, ownerId}).damage, 0);
+ reload.store.patch('match', {public:{phase:PHASE.PREP, round:1, combatHistoryKey:'other-match'}});
+ assert.deepEqual(reload.runner.combatRounds({ownerId}), []);
+ reload.runner.dispose();
+ });

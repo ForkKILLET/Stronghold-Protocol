@@ -68,6 +68,7 @@ export class MatchViews {
       // DESIGN §14: 'client' = battles are simulated by the browsers (b.start specs), 'server' = legacy streaming
       combatMode: this.clientCombat ? 'client' : 'server',
       // solo pause (g.pause, DESIGN §14): the battle, its field clock and every deadline are frozen while true
+      combatHistoryKey: `${this.roomCode}:${this.battlePrefix}`,
       paused: !!this.paused,
       players: this.order.map((ps) => ({
         playerId: ps.playerId,

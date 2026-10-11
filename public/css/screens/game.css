@@ -765,3 +765,8 @@
 .pauseov__plate h2 { font-size: .5rem; font-weight: 900; letter-spacing: .3em; color: #fff; text-shadow: 0 0 .2rem rgba(0, 0, 0, .8); }
 .pauseov__note { font-size: .17rem; color: var(--text-md); text-shadow: 0 1px 2px #000; }
 .pauseov__btns { display: flex; gap: .2rem; }
+
+.combat-metrics__pages { align-items: center; gap: 12px; margin: 8px 0; color: var(--mint-400); }
+.combat-metrics__pages button { flex: 0 0 40px; }
+.combat-metrics__pages span { flex: 1; text-align: center; }
+.combat-metrics__pages button:disabled { opacity: .35; }

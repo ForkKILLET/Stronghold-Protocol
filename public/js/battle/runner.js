@@ -71,6 +71,7 @@
 import { net as appNet } from '../net.js';
 import { store as appStore } from '../store.js';
 import { unitStatsEntry, fxForm } from '../../../shared/protocol.js';
+import { loadCombatHistory, saveCombatHistory } from './combatHistory.js';
 import { DATA_CDN } from '../asset-cdn.js';
 
 import { spectateEffects } from './observe.js';
@@ -199,11 +200,15 @@ export function createBattleRunner(deps) {
 
   /** @type {Map<string, any>} battleId → entry */
   const entries = new Map();
+  let historyKey = null;
+  let storage = deps.storage;
+  if (storage === undefined) { try { storage = typeof window !== 'undefined' ? window.localStorage : null; } catch { storage = null; } }
   const combatHistory = new Map(); // compact snapshots of locally simulated battles in this match
   const rememberCombat = (e) => {
     if (!e.combatMetrics) return;
-    const record = e.combatMetrics();
+    const record = { ...e.combatMetrics(), round: e.spec.round };
     if (!(combatHistory.get(e.battleId)?.seconds > record.seconds)) combatHistory.set(e.battleId, record);
+    saveCombatHistory(storage, historyKey, combatHistory);
   };
   /** @type {Map<string, any>} battleId → entry of a b.start still being prepared (prepare(); `battle` null until built) */
   const pending = new Map();
@@ -461,6 +466,7 @@ export function createBattleRunner(deps) {
   function finished(e) {
     if (e.done) return;
     e.done = true;
+    rememberCombat(e);
     noteLeaks(e);
     if (e.authoritative && !e.resultSent && net) {
       progress(e, true);
@@ -806,6 +812,11 @@ export function createBattleRunner(deps) {
       const resetMetrics = (!pub && lastPhase != null) || round < lastRound
         || (pub?.phase !== lastPhase && ['LOBBY', 'INFO_CHECK', 'BAND_DRAFT', 'BATTLE_CHECK'].includes(pub?.phase));
       if (resetMetrics) combatHistory.clear();
+      if (pub?.combatHistoryKey && pub.combatHistoryKey !== historyKey) {
+        historyKey = pub.combatHistoryKey;
+        combatHistory.clear();
+        for (const [id, record] of loadCombatHistory(storage, historyKey)) combatHistory.set(id, record);
+      }
       lastRound = round;
       // solo pause (DESIGN §14): the local battle clocks follow m.public.paused
       setPaused(!!(pub && pub.paused));
@@ -832,7 +843,11 @@ export function createBattleRunner(deps) {
     },
     state,
     /** Local-only damage/healing; current battle or the match so far. Read on demand, never sent to the server. */
-    combatMetrics({ scope = 'match', ownerId = null } = {}) {
+    combatRounds({ ownerId = null } = {}) {
+      const records = [...combatHistory.values(), ...[...entries.values(), ...pending.values()].filter(e => e.combatMetrics).map(e => ({ ...e.combatMetrics(), round: e.spec.round }))];
+      return [...new Set(records.filter(r => ownerId == null || r.owners.includes(ownerId)).map(r => r.round))].filter(Number.isInteger).sort((a, b) => a - b);
+    },
+    combatMetrics({ scope = 'match', ownerId = null, round = null } = {}) {
       const localEntries = [...entries.values(), ...pending.values()];
       if (scope === 'battle') {
         // Scouting another field must not replace the player's own current battle statistics.
@@ -842,10 +857,10 @@ export function createBattleRunner(deps) {
       }
       const records = new Map(combatHistory);
       for (const e of localEntries) if (e.combatMetrics) {
-        const record = e.combatMetrics();
+        const record = { ...e.combatMetrics(), round: e.spec.round };
         if (!(records.get(e.battleId)?.seconds > record.seconds)) records.set(e.battleId, record);
       }
-      return combineCombat(records.values(), ownerId);
+      return combineCombat([...records.values()].filter(r => scope !== 'round' || r.round === round), ownerId);
     },
     stats() {
       return { ...stats, avgTickMs: stats.ticks ? stats.stepMs / stats.ticks : 0, entries: entries.size, loadingSim: !!simP };

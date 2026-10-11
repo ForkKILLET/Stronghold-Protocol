@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, useTicker } from './components.js';
 import { UnitThumb } from './gameComponents.js';
 import { battleRunner } from '../battle/runner.js';
+import { historyPage } from '../battle/combatHistory.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
 const TYPES = Object.freeze([
@@ -14,6 +15,8 @@ const rate = (n) => (n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 
 /** A modeless panel: the battlefield stays visible and keeps playing. Mounted only while open. */
 export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
   const [scope, setScope] = useState('battle');
+  const [selectedRound, setSelectedRound] = useState(null);
+  const page = historyPage(runner?.combatRounds({ ownerId: myId }) || [], selectedRound);
   const closeRef = useRef(null);
   const panelRef = useRef(null);
   useTicker(250);
@@ -38,7 +41,7 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, []);
-  const result = (myId ? runner?.combatMetrics({ scope, ownerId: myId }) : null) || { rows: [], damage: 0, healing: 0 };
+  const result = (myId ? runner?.combatMetrics({ scope, ownerId: myId, round: page.round }) : null) || { rows: [], damage: 0, healing: 0 };
   const maximum = Math.max(1, ...result.rows.map((r) => r.damage));
   return html`<section ref=${panelRef} id="combat-metrics-panel" class="combat-metrics brackets" role="dialog" aria-label=${t('作战统计')}
       onKeyDown=${(e) => { if (e.key === 'Escape') onClose(); e.stopPropagation(); }}>
@@ -49,10 +52,15 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
     <div class="combat-metrics__body">
     <div class="combat-metrics__tools">
       <div class="combat-metrics__scopes" role="group" aria-label=${t('统计范围')}>
-        ${[['battle', t('当前战斗')], ['match', t('本局累计')]].map(([id, label]) => html`<button type="button" key=${id}
+        ${[['battle', t('当前战斗')], ['match', t('本局累计')], ['round', t('逐回合')]].map(([id, label]) => html`<button type="button" key=${id}
           aria-pressed=${scope === id} onClick=${() => setScope(id)}>${label}</button>`)}
       </div>
     </div>
+    ${scope === 'round' && html`<div class="combat-metrics__scopes combat-metrics__pages" role="group" aria-label=${t('回合记录')}>
+      <button type="button" disabled=${page.previous == null} onClick=${() => setSelectedRound(page.previous)} aria-label=${t('上一回合')}>‹</button>
+      <span>${page.round == null ? t('暂无本地战斗记录') : t('第 {round} 回合', { round: page.round })}</span>
+      <button type="button" disabled=${page.next == null} onClick=${() => setSelectedRound(page.next)} aria-label=${t('下一回合')}>›</button>
+    </div>`}
     <div class="combat-metrics__totals">
       <span>${t('总伤害')} <b>${number(result.damage)}</b></span><span>${t('总治疗')} <b>${number(result.healing)}</b></span>
     </div>
@@ -82,7 +90,7 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
         </li>`;
       }) : html`<li class="combat-metrics__empty">${t('暂无本地战斗记录')}<br /><small>${t('开始战斗后实时显示干员数据')}</small></li>`}
     </ol>
-    <p class="combat-metrics__note">${t('仅统计自己 · 同名干员合并 · 召唤物计入所属干员')}<br />${t('实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。刷新后重新累计。')}</p>
+    <p class="combat-metrics__note">${t('仅统计自己 · 同名干员合并 · 召唤物计入所属干员')}<br />${t('实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。已结束战斗按回合保存在当前浏览器。')}</p>
     </div>
   </section>`;
 }
