@@ -530,3 +530,17 @@ test('live unit stats (user playtest #4 item 7): unitStats(id) reads the battle 
   assert.equal(r.runner.unitIdOf(ally.uid, ally.ownerId), null);
   r.runner.dispose();
 });
+
+test('1× and 4× pacing produce the same battle state after the same number of fixed logical ticks', async () => {
+ const start=realStart();
+ const slow=rig();const fast=rig();
+ try{
+  slow.net.emit('b.start',{...start,speed:1});fast.net.emit('b.start',{...start,speed:4});
+  await slow.settle(); await fast.settle();
+  slow.advance(4000,1000/60);fast.advance(1000,1000/60);
+  const a=slow.runner._entries.get(start.battleId);
+  const b=fast.runner._entries.get(start.battleId);
+  assert.equal(a.battle.tickCount,b.battle.tickCount);
+  assert.deepEqual(a.battle.snapshot(),b.battle.snapshot());
+ }finally{slow.runner.dispose();fast.runner.dispose();}
+});

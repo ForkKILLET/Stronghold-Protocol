@@ -1,3 +1,4 @@
+import { isBattleSpeed } from './roomOptions.js';
 import { isPrepSeconds, isPrepMultiplier } from './prepTime.js';
 // Normative message catalogue (DESIGN §8). Used by server (validation) and client (building requests).
 // Every client→server message is `{ t, rid?, ...fields }`. Unknown `t` or invalid fields ⇒ ERR.BAD_MSG.
@@ -322,7 +323,7 @@ export const C2S = {
   hello: { name: (v) => isStr(v, NAME_MAX_LEN) && v.trim().length > 0, token: (v) => v == null || isStr(v, 64), version: (v) => v == null || isInt(v, 0, 1e6), stateDelta: (v) => isInt(v, 0, 1e6), $optional: ['token', 'version', 'stateDelta'] },
   ping: { c: (v) => typeof v === 'number' && Number.isFinite(v) },
   'state.resync': {},
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, $optional: ['prepSeconds', 'prepMultiplier'] },
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, battleSpeed: isBattleSpeed, $optional: ['prepSeconds', 'prepMultiplier', 'battleSpeed'] },
   'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
   'room.ready': { ready: isBool },

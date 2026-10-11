@@ -276,6 +276,7 @@ export function LobbyScreen() {
   });
   const [prepChoice, setPrepChoice] = useState(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [battleSpeed, setBattleSpeed] = useState(2);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
@@ -301,7 +302,7 @@ export function LobbyScreen() {
   };
   const create = () => {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
-    return run('create', () => net.request('room.create', { mode: roomMode, difficulty, prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null }));
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty, prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
   };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty, fillBots: true }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
@@ -337,7 +338,7 @@ export function LobbyScreen() {
   };
 
   if (optionsOpen) return html`<${RoomOptionsPage} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${setPrepChoice}
-    onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
+    battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
   return html`<div class="screen lobby-screen">
     <header class="topbar">
       <div class="topbar__left">

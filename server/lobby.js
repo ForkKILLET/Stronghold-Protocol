@@ -1,3 +1,4 @@
+import { normalizeBattleSpeed, isBattleSpeed } from '../shared/roomOptions.js';
 import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMultiplier } from '../shared/prepTime.js';
 // server/lobby.js — rooms, seats, host, AI seats, ready/start, reconnect, and room → Match wiring
 // (DESIGN §2, §6.1 LOBBY, §8.1). Implements the handler interface consumed by server/net.js.
@@ -191,6 +192,7 @@ export class Room {
     this.consoleEnabled = false;
     this.prepSeconds = null;
     this.prepMultiplier = null;
+    this.battleSpeed = 2;
     this.createdAt = now;
     this.disposed = false;
   }
@@ -223,6 +225,7 @@ export class Room {
       consoleEnabled: !!this.consoleEnabled,
       prepSeconds: this.prepSeconds,
       prepMultiplier: this.prepMultiplier,
+      battleSpeed: this.battleSpeed,
       seats: this.seats.map((s) => (s
         ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
         : null)),
@@ -500,6 +503,7 @@ export class Lobby {
       room.consoleEnabled = d.consoleEnabled === true;
       room.prepSeconds = mode === 'coop' ? normalizePrepSeconds(d.prepSeconds) : null;
       room.prepMultiplier = mode === 'coop' ? normalizePrepMultiplier(d.prepMultiplier) : null;
+      room.battleSpeed = normalizeBattleSpeed(d.battleSpeed);
       for (const s of Array.isArray(d.seats) ? d.seats : []) {
         if (!s || typeof s.playerId !== 'string' || !Number.isInteger(s.seat) || s.seat < 0 || s.seat >= MAX_SEATS || room.seats[s.seat]) continue;
         const isBot = !!s.isBot;
@@ -718,7 +722,7 @@ export class Lobby {
       if (room.match || room.matching) return fail(room.match ? ERR.ROOM_STARTED : ERR.MATCHING);
       if (room.mode !== 'coop') return fail(ERR.BAD_MSG, 'solo rooms cannot join co-op matchmaking');
       if (room.consoleEnabled) return fail(ERR.MATCHING, 'console and matchmaking are mutually exclusive');
-      if (room.prepSeconds != null || room.prepMultiplier != null) return fail(ERR.MATCHING, 'custom preparation time cannot join public matchmaking');
+      if (room.prepSeconds != null || room.prepMultiplier != null || room.battleSpeed !== 2) return fail(ERR.MATCHING, 'custom preparation time cannot join public matchmaking');
       if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
       const humans = room.activeHumans();
       if (!humans.length || humans.some((s) => !s.connected)) return fail(ERR.NOT_READY, 'all party members must be connected');
@@ -912,8 +916,8 @@ export class Lobby {
     }
   }
 
-  create(session, { mode, difficulty, prepSeconds = null, prepMultiplier = null }) {
-    if (!isPrepSeconds(prepSeconds) || !isPrepMultiplier(prepMultiplier) || (prepSeconds != null && prepMultiplier != null)) return fail(ERR.BAD_MSG, 'invalid preparation time');
+  create(session, { mode, difficulty, prepSeconds = null, prepMultiplier = null, battleSpeed = 2 }) {
+    if (!isBattleSpeed(battleSpeed) || !isPrepSeconds(prepSeconds) || !isPrepMultiplier(prepMultiplier) || (prepSeconds != null && prepMultiplier != null)) return fail(ERR.BAD_MSG, 'invalid preparation time');
     if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
     const cur = this.roomOf(session);
     if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
@@ -937,6 +941,7 @@ export class Lobby {
     const room = new Room(code, mode, difficulty, this.now());
     room.prepSeconds = mode === 'coop' ? normalizePrepSeconds(prepSeconds) : null;
     room.prepMultiplier = mode === 'coop' ? normalizePrepMultiplier(prepMultiplier) : null;
+    room.battleSpeed = normalizeBattleSpeed(battleSpeed);
     room.ownerKey = key;
     room.seats[0] = this.humanSeat(0, session);
     room.hostId = session.playerId;
@@ -1287,6 +1292,7 @@ export class Lobby {
         consoleEnabled: !!room.consoleEnabled,
         prepSeconds: room.prepSeconds,
         prepMultiplier: room.prepMultiplier,
+        combatSpeed: room.battleSpeed,
         seed,
         // the room's match number: with the seed it keeps battleIds unique across the room's matches (DESIGN §14)
         matchNo,

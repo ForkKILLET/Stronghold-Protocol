@@ -86,8 +86,9 @@ test('two real WebSocket players share room settings; custom rooms cannot enter 
       c.id = (await c.hello(name)).playerId;
     }
     const [host, guest] = clients;
-    assert.equal((await host.request({ t: 'room.create', mode: 'coop', difficulty: 'NORMAL', prepMultiplier: 2 })).t, 'ok');
+    assert.equal((await host.request({ t: 'room.create', mode: 'coop', difficulty: 'NORMAL', prepMultiplier: 2, battleSpeed: 4 })).t, 'ok');
     const state = await host.waitFor('room.state');
+    assert.equal(state.battleSpeed,4);
     assert.equal(state.prepMultiplier, 2);
     assert.equal((await guest.request({ t: 'room.join', code: state.code })).t, 'ok');
     assert.equal((await guest.waitFor('room.state')).prepMultiplier, 2);

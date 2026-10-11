@@ -53,6 +53,7 @@ export class MatchViews {
       difficulty: this.difficulty,
       prepSeconds: this.prepSeconds,
       prepMultiplier: this.prepMultiplier,
+      battleSpeed: this.gameSpeed,
       prepDuration: this.prepTime(),
       stageId: this.stageId,
       factions: this.factions.slice(),

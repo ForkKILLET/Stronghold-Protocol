@@ -231,7 +231,7 @@ export function RoomScreen() {
     const id = setInterval(() => setConsoleNow(Date.now()), 200);
     return () => clearInterval(id);
   }, [consoleOpen]);
-  useEffect(() => { if (room?.consoleEnabled || (room?.prepSeconds != null || room?.prepMultiplier != null)) setMatchTeammates(false); }, [room?.consoleEnabled, room?.prepSeconds, room?.prepMultiplier]);
+  useEffect(() => { if (room?.consoleEnabled || (room?.prepSeconds != null || room?.prepMultiplier != null || (room?.battleSpeed ?? 2) !== 2)) setMatchTeammates(false); }, [room?.consoleEnabled, room?.prepSeconds, room?.prepMultiplier, room?.battleSpeed]);
 
   if (!room) return null;
   const online = conn.status === 'online';
@@ -360,6 +360,7 @@ export function RoomScreen() {
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
 
     ${coop ? html`<div class="room-prep-rule"><${Icon} name="hourglass" /><span>${t('休整期')}</span><b>${room.prepSeconds != null ? t('每回合 {seconds} 秒', { seconds: room.prepSeconds }) : prepTimeLabel(room.prepMultiplier)}</b><span class="room-prep-rule__hint">${t('全员就绪可提前开始；仅一名真人时不限时')}</span></div>` : null}
+    <div class="room-prep-rule"><span>${t('战斗倍速')}</span><b>${room.battleSpeed ?? 2}×</b></div>
     <footer class="room-bar">
       <div class="room-bar__left">
         <span class="room-bar__label">${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></span>
@@ -386,16 +387,16 @@ export function RoomScreen() {
             ? room.matching
               ? html`<div class="room-match-actions room-match-actions--active"><span class="room-match-state"><${Icon} name="signal" />${t('匹配剩余')} <b class="num">${Math.max(0, Math.ceil((Number(room.matching.deadlineAt) - serverNow()) / 1000))}s</b></span><${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelQueue}>${t('取消匹配')}<//></div>`
               : html`<div class="room-match-actions">
-                <div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null) ? t('自定义休整期仅支持好友 / AI 组队') : null}>
-                  <label class="fill-bots"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null)}
+                <div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义休整期仅支持好友 / AI 组队') : null}>
+                  <label class="fill-bots"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
                     onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
                   <label class=${`fill-bots fill-bots--optional${matchTeammates ? '' : ' is-hidden'}`} aria-hidden=${matchTeammates ? 'false' : 'true'}>
                     <input type="checkbox" checked=${fillBots} disabled=${!matchTeammates} onChange=${(e) => setFillBots(e.currentTarget.checked)} /><span>${t('60 秒后 AI 补齐')}</span>
                   </label>
                 </div>
-                <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null) && matchTeammates ? t('自定义休整期的房间仅支持邀请好友或添加 AI') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
+                <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) && matchTeammates ? t('自定义休整期的房间仅支持邀请好友或添加 AI') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
                   <${Button} variant="primary" size="xl" icon=${matchTeammates ? 'users' : 'play'} loading=${busy === (matchTeammates ? 'match' : 'start')}
-                    disabled=${((room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null)) && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
+                    disabled=${((room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)) && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
                 <//>
               </div>`
             : html`<${Tooltip} text=${facts.canStart ? null : t('仍有博士未准备就绪')}>

@@ -31,7 +31,7 @@ export function bossLevelSeconds(pub, config) {
   if (!isObj(pub) || !BOSS_PHASES.has(pub.phase)) return null;
   const mode = isObj(config?.modes) ? config.modes[pub.modeId] : null;
   const v = mode?.rounds?.[String(pub.round)]?.levelMaxPlayTime;
-  return Number.isFinite(v) && v > 0 ? v : BOSS_LEVEL_SECONDS;
+  return (Number.isFinite(v) && v > 0 ? v : BOSS_LEVEL_SECONDS) * (config?.combatTimeScale ?? 2) / (pub.battleSpeed ?? 2);
 }
 
 /** Team LP lost per real second of overtime (config.bossOvertimeDrainPerSec, default 1). */

@@ -334,7 +334,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
   const otLive = boss && Number(pub?.overtimeAt) > 0;
   useTicker(otLive && frozenAt == null ? 250 : 0);
   const now = Number.isFinite(frozenAt) ? frozenAt : serverNow();
-  const ot = otLive ? overtimeState(pub, now, { perSec: overtimeDrainPerSec(config) }) : null;
+  const ot = otLive ? overtimeState(pub, now, { perSec: overtimeDrainPerSec(config) * (pub?.battleSpeed ?? 2) / (config?.combatTimeScale ?? 2) }) : null;
   const draining = ot?.state === 'drain';
   const lowLp = (Number.isFinite(lp) && lp - pending <= 5) || draining;
   const cap = Number(config?.lpCapPerRound) > 0 ? Number(config.lpCapPerRound) : 10;
