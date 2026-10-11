@@ -276,3 +276,7 @@
 .room-prep-rule b { color: var(--mint-400); }
 .room-prep-rule__hint { color: var(--text-dim); font-size: .13rem; }
 @media (max-width: 600px) { .prep-setting__duration { gap: .1rem; } .room-prep-rule__hint { flex-basis: 100%; } }
+
+.room-options-screen { display:flex; flex-direction:column; }
+.room-options__body { width:min(8rem, calc(100% - .6rem)); margin:.3rem auto; padding:.3rem; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.room-options__body > .btn { margin-top:.16rem; min-height:44px; }

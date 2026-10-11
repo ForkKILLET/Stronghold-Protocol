@@ -1,4 +1,4 @@
-import { PrepTimePicker, prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
+import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 / 同盟匹配 and a difficulty (标准/险境/绝境/终极), create a room,
 // join the public alliance queue, or join a private room with a 同盟密钥 (recent codes remembered).
 // A private room can also be joined as a player or watched from one of its MAX_SPECTATORS spectator seats.
@@ -12,6 +12,7 @@ import { PrepTimePicker, prepChoiceMultiplier, validPrepChoice } from '../ui/pre
 // Texts go through t() (docs/I18N.md); the module-level tables hold msgids (N_) translated where they are shown, the
 // config.json mode texts come localized from data.js.
 
+import { RoomOptionsPage } from '../ui/roomOptions.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, OnlineCount, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
@@ -274,6 +275,7 @@ export function LobbyScreen() {
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
   });
   const [prepChoice, setPrepChoice] = useState(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
@@ -334,6 +336,8 @@ export function LobbyScreen() {
     store.set((s) => ({ session: { ...s.session, entered: false } }));
   };
 
+  if (optionsOpen) return html`<${RoomOptionsPage} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${setPrepChoice}
+    onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
   return html`<div class="screen lobby-screen">
     <header class="topbar">
       <div class="topbar__left">
@@ -394,7 +398,7 @@ export function LobbyScreen() {
           ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
         <div class="create-box">
-          ${roomMode === 'coop' && !matchQueue ? html`<${PrepTimePicker} value=${prepChoice} onChange=${setPrepChoice} disabled=${!!busy} />` : null}
+          ${roomMode !== 'match' && !matchQueue ? html`<${Button} variant="ghost" size="sm" icon="terminal" onClick=${() => setOptionsOpen(true)}>${t('房间额外配置')}<//>` : null}
           ${matchQueue
             ? html`<${MatchQueuePanel} queue=${matchQueue} onCancel=${cancelMatchmaking} />`
             : html`<${Tooltip} block=${true} text=${online ? null : t('正在连接服务器…')}>
