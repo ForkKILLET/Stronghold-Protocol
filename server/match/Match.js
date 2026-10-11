@@ -1,3 +1,4 @@
+import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prepTime.js';
 // server/match/Match.js — the match & meta engine: state machine, timers, round loop, co-op orchestration,
 // broadcasting views (DESIGN §6, §8). Rules are documented in the module headers of ./PlayerState.js, ./pool.js,
 // ./board.js, ./bondsMeta.js, ./effectsMeta.js, ./choices.js, ./waves.js, ./unite.js, ./finalAssault.js,
@@ -251,6 +252,8 @@ export class Match {
     this.onEndFn = opts.onEnd;
     this.data = opts.data && typeof opts.data === 'object' ? opts.data : {};
     this.gd = new GameData(this.data, this.modeId);
+    this.prepSeconds = normalizePrepSeconds(opts.prepSeconds);
+    this.prepMultiplier = normalizePrepMultiplier(opts.prepMultiplier);
     if (!this.difficulty) this.difficulty = this.gd.difficulty;
     this.isSolo = this.mode === 'solo' || this.gd.isSolo;
     // Only a room created by the lobby can opt in. Public matchmaking passes false and has no room console.

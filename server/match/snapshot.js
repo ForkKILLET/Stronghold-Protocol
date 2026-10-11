@@ -1,3 +1,4 @@
+import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prepTime.js';
 // server/match/snapshot.js — checkpoints of a running match (Redis persistence, docs/DEPLOY.md「断点续玩」).
 //
 // WHY A CHECKPOINT AND NOT A REPLAY: the match engine is deterministic in virtual time (tests run whole matches on a
@@ -178,7 +179,7 @@ function withProps(value, extra) {
  * order, pool, schedulers) or transient (clocks, view plumbing, timers, battle objects).
  */
 const MATCH_FIELDS = Object.freeze([
-  'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'battlePrefix', 'timerScale', 'gameSpeed',
+  'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
   'botRehearsal', 'clientCombat', 'verifyMode', 'headlessSliceMs', 'verifyStats', '_battleSeq', 'pausedMs',
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'round', 'uidSeq', 'loneHuman', 'hiddenLayerSum', 'hiddenReached', 'errors', 'errorCount', 'simErrors',
@@ -318,6 +319,8 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     catch (e) { reset(label, e); }
   };
   for (const k of MATCH_FIELDS) if (k !== 'round') field(m, doc, k, k);
+  m.prepSeconds = normalizePrepSeconds(m.prepSeconds);
+  m.prepMultiplier = normalizePrepMultiplier(m.prepMultiplier);
   m.round = Number(doc.round) || 0;
   if (bestEffort && (!Number.isInteger(m.round) || m.round < 0
     || (m.round === 0 && [PHASE.PREP, PHASE.ROUND_START, PHASE.SP_DRAFT].includes(doc.phase)))) {
@@ -560,7 +563,7 @@ function enterPhase(m, doc, now) {
       break;
     }
     case PHASE.PREP: {
-      const secs = m.soloUntimed ? null : Math.max(MIN_RECOVER_PREP_SEC, Math.round(remaining / 1000));
+      const secs = m.prepTime() == null ? null : Math.max(MIN_RECOVER_PREP_SEC, Math.round(remaining / 1000));
       m.setDeadline(secs, () => m.prepDeadline());
       let i = 0;
       for (const ps of m.alivePlayers()) if (ps.botControlled && !ps.ready) m.scheduleBotPrep(ps, i++);

@@ -55,6 +55,13 @@ export class MatchInfra {
 
   scaled(ms) { return Math.max(0, Math.round(ms * this.timerScale)); }
 
+  /** Server-authoritative, room-local preparation time; one-human games stay untimed. */
+  prepTime() {
+    if (this.soloUntimed || this.prepSeconds === 0 || this.prepMultiplier === 0) return null;
+    const base = this.gd.prepTime(this.round);
+    return this.prepSeconds ?? (base == null ? null : Math.round(base * (this.prepMultiplier ?? 1)));
+  }
+
   /**
    * Set the phase deadline (seconds; null/0 ⇒ untimed) and its timeout callback. `silent`: the timer runs but no
    * deadline is published (m.public.deadline 0 ⇒ no countdown) — the fixed presentation steps of a solo match.

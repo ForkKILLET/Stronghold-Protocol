@@ -254,3 +254,25 @@
 .create-box > .match-queue { width: 100%; box-sizing: border-box; }
 .create-box .btn--xl { height: .92rem; font-size: .32rem; letter-spacing: .3em; }
 .create-box__hint { display: flex; align-items: center; justify-content: center; min-height: .3rem; font-size: .14rem; color: var(--text-lo); }
+
+/* Room-local preparation rule: compact disclosure immediately above Create. */
+.prep-setting { margin-bottom: .18rem; padding: .2rem .22rem; border: 1px solid var(--line); border-left: 2px solid var(--mint-500); background: linear-gradient(110deg, rgba(78,216,175,.055), rgba(13,16,15,.8)); }
+.prep-setting__title { display: flex; align-items: center; flex-wrap: wrap; gap: .1rem; margin-bottom: .15rem; color: var(--text-hi); font-weight: 600; }
+.prep-setting__title .micro { margin-left: auto; }
+.prep-setting__choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .06rem; }
+.prep-setting__choices button, .prep-setting__presets button { min-height: .44rem; padding: .08rem .1rem; border: 1px solid var(--line); background: rgba(0,0,0,.2); color: var(--text-lo); cursor: pointer; }
+.prep-setting__choices button.is-active, .prep-setting__presets button[aria-pressed="true"] { border-color: var(--mint-500); color: var(--mint-400); background: rgba(78,216,175,.09); }
+.prep-setting button:focus-visible, .prep-setting input:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 3px; }
+.prep-setting button:disabled { opacity: .5; cursor: default; }
+.prep-setting__duration { display: flex; flex-wrap: wrap; gap: .12rem; align-items: center; margin-top: .14rem; }
+.prep-setting__input { display: flex; align-items: center; gap: .09rem; color: var(--text-lo); }
+.prep-setting__input input { width: .95rem; min-height: .44rem; border: 1px solid var(--line); background: rgba(0,0,0,.3); color: var(--mint-400); padding: .08rem; font: inherit; font-variant-numeric: tabular-nums; }
+.prep-setting__input input[aria-invalid="true"] { border-color: var(--red-500, #e98282); }
+.prep-setting__presets { display: flex; gap: .06rem; }
+.prep-setting__hint, .prep-setting__note { margin: .12rem 0 0; font-size: .13rem; line-height: 1.6; color: var(--text-lo); }
+.prep-setting__hint.is-invalid { color: var(--red-500, #e98282); }
+.prep-setting__note { margin-top: .04rem; color: var(--text-dim); }
+.room-prep-rule { display: flex; flex-wrap: wrap; align-items: center; gap: .1rem; padding: .13rem .28rem; border-top: 1px solid var(--line); background: rgba(78,216,175,.035); color: var(--text-lo); }
+.room-prep-rule b { color: var(--mint-400); }
+.room-prep-rule__hint { color: var(--text-dim); font-size: .13rem; }
+@media (max-width: 600px) { .prep-setting__duration { gap: .1rem; } .room-prep-rule__hint { flex-basis: 100%; } }

@@ -1,3 +1,4 @@
+import { PrepTimePicker, prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 / 同盟匹配 and a difficulty (标准/险境/绝境/终极), create a room,
 // join the public alliance queue, or join a private room with a 同盟密钥 (recent codes remembered).
 // A private room can also be joined as a player or watched from one of its MAX_SPECTATORS spectator seats.
@@ -272,6 +273,7 @@ export function LobbyScreen() {
     const d = loadPref('lobby.difficulty', 'FUNNY');
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
   });
+  const [prepChoice, setPrepChoice] = useState(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
@@ -295,7 +297,10 @@ export function LobbyScreen() {
       if (alive.current) setBusy(null);
     }
   };
-  const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty }));
+  const create = () => {
+    if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty, prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null }));
+  };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty, fillBots: true }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
   const join = (c = code) => {
@@ -389,11 +394,12 @@ export function LobbyScreen() {
           ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
         </div>
         <div class="create-box">
+          ${roomMode === 'coop' && !matchQueue ? html`<${PrepTimePicker} value=${prepChoice} onChange=${setPrepChoice} disabled=${!!busy} />` : null}
           ${matchQueue
             ? html`<${MatchQueuePanel} queue=${matchQueue} onCancel=${cancelMatchmaking} />`
             : html`<${Tooltip} block=${true} text=${online ? null : t('正在连接服务器…')}>
               <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons"
-                loading=${busy === (roomMode === 'match' ? 'match' : 'create')} disabled=${!online}
+                loading=${busy === (roomMode === 'match' ? 'match' : 'create')} disabled=${!online || (roomMode === 'coop' && !validPrepChoice(prepChoice))}
                 onClick=${roomMode === 'match' ? matchmaking : create}>
                 ${roomMode === 'solo' ? t('开始独立模拟') : roomMode === 'match' ? t('开始同盟匹配') : t('创建同盟')}
               <//>
