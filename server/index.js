@@ -61,7 +61,7 @@ export {
  *   port?: number, host?: string, quiet?: boolean, log?: object,
  *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string,
  *   MatchClass?: Function, seedFn?: () => number,
- *   lobbyGraceMs?: number, matchmakingWaitMs?: number, matchmakingTickMs?: number, reconnectWindowMs?: number, heartbeatMs?: number, helloTimeoutMs?: number,
+ *   lobbyGraceMs?: number, matchmakingTickMs?: number, reconnectWindowMs?: number, heartbeatMs?: number, helloTimeoutMs?: number,
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,

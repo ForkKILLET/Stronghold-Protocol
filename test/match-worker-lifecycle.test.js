@@ -124,16 +124,22 @@ test('failed initialization rolls back the reservation without deleting the prev
 
 test('a failed queued launch closes the old queue UI over WS instead of leaving it waiting forever', async (t) => {
   const srv = await startServer({ host: '127.0.0.1', port: 0, quiet: true, workers: 0, matchWorkers: 1, store: null,
-    matchmakingWaitMs: 1, matchmakingTickMs: 10 });
+    matchmakingTickMs: 100 });
   t.after(() => srv.close());
   await srv.matchWorkerPool.lanes[0].worker.terminate();
-  const c = await TestClient.connect(`ws://127.0.0.1:${srv.port}/ws`);
-  t.after(() => c.close());
-  const identity = await c.hello('Queue fail');
-  assert.equal((await c.request({ t: 'match.join', mode: 'coop', difficulty: 'NORMAL' })).t, 'ok');
-  const closed = await c.waitFor('match.queue', (m) => m.status === 'closed');
-  assert.equal(closed.reason, 'start_failed');
-  assert.equal(srv.lobby.queueByPlayer.has(identity.playerId), false);
+  const clients = [];
+  t.after(async () => { for (const c of clients) await c.close(); });
+  for (let i = 0; i < 4; i++) {
+    const c = await TestClient.connect(`ws://127.0.0.1:${srv.port}/ws`);
+    clients.push(c);
+    await c.hello(`Queue fail ${i}`);
+    assert.equal((await c.request({ t: 'match.join', mode: 'coop', difficulty: 'NORMAL' })).t, 'ok');
+  }
+  for (const c of clients) {
+    const closed = await c.waitFor('match.queue', (m) => m.status === 'closed');
+    assert.equal(closed.reason, 'start_failed');
+  }
+  assert.equal(srv.lobby.queueByPlayer.size, 0);
   assert.equal(srv.lobby.activeQueueMatches.size, 0);
 });
 
@@ -169,7 +175,12 @@ for (const remote of [false, true]) {
     const ticket = a.matchQueue;
     assert.deepEqual(ticket.players[0].ops, ops);
     lobby.removeQueueReferences(ticket);
-    const seats = [...ticket.players, { seat: 1, playerId: 'ai_test', name: 'AI', isBot: true, connected: true }];
+    const teammates = ['B', 'C', 'D'].map((name) => {
+      const s = lobby.registry.create(name);
+      s.connected = true;
+      return s;
+    });
+    const seats = [...ticket.players, ...teammates.map((s, i) => lobby.humanSeat(i + 1, s))];
     assert.equal((await lobby.startQueuedMatch(ticket, seats, [])).ok, true);
     const cp = remote ? await room.match.snapshot() : snapshotMatch(room.match);
     assert.deepEqual(cp.players.find((p) => p.playerId === a.playerId).ops, ops);

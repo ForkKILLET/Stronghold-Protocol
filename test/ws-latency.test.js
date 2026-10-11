@@ -204,7 +204,7 @@ test('private-state deduplication supplies the same encoded bytes without encodi
   assert.equal(messages.length, 1);
 });
 
-test('linear party packing matches oldest-first packing for mixed sizes, private and removed tickets', () => {
+test('linear human-only party packing matches oldest-first packing for mixed sizes and removed tickets', () => {
   const oldPacking = (bucket) => {
     let remaining = bucket.filter((e) => e && !e.removed);
     const groups = [];
@@ -225,8 +225,8 @@ test('linear party packing matches oldest-first packing for mixed sizes, private
   }
 });
 
-test('large match queue starts all due groups and broadcasts remaining counts only once', () => {
-  const bucket = Array.from({ length: 2500 }, (_, id) => ({ id, mode: 'coop', difficulty: 'NORMAL',
+test('large match queue starts all full groups and broadcasts remaining counts only once', () => {
+  const bucket = Array.from({ length: 2501 }, (_, id) => ({ id, mode: 'coop', difficulty: 'NORMAL',
     players: [{ playerId: 'p' + id }], fillBots: true, deadlineAt: id === 2499 ? 10000 : 0 }));
   let broadcasts = 0, started = 0;
   const lobby = Object.assign(Object.create(Lobby.prototype), { now: () => 100, matchQueues: new Map([['coop:NORMAL', bucket]]),
@@ -235,5 +235,6 @@ test('large match queue starts all due groups and broadcasts remaining counts on
   lobby.processMatchQueues();
   assert.equal(started, 625);
   assert.equal(broadcasts, 1);
-  assert.equal(lobby.matchQueues.size, 0);
+  assert.equal(lobby.matchQueues.size, 1);
+  assert.deepEqual(lobby.matchQueues.get('coop:NORMAL'), [bucket.at(-1)]);
 });

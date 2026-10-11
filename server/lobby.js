@@ -125,7 +125,6 @@ export const LOBBY_DEFAULTS = Object.freeze({
   maxMatchesPerAddr: 8,   // matches started from one client network that may run at once (0 = unlimited)
   resyncMinGapMs: 1000,   // heavy resyncs (match state / result replay) per session at most this often on repeated hellos
   soloReconnectWindowMs: null, // a dropped solo run stays resumable this long (null = data singleReconnectTime, 24 h)
-  matchmakingWaitMs: 60_000,   // queue wait before an AI teammate is added
   matchmakingTickMs: 1_000,    // queue scheduling cadence
 });
 
@@ -211,7 +210,7 @@ export class Room {
     this.ownerKey = null;
     /** @type {string | null} per-network limit key of whoever started the running match */
     this.matchKey = null;
-    /** @type {{ queueId: string, queuedAt: number, deadlineAt: number, fillBots: boolean } | null} */
+    /** @type {{ queueId: string, queuedAt: number, count: number, capacity: number } | null} */
     this.matching = null;
     /** Owner opt-in for the in-match developer console. Public matchmaking never has a Room flag. */
     this.consoleEnabled = false;
@@ -777,10 +776,10 @@ export class Lobby {
 
   /**
    * Join the shared matchmaking pool. A player outside a room contributes one seat; a room host contributes the
-   * whole connected party. `fillBots` controls whether other queued parties may be combined, while the 60 s deadline
-   * always fills the remaining seats with AI as required by the game flow.
+   * whole connected human party. All tickets may combine; only a full human team starts, without an AI timeout.
+   * Legacy clients may still send `fillBots`, but it no longer affects matchmaking.
    */
-  matchJoin(session, { mode, difficulty, fillBots = true }) {
+  matchJoin(session, { mode, difficulty }) {
     const room = this.roomOf(session);
     const active = this.activeMatchOf(session);
     if (active) return fail(ERR.ROOM_STARTED, 'match already running');
@@ -789,7 +788,7 @@ export class Lobby {
       if (room) return fail(ERR.MATCHING, 'leave the room before solo matchmaking');
       // Compatibility for clients from the first queue rollout. The current UI keeps independent simulation on its
       // solo room path and only sends mode=coop from the in-room teammate-match option.
-      const entry = this.makeQueueEntry({ mode: 'coop', difficulty, fillBots: true, room: null,
+      const entry = this.makeQueueEntry({ mode: 'coop', difficulty, room: null,
         players: [{ ...this.humanSeat(0, session), connected: session.connected }] });
       this.enqueueMatchEntry(entry);
       this.processMatchQueues();
@@ -800,20 +799,20 @@ export class Lobby {
       if (room.mode !== 'coop') return fail(ERR.BAD_MSG, 'solo rooms cannot join co-op matchmaking');
       if (room.consoleEnabled) return fail(ERR.MATCHING, 'console and matchmaking are mutually exclusive');
       if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+      if (room.seats.some((s) => s?.isBot)) return fail(ERR.BAD_MSG, t('请先移除 AI 队友，再匹配真人队友'));
       const humans = room.activeHumans();
       if (!humans.length || humans.some((s) => !s.connected)) return fail(ERR.NOT_READY, 'all party members must be connected');
       if (humans.some((s) => this.queueByPlayer.has(s.playerId))) return fail(ERR.MATCHING);
-      const players = room.seats.filter(Boolean).map((s) => ({ seat: s.seat, playerId: s.playerId, name: s.name,
-        isBot: !!s.isBot, connected: s.connected !== false, loadout: s.isBot ? null : s.loadout || null,
-        ops: s.isBot ? null : s.ops || null,
-        notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null }));
-      const entry = this.makeQueueEntry({ mode, difficulty: room.difficulty, fillBots: !!fillBots, room, players });
+      const players = humans.map((s) => ({ seat: s.seat, playerId: s.playerId, name: s.name,
+        isBot: false, connected: true, loadout: s.loadout || null, ops: s.ops || null,
+        notOwned: s.notOwned || null, diy: s.diy || null }));
+      const entry = this.makeQueueEntry({ mode, difficulty: room.difficulty, room, players });
       this.enqueueMatchEntry(entry);
       this.broadcastState(room);
       this.processMatchQueues();
       return OK;
     }
-    const entry = this.makeQueueEntry({ mode, difficulty, fillBots: true, room: null,
+    const entry = this.makeQueueEntry({ mode, difficulty, room: null,
       players: [{ ...this.humanSeat(0, session), connected: session.connected }] });
     this.enqueueMatchEntry(entry);
     this.processMatchQueues();
@@ -827,12 +826,12 @@ export class Lobby {
     return OK;
   }
 
-  makeQueueEntry({ mode, difficulty, fillBots, room, players }) {
+  makeQueueEntry({ mode, difficulty, room, players }) {
     const now = this.now();
     const entry = {
       queueId: `Q${(++this.queueSeq).toString(36).toUpperCase()}`,
-      mode, difficulty, fillBots: !!fillBots, room: room || null, players: players.map((p) => ({ ...p })),
-      queuedAt: now, deadlineAt: now + Math.max(1000, Number(this.opts.matchmakingWaitMs) || 60_000),
+      mode, difficulty, room: room || null, players: players.map((p) => ({ ...p })),
+      queuedAt: now,
       removed: false,
     };
     return entry;
@@ -849,37 +848,26 @@ export class Lobby {
       this.queueByPlayer.set(p.playerId, entry);
     }
     if (entry.room) {
-      entry.room.matching = { queueId: entry.queueId, queuedAt: entry.queuedAt, deadlineAt: entry.deadlineAt, fillBots: entry.fillBots };
+      entry.room.matching = { queueId: entry.queueId, queuedAt: entry.queuedAt, count: entry.players.length, capacity: MAX_SEATS };
     }
-    // A newly matched human party gives its teammates a fresh AI wait. Use the same packing as processing,
-    // so another difficulty, a private ticket or a party that does not fit cannot extend their deadline.
-    const groups = this.groupMatchEntries(bucket);
-    const selected = groups.find((group) => group.includes(entry));
-    if (selected.length > 1) for (const teammate of selected) {
-      teammate.deadlineAt = entry.deadlineAt;
-      if (teammate.room?.matching) {
-        teammate.room.matching.deadlineAt = teammate.deadlineAt;
-        this.broadcastState(teammate.room);
-      }
-    }
-    this.broadcastQueueCounts(entry.mode, entry.difficulty, groups);
+    this.broadcastQueueCounts(entry.mode, entry.difficulty);
   }
 
-  /** Oldest-first party packing without splitting parties or combining private tickets. */
+  /** Oldest-first party packing without splitting parties. Legacy AI flags are ignored. */
   selectMatchEntries(bucket) {
     const first = bucket[0];
     const selected = [first];
     let total = first.players.length;
-    if (first.fillBots) for (let i = 1; i < bucket.length && total < MAX_SEATS; i++) {
+    for (let i = 1; i < bucket.length && total < MAX_SEATS; i++) {
       const next = bucket[i];
-      if (!next || next.removed || !next.fillBots || total + next.players.length > MAX_SEATS) continue;
+      if (!next || next.removed || total + next.players.length > MAX_SEATS) continue;
       selected.push(next);
       total += next.players.length;
     }
     return selected;
   }
 
-  /** Use identical groups for counts, AI deadline resets and match launch. */
+  /** Use identical groups for counts and match launch. */
   groupMatchEntries(bucket) {
     const remaining = bucket.filter((entry) => entry && !entry.removed);
     const groups = [];
@@ -890,7 +878,7 @@ export class Lobby {
     const used = new Set();
     for (let i = 0; i < remaining.length; i++) {
       const entry = remaining[i];
-      if (entry.fillBots && entry.players.length > 0 && entry.players.length <= MAX_SEATS) bySize[entry.players.length].push(i);
+      if (entry.players.length > 0 && entry.players.length <= MAX_SEATS) bySize[entry.players.length].push(i);
     }
     for (let i = 0; i < remaining.length; i++) {
       if (used.has(i)) continue;
@@ -898,7 +886,7 @@ export class Lobby {
       const selected = [first];
       used.add(i);
       let total = first.players.length;
-      while (first.fillBots && total < MAX_SEATS) {
+      while (total < MAX_SEATS) {
         let next = Infinity;
         for (let size = 1; size <= MAX_SEATS - total; size++) {
           const candidates = bySize[size];
@@ -920,14 +908,18 @@ export class Lobby {
     const bucket = this.matchQueues.get(`${mode}:${difficulty}`) || [];
     for (const group of groups || this.groupMatchEntries(bucket)) {
       const count = group.reduce((n, entry) => n + entry.players.filter((p) => !p.isBot).length, 0);
-      for (const entry of group) this.sendQueueState(entry, 'queued', null, count);
+      for (const entry of group) {
+        this.sendQueueState(entry, 'queued', null, count);
+        if (entry.room?.matching && entry.room.matching.count !== count) {
+          entry.room.matching.count = count;
+          this.broadcastState(entry.room);
+        }
+      }
     }
   }
 
-  /** Process each bucket oldest-first. Full teams start immediately; otherwise AI fills seats after the latest
-   * teammate's fresh wait expires. Regular scheduler ticks never extend that wait. */
+  /** Full human teams start immediately. Incomplete groups keep waiting without blocking later full groups. */
   processMatchQueues() {
-    const now = this.now();
     for (const [key, bucket] of this.matchQueues) {
       for (let i = bucket.length - 1; i >= 0; i--) {
         if (!bucket[i] || bucket[i].removed) bucket.splice(i, 1);
@@ -935,16 +927,11 @@ export class Lobby {
       for (const selected of this.groupMatchEntries(bucket)) {
         const first = selected[0];
         const total = selected.reduce((n, entry) => n + entry.players.length, 0);
-        if (total < MAX_SEATS && now < first.deadlineAt) continue;
+        if (total < MAX_SEATS) continue;
         for (const entry of selected) {
           this.removeQueueReferences(entry);
         }
         const players = selected.flatMap((entry) => entry.players.map((p) => ({ ...p })));
-        while (players.length < MAX_SEATS) {
-          const seat = players.length;
-          players.push({ seat, playerId: `ai_${randomBytes(4).toString('hex')}`, name: BOT_NAMES[seat % BOT_NAMES.length],
-            isBot: true, connected: true, loadout: null });
-        }
         const owner = selected.find((entry) => entry.room) || first;
         Promise.resolve(this.startQueuedMatch(owner, players, selected)).then((result) => {
           if (result?.error) this.failedQueuedStart(selected);
@@ -1003,7 +990,7 @@ export class Lobby {
   sendQueueState(entry, status = 'queued', reason = null, count = entry.players.filter((p) => !p.isBot).length) {
     const msg = { t: 'match.queue', status, queueId: entry.queueId, mode: entry.mode, difficulty: entry.difficulty,
       count, capacity: MAX_SEATS, queuedAt: entry.queuedAt,
-      deadlineAt: entry.deadlineAt, fillBots: entry.fillBots, ...(reason ? { reason } : {}) };
+      ...(reason ? { reason } : {}) };
     for (const p of entry.players) if (!p.isBot) {
       const session = this.registry.byId(p.playerId);
       if (session?.connected) sendSession(session, msg);
@@ -1546,6 +1533,7 @@ export class Lobby {
   /** Start a match created by the matchmaking queue. Room members keep their room; individual queue members do not
    * acquire one, so the result screen returns them to the public lobby. */
   startQueuedMatch(owner, players, selected = [owner]) {
+    if (players.some((p) => p.isBot)) return fail(ERR.BAD_MSG, 'matchmaking only accepts human players');
     if (this.matchWorkerPool) return this.startQueuedMatchWorker(owner, players, selected);
     return this.startQueuedMatchLocal(owner, players, selected);
   }

@@ -4,7 +4,7 @@
 //
 // Start rule (server/lobby.js): without matchmaking, room.start needs every *other* human connected and ready; the
 // host's start counts as the host's ready. With matchmaking selected, the same 立即开始 action sends match.join
-// for the whole connected party and the queue fills the remaining seats.
+// for the whole connected human party and waits for four real players; rooms with AI must remove it first.
 // Solo rooms show a single seat.
 // Spectator seats (community report #26, a remake feature): a co-op room with spectators shows the 观战席 strip under
 // the seats — names, offline marks, the host's ✕ (room.removeSpectator) — and a spectator's own view swaps the ready
@@ -24,7 +24,7 @@ import { openStats } from './stats.js';
 import { SettingsButton } from '../ui/settings.js';
 import { LoadoutButton } from './loadout.js';
 import { net } from '../net.js';
-import { store, useStore, shallowEqual, emptyMatch, isSpectating, serverNow } from '../store.js';
+import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
 import { difficultyInfo } from './lobby.js';
 import { t, tc } from '../../../shared/i18n.js';
 
@@ -242,19 +242,12 @@ export function RoomScreen() {
   const presence = useStore((s) => s.presence, shallowEqual);
   const [busy, setBusy] = useState(null);
   const [matchTeammates, setMatchTeammates] = useState(false);
-  const [fillBots, setFillBots] = useState(true);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [consoleReadyAt, setConsoleReadyAt] = useState(0);
   const [consoleNow, setConsoleNow] = useState(() => Date.now());
-  const [, tickMatchClock] = useState(0);
   const alive = useRef(true);
   const inFlight = useRef(false); // synchronous guard against double clicks (state updates are async)
   useEffect(() => () => { alive.current = false; }, []);
-  useEffect(() => {
-    if (!room?.matching) return undefined;
-    const id = setInterval(() => tickMatchClock((n) => n + 1), 250);
-    return () => clearInterval(id);
-  }, [room?.matching?.queueId]);
   useEffect(() => {
     if (!consoleOpen) return undefined;
     const id = setInterval(() => setConsoleNow(Date.now()), 200);
@@ -266,6 +259,7 @@ export function RoomScreen() {
   const online = conn.status === 'online';
   const coop = room.mode !== 'solo';
   const facts = roomFacts(room, me.playerId);
+  const hasBots = facts.occupied.some((s) => s.isBot);
   const canManageConsole = facts.isHost || (room.mode === 'solo' && !!facts.mine);
   const myReady = !!facts.mine?.ready;
   const info = difficultyInfo(room.mode, room.difficulty);
@@ -283,7 +277,7 @@ export function RoomScreen() {
 
   const toggleReady = () => run('ready', () => net.request('room.ready', { ready: !myReady }));
   const start = () => run(matchTeammates ? 'match' : 'start', () => matchTeammates
-    ? net.request('match.join', { mode: 'coop', difficulty: room.difficulty, fillBots })
+    ? net.request('match.join', { mode: 'coop', difficulty: room.difficulty })
     : net.request('room.start', {}));
   const cancelQueue = () => run('cancel-match', () => net.request('match.leave', {}));
   const addBot = () => run('add', () => net.request('room.addBot', {}));
@@ -416,18 +410,15 @@ export function RoomScreen() {
         ${facts.isHost
           ? coop
             ? room.matching
-              ? html`<div class="room-match-actions room-match-actions--active"><span class="room-match-state"><${Icon} name="signal" />${t('匹配剩余')} <b class="num">${Math.max(0, Math.ceil((Number(room.matching.deadlineAt) - serverNow()) / 1000))}s</b></span><${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelQueue}>${t('取消匹配')}<//></div>`
+              ? html`<div class="room-match-actions room-match-actions--active"><span class="room-match-state"><${Icon} name="signal" />${t('正在寻找同盟队友')} <b class="num">${room.matching.count}/${room.matching.capacity}</b></span><${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelQueue}>${t('取消匹配')}<//></div>`
               : html`<div class="room-match-actions">
                 <div class="room-match-options">
-                  <label class="fill-bots"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled}
+                  <label class="room-match-toggle"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled}
                     onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
-                  <label class=${`fill-bots fill-bots--optional${matchTeammates ? '' : ' is-hidden'}`} aria-hidden=${matchTeammates ? 'false' : 'true'}>
-                    <input type="checkbox" checked=${fillBots} disabled=${!matchTeammates} onChange=${(e) => setFillBots(e.currentTarget.checked)} /><span>${t('60 秒后 AI 补齐')}</span>
-                  </label>
                 </div>
-                <${Tooltip} text=${room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
+                <${Tooltip} text=${room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates && hasBots ? t('请先移除 AI 队友，再匹配真人队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
                   <${Button} variant="primary" size="xl" icon=${matchTeammates ? 'users' : 'play'} loading=${busy === (matchTeammates ? 'match' : 'start')}
-                    disabled=${(room.consoleEnabled && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
+                    disabled=${(matchTeammates && (room.consoleEnabled || hasBots)) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
                 <//>
               </div>`
             : html`<${Tooltip} text=${facts.canStart ? null : t('仍有博士未准备就绪')}>

@@ -23,7 +23,7 @@ import { SettingsButton } from '../ui/settings.js';
 import { PwaInstallButton } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
 import { net, identity } from '../net.js';
-import { store, useStore, shallowEqual, loadPref, savePref, serverNow } from '../store.js';
+import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 
@@ -90,7 +90,7 @@ const MODE_CARDS = [
   {
     id: 'match', name: N_('同盟匹配'), en: 'ALLIANCE MATCHMAKING', icon: 'signal',
     desc: N_('独自进入公共匹配池，与其他博士组成同盟后开始模拟。'),
-    points: [N_('单人加入 · 自动匹配队友'), N_('60 秒后可由 AI 补齐空位')],
+    points: [N_('单人加入 · 自动匹配队友'), N_('仅匹配真人 · 满四人后开始')],
   },
 ];
 
@@ -246,17 +246,11 @@ function DifficultyCard({ roomMode, difficulty, selected, onSelect }) {
 }
 
 function MatchQueuePanel({ queue, onCancel }) {
-  const [now, setNow] = useState(() => serverNow());
-  useEffect(() => {
-    const id = setInterval(() => setNow(serverNow()), 250);
-    return () => clearInterval(id);
-  }, []);
   if (!queue) return null;
-  const left = Math.max(0, Math.ceil((Number(queue.deadlineAt) - now) / 1000));
   return html`<section class="match-queue brackets" aria-live="polite">
     <div class="match-queue__scan" aria-hidden="true"></div>
     <div class="match-queue__head"><${Icon} name="signal" /><div><${MicroLabel} tone="mint">ALLIANCE MATCHMAKING<//><strong>${t('正在寻找同盟队友')}</strong></div><span class="match-queue__count num">${queue.count}/${queue.capacity}</span></div>
-    <div class="match-queue__meta"><span>${t('匹配剩余')} <b class="num">${left}s</b></span><span>${queue.fillBots ? t('倒计时结束后由 AI 补齐空位') : t('仅匹配真实队友')}</span></div>
+    <div class="match-queue__meta"><span>${t('仅匹配真实队友')}</span><span>${t('满四人后开始')}</span></div>
     <${Button} variant="danger" size="sm" icon="close" onClick=${onCancel}>${t('退出匹配')}<//>
   </section>`;
 }
@@ -300,7 +294,7 @@ export function LobbyScreen() {
     }
   };
   const create = () => run('create', () => net.request('room.create', { mode: roomMode, difficulty }));
-  const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty, fillBots: true }));
+  const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
   const join = (c = code) => {
     // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to

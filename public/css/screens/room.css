@@ -8,9 +8,8 @@
 .room-match-options { display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: .12rem; min-height: .32rem; }
 .room-match-state { display: inline-flex; align-items: center; gap: .06rem; color: var(--mint-400); font-size: calc(.15 * var(--t)); }
 .room-match-state .icon { width: .18rem; height: .18rem; }
-.fill-bots { display: inline-flex; align-items: center; gap: .06rem; color: var(--text-lo); font-size: calc(.14 * var(--t)); cursor: pointer; }
-.fill-bots input { accent-color: var(--mint-500); width: .18rem; height: .18rem; }
-.fill-bots--optional.is-hidden { visibility: hidden; pointer-events: none; }
+.room-match-toggle { display: inline-flex; align-items: center; gap: .06rem; color: var(--text-lo); font-size: calc(.14 * var(--t)); cursor: pointer; }
+.room-match-toggle input { accent-color: var(--mint-500); width: .18rem; height: .18rem; }
 .room-match-actions > .tt-anchor { justify-self: end; }
 .room-match-actions > .tt-anchor, .room-match-actions > .tt-anchor .btn { width: 100%; }
 .room-ping { display: flex; flex-direction: column; align-items: flex-start; gap: .04rem; }

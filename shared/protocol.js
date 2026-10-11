@@ -403,11 +403,10 @@ export const C2S = {
   'room.console.disable': {},
   // matchmaking: an alliance room host queues the whole party. `mode: solo` remains accepted for older clients;
   // the current UI always creates a solo room instead, so independent simulation stays a solo room/match.
+  // Matchmaking is human-only. Legacy `fillBots` is an ignored extra field, never a party-isolation or AI switch.
   'match.join': {
     mode: (v) => v === 'coop' || v === 'solo',
     difficulty: (v) => DIFFICULTIES.includes(v),
-    fillBots: isBool,
-    $optional: ['fillBots'],
   },
   'match.leave': {},
   // operator loadout (DESIGN §16): stored per session/seat; accepted until the match leaves INFO_CHECK
