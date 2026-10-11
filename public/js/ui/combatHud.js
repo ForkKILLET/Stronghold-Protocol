@@ -73,6 +73,8 @@ function ClientHud({ hud, myDone, spectating, spectator = false, client }) {
   return html`<div class="chud">
     <${DpCounter} dp=${hud?.dp} />
     <div class="chud__bottom">
+      ${client.ownField ? html`<button type="button" class="btn btn--secondary btn--sm chud__back" onClick=${client.ownField.onToggle}>
+        ${client.ownField.showing ? t('返回联防战场') : t('查看自己的战场')}</button>` : null}
       ${myDone && !observing ? html`<div class="chud__msg chud__wait" role="status"><${Icon} name="hourglass" /><span>${t('作战结束，等待队友完成作战')}</span></div>
         <${ProgressList} list=${client.progress} />` : null}
       ${spectating && !observing ? (spectator ? html`<div class="chud__msg" role="status"><${GIcon} name="eye" /><span>${t('观战中，可点击左侧成员头像前往查看')}</span></div>`

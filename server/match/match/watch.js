@@ -13,6 +13,8 @@ import { snapFrame } from '../fields.js';
 import { OK, fail } from './common.js';
 
 export class MatchWatch {
+  _viewableFields() { return this.phase === PHASE.UNITE ? [...this.fields, ...(this._normalFields || [])] : this.fields; }
+
   /**
    * A spectator seat (community report #26; server/lobby.js spectate) joined during the match, came back or asked for a
    * resync: registered once, then resent what an eliminated player watching sees (_resync — never an m.private).
@@ -53,7 +55,7 @@ export class MatchWatch {
   watch(ps, fieldId, playerId = null) {
     if (typeof fieldId !== 'string') return fail(ERR.BAD_TARGET);
     if (this.clientCombat && this.fields.length && this.fields.some((x) => x.cc)) return this._watchClient(ps, fieldId, playerId);
-    const f = this.fields.find((x) => x.fieldId === fieldId);
+    const f = this._viewableFields().find((x) => x.fieldId === fieldId);
     if (f) {
       // 最终攻势 / 隐秘核心: "两名参与者会处于同一个战场，但无法查看另一组队友的战场情况" — a fighting player sees its own
       // boss field only (eliminated / departed players spectate freely)
@@ -135,12 +137,11 @@ export class MatchWatch {
    * field is never shown to a fighting player; eliminated players may watch anything.
    */
   _watchClient(ps, fieldId, playerId = null) {
-    const f = this.fields.find((x) => x.fieldId === fieldId) || null;
+    const f = this._viewableFields().find((x) => x.fieldId === fieldId) || null;
     if (!f) return fail(ERR.BAD_TARGET, 'no such field');
     const own = this.fields.find((x) => x.players.includes(ps.playerId)) || null;
     if (ps.alive) {
       if ((f.kind === 'boss' || f.kind === 'hidden') && own && own !== f) return fail(ERR.BAD_TARGET, 'other group hidden');
-      if (f.kind === 'normal' && own && own !== f && own.live) return fail(ERR.WRONG_PHASE, 'own battle running');
     }
     this.watchers.set(ps.playerId, f.fieldId);
     this._watchPrefSet(ps, f, playerId);
@@ -156,7 +157,7 @@ export class MatchWatch {
   _resendBattle(ps) {
     if (!this.fields.some((f) => f.cc)) { this._followScout(ps, { keep: true }); return; }
     const fid = this.watchers.get(ps.playerId);
-    let f = fid ? this.fields.find((x) => x.fieldId === fid) : null;
+    let f = fid ? this._viewableFields().find((x) => x.fieldId === fid) : null;
     if (!f) f = this.fields.find((x) => x.players.includes(ps.playerId)) || (this.phase === PHASE.UNITE ? this.fields[0] : null);
     if (!f && !ps.alive) f = this._watchTargetField(ps, this.fields) || this.fields[0] || null;
     if (!f) return;
@@ -224,7 +225,7 @@ export class MatchWatch {
   }
 
   _sendField(playerId, fieldId) {
-    const f = this.fields.find((x) => x.fieldId === fieldId);
+    const f = this._viewableFields().find((x) => x.fieldId === fieldId);
     if (f) {
       let meta;
       try { meta = f.battle.fieldMeta(); } catch (e) { this.reportError('fieldMeta', e); return; }

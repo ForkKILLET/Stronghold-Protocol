@@ -9,6 +9,7 @@ import { DELAYS } from './common.js';
 
 export class MatchPrep {
   enterPrep() {
+    this._normalFields = [];
     this.phase = PHASE.PREP;
     this.sp = null;
     const alive = this.alivePlayers();

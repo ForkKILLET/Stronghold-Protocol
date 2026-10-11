@@ -94,7 +94,7 @@ export class MatchViews {
         // the LP this round's own battle will cost at settlement so far (COMBAT / 联防 only, omitted when 0)
         ...this._pendingLpView(ps),
       })),
-      fields: this.fields.map((f) => {
+      fields: this._viewableFields().map((f) => {
         const v = { fieldId: f.fieldId, kind: f.kind, players: f.players.slice(), live: !!f.live };
         const pr = this._fieldProgress(f);
         if (pr) v.progress = pr;

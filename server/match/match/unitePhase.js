@@ -13,6 +13,7 @@ import { msg } from '../../../shared/i18n.js';
 
 export class MatchUnite {
   startUnite(plan) {
+    this._normalFields = this.fields.filter(f => f.kind === 'normal');
     if (this.clientCombat) { this._startUniteClient(plan); return; }
     this.phase = PHASE.UNITE;
     this.unitePlan = plan;
