@@ -79,6 +79,12 @@ const IMPACT_WINDOW_MS = 2500;
 /** Official operator sound files of a skill mode: `…_d` / `…_h` / `…_s` (+ digits) — the normal attack's end in `_n`. */
 const SKILL_MODE_FILE = /_(d|h|s)\d*\.mp3$/i;
 
+/** Play the original matchmaking success cue once on a co-op room becoming full. */
+export function roomFilled(room, previous) {
+  const full = (r) => r?.mode === 'coop' && Array.isArray(r.seats) && r.seats.filter(Boolean).length === 4;
+  return full(room) && (room.code !== previous?.code || !full(previous));
+}
+
 // ---- pure helpers (unit-tested) -----------------------------------------------------------------------
 
 /**
@@ -1058,6 +1064,7 @@ export function installAudio(deps) {
       };
       sync(deps.getState());
       return deps.subscribe((s, prev) => {
+        if (roomFilled(s.room, prev?.room)) audio.sfx('matchSucceed');
         if (s.match?.public?.phase !== prev?.match?.public?.phase || s.room !== prev?.room || s.session !== prev?.session
           || s.match?.public?.bossId !== prev?.match?.public?.bossId) sync(s);
       });
