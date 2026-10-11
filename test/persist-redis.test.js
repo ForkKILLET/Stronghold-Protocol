@@ -14,6 +14,7 @@ import { TestClient } from './helpers/wsClient.js';
 import { DATA, makeMatch } from './match/harness.js';
 import { snapshotMatch } from '../server/match/snapshot.js';
 import { MatchWorkerPool } from '../server/workers/matchPool.js';
+import { makeCtx } from '../server/match/effectsMeta.js';
 
 const quietLog = { info() {}, warn() {}, error() {}, debug() {} };
 const REDIS_URL = process.env.SP_TEST_REDIS_URL || 'redis://127.0.0.1:6379/15';
@@ -281,7 +282,7 @@ test('complete Worker matches preserve tokens and checkpoint state through three
     }
   });
 
-test('0.2.4 signed shared/private stock and equipment ownership survive two Worker restarts through real Redis',
+test('0.2.4 signed shared/private stock and passive gift provenance survive two Worker restarts through real Redis',
   { skip: !available && `no Redis at ${REDIS_URL}`, timeout: 30000 }, async (t) => {
     const slot = 'chess_char_6_diy1_a', item = 'chess_item_5_07_e_a';
     const seats = [{ seat: 0, playerId: 'p_0', name: 'Stock', isBot: false, connected: true,
@@ -294,6 +295,12 @@ test('0.2.4 signed shared/private stock and equipment ownership survive two Work
       assert.equal(stock.entries.get(base).left, -1);
     }
     assert.ok(ps.acquireItem(item, { silent: true }));
+    const passive = makeCtx(h.m, ps, { kind: 'garrison', key: 'test:passive' }, 'onGain');
+    assert.ok(passive.grantItem('chess_item_6_09_e_a'));
+    assert.ok(ps.acquireItem('chess_item_5_02_e_a'));
+    assert.ok(passive.grantItem('chess_item_5_02_e_a'));
+    assert.equal(h.m.itemPool.held('chess_item_6_09_e_a'), 0);
+    assert.equal(h.m.itemPool.held('chess_item_5_02_e_a'), 1);
     const before = snapshotMatch(h.m);
     h.m.dispose();
     const probe = store('signed-stock-024'), pools = [];
