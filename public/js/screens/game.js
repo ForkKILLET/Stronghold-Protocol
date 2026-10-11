@@ -162,7 +162,7 @@ function DraftPause({ pub, standalone }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [requested, busy, participant?.alive]);
+  }, [requested, busy, participant?.alive, standalone]);
   return html`
     ${participant?.alive ? html`<div class="draft-pause"><${PauseButton} paused=${pub.paused} requested=${requested}
       votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null}
@@ -1201,7 +1201,7 @@ function MatchScreen() {
         return;
       }
       // Space pauses / resumes a solo battle (the official battle key)
-      if (act === 'pause' && (L.canPause || L.paused)) {
+      if (act === 'pause' && L.canPause) {
         e.preventDefault();
         if (e.target instanceof HTMLElement && e.target.closest('button, [role="button"]')) e.target.blur();
         togglePauseRef.current(!L.pauseRequested);
@@ -1355,7 +1355,7 @@ function MatchScreen() {
         onExit=${() => setExitOpen(true)} onDrawer=${(t) => setDrawer((d) => (d ? null : t))} onReady=${toggleReady}
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
         pen=${pen} penAvail=${penAvail} onPen=${togglePen} config=${gd.config} frozenAt=${frozenAt}
-        pause=${canPause || paused ? { show: canPause, paused, requested: pauseRequested, votes: pub.pauseRequests?.length || 0, required: pub.pauseRequired?.length || 1, busy: pauseBusy, onToggle: () => togglePause(!pauseRequested) } : null}
+        pause=${canPause ? { show: canPause, paused, requested: pauseRequested, votes: pub.pauseRequests?.length || 0, required: pub.pauseRequired?.length || 1, busy: pauseBusy, onToggle: () => togglePause(!pauseRequested) } : null}
         live=${liveLpNow} spectator=${spectator} />
 
       <div class="gm__bonds">
