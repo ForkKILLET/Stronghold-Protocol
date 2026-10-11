@@ -811,12 +811,17 @@ export function createBattleRunner(deps) {
       const round = Number(pub?.round) || 0;
       const resetMetrics = (!pub && lastPhase != null) || round < lastRound
         || (pub?.phase !== lastPhase && ['LOBBY', 'INFO_CHECK', 'BAND_DRAFT', 'BATTLE_CHECK'].includes(pub?.phase));
-      if (resetMetrics) combatHistory.clear();
-      if (pub?.combatHistoryKey && pub.combatHistoryKey !== historyKey) {
-        historyKey = pub.combatHistoryKey;
+      const changedHistory = pub?.combatHistoryKey && pub.combatHistoryKey !== historyKey;
+      // Save old entries under their old match key before switching caches; never mix matches on a resync.
+      if (resetMetrics || changedHistory) {
+        if (entries.size || pending.size) clear({ keepMetrics: true });
         combatHistory.clear();
+      }
+      if (changedHistory) {
+        historyKey = pub.combatHistoryKey;
         for (const [id, record] of loadCombatHistory(storage, historyKey)) combatHistory.set(id, record);
       }
+      if (!pub) historyKey = null;
       lastRound = round;
       // solo pause (DESIGN §14): the local battle clocks follow m.public.paused
       setPaused(!!(pub && pub.paused));

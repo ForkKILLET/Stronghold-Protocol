@@ -563,3 +563,15 @@ test('1× and 4× pacing produce the same battle state after the same number of 
  assert.deepEqual(reload.runner.combatRounds({ownerId}), []);
  reload.runner.dispose();
  });
+
+test('switching matches while a battle is active never saves old battle records under the new key', async () => {
+ const data=new Map(),storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+ const r=rig({storage}),start=realStart(7356);
+ r.store.patch('match',{public:{phase:PHASE.COMBAT,round:2,combatHistoryKey:'old'}});
+ await r.runner.onStart(start);await r.settle();r.advance(2000);
+ r.store.patch('match',{public:{phase:PHASE.COMBAT,round:2,combatHistoryKey:'new'}});
+ assert.equal(r.runner.combatMetrics().damage,0);
+ const reload=rig({storage});reload.store.patch('match',{public:{phase:PHASE.PREP,round:2,combatHistoryKey:'new'}});
+ assert.deepEqual(reload.runner.combatRounds(),[]);
+ r.runner.dispose();reload.runner.dispose();
+});
