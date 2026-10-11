@@ -13,8 +13,8 @@ const number = (n) => Math.round(n || 0).toLocaleString('zh-CN');
 const rate = (n) => (n || 0).toLocaleString('zh-CN', { maximumFractionDigits: 1 });
 
 /** A modeless panel: the battlefield stays visible and keeps playing. Mounted only while open. */
-export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
-  const [scope, setScope] = useState('battle');
+export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initialScope = 'battle' }) {
+  const [scope, setScope] = useState(initialScope);
   const [selectedRound, setSelectedRound] = useState(null);
   const page = historyPage(runner?.combatRounds({ ownerId: myId }) || [], selectedRound);
   const closeRef = useRef(null);

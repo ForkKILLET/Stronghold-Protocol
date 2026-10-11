@@ -200,9 +200,11 @@ test('联防: an operator knocked out at the end of the helper\'s own combat is 
   assert.ok(units.some((x) => x.kind === 'token' && x.ownerUid === hemo.uid), 'its summons are fielded');
   assert.deepEqual(units.find((x) => x.uid === alive.uid).carryState, { hpPct: 0.5, sp: 3 });
   assert.ok(helper.board.has(`${t0[0]},${t0[1]}`) && helper.board.has(placed), 'the board itself is untouched (next round as usual)');
-  // during 联防 an 'n:<pid>' id names no field: refused, and the viewer keeps streaming the 联防 field
+  // During 联防 the completed normal battlefield remains viewable; returning to 联防 works.
   assert.equal(m.watchers.get('p_0'), 'u');
-  assert.deepEqual(m.handle('p_0', { t: 'g.watch', fieldId: 'n:p_1' }), { error: 'BAD_TARGET', detail: 'no such field' });
+  assert.deepEqual(m.handle('p_0', { t: 'g.watch', fieldId: 'n:p_1' }), {ok:true});
+  assert.equal(m.watchers.get('p_0'), 'n:p_1');
+  assert.deepEqual(m.handle('p_0', {t:'g.watch', fieldId:'u'}), {ok:true});
   assert.equal(m.watchers.get('p_0'), 'u');
   h.drive(() => m.phase === PHASE.SETTLE);
   // outside battles the prep scouting view works as before

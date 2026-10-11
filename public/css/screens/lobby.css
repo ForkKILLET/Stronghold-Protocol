@@ -280,3 +280,5 @@
 .room-options-screen { display:flex; flex-direction:column; }
 .room-options__body { width:min(8rem, calc(100% - .6rem)); margin:.3rem auto; padding:.3rem; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .room-options__body > .btn { margin-top:.16rem; min-height:44px; }
+
+.prep-setting__choices--speed { grid-template-columns: repeat(4, minmax(0, 1fr)); }

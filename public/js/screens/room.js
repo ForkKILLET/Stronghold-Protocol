@@ -387,14 +387,14 @@ export function RoomScreen() {
             ? room.matching
               ? html`<div class="room-match-actions room-match-actions--active"><span class="room-match-state"><${Icon} name="signal" />${t('匹配剩余')} <b class="num">${Math.max(0, Math.ceil((Number(room.matching.deadlineAt) - serverNow()) / 1000))}s</b></span><${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelQueue}>${t('取消匹配')}<//></div>`
               : html`<div class="room-match-actions">
-                <div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义休整期仅支持好友 / AI 组队') : null}>
+                <div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}>
                   <label class="fill-bots"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
                     onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
                   <label class=${`fill-bots fill-bots--optional${matchTeammates ? '' : ' is-hidden'}`} aria-hidden=${matchTeammates ? 'false' : 'true'}>
                     <input type="checkbox" checked=${fillBots} disabled=${!matchTeammates} onChange=${(e) => setFillBots(e.currentTarget.checked)} /><span>${t('60 秒后 AI 补齐')}</span>
                   </label>
                 </div>
-                <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) && matchTeammates ? t('自定义休整期的房间仅支持邀请好友或添加 AI') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
+                <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) && matchTeammates ? t('自定义配置的房间仅支持邀请好友或添加 AI') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
                   <${Button} variant="primary" size="xl" icon=${matchTeammates ? 'users' : 'play'} loading=${busy === (matchTeammates ? 'match' : 'start')}
                     disabled=${((room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)) && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
                 <//>

@@ -76,3 +76,5 @@
 .rstat.is-best b { color: var(--gold); }
 .result__foot { margin-top: auto; padding-top: .2rem; display: flex; }
 .result__foot .btn { min-width: 3.4rem; }
+
+.result__metrics { position: fixed; z-index: 55; }

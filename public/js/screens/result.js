@@ -15,7 +15,7 @@
 //                 stats: { dmgDealt, kills, leaks, gold /* funds SPENT */, refreshes, merges, bossDamage?, itemsEquipped?,
 //                          activatedLayers?, lpLost?, perfectRounds? } }] }
 
-import { useEffect } from '../../vendor/hooks.module.js';
+import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, MicroLabel, DifficultyTag } from '../ui/components.js';
 import { useGameData, Img, UnitThumb, BandIcon, PlayerAvatar, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
 import { normalizeResult, fmtNum, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
@@ -23,6 +23,7 @@ import { data } from '../data.js';
 import { enemyIconUrl, titleIconUrl, uiUrl } from '../ui/assetUrls.js';
 import { store, useStore, emptyMatch } from '../store.js';
 import { audio } from '../audio.js';
+import { CombatMetricsPanel } from '../ui/combatMetrics.js';
 import { sentText } from '../ui/lang.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 
@@ -110,6 +111,7 @@ export function ResultScreen() {
   const myId = useStore((s) => s.me.playerId);
   const hasRoom = useStore((s) => !!s.room);
   const gd = useGameData();
+  const [metricsOpen, setMetricsOpen] = useState(false);
   const r = normalizeResult(res, pub);
   const titles = Array.isArray(gd.config?.titles) ? gd.config.titles : [];
   const best = {};
@@ -159,6 +161,11 @@ export function ResultScreen() {
           : html`<p class="t-dim">${t('暂无结算数据')}</p>`}
       </section>
     </main>
+    ${r.players.some(p => p.playerId === myId && !p.isBot) ? html`<div class="gm__corner result__metrics">
+      ${metricsOpen ? html`<${CombatMetricsPanel} myId=${myId} initialScope="round" onClose=${() => setMetricsOpen(false)} />` : null}
+      <button type="button" class="gm__gear gm__metrics" title=${t('作战统计')} aria-label=${t('作战统计')} aria-expanded=${metricsOpen}
+        aria-controls="combat-metrics-panel" onClick=${() => setMetricsOpen(!metricsOpen)}><${Icon} name="signal" /></button>
+    </div>` : null}
   </div>`;
 }
 
