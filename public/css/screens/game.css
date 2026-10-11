@@ -770,3 +770,6 @@
 .combat-metrics__pages button { flex: 0 0 40px; }
 .combat-metrics__pages span { flex: 1; text-align: center; }
 .combat-metrics__pages button:disabled { opacity: .35; }
+
+.draft-pause { position: fixed; right: max(18px, env(safe-area-inset-right)); top: max(76px, calc(env(safe-area-inset-top) + 76px)); z-index: 55; }
+.pausebtn small { color: var(--mint-400); font: 11px var(--font-mono); }

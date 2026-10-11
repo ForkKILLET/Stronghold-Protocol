@@ -70,6 +70,9 @@ export class MatchViews {
       // solo pause (g.pause, DESIGN §14): the battle, its field clock and every deadline are frozen while true
       combatHistoryKey: `${this.roomCode}:${this.battlePrefix}`,
       paused: !!this.paused,
+      pausedAt: this.paused ? this._pausedAt : null,
+      pauseRequests: [...this.pauseRequests],
+      pauseRequired: this.pauseVoters().map(p => p.playerId),
       players: this.order.map((ps) => ({
         playerId: ps.playerId,
         seat: ps.seat,

@@ -44,6 +44,7 @@ export class MatchPlatform {
       return this.clientCombat && msg && (msg.t === 'b.progress' || msg.t === 'b.result') ? OK : fail(ERR.WRONG_PHASE);
     }
     if (!msg || typeof msg !== 'object' || typeof msg.t !== 'string' || !GAME_TYPES.has(msg.t)) return fail(ERR.BAD_MSG);
+    if (this.paused && !['g.pause', 'g.watch', 'g.emote', 'b.progress', 'b.result'].includes(msg.t)) return fail(ERR.WRONG_PHASE, 'match paused');
     let res;
     try {
       res = this._handle(ps, msg);
@@ -66,7 +67,7 @@ export class MatchPlatform {
   setLoadout(playerId, loadout) {
     const ps = this.players.get(playerId);
     if (!ps || ps.isBot || ps.left) return fail(ERR.NOT_IN_ROOM);
-    if (this.disposed || this.ended || this.phase !== PHASE.INFO_CHECK) return fail(ERR.WRONG_PHASE, 'loadout locked for this match');
+    if (this.disposed || this.ended || this.paused || this.phase !== PHASE.INFO_CHECK) return fail(ERR.WRONG_PHASE, 'loadout locked for this match');
     let res = OK;
     this.guard(() => {
       if (!ps.setLoadout(loadout)) { res = fail(ERR.BAD_TARGET, 'loadout does not match the game data'); return; }
@@ -81,6 +82,7 @@ export class MatchPlatform {
     this.guard(() => {
       ps.connected = false;
       // a paused solo battle resumes (the server takes the field over; nobody is left to resume it)
+      this.pauseRequests.clear();
       this._resume();
       if (this.clientCombat) this._authorityLost(ps, 'disconnect');
       this.markPublic();
@@ -132,6 +134,7 @@ export class MatchPlatform {
       ps.autoplay = false;
       this.watchers.delete(playerId);
       if (this.ended) return;
+      this.pauseRequests.clear();
       this._resume();
       if (this.clientCombat) this._authorityLost(ps, 'left');
       this.markPublic();
@@ -203,7 +206,7 @@ export class MatchPlatform {
     this._cancelWorkerTasks();
     if (this.runner) { try { this.runner.stop(); } catch { /* ignore */ } }
     this._stopClientCombat();
-    for (const h of this._timers) { try { this.sched.clearTimeout(h); } catch { /* ignore */ } }
+    for (const h of this._timers) { try { this.cancel(h); } catch { /* ignore */ } }
     this._timers.clear();
     if (this._pubTimer) { try { this.sched.clearTimeout(this._pubTimer); } catch { /* ignore */ } this._pubTimer = null; }
     if (this.ownsScheduler) this.sched.dispose();

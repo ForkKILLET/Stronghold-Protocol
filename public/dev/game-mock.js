@@ -648,10 +648,13 @@ async function mockRequest(t, f = {}) {
     }
     case 'g.pause': {
       // solo battles only (server: g.pause {on} → m.public.paused)
-      if (S.pub.players.length > 1) fail('WRONG_PHASE');
-      if (![PHASE.COMBAT, PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE].includes(pub.phase)) fail('WRONG_PHASE');
+      if ([PHASE.LOBBY, PHASE.RESULT].includes(pub.phase)) fail('WRONG_PHASE');
+      pub.pauseRequired = pub.players.filter(p => !p.isBot && p.alive).map(p => p.playerId);
+      const votes = new Set(pub.pauseRequests || []);
+      if (f.on) votes.add(ME); else votes.delete(ME);
+      pub.pauseRequests = [...votes];
       const now = Date.now();
-      if (f.on && !pub.paused) { pub.paused = true; pub.pausedAt = now; }
+      if (f.on && pub.pauseRequired.every(id => votes.has(id)) && !pub.paused) { pub.paused = true; pub.pausedAt = now; }
       else if (!f.on && pub.paused) {
         // the clocks resume where they stopped
         const d = now - (pub.pausedAt || now);

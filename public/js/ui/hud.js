@@ -297,12 +297,13 @@ function PauseGlyph() {
  * Solo pause / resume control (g.pause): pressed while paused.
  * @param {{ paused: boolean, busy?: boolean, onToggle: () => void }} props
  */
-export function PauseButton({ paused, busy = false, onToggle }) {
+export function PauseButton({ paused, requested = paused, votes = 0, required = 1, busy = false, onToggle }) {
   const shortcuts = useShortcuts();
-  const label = paused ? t('继续作战') : t('暂停');
-  return html`<${Tooltip} text=${paused ? t('继续作战（{0}）', { 0: shortcutLabel(shortcuts, 'pause') }) : t('暂停作战（{0}）', { 0: shortcutLabel(shortcuts, 'pause') })} placement="bottom">
-    <button type="button" class=${cx('pausebtn', 'tapx', paused && 'is-on', busy && 'is-busy')} aria-pressed=${paused ? 'true' : 'false'}
+  const label = paused ? t('继续作战') : requested ? t('撤回暂停请求') : t('请求暂停');
+  return html`<${Tooltip} text=${`${label}（${shortcutLabel(shortcuts, 'pause')}）`} placement="bottom">
+    <button type="button" class=${cx('pausebtn', 'tapx', requested && 'is-on', busy && 'is-busy')} aria-pressed=${requested ? 'true' : 'false'}
         aria-label=${label} disabled=${busy} data-testid="pause" onClick=${() => onToggle?.()}>
+      ${required > 1 ? html`<small>${votes}/${required}</small>` : null}
       ${paused ? html`<${Icon} name="play" class="pausebtn__glyph" />` : html`<${PauseGlyph} />`}
     </button>
   <//>`;
@@ -375,7 +376,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
         ${frozenSecs != null
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
           : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
-        ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
+        ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} requested=${pause.requested} votes=${pause.votes} required=${pause.required} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
       </div>
       <${OvertimeWarning} ot=${ot} />
       ${showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} />` : null}

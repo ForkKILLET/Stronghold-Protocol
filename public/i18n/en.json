@@ -1266,5 +1266,13 @@
   "上一回合": "Previous round",
   "下一回合": "Next round",
   "第 {round} 回合": "Round {round}",
-  "实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。已结束战斗按回合保存在当前浏览器。": "Effective damage and healing; DPS / HPS use your combat time. Completed battles are saved by round in this browser."
+  "实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。已结束战斗按回合保存在当前浏览器。": "Effective damage and healing; DPS / HPS use your combat time. Completed battles are saved by round in this browser.",
+  "撤回暂停请求": "Withdraw pause request",
+  "请求暂停": "Request pause",
+  "模拟已暂停，计时与游戏操作均已停止": "Simulation paused. Timers and game actions are frozen.",
+  "房间额外配置": "Additional room settings",
+  "保存并返回": "Save and return",
+  "战斗倍速": "Battle speed",
+  "查看自己的战场": "View your battlefield",
+  "返回联防战场": "Return to joint defense"
 }

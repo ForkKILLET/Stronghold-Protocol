@@ -146,10 +146,14 @@ test('protocol: g.pause { on } and g.equip replaceUid (optional)', () => {
   assert.notEqual(validateC2S({ t: 'g.equip', itemUid: 1, targetUid: 2, replaceUid: 0 }), null);
 });
 
-test('solo pause: co-op never pauses; solo only while a battle runs; m.public.paused', () => {
+test('global pause: co-op requires unanimous requests; solo may pause preparation', () => {
   const co = makeMatch({ mode: 'coop', difficulty: 'NORMAL', humans: 2, seed: 5150, fake: true, clientCombat: true, clients: false, instant: false }).start();
   assert.ok(co.drive(() => co.m.phase === PHASE.COMBAT));
-  assert.equal(co.m.handle('p_0', { t: 'g.pause', on: true }).error, ERR.WRONG_PHASE);
+  assert.deepEqual(co.m.handle('p_0', { t: 'g.pause', on: true }), {ok:true});
+  assert.equal(pub(co).paused, false);
+  assert.deepEqual(co.m.handle('p_1', {t:'g.pause', on:true}), {ok:true});
+  assert.equal(pub(co).paused, true);
+  assert.deepEqual(co.m.handle('p_0', {t:'g.pause', on:false}), {ok:true});
   assert.equal(pub(co).paused, false);
   co.m.dispose();
 
@@ -157,7 +161,8 @@ test('solo pause: co-op never pauses; solo only while a battle runs; m.public.pa
   const m = h.m;
   assert.equal(pub(h).paused, false, 'always present');
   assert.ok(h.drive(() => m.phase === PHASE.PREP, { ready: false }));
-  assert.equal(m.handle('p_0', { t: 'g.pause', on: true }).error, ERR.WRONG_PHASE, 'prep is untimed in solo: nothing to pause');
+  assert.deepEqual(m.handle('p_0', { t: 'g.pause', on: true }), {ok:true});
+  assert.equal(m.paused, true);
   assert.deepEqual(m.handle('p_0', { t: 'g.pause', on: false }), { ok: true });
   assert.equal(m.paused, false);
   m.dispose();
@@ -213,17 +218,19 @@ test('solo pause: a disconnect resumes (the server takes the field over); the ba
   assert.equal(m.errorCount, 0);
   m.dispose();
 
-  // the client's result crosses the pause: the phase ends, the pause goes with it
+  // A result crossing the pause is retained, but settlement waits until resume.
   const h2 = makeMatch({ mode: 'solo', difficulty: 'FUNNY', humans: 1, seed: 5154, fake: true, clientCombat: true, clients: false, instant: false }).start();
   const m2 = h2.m;
   assert.ok(h2.drive(() => m2.phase === PHASE.COMBAT));
   const start = h2.lastTo('p_0', 'b.start');
   assert.deepEqual(m2.handle('p_0', { t: 'g.pause', on: true }), { ok: true });
   assert.deepEqual(m2.handle('p_0', { t: 'b.result', battleId: start.battleId, result: fakeResult(m2, start.spec) }), { ok: true });
-  assert.equal(m2.paused, false);
+  assert.equal(m2.paused, true);
+  assert.equal(m2.phase, PHASE.COMBAT);
+  assert.deepEqual(m2.handle('p_0', {t:'g.pause', on:false}), {ok:true});
   assert.equal(pub(h2).paused, false);
   h2.run(() => m2.phase === PHASE.PREP && m2.round === 2);
-  assert.equal(m2.handle('p_0', { t: 'g.pause', on: true }).error, ERR.WRONG_PHASE);
+  assert.deepEqual(m2.handle('p_0', { t: 'g.pause', on: true }), {ok:true});
   assert.equal(m2.errorCount, 0);
   m2.dispose();
 });
@@ -248,7 +255,7 @@ test('solo pause in the Final Assault: no overtime drain, no silence handover, t
   assert.equal(m.teamLp, lp, 'no overtime drain while paused');
   assert.equal(f.mode, 'client', 'no silence handover while paused');
   assert.equal(m._fieldElapsed(f), el);
-  assert.equal(m._bossClock, null);
+  assert.equal(m._bossClock.handle, null, 'stable boss timer is suspended');
   assert.deepEqual(m.handle('p_0', { t: 'g.pause', on: false }), { ok: true });
   assert.equal(m.overtimeAt, overtimeAt + PAUSE);
   assert.equal(pub(h).overtimeAt, overtimeAt + PAUSE);

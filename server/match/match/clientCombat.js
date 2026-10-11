@@ -234,6 +234,7 @@ export class MatchClientCombat {
   /** A field has its final result. */
   _fieldDone(f) {
     if (!f || f.done) return;
+    if (this.paused) { f.pendingDone = true; return; }
     f.done = true;
     f.live = false;
     this._clearFieldTimers(f);

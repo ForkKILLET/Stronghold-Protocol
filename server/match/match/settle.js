@@ -122,7 +122,7 @@ export class MatchSettle {
     this._stopClientCombat();
     this.cancel(this._phaseTimer);
     this.cancel(this._turnTimer);
-    for (const h of this._timers) { try { this.sched.clearTimeout(h); } catch { /* ignore */ } }
+    for (const h of this._timers) { try { this.cancel(h); } catch { /* ignore */ } }
     this._timers.clear();
     this.phase = PHASE.RESULT;
     this.deadline = 0;

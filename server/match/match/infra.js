@@ -24,19 +24,36 @@ export class MatchInfra {
   /** Schedule a guarded callback (tracked for dispose). */
   later(ms, fn) {
     if (this.disposed) return null;
-    let h = null;
-    h = this.sched.setTimeout(() => {
-      this._timers.delete(h);
-      if (this.disposed) return;
-      this.guard(fn);
-    }, ms);
-    if (h) this._timers.add(h);
-    return h;
+    const timer = { matchTimer: true, fn, remaining: Math.max(0, ms), handle: null, at: 0 };
+    this._timers.add(timer);
+    if (!this.paused) this._armMatchTimer(timer);
+    return timer;
+  }
+
+  _armMatchTimer(timer) {
+    timer.at = this.sched.now() + timer.remaining;
+    timer.handle = this.sched.setTimeout(() => {
+      this._timers.delete(timer);
+      timer.handle = null;
+      if (!this.disposed) this.guard(timer.fn);
+    }, timer.remaining);
+  }
+
+  _suspendTimers() {
+    for (const timer of this._timers) if (timer.matchTimer && timer.handle) {
+      timer.remaining = Math.max(0, timer.at - this.sched.now());
+      this.sched.clearTimeout(timer.handle);
+      timer.handle = null;
+    }
+  }
+
+  _resumeTimers() {
+    for (const timer of this._timers) if (timer.matchTimer && !timer.handle) this._armMatchTimer(timer);
   }
 
   cancel(h) {
     if (!h) return;
-    this.sched.clearTimeout(h);
+    this.sched.clearTimeout(h.matchTimer ? h.handle : h);
     this._timers.delete(h);
   }
 
@@ -47,7 +64,7 @@ export class MatchInfra {
     let h = null;
     h = this.sched.setWork(() => {
       this._timers.delete(h);
-      if (!this.disposed) this.guard(fn);
+      if (!this.disposed) { if (this.paused) this.later(0, fn); else this.guard(fn); }
     });
     if (h) this._timers.add(h);
     return h;
@@ -148,17 +165,21 @@ export class MatchInfra {
   }
 
   _submitWorker(type, payload, { valid, complete, failed, progress, priority = 0, fallback = 'using bounded local slices' }) {
+    const deliver = fn => {
+      const apply = () => { if (!this.disposed && !this.ended && valid()) fn(); };
+      if (this.paused) this.later(0, apply); else this.guard(apply);
+    };
     const task = this.workerPool.submit(type, payload, { priority,
-      onProgress: progress ? (out) => { if (!this.disposed && !this.ended && valid()) this.guard(() => progress(out)); } : null });
+      onProgress: progress ? out => deliver(() => progress(out)) : null });
     this._workerTasks.add(task);
     task.promise.then((out) => {
       this._workerTasks.delete(task);
-      if (!this.disposed && !this.ended && valid()) this.guard(() => complete(out));
+      deliver(() => complete(out));
     }, (err) => {
       this._workerTasks.delete(task);
       if (err.code === 'TASK_CANCELLED' || this.disposed || this.ended || !valid()) return;
       this.log.warn?.(`[match ${this.roomCode}] worker ${type}: ${err.message}; ${fallback}`);
-      this.guard(() => failed(err));
+      deliver(() => failed(err));
     });
     return task;
   }

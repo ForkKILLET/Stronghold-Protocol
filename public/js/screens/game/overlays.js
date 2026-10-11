@@ -26,7 +26,7 @@ export function PausedOverlay({ canResume, busy, onResume, onExit }) {
         <span class="pauseov__micro">PAUSED</span>
         <h2>${t('暂停中')}</h2>
       </div>
-      <p class="pauseov__note">${t('作战已暂停，计时与敌人行动均已停止')}</p>
+      <p class="pauseov__note">${t('模拟已暂停，计时与游戏操作均已停止')}</p>
       <div class="pauseov__btns">
         ${onExit ? html`<${Button} variant="secondary" size="lg" icon="exit" onClick=${onExit}>${t('放弃模拟')}<//>` : null}
         ${canResume ? html`<${Button} variant="primary" size="lg" icon="play" loading=${busy} onClick=${onResume} data-autofocus>${t('继续作战')}<//>` : null}

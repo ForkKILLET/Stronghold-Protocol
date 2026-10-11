@@ -16,7 +16,7 @@ import { useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } fro
 import htm from '../../vendor/htm.module.js';
 import { DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
 import { t } from '../../../shared/i18n.js';
-import { serverNow } from '../store.js';
+import { store, serverNow } from '../store.js';
 import { data, useData, localAsset } from '../data.js';
 import { uiUrl } from './assetUrls.js';
 
@@ -343,7 +343,9 @@ export const hasDeadline = (deadline) => Number.isFinite(deadline) && deadline >
  */
 export function secondsLeft(deadline) {
   if (!hasDeadline(deadline)) return null;
-  return Math.max(0, Math.ceil((deadline - serverNow()) / 1000));
+  const pub = store.get()?.match?.public;
+  const now = pub?.paused && Number.isFinite(pub.pausedAt) ? pub.pausedAt : serverNow();
+  return Math.max(0, Math.ceil((deadline - now) / 1000));
 }
 
 /**

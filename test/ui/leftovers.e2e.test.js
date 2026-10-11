@@ -183,7 +183,7 @@ describe('client leftovers — mock harness', { skip: !ENABLED && 'set SP_E2E=1 
     await page.close();
   });
 
-  test('4. solo battle: pause button → g.pause, paused overlay freezes the clock, Space resumes; hidden in co-op / prep', async () => {
+  test('4. solo battle: pause button → g.pause, paused overlay freezes the clock, Space resumes; requests available in co-op / prep', async () => {
     let { page, problems } = await open('phase=COMBAT&variant=solo');
     await page.waitForSelector('[data-testid="pause"]', { timeout: 3000 });
     await page.click('[data-testid="pause"]');
@@ -209,11 +209,12 @@ describe('client leftovers — mock harness', { skip: !ENABLED && 'set SP_E2E=1 
 
     for (const q of ['phase=COMBAT', 'phase=FINAL_ASSAULT', 'phase=PREP&variant=solo']) {
       ({ page, problems } = await open(q));
-      assert.equal(await page.$('[data-testid="pause"]'), null, `${q}: no pause control`);
+      assert.ok(await page.$('[data-testid="pause"]'), `${q}: global pause control`);
       if (q !== 'phase=PREP&variant=solo') {
         await page.keyboard.press('Space');
         await sleep(300);
-        assert.deepEqual(await mockReqs(page, 'g.pause'), [], `${q}: Space does not pause`);
+        assert.deepEqual(await mockReqs(page, 'g.pause'), [['g.pause', {on:true}]], `${q}: Space requests a pause`);
+        assert.equal(await page.$('.pauseov'), null, 'other humans have not requested pause');
       }
       assert.deepEqual(problems, []);
       await page.close();

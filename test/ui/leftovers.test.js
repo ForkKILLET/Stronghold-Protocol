@@ -250,15 +250,15 @@ describe('3. server session reset', () => {
 
 describe('4. solo pause', () => {
   const pub = (phase, extra = {}) => ({ phase, ...extra });
-  test('offered in solo battles only (hidden in co-op, in prep and for an eliminated player)', () => {
-    for (const ph of [PHASE.COMBAT, PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE]) assert.equal(pauseAvailable(pub(ph), { solo: true }), true, ph);
-    for (const ph of [PHASE.PREP, PHASE.SP_DRAFT, PHASE.SETTLE, PHASE.RESULT, PHASE.INFO_CHECK]) assert.equal(pauseAvailable(pub(ph), { solo: true }), false, ph);
-    assert.equal(pauseAvailable(pub(PHASE.COMBAT), { solo: false }), false, 'co-op');
-    assert.equal(pauseAvailable(pub(PHASE.UNITE), { solo: false }), false);
-    assert.equal(pauseAvailable(pub(PHASE.COMBAT), { solo: true, alive: false }), false);
-    assert.equal(pauseAvailable(null, { solo: true }), false);
-    assert.equal(pauseAvailable(pub(PHASE.COMBAT), { solo: true, done: true }), false, 'the own battle is over: nothing to pause');
-    assert.equal(pauseAvailable(pub(PHASE.COMBAT, { paused: true }), { solo: true, done: true }), true, 'paused: still resumable');
+  test('global pause is offered in all active phases, for both solo and co-op', () => {
+    for (const ph of Object.values(PHASE)) {
+      const active = ![PHASE.LOBBY, PHASE.RESULT].includes(ph);
+      assert.equal(pauseAvailable(pub(ph), {solo:true}), active);
+      assert.equal(pauseAvailable(pub(ph), {solo:false}), active);
+    }
+    assert.equal(pauseAvailable(pub(PHASE.COMBAT), {alive:false}), false);
+    assert.equal(pauseAvailable(null), false);
+    assert.equal(pauseAvailable(pub(PHASE.COMBAT), {done:true}), true, 'finished players can request a global pause');
   });
   test('g.pause {on} and the paused flag', () => {
     assert.deepEqual(pauseIntent(1), { t: 'g.pause', fields: { on: true } });

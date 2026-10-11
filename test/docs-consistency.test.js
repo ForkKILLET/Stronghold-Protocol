@@ -209,23 +209,18 @@ test('module type icons come from the local-client art, case-insensitively (code
   assert.match(DESIGN, /`ISW-α` → `isw-a`/);
 });
 
-test('solo pause: g.pause {on} is solo-only and m.public.paused follows (code) — documented everywhere', () => {
-  assert.equal(validateC2S({ t: 'g.pause', on: true }), null, 'protocol knows g.pause {on}');
-  const co = makeMatch({ mode: 'coop', difficulty: 'FUNNY', humans: 1, bots: 1, seed: 7, fake: true });
-  co.start();
-  assert.equal(co.m.handle('p_0', { t: 'g.pause', on: true }).error, ERR.WRONG_PHASE, 'co-op battles never pause');
-  assert.equal(co.m.publicView().paused, false);
-  co.m.dispose();
-  const solo = makeMatch({ mode: 'solo', difficulty: 'FUNNY', humans: 1, seed: 7, fake: true });
-  solo.start();
-  assert.equal(solo.m.handle('p_0', { t: 'g.pause', on: true }).error, ERR.WRONG_PHASE, 'no battle running yet');
-  assert.deepEqual(solo.m.handle('p_0', { t: 'g.pause', on: false }), { ok: true }, 'on: false is always accepted');
-  solo.m.dispose();
-  assert.match(DESIGN, /`g\.pause \{on\}`/);
-  assert.match(DESIGN, /\*\*Solo pause/);
-  assert.match(META, /`m\.public\.paused`|`paused`\n?\(solo pause/);
-  assert.match(README, /暂停（独立模拟）/);
-  assert.match(PLAYING, /同盟模拟的作战不能暂停/);
+test('global pause: human votes and published state agree with the documentation', () => {
+ assert.equal(validateC2S({t:'g.pause',on:true}),null);
+ const co=makeMatch({mode:'coop',difficulty:'FUNNY',humans:2,bots:1,seed:7,fake:true}).start();
+ assert.deepEqual(co.m.handle('p_0',{t:'g.pause',on:true}),{ok:true});
+ assert.equal(co.m.publicView().paused,false);
+ assert.deepEqual(co.m.handle('p_1',{t:'g.pause',on:true}),{ok:true});
+ assert.equal(co.m.publicView().paused,true);
+ co.m.dispose();
+ assert.match(DESIGN,/\*\*Global pause/);
+ assert.match(META,/m\.public\.paused/);
+ assert.match(README,/全局暂停/);
+ assert.match(PLAYING,/所有仍参与的在线真人请求/);
 });
 
 test('temp overflow (user playtest #3 item 3): kept through the round start, resolved at the deadline of the first prep its player can act in (code) — every doc says so', () => {

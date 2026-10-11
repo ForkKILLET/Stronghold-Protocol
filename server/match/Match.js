@@ -284,6 +284,8 @@ export class Match {
     this.verifyStats = { checked: 0, mismatches: 0, rejected: 0, takeovers: 0 };
     this._battleSeq = 0;
     /** solo pause (g.pause, DESIGN §14): the field clocks / deadlines are frozen while true (m.public.paused) */
+    this.pauseRequests = new Set();
+    this._pausedReports = new Map();
     this.paused = false;
     this._pausedAt = 0;
     /** real ms spent paused this match (diagnostics) */

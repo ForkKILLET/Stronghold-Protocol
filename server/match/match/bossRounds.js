@@ -305,7 +305,7 @@ export class MatchBoss {
 
   /** Pool depleted → victory; team LP 0 → defeat: every boss field is ended. */
   _checkFinalEnd() {
-    if (this._finalEnding || !this.bossPool || !this.fields.some((f) => f.cc)) return;
+    if (this.paused || this._finalEnding || !this.bossPool || !this.fields.some((f) => f.cc)) return;
     if (this.phase !== PHASE.FINAL_ASSAULT && this.phase !== PHASE.HIDDEN_CORE) return;
     if (this.bossPool.hp <= 0) this._endFinal('cleared');
     else if (this.teamLp != null && this.teamLp <= 0) this._endFinal('forced');

@@ -19,6 +19,7 @@ export class MatchReports {
     if (!this.clientCombat) return fail(ERR.WRONG_PHASE, 'server-run combat');
     const f = this._fieldByBattle(msg.battleId);
     if (!f || f.done || f.mode !== 'client' || f.authority !== ps.playerId) return OK;
+    if (this.paused) { this._pausedReports.set(`progress:${f.battleId}`, {ps, msg}); return OK; }
     const p = f.progress;
     const maxTotal = Math.max(p.total, (f.spec.spawns.length + 1) * 400);
     p.gt = Math.max(p.gt, Math.min(Number(msg.gt) || 0, HARD_CAP_SECONDS));
@@ -47,6 +48,7 @@ export class MatchReports {
     if (!this.clientCombat) return fail(ERR.WRONG_PHASE, 'server-run combat');
     const f = this._fieldByBattle(msg.battleId);
     if (!f || f.done || f.heldResult || f.verifying || f.mode !== 'client' || f.authority !== ps.playerId) return OK;
+    if (this.paused) { this._pausedReports.set(`result:${f.battleId}`, {ps, msg}); return OK; }
     const bossLike = f.kind === 'boss' || f.kind === 'hidden';
     const v = validateClientResult(f.spec, msg.result, { gd: this.gd });
     if (!v.ok) {

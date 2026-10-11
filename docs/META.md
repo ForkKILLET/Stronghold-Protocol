@@ -192,19 +192,17 @@ A `choice:<effectId>` registry handler overrides the default application (§2.4)
   When no human is left at all the match ends immediately (`reason: 'abandoned'`); when only eliminated spectators are
   left it ends as `'eliminated'`.
 
-### 1.3a Solo pause
-`g.pause { on }` (`Match.setPause`, DESIGN §14 Solo pause): solo matches only (co-op → `WRONG_PHASE`), `on: true` only
-while a battle runs (COMBAT / 最终攻势 / 隐秘核心 with a live field, not while the Final Assault is ending); `on: false`
-always. While paused (`m.public.paused`) the field clocks, the authority deadlines / release timers, the boss clock
-(overtime drain, silence watchdog) and the server pacers stand still; `_resume()` shifts `deadline`, `overtimeAt`, the
-fields' `startAt` / `lastProgressAt` and the boss start by the paused time and re-arms the timers. A disconnect or
-`onLeave` resumes; the battle phase ending clears it (`pausedMs` totals the paused time).
+### 1.3a Global pause
+`g.pause {on}` (`Match.setPause`, DESIGN §14 Global pause) records a participant's vote. All connected active humans
+must request the pause; AI and spectators are excluded. Any withdrawal resumes; disconnect/leave clears votes.
+`m.public.paused`, `pausedAt`, `pauseRequests` and `pauseRequired` expose the state. All phase timers, draft turns,
+battle clocks, boss overtime and server/client pacers freeze. Gameplay inputs are blocked, late battle reports
+and worker callbacks are deferred. Resume shifts clocks and re-arms the remaining timer durations.
 
 ### 1.4 Watching fields
 Client-side combat (the default, DESIGN §14 Spectating; `Match._watchClient`): `g.watch` answers with the field's
-`b.start` (a display replica fast-forwarded to the field clock); an alive player may not watch another normal field
-while its own normal battle runs (`WRONG_PHASE 'own battle running'`) nor the other pair's boss field (`BAD_TARGET 'other
-group hidden'`); eliminated players watch anything. Whatever is watched, the viewer's bond strip shows the bonds of the
+`b.start` (a display replica fast-forwarded to the field clock); an alive player may watch another normal field while its own battle continues. During 联防, completed normal fields
+remain viewable. The other pair's boss field remains hidden (`BAD_TARGET 'other group hidden'`); eliminated players watch anything. Whatever is watched, the viewer's bond strip shows the bonds of the
 player on screen from that player's `m.public players[].bonds` (§5) plus the replica's live layers (DESIGN §20.15) — no
 extra message. On a shared field (联防 / a pair's boss field) the client remembers the teammate picked with 前往查看
 (the `g.watch` request still names the field) and frames that player's half; a viewer who does not fight on the field

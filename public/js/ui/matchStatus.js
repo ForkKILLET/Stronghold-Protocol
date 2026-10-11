@@ -13,8 +13,8 @@ import { PHASE } from '../../../shared/constants.js';
 
 const isObj = (v) => !!v && typeof v === 'object';
 const BOSS_PHASES = new Set([PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE]);
-/** Battle phases a solo player may pause (a solo run has no 联防). */
-const PAUSE_PHASES = new Set([PHASE.COMBAT, PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE]);
+/** All active game phases support global pause. */
+const PAUSE_PHASES = new Set(Object.values(PHASE).filter(p => ![PHASE.LOBBY, PHASE.RESULT].includes(p)));
 
 /** Level time of a boss round when the config does not say (research 01 §3: maxPlayTime 120 s). */
 export const BOSS_LEVEL_SECONDS = 120;
@@ -65,15 +65,10 @@ export function overtimeState(pub, now, { perSec = 1, warnBefore = OVERTIME_WARN
   return { state: 'drain', secs, lost: secs * rate, perSec: rate };
 }
 
-/**
- * Whether the solo pause control is offered: solo runs only (hidden in co-op), while the player's own battle runs
- * (server Match.setPause: WRONG_PHASE once no battle is live). While paused the control stays (to resume).
- * @param {any} pub m.public
- * @param {{ solo?: boolean, alive?: boolean, done?: boolean }} [o] done: the own battle is over
- */
+/** Pause is available to active participants throughout the match, including between battles. */
 export function pauseAvailable(pub, { solo = false, alive = true, done = false } = {}) {
-  if (!solo || !isObj(pub) || alive === false) return false;
-  if (done && !pub.paused) return false;
+  void solo; void done;
+  if (!isObj(pub) || alive === false) return false;
   return PAUSE_PHASES.has(pub.phase);
 }
 

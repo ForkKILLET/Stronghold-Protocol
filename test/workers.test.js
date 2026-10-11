@@ -238,23 +238,23 @@ test('sampling computes asynchronously without changing an accepted result', asy
   assert.equal(f.result.perPlayer.p_0.leaked.length, 0);
 });
 
-test('a paused solo match holds the verified result until resume', async (t) => {
+test('a unanimously paused match holds the verified worker result until resume', async (t) => {
   const h = combat();
   t.after(() => h.m.dispose());
   const m = h.m, f = m.fields[0];
-  m.isSolo = true;
   m.verifyMode = 'all';
   let resolve;
   m.workerPool = { submit: () => ({ promise: new Promise((yes) => { resolve = yes; }), cancel() {} }) };
   const actual = runHeadless(createBattleFromSpec(f.spec, m.ds), { players: f.players }).result;
   m.handle('p_0', { t: 'b.result', battleId: f.battleId, result: compactResult(actual) });
-  m.setPause(m.players.get('p_0'), true);
+  for (const ps of m.pauseVoters()) m.setPause(ps, true);
   assert.equal(m.paused, true);
   resolve({ result: actual, errors: [] });
   await delay(0);
   assert.equal(f.done, false);
   assert.equal(f.verifying, true);
   m.setPause(m.players.get('p_0'), false);
+  h.sched.advance(0);
   assert.equal(f.done, true);
   assert.equal(f.verifying, false);
 });

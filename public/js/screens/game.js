@@ -69,7 +69,7 @@ import { PHASE, GEO } from '../../../shared/constants.js';
 import { html, Spinner, PhaseBanner, ResultDialog, Icon, Button, confirmDialog, closeAllDialogs, useTicker } from '../ui/components.js';
 import { useGameData, GIcon } from '../ui/gameComponents.js';
 import { useFieldView } from '../ui/fieldHost.js';
-import { TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
+import { PauseButton, TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
 import { BondStrip, BondPopup } from '../ui/bondStrip.js';
 import { TeamPanel } from '../ui/teamPanel.js';
 import { ShopBar } from '../ui/shopBar.js';
@@ -142,8 +142,31 @@ export function GameScreen() {
   else if (mode === 'draft') body = html`<${BandDraftScreen} />`;
   else body = html`<${MatchScreen} />`;
   return html`${body}
+    ${(['briefing', 'draft'].includes(mode) || pub.phase === PHASE.SP_DRAFT) ? html`<${DraftPause} pub=${pub} standalone=${['briefing', 'draft'].includes(mode)} />` : null}
     ${(away || autoplay) && !hasResult && mode !== 'result' && !ended ? html`<${AwayOverlay} />` : null}
     ${ended && !hasResult && mode !== 'result' ? html`<${MatchEnded} />` : null}`;
+}
+
+/** The briefing and strategy draft use the same pause control as the combat HUD. */
+function DraftPause({ pub, standalone }) {
+  const myId = useStore(s => s.me.playerId);
+  const [busy, setBusy] = useState(false);
+  const participant = pub.players?.find(p => p.playerId === myId);
+  const requested = !!pub.pauseRequests?.includes(myId);
+  const toggle = async () => { if (busy) return; setBusy(true); try { await actions.pause(!requested); } finally { setBusy(false); } };
+  useEffect(() => {
+    const onKey = e => {
+      if (!standalone || e.repeat || !participant?.alive || shortcutFor(e, shortcutsStore.get()) !== 'pause'
+        || document.querySelector('.modal, .guide')) return;
+      e.preventDefault(); toggle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [requested, busy, participant?.alive]);
+  return html`
+    ${participant?.alive ? html`<div class="draft-pause"><${PauseButton} paused=${pub.paused} requested=${requested}
+      votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null}
+    ${standalone && pub.paused ? html`<${PausedOverlay} canResume=${!!participant?.alive} busy=${busy} onResume=${toggle} />` : null}`;
 }
 
 // ---- match screen ----------------------------------------------------------------------------------------
@@ -222,6 +245,7 @@ function MatchScreen() {
   const total = phaseTotalSeconds(pub, gd.config, myId);
   // solo pause: offered in the own battle; while m.public.paused every HUD clock stops at the pause moment
   const paused = isPaused(pub);
+  const pauseRequested = !!pub?.pauseRequests?.includes(myId);
   const pauseSeenRef = useRef(null);
   if (!paused) pauseSeenRef.current = null;
   else if (pauseSeenRef.current == null) pauseSeenRef.current = serverNow();
@@ -301,7 +325,7 @@ function MatchScreen() {
   }, [view]);
   // 休整期 only; never while a piece is being placed (the wheel sits on a tile of the board camera)
   const penAvail = phase === PHASE.PREP && !!view && viewKind !== 'loading';
-  live.current = { pub, priv, field, editable, placeCtx, watching, watchWho, home, myId, alive, spectator, detail, drawer, bondOpen, emoteOpen, settingsOpen, exitOpen, drag, facing, sel, selBusy, pen, penAvail, collapsedNow: collapsed, localDone: false, canPause: false, paused };
+  live.current = { pub, priv, field, editable, placeCtx, watching, watchWho, home, myId, alive, spectator, detail, drawer, bondOpen, emoteOpen, settingsOpen, exitOpen, drag, facing, sel, selBusy, pen, penAvail, collapsedNow: collapsed, localDone: false, canPause: false, paused, pauseRequested };
   /** Pan to the enemy preview pen (on) or back to the camera in use before (off). */
   const togglePen = useCallback((on) => {
     const P = penRef.current;
@@ -1180,7 +1204,7 @@ function MatchScreen() {
       if (act === 'pause' && (L.canPause || L.paused)) {
         e.preventDefault();
         if (e.target instanceof HTMLElement && e.target.closest('button, [role="button"]')) e.target.blur();
-        togglePauseRef.current(!L.paused);
+        togglePauseRef.current(!L.pauseRequested);
         return;
       }
       if (L.pub?.phase !== PHASE.PREP || !L.priv) return;
@@ -1220,7 +1244,7 @@ function MatchScreen() {
   const myDone = combat && (cc ? phase === PHASE.COMBAT && (meP?.status === 'done' || localDone) : meP?.status === 'done');
   live.current.localDone = localDone;
   // the solo pause button: only while the own battle still runs (the server refuses it afterwards)
-  const canPause = pauseAvailable(pub, { solo, alive, done: meP?.status === 'done' || localDone });
+  const canPause = !spectator && pauseAvailable(pub, { solo, alive, done: meP?.status === 'done' || localDone });
   live.current.canPause = canPause;
   // client-side combat: observing a teammate's battle (research 09 §3.1) and the 联防 / 最终攻势 camera halves
   // (an eliminated player auto-observes a teammate's normal field — research 09 "keep-watching" — without asking)
@@ -1331,7 +1355,7 @@ function MatchScreen() {
         onExit=${() => setExitOpen(true)} onDrawer=${(t) => setDrawer((d) => (d ? null : t))} onReady=${toggleReady}
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
         pen=${pen} penAvail=${penAvail} onPen=${togglePen} config=${gd.config} frozenAt=${frozenAt}
-        pause=${canPause || paused ? { show: canPause, paused, busy: pauseBusy, onToggle: () => togglePause(!paused) } : null}
+        pause=${canPause || paused ? { show: canPause, paused, requested: pauseRequested, votes: pub.pauseRequests?.length || 0, required: pub.pauseRequired?.length || 1, busy: pauseBusy, onToggle: () => togglePause(!pauseRequested) } : null}
         live=${liveLpNow} spectator=${spectator} />
 
       <div class="gm__bonds">
@@ -1433,7 +1457,7 @@ function MatchScreen() {
     ${facing && view ? html`<${FacingWheel} key=${`${facing.uid}:${facing.row},${facing.col}`} view=${view} row=${facing.row} col=${facing.col}
       grid=${facing.grid} name=${facing.name} onPreview=${previewFacing} onCommit=${commitFacing} onCancel=${cancelFacing} />` : null}
 
-    ${paused ? html`<${PausedOverlay} canResume=${solo} busy=${pauseBusy} onResume=${() => togglePause(false)} onExit=${() => setExitOpen(true)} />` : null}
+    ${paused ? html`<${PausedOverlay} canResume=${alive && !spectator} busy=${pauseBusy} onResume=${() => togglePause(false)} onExit=${() => setExitOpen(true)} />` : null}
 
     ${replace ? html`<${EquipReplaceDialog} request=${replace.request} getItem=${gd.item}
       onConfirm=${(uid) => closeReplace(uid)} onCancel=${() => closeReplace(null)} />` : null}

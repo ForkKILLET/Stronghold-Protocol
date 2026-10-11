@@ -1,4 +1,4 @@
-// server/match/match/pause.js — Match methods: the solo pause (g.pause, DESIGN §14 "Solo pause") — freeze, resume
+// server/match/match/pause.js — Match methods: global pause (g.pause) — freeze, resume
 // (every clock and deadline shifted by the pause), the drop at the battle phase's end, and the field clocks' "now".
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
@@ -6,34 +6,29 @@ import { PHASE, ERR } from '../../../shared/constants.js';
 import { BOSS_CLOCK_MS, OK, fail } from './common.js';
 
 export class MatchPause {
-  /**
-   * Solo pause (official PauseUp / ResumeUp; DESIGN §14 "Solo pause"): g.pause { on } freezes the running battle — the
-   * field clock (b.start `elapsed`, the boss budgets and overtime), the result deadline / server release timers, the
-   * boss clock, the HUD `deadline` / `overtimeAt` (shifted by the pause on resume) and the server-run pacers
-   * (FieldRunner / HeadlessPacer skip their intervals) — and the browser's runner stops its local clock while
-   * `m.public.paused` is true. Solo matches only (co-op battles never pause: WRONG_PHASE) and only while a battle runs;
-   * `{ on: false }` is always accepted. A disconnect / leave, or the battle phase ending, resumes.
-   */
+  /** Connected, active human participants vote; AI and spectators never prevent a pause. */
+  pauseVoters() { return this.humans().filter(p => p.alive && p.connected); }
+
   setPause(ps, on) {
-    void ps;
-    if (!this.isSolo) return fail(ERR.WRONG_PHASE, 'co-op battles never pause');
-    if (!on) { this._resume(); return OK; }
-    if (this.paused) return OK;
-    const battlePhase = this.phase === PHASE.COMBAT || this.phase === PHASE.FINAL_ASSAULT || this.phase === PHASE.HIDDEN_CORE;
-    if (!battlePhase || this._finalEnding || !this.fields.some((f) => f.live && !f.done)) return fail(ERR.WRONG_PHASE, 'no battle running');
-    this.paused = true;
-    this._pausedAt = this.sched.now();
-    for (const f of this.fields) {
-      if (!f.cc) continue;
-      if (f.deadlineTimer) { this.cancel(f.deadlineTimer); f.deadlineTimer = null; f.rearmDeadline = true; }
-      if (f.doneTimer) { this.cancel(f.doneTimer); f.doneTimer = null; f.rearmRelease = true; }
+    if ([PHASE.LOBBY, PHASE.RESULT].includes(this.phase) || this._finalEnding) return fail(ERR.WRONG_PHASE);
+    if (!this.pauseVoters().includes(ps)) return fail(ERR.WRONG_PHASE);
+    if (!on) {
+      this.pauseRequests.delete(ps.playerId);
+      this._resume();
+      this.markPublic();
+      return OK;
     }
-    if (this._bossClock) { this.cancel(this._bossClock); this._bossClock = null; }
+    this.pauseRequests.add(ps.playerId);
+    if (!this.paused && this.pauseVoters().every(p => this.pauseRequests.has(p.playerId))) {
+      this.paused = true;
+      this._pausedAt = this.sched.now();
+      this._suspendTimers();
+    }
     this.markPublic();
     return OK;
   }
 
-  /** End a solo pause: every clock and deadline moves on by the paused time (no-op when not paused). */
+  /** End a global pause: every clock and deadline moves on by the paused time (no-op when not paused). */
   _resume() {
     if (!this.paused) return;
     const d = Math.max(0, this.sched.now() - this._pausedAt);
@@ -52,6 +47,17 @@ export class MatchPause {
       f.rearmDeadline = false;
       f.rearmRelease = false;
     }
+    for (const clock of [this.draft, this.sp]) if (clock?.turnDeadline) clock.turnDeadline += d;
+    this._resumeTimers();
+    const reports = [...this._pausedReports.values()];
+    this._pausedReports.clear();
+    for (const {ps, msg} of reports) {
+      if (msg.t === 'b.progress') this._onProgress(ps, msg); else this._onResult(ps, msg);
+    }
+    for (const f of this.fields.filter(x => x.pendingDone)) {
+      f.pendingDone = false;
+      this._fieldDone(f);
+    }
     for (const f of this.fields.filter((x) => x.verifying && x.resultSource === 'verified' && x.result)) {
       f.verifying = false;
       this._fieldDone(f);
@@ -59,15 +65,19 @@ export class MatchPause {
     if (this._bossClockOn && !this._bossClock && (this.phase === PHASE.FINAL_ASSAULT || this.phase === PHASE.HIDDEN_CORE)) {
       this._bossClock = this.later(BOSS_CLOCK_MS, () => this._bossClockTick());
     }
+    if ([PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE].includes(this.phase)) this._checkFinalEnd();
     this.markPublic();
   }
 
   /** The battle phase is over: drop the pause without shifting anything (its timers are gone). */
   _clearPause() {
+    this.pauseRequests.clear();
+    this._pausedReports.clear();
     if (!this.paused) return;
     this.pausedMs += Math.max(0, this.sched.now() - this._pausedAt);
     this.paused = false;
     this._pausedAt = 0;
+    this._resumeTimers();
     this.markPublic();
   }
 
