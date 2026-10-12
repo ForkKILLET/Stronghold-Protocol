@@ -228,10 +228,10 @@ function ModeCard({ card, selected, onSelect }) {
   </button>`;
 }
 
-function DifficultyCard({ roomMode, difficulty, selected, onSelect }) {
+function DifficultyCard({ roomMode, difficulty, selected, onSelect, disabled=false }) {
   const info = difficultyInfo(roomMode, difficulty);
   return html`<button type="button" class=${`diff-card${selected ? ' is-selected' : ''}`}
-      style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`} onClick=${() => onSelect(difficulty)} aria-pressed=${selected ? 'true' : 'false'}>
+      style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`} disabled=${disabled} onClick=${() => onSelect(difficulty)} aria-pressed=${selected ? 'true' : 'false'}>
     <span class="diff-card__bar" aria-hidden="true"></span>
     <span class="diff-card__head">
       <${DifficultyIcon} difficulty=${difficulty} class="diff-card__glyph" />
@@ -400,7 +400,7 @@ export function LobbyScreen() {
 
       <section class="lobby-right">
         ${roomMode==='match' ? html`<div class="section-label"><span class="section-label__idx num">02</span>${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></div>
-        <div class="diff-list">${DIFFICULTIES.map(d => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty===d} onSelect=${pickDifficulty} />`)}</div>`
+        <div class="diff-list">${DIFFICULTIES.map(d => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty===d} disabled=${!!matchQueue || !!busy} onSelect=${pickDifficulty} />`)}</div>`
         : html`<div class="section-label"><span class="section-label__idx num">02</span>${t('模拟配置')}<${MicroLabel}>CONFIGURATION<//></div>
           <${RoomConfigSummary} mode=${roomMode} difficulty=${difficulty} prepMultiplier=${prepChoiceMultiplier(prepChoice)} battleSpeed=${battleSpeed} onOpen=${()=>setOptionsOpen(true)} />
           <${DifficultyCard} roomMode=${roomMode} difficulty=${difficulty} selected=${true} onSelect=${()=>setOptionsOpen(true)} />`}
