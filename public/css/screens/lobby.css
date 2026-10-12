@@ -278,7 +278,10 @@
 @media (max-width: 600px) { .prep-setting__duration { gap: .1rem; } .room-prep-rule__hint { flex-basis: 100%; } }
 
 .room-options-screen { display:flex; flex-direction:column; }
-.room-options__body { width:min(8rem, calc(100% - .6rem)); margin:.3rem auto; padding:.3rem; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+/* Keep the outward bracket decoration outside the scrolling element: its -1px
+   inset otherwise creates overflow in both axes even when all content fits. */
+.room-options__frame { display:flex; flex-direction:column; flex:0 1 auto; width:min(8rem, calc(100% - .6rem)); margin:.3rem auto; min-height:0; }
+.room-options__body { padding:.3rem; min-height:0; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; scrollbar-width:thin; scrollbar-color:var(--line-3) transparent; }
 .room-options__body > .btn { margin-top:.16rem; min-height:44px; }
 
 .prep-setting__choices--speed { grid-template-columns: repeat(4, minmax(0, 1fr)); }
