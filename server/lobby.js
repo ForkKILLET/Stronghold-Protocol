@@ -436,6 +436,7 @@ export class Lobby {
       case 'room.join': return this.join(session, msg);
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
+      case 'room.setOptions': return this.setOptions(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
       case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.addBot': return this.addBot(session);
@@ -1139,6 +1140,25 @@ export class Lobby {
     const seat = room.seatOf(session.playerId);
     if (seat.ready !== ready) {
       seat.ready = ready;
+      this.broadcastState(room);
+    }
+    return OK;
+  }
+
+  setOptions(session, { difficulty, prepMultiplier, battleSpeed }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.matching) return fail(ERR.MATCHING);
+    if (!DIFFICULTIES.includes(difficulty) || !isPrepMultiplier(prepMultiplier)
+      || ![1, 2, 3, 4].includes(battleSpeed)) return fail(ERR.BAD_MSG);
+    const prep = room.mode === 'coop' ? normalizePrepMultiplier(prepMultiplier) : null;
+    if (room.difficulty !== difficulty || room.prepMultiplier !== prep
+      || room.prepSeconds != null || room.battleSpeed !== battleSpeed) {
+      this.dropReplay(room, session.playerId);
+      Object.assign(room, {difficulty, prepMultiplier: prep, prepSeconds: null, battleSpeed});
+      for (const seat of room.seats) if (seat && !seat.isBot && seat.playerId !== room.hostId) seat.ready = false;
       this.broadcastState(room);
     }
     return OK;

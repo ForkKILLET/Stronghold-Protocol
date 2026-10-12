@@ -1,4 +1,5 @@
-import { prepTimeLabel } from '../ui/prepTime.js';
+import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
+import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // Room screen (同盟等待室): 4 seat cards (avatar frame, name, ready state, AI badge, host crown),
 // host controls (difficulty picker, add/remove AI in co-op, optional teammate matchmaking), invite code with copy
 // code / copy link, ready toggle and leave.
@@ -13,9 +14,9 @@ import { prepTimeLabel } from '../ui/prepTime.js';
 // Texts go through t() (docs/I18N.md).
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
+import { DIFFICULTY_NAMES, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
-  html, Button, Icon, MicroLabel, PingPill, OnlineCount, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, Modal, confirmDialog, doctorNo,
+  html, Button, Icon, MicroLabel, PingPill, OnlineCount, AvatarFrame, DifficultyTag, Tooltip, Modal, confirmDialog, doctorNo,
 } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
@@ -200,22 +201,6 @@ function InviteBox({ code, name, difficulty }) {
   </div>`;
 }
 
-function DifficultyPicker({ room, isHost, busy, onPick }) {
-  if (!isHost) {
-    return html`<div class="dpick dpick--ro">
-      <${DifficultyTag} difficulty=${room.difficulty} size="lg" code=${difficultyInfo(room.mode, room.difficulty).code} />
-      <span class="t-dim">${t('由创建者选择')}</span>
-    </div>`;
-  }
-  return html`<div class="dpick" role="radiogroup" aria-label=${t('模拟难度')}>
-    ${DIFFICULTIES.map((d) => html`<button key=${d} type="button" role="radio" aria-checked=${room.difficulty === d ? 'true' : 'false'}
-        class=${`dpick__opt${room.difficulty === d ? ' is-active' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[d]}`}
-        disabled=${!!busy} onClick=${() => room.difficulty !== d && onPick(d)}>
-      <${DifficultyIcon} difficulty=${d} />${t(DIFFICULTY_NAMES[d].replace('模拟', ''))}
-    </button>`)}
-  </div>`;
-}
-
 function ConsoleWarning({ open, remaining, busy, onCancel, onConfirm }) {
   const ready = remaining <= 0;
   return html`<${Modal} open=${open} title=${t('启用控制台')} micro="DEVELOPER CONSOLE" tone="red" closeOnBackdrop=${false} utility=${true}
@@ -251,6 +236,7 @@ export function RoomScreen() {
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
   const presence = useStore((s) => s.presence, shallowEqual);
+  const [configDraft, setConfigDraft] = useState(null);
   const [busy, setBusy] = useState(null);
   const [matchTeammates, setMatchTeammates] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
@@ -300,7 +286,6 @@ export function RoomScreen() {
     const ok = await confirmDialog({ utility: true, title: t('移出同盟'), text: t('确定将「{name}」移出同盟吗？对方可以凭同盟密钥重新加入。', { name: name || t('博士') }), okText: t('移出'), danger: true });
     if (ok) run(`kick${seat}`, () => net.request('room.kick', { seat, playerId }));
   };
-  const setDifficulty = (difficulty) => run('diff', () => net.request('room.setDifficulty', { difficulty }));
   const openConsole = () => {
     if (room.consoleEnabled || room.matching || !canManageConsole) return;
     setConsoleReadyAt(Date.now() + 5000);
@@ -353,6 +338,16 @@ export function RoomScreen() {
         ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
+  if (configDraft) {
+    const readOnly = !facts.isHost || !!room.matching;
+    const change = (key, value) => setConfigDraft(d => ({...d, [key]:value}));
+    return html`<${RoomOptionsPage} mode=${room.mode} difficulty=${readOnly?room.difficulty:configDraft.difficulty} onDifficultyChange=${v=>change('difficulty',v)}
+      prepChoice=${readOnly?(room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier)):configDraft.prepChoice} onPrepChange=${v=>change('prepChoice',v)}
+      battleSpeed=${readOnly?room.battleSpeed:configDraft.battleSpeed} onSpeedChange=${v=>change('battleSpeed',v)} readOnly=${readOnly} disabled=${!!busy || !online}
+      onBack=${()=>setConfigDraft(null)} onSave=${()=>run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(null);})}>
+      ${room.matching?html`<p class="prep-setting__hint">${t('取消匹配后可修改配置')}</p>`:facts.isHost?html`<p class="prep-setting__hint">${t('修改配置后，队友需要重新准备就绪')}</p>`:null}
+    <//>`;
+  }
   return html`<div class=${`screen room-screen${coop ? ' room-screen--coop' : ''}`}>
     <header class="topbar">
       <div class="topbar__left">
@@ -394,12 +389,10 @@ export function RoomScreen() {
     </main>
     <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
 
-    ${coop ? html`<div class="room-prep-rule"><${Icon} name="hourglass" /><span>${t('休整期')}</span><b>${room.prepSeconds != null ? t('每回合 {seconds} 秒', { seconds: room.prepSeconds }) : prepTimeLabel(room.prepMultiplier)}</b><span class="room-prep-rule__hint">${t('全员就绪可提前开始；仅一名真人时不限时')}</span></div>` : null}
-    <div class="room-prep-rule"><span>${t('战斗倍速')}</span><b>${room.battleSpeed ?? 2}×</b></div>
     <footer class="room-bar">
       <div class="room-bar__left">
-        <div class="room-bar__difficulty"><span class="room-bar__label">${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></span>
-        <${DifficultyPicker} room=${room} isHost=${facts.isHost} busy=${busy} onPick=${setDifficulty} /></div>
+        <${RoomConfigSummary} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
+          editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft({difficulty:room.difficulty, prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier), battleSpeed:room.battleSpeed??2})} />
         <div class="room-bar__tools">${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
           class="room-console-btn" disabled=${(!room.consoleEnabled && !!room.matching) || !online} onClick=${room.consoleEnabled ? disableConsole : openConsole}
           title=${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}>${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}<//>`

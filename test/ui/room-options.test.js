@@ -10,3 +10,15 @@ test('separate page uses the existing picker with the original draft and can ret
  nodes.find(n=>n.props?.icon==='check').props.onClick();assert.equal(back,1);
  const invalid=[...walk(RoomOptionsPage({mode:'coop',prepChoice:'',onBack:()=>{}}))];assert.equal(invalid.find(n=>n.props?.icon==='check').props.disabled,true);
 });
+
+test('waiting-room save is distinct from cancellation and viewers cannot change values',()=>{
+ let saved=0,back=0;
+ const props={mode:'coop',difficulty:'HARD',prepChoice:'1.5',battleSpeed:3,onBack:()=>back++,onSave:()=>saved++};
+ const editable=[...walk(RoomOptionsPage(props))];
+ editable.find(n=>n.props?.icon==='check').props.onClick();assert.equal(saved,1);assert.equal(back,0);
+ const viewer=[...walk(RoomOptionsPage({...props,readOnly:true}))];
+ assert.equal(viewer.find(n=>n.type===PrepTimePicker).props.disabled,true);
+ assert.ok(viewer.filter(n=>n.type==='button').every(n=>n.props.disabled));
+ assert.equal(viewer.some(n=>n.props?.icon==='check'),false);
+ viewer.find(n=>n.props?.icon==='chevronLeft').props.onClick();assert.equal(back,1);
+});

@@ -953,3 +953,7 @@ Operator capacities use measured single-player exceptions and twice those counts
 `take(..., { overdraw: true })` records full occupation of a granted/promoted elite or a Mimic copy beyond capacity;
 normal takes remain bounded. Negative internal balance is a deficit, never negative available stock. Existing
 item selection probabilities and explicit grant weights remain unchanged.
+
+### 房间模拟配置
+
+创建房间与等待室共用模拟配置页（难度、休整期倍率、战斗倍速）。等待室房主通过 `room.setOptions` 一次保存，队友只读查看；真实变更清除其他真人的就绪状态，不变的保存不会清除。公共匹配期间所有配置锁定，取消匹配后可修改。自定义时长／倍速的房间仍只支持好友或 AI。

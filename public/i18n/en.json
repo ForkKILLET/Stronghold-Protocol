@@ -1473,5 +1473,10 @@
   "全员使用相同倍速；自定义倍速仅支持好友 / AI 组队。": "All players use the same speed. Custom speed supports friends / AI only.",
   "仅匹配真人 · 满四人后开始": "Human players only · starts with four players",
   "满四人后开始": "Starts with four players",
-  "请先移除 AI 队友，再匹配真人队友": "Remove AI teammates before matching with human players"
+  "请先移除 AI 队友，再匹配真人队友": "Remove AI teammates before matching with human players",
+  "模拟配置": "Simulation configuration",
+  "调整配置": "Adjust configuration",
+  "查看配置": "View configuration",
+  "取消匹配后可修改配置": "Cancel matchmaking to change configuration",
+  "修改配置后，队友需要重新准备就绪": "Teammates must ready again after configuration changes"
 }

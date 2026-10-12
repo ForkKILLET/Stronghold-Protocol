@@ -285,3 +285,9 @@
 .prep-setting__choices--speed { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .create-box .btn--xl { height: .92rem; font-size: calc(.32 * var(--utility-text, var(--t))); letter-spacing: .3em; }
 .create-box__hint { display: flex; align-items: center; justify-content: center; min-height: .3rem; font-size: calc(.14 * var(--utility-text, var(--t))); color: var(--text-lo); }
+
+.room-config-summary { display:flex; flex-wrap:wrap; align-items:center; gap:.12rem; min-width:0; padding:.12rem .16rem; border:1px solid var(--line-2); border-left:2px solid var(--mint-600); background:var(--mint-a10); }
+.room-config-summary__values { display:flex; flex-wrap:wrap; align-items:center; gap:.08rem .16rem; flex:1; color:var(--text-md); font-size:calc(.15 * var(--utility-text, var(--t))); }
+.room-config-summary__values span:first-child { color:var(--mint-400); font-weight:700; }
+.room-bar .room-config-summary { width:100%; box-sizing:border-box; }
+.prep-setting__choices .icon { width:.2rem; height:.2rem; margin-right:.06rem; color:var(--d-color, var(--mint-400)); }

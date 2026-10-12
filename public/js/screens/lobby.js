@@ -12,7 +12,7 @@ import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 // Texts go through t() (docs/I18N.md); the module-level tables hold msgids (N_) translated where they are shown, the
 // config.json mode texts come localized from data.js.
 
-import { RoomOptionsPage } from '../ui/roomOptions.js';
+import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
@@ -336,7 +336,7 @@ export function LobbyScreen() {
   };
 
   if (optionsOpen) return html`<${RoomOptionsPage} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${setPrepChoice}
-    battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
+    difficulty=${difficulty} onDifficultyChange=${pickDifficulty} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
   return html`<div class="screen lobby-screen">
     <header class="topbar">
       <div class="topbar__left">
@@ -399,12 +399,12 @@ export function LobbyScreen() {
       </section>
 
       <section class="lobby-right">
-        <div class="section-label"><span class="section-label__idx num">02</span>${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></div>
-        <div class="diff-list">
-          ${DIFFICULTIES.map((d) => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} onSelect=${pickDifficulty} />`)}
-        </div>
+        ${roomMode==='match' ? html`<div class="section-label"><span class="section-label__idx num">02</span>${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></div>
+        <div class="diff-list">${DIFFICULTIES.map(d => html`<${DifficultyCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty===d} onSelect=${pickDifficulty} />`)}</div>`
+        : html`<div class="section-label"><span class="section-label__idx num">02</span>${t('模拟配置')}<${MicroLabel}>CONFIGURATION<//></div>
+          <${RoomConfigSummary} mode=${roomMode} difficulty=${difficulty} prepMultiplier=${prepChoiceMultiplier(prepChoice)} battleSpeed=${battleSpeed} onOpen=${()=>setOptionsOpen(true)} />
+          <${DifficultyCard} roomMode=${roomMode} difficulty=${difficulty} selected=${true} onSelect=${()=>setOptionsOpen(true)} />`}
         <div class="create-box">
-          ${roomMode !== 'match' && !matchQueue ? html`<${Button} variant="ghost" size="sm" icon="terminal" onClick=${() => setOptionsOpen(true)}>${t('房间额外配置')}<//>` : null}
           ${matchQueue
             ? html`<${MatchQueuePanel} queue=${matchQueue} onCancel=${cancelMatchmaking} />`
             : html`<${Tooltip} block=${true} text=${online ? null : t('正在连接服务器…')}>
