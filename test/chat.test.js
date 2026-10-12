@@ -80,14 +80,14 @@ test('chat uses smaller actual component boxes and keeps all six emotes visible 
   const css = readFileSync(new URL('../public/css/emotes.css', import.meta.url), 'utf8');
   assert.doesNotMatch(ui, /mobileEmotes|shows-emotes|echat__emotes-toggle/);
   assert.match(ui, /theme\.emotes\.map\(/);
-  assert.match(css, /\.ewheel__dialog\.has-chat\s*\{[^}]*--ewheel-cell-size:\s*44px[^}]*width:\s*260px/);
+  assert.match(css, /\.ewheel__dialog\.has-chat\s*\{[^}]*--ewheel-cell-size:\s*44px[^}]*width:\s*288px/);
   assert.match(css, /\.ewheel__dialog\.has-chat \.ewheel__page\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)[^}]*grid-template-rows:\s*repeat\(2, var\(--ewheel-cell-size\)\)/);
-  assert.match(css, /\.echat__input\s*\{[^}]*height:\s*24px[^}]*min-height:\s*24px[^}]*line-height:\s*20px/);
-  assert.match(css, /\.echat__send\s*\{[^}]*height:\s*24px[^}]*min-height:\s*24px[^}]*line-height:\s*20px/);
+  assert.match(css, /\.echat__input\s*\{[^}]*height:\s*32px[^}]*min-height:\s*32px[^}]*line-height:\s*20px/);
+  assert.match(css, /\.echat__send\s*\{[^}]*height:\s*32px[^}]*min-height:\s*32px[^}]*line-height:\s*20px/);
   const compact = css.slice(css.indexOf('@media (max-width: 600px)'), css.indexOf('@keyframes emo-panel-in'));
   assert.match(compact, /\(max-width: 1100px\) and \(any-pointer: coarse\)/);
-  assert.match(compact, /\.ewheel__dialog\.has-chat\s*\{[^}]*--ewheel-cell-size:\s*32px[^}]*width:\s*220px/);
-  assert.match(css, /\.echat__history-pane\s*\{[^}]*height:\s*calc\(var\(--ewheel-cell-size\) \* 2 \+ 44px\)/);
+  assert.match(compact, /\.ewheel__dialog\.has-chat\s*\{[^}]*--ewheel-cell-size:\s*32px[^}]*width:\s*240px/);
+  assert.match(css, /\.echat__history-pane\s*\{[^}]*height:\s*calc\(var\(--ewheel-cell-size\) \* 2 \+ 48px\)/);
   assert.match(compact, /\.echat__input\s*\{[^}]*font-size:\s*16px/);
   assert.doesNotMatch(compact, /display:\s*none|flex-wrap:\s*wrap|scale:/);
 });
@@ -103,14 +103,14 @@ test('both emote rows and the pager use natural flow, with bounded images and is
   assert.match(css, /\.ewheel__dialog\.has-chat \.ewheel__panel \.ewheel__nav\.is-prev::before,[\s\S]*?\.ewheel__nav\.is-next::before\s*\{\s*inset:\s*0/);
 });
 
-test('composer has fixed 24px border-box controls instead of an inherited oversized line height', () => {
+test('composer has fixed 32px border-box controls instead of an inherited oversized line height', () => {
   const css = readFileSync(new URL('../public/css/emotes.css', import.meta.url), 'utf8');
-  assert.match(css, /\.echat\s*\{[^}]*padding:\s*2px 4px/);
+  assert.match(css, /\.echat\s*\{[^}]*padding:\s*8px/);
   for (const cls of ['echat__input', 'echat__send']) {
     const rule = css.match(new RegExp(`\\.${cls}\\s*\\{([^}]*)\\}`))[1];
-    assert.match(rule, /\bheight:\s*24px/);
+    assert.match(rule, /\bheight:\s*32px/);
     assert.match(rule, /box-sizing:\s*border-box/);
-    assert.match(rule, /padding:\s*1px (3|4)px/);
+    assert.match(rule, /padding:\s*5px 8px/);
     assert.match(rule, /font:\s*inherit;[^}]*line-height:\s*20px/);
     const height = Number(rule.match(/\bheight:\s*(\d+)px/)[1]);
     const line = Number(rule.match(/line-height:\s*(\d+)px/)[1]);
