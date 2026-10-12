@@ -1,7 +1,7 @@
-// public/resource-sw.js — the optional asset-preload Service Worker (docs/ASSETS.md「Preload」).
+// public/resource-sw.js — the runtime asset cache and optional bulk-preload Service Worker.
 //
-// Registered with `type: 'module'` by public/js/resources/index.js when the player turns the preload on (设置 ▸ 预载资源)
-// and unregistered when they turn it off. Its scope is "/", but it only ever touches GET requests for the resource trees
+// Registered with `type: 'module'` for every supported session. Turning bulk preload off stops downloads but does not
+// disable this worker. Its scope is "/", but it only ever touches GET requests for the resource trees
 // (`/assets/**`, `/fonts/**`, and the extension-less `/media/**` audio route the game asks audio through — site paths or
 // CDN URLs): code, game data, API calls and WebSocket upgrades pass straight through to the network, so a stale worker
 // can never serve a stale game.
@@ -18,5 +18,7 @@ self.addEventListener('fetch', (event) => {
   let url;
   try { url = new URL(request.url); } catch { return; }
   if (!isResourcePath(url.pathname)) return;
-  event.respondWith(handleResourceRequest(request).then((cached) => cached || fetch(request)).catch(() => fetch(request)));
+  event.respondWith(handleResourceRequest(request, { waitUntil: (promise) => event.waitUntil(promise) })
+    .then((response) => response || fetch(request))
+    .catch(() => fetch(request)));
 });

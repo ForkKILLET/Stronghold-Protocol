@@ -1,10 +1,8 @@
 // public/js/resources/index.js — the page side of the optional asset preload (docs/ASSETS.md「Preload」).
 //
-// Off by default (设置 ▸ 预载资源). When the player turns it on, this module fetches /data/resource-manifest.json,
-// registers the Service Worker (public/resource-sw.js, so the cached files are also served with no network) and fills
-// Cache Storage with required visuals first, then optional audio/tutorials when selected. Turning it off stops the
-// downloads; 「清理缓存」 deletes them. Nothing here touches the match: a player who never enables it never downloads
-// anything, and a failed download only costs a console message.
+// Bulk preload is off by default. The Service Worker is registered for every supported session, so resources loaded
+// during normal play are cached on demand. Turning bulk preload off only stops batch downloads; 「清理缓存」 still
+// deletes the runtime cache. Nothing here touches the match.
 //
 // The settings panel (public/js/ui/resourcePanel.js) renders `resourceState()`; main.js calls `syncResources()` with the
 // persisted setting at boot and on every settings change.
@@ -33,6 +31,7 @@ const state = {
   skipped: 0,
   failed: 0,
   complete: false,
+  cacheVerified: false,
   message: '',
   error: false,
   worker: '',
@@ -57,6 +56,8 @@ let archiveController = null;
 let optional = false;
 let voiceLang = 'cn';
 let syncRevision = 0;
+let workerPromise = null;
+let cancelBackgroundCheck = null;
 
 /** Subscribe to preload state changes (returns the unsubscribe function). */
 export function subscribeResources(fn) {
@@ -83,6 +84,7 @@ function set(patch) {
  * names the panel renders. One shape for all three is what keeps a progress update from leaving a field undefined.
  */
 const counters = (s) => ({
+  cacheVerified: s.cacheVerified ?? true,
   done: s.count,
   total: s.total,
   wanted: s.wanted,
@@ -145,23 +147,13 @@ export function resourceContext() {
 
 /** Register the Service Worker that serves the cached files (downloads work without it). */
 async function ensureWorker() {
+  if (workerPromise) return workerPromise;
   const nav = globalThis.navigator;
   if (!nav?.serviceWorker) throw new Error('不支持 Service Worker');
-  const reg = await nav.serviceWorker.register(SW_URL, { type: 'module', scope: '/', updateViaCache: 'none' });
-  set({ worker: '' });
-  return reg;
-}
-
-/** Unregister the worker (nothing to serve from the cache any more). */
-async function dropWorker() {
-  const nav = globalThis.navigator;
-  if (!nav?.serviceWorker) return;
-  try {
-    for (const reg of await nav.serviceWorker.getRegistrations()) {
-      const url = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || '';
-      if (url.endsWith(SW_URL)) await reg.unregister();
-    }
-  } catch { /* the worker is optional */ }
+  workerPromise = nav.serviceWorker.register(SW_URL, { type: 'module', scope: '/', updateViaCache: 'none' })
+    .then((reg) => { set({ worker: '' }); return reg; })
+    .catch((err) => { workerPromise = null; throw err; });
+  return workerPromise;
 }
 
 /**
@@ -172,8 +164,18 @@ export async function syncResources(enabled, includeOptional = optional, preload
   enabled = !!enabled;
   const nextVoiceLang = normalizePreloadVoiceLang(preloadVoiceLang);
   const changed = optional !== !!includeOptional || voiceLang !== nextVoiceLang;
-  if (enabled === current && !changed) { set({ enabled }); return; }
+  if (enabled === current && !changed) {
+    if (!enabled) {
+      await ensureWorker().catch((err) => {
+        console.warn('[resources] service worker not registered', err);
+        set({ worker: t('预载服务未启用（{0}）', { 0: err?.message || err }) });
+      });
+    }
+    set({ enabled });
+    return;
+  }
   const revision = ++syncRevision;
+  cancelBackgroundCheck?.();
   current = enabled;
   optional = !!includeOptional;
   voiceLang = nextVoiceLang;
@@ -181,7 +183,11 @@ export async function syncResources(enabled, includeOptional = optional, preload
   if (!enabled) {
     controller?.abort();
     archiveController?.abort();
-    set({ phase: state.complete ? 'ready' : 'paused', message: state.complete ? t('预载已停止；已保存的资源保留，可继续下载或清理缓存。') : t('已停止预载。') });
+    await ensureWorker().catch((err) => {
+      console.warn('[resources] service worker not registered', err);
+      set({ worker: t('预载服务未启用（{0}）', { 0: err?.message || err }) });
+    });
+    set({ phase: state.complete ? 'ready' : 'paused', message: state.complete ? t('批量预载已停止；已保存的资源保留，可继续下载或清理缓存。') : t('已停止批量预载。') });
     return;
   }
   if (changed) controller?.abort();
@@ -193,7 +199,7 @@ export async function syncResources(enabled, includeOptional = optional, preload
 /** Continue (or start) the download of an enabled preload. */
 export async function startResources() {
   if (!current) return;
-  return start();
+  return start({ verifyCache: true });
 }
 
 /**
@@ -226,17 +232,35 @@ function watchOtherTab(store) {
   }));
 }
 
-function start() {
+function scheduleBackgroundCheck() {
+  cancelBackgroundCheck?.();
+  // Browser only: no lingering timers in tools/tests. Recheck every page entry,
+  // but do not keep the initial "checking resources" UI waiting for cache.keys.
+  const win = globalThis.window;
+  if (!win?.setTimeout) return;
+  const revision = syncRevision;
+  const run = () => {
+    cancelBackgroundCheck = null;
+    if (!current || revision !== syncRevision || activeRun || transferPromise) return;
+    void start({ verifyCache: true, background: true }).catch((err) =>
+      console.warn('[resources] background check failed', err));
+  };
+  const timer = win.setTimeout(run, 5000);
+  cancelBackgroundCheck = () => { win.clearTimeout(timer); cancelBackgroundCheck = null; };
+}
+
+function start(options = {}) {
   if (transferPromise) return transferPromise.catch(() => {});
   if (activeRun) return activeRun;
+  cancelBackgroundCheck?.();
   controller = new AbortController();
   const signal = controller.signal;
-  activeRun = startDownload(signal).finally(() => { activeRun = null; controller = null; });
+  activeRun = startDownload(signal, options).finally(() => { activeRun = null; controller = null; });
   return activeRun;
 }
 
-async function startDownload(signal) {
-  set({ phase: 'checking', message: t('正在检查已保存的资源…'), error: false });
+async function startDownload(signal, { verifyCache = false, background = false } = {}) {
+  if (!background) set({ phase: 'checking', message: t('正在检查已保存的资源…'), error: false });
   const checkStart = performance.now();
   const ctx = await resourceContext();
   const manifestReady = performance.now();
@@ -244,7 +268,6 @@ async function startDownload(signal) {
   if (ctx.error || ctx.unsupported || ctx.empty) {
     const message = ctx.error || ctx.unsupported || t('服务器没有可预载的资源');
     set({ phase: 'error', message, error: true, supported: !ctx.unsupported });
-    if (ctx.unsupported) void dropWorker();
     return;
   }
   const store = ctx.store;
@@ -255,13 +278,35 @@ async function startDownload(signal) {
     console.warn('[resources] service worker not registered — the cached assets cannot be served without the network', err);
     set({ worker: t('预载服务未启用（{0}），资源仍会下载，但不会从本机缓存读取。', { 0: err?.message || err }) });
   });
-  const before = await store.status();
+  // Full verification/repair must hold the same lock as SW writes and clear.
+  let before;
+  if (verifyCache) {
+    const result = await withDownloadLock(async () => {
+      checkAbort(signal);
+      const status = await store.status();
+      checkAbort(signal);
+      await store.reconcileRuntimeIndex(status);
+      if (status.complete) await store.prune();
+      return { status };
+    });
+    if (result.busy) { await watchOtherTab(store); return; }
+    before = result.status;
+  } else {
+    before = await store.status({ verifyCache: false });
+  }
   console.info('[resources] preload check timings', { manifestMs: manifestReady - checkStart,
-    ...before.checkTimings, durationMs: performance.now() - checkStart, cached: before.count, files: before.total });
+    ...before.checkTimings, background, durationMs: performance.now() - checkStart, cached: before.count, files: before.total });
   if (!current || signal.aborted) { set({ phase: 'paused' }); return; }
   const ready = selectionComplete(before);
-  set({ ...counters(before), phase: ready ? 'ready' : 'download', message: ready ? optional ? t('所选资源已齐全。') : t('必备资源已预载完成；可选资源按需加载。') : '' });
-  if (ready) { if (before.complete) await withDownloadLock(() => store.prune()); return; }
+  set({ ...counters(before), phase: ready ? 'ready' : 'download',
+    message: ready ? !verifyCache ? t('已读取本机缓存索引，稍后在后台核对缓存。')
+      : optional ? t('所选资源已齐全。') : t('必备资源已预载完成；可选资源按需加载。') : '' });
+  if (ready) {
+    if (!verifyCache) scheduleBackgroundCheck();
+    return;
+  }
+  // Downloads already obtain an authoritative missing set; don't add a second
+  // full scan here on top of ResourceStore.download().
   const onProgress = (p) => {
     // "整理" instead of "下载" when the files came out of an older cache: nothing is being fetched (store.js 的迁移).
     const message = p.adopted > 0 && p.downloaded === 0 ? t('正在整理已保存的资源（无需重新下载）…') : '';
@@ -277,7 +322,7 @@ async function startDownload(signal) {
       return { busy: false };
     });
     if (outcome.busy) { await watchOtherTab(store); return; }
-    const after = await store.status();
+    const after = await store.status({ verifyCache: true });
     set({
       ...counters(after),
       phase: 'ready',
@@ -302,6 +347,7 @@ async function startDownload(signal) {
 
 /** Stop downloading (keeps what is cached). */
 export function pauseResources() {
+  cancelBackgroundCheck?.();
   archiveController?.abort();
   if (controller) {
     controller.abort();
@@ -324,6 +370,7 @@ export function exportResources() {
 }
 
 function transferArchive(kind, file) {
+  cancelBackgroundCheck?.();
   if (transferPromise) return Promise.reject(new Error('资源包正在处理中'));
   // Stop the whole two-tier run, not just the currently active store.download() call.
   controller?.abort();
@@ -394,6 +441,7 @@ function transferArchive(kind, file) {
  * Delete every cached resource (all versions) and stop.
  */
 export async function clearResources() {
+  cancelBackgroundCheck?.();
   controller?.abort();
   archiveController?.abort();
   if (activeRun) await activeRun;
@@ -413,9 +461,8 @@ export async function clearResources() {
     set({ message: t('另一个标签页正在处理资源，请暂停后再清理。') });
     return;
   }
-  if (!current) await dropWorker();
   set({
-    done: 0, tier1Done: 0, tier2Done: 0, bytes: 0, failed: 0, complete: false, error: false,
+    done: 0, tier1Done: 0, tier2Done: 0, bytes: 0, failed: 0, complete: false, error: false, cacheVerified: true,
     phase: current ? 'paused' : 'off',
     message: t('已清理预载资源缓存。'),
     selectionComplete: false,
@@ -427,6 +474,7 @@ export async function clearResources() {
 export async function inspectResources() {
   // An active run already publishes authoritative counters; opening the panel must not enqueue another cache scan.
   if (activeRun || transferPromise) return;
+  cancelBackgroundCheck?.();
   if (!activeRun && !transferPromise) set({ phase: 'checking', error: false, message: t('正在检查已保存的资源…') });
   const ctx = await resourceContext();
   if (!ctx.store) {
@@ -437,7 +485,13 @@ export async function inspectResources() {
   }
   try {
     if (activeRun || transferPromise) return;
-    const status = await ctx.store.status();
+    const outcome = await withDownloadLock(async () => {
+      const status = await ctx.store.status();
+      await ctx.store.reconcileRuntimeIndex(status);
+      if (status.complete) await ctx.store.prune();
+      return { status };
+    });
+    const status = outcome.busy ? await ctx.store.status() : outcome.status;
     set({ ...counters(status), version: ctx.manifest.version, supported: true,
       ...(!activeRun && !transferPromise ? { phase: selectionComplete(status) ? 'ready' : 'paused', message: '', error: false } : {}) });
   } catch (err) {

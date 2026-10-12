@@ -5,27 +5,91 @@
 // only from caches this app wrote (`X-SP-Resource`): code, data, API responses, manifests and WebSocket traffic never
 // pass through this module.
 
-import { CACHE_NAME, CACHE_PREFIX, CONTENT_HASH_RE, absoluteUrl, isResourcePath, mediaCandidates, rangeResponse } from './common.js';
+import { CACHE_NAME, CACHE_PREFIX, absoluteUrl, isResourcePath, mediaCandidates, rangeResponse, resourceType } from './common.js';
+import { queueRuntimeIndexEntry } from './runtimeIndex.js';
 
 /**
  * @param {Request} request
- * @param {{ caches?: any }} [opts]
- * @returns {Promise<Response|null>} a cached reply, or null when the request is not a cached resource
+ * @param {{ caches?: any, fetcher?: typeof fetch, waitUntil?: (promise: Promise<any>) => void }} [opts]
+ * @returns {Promise<Response|null>} a reply, or null when the request is not a resource
  */
-export async function handleResourceRequest(request, { caches = globalThis.caches } = {}) {
+export async function handleResourceRequest(request, { caches = globalThis.caches, fetcher = globalThis.fetch?.bind(globalThis), waitUntil } = {}) {
   if (!caches || !request || request.method !== 'GET') return null;
   let url;
   try { url = new URL(request.url); } catch { return null; }
   if (!isResourcePath(url.pathname)) return null;
-  const hit = await matchResource(url, caches);
-  if (!hit) return null;
   const range = request.headers.get('Range');
-  if (!range) return hit;
-  try {
-    return await rangeResponse(hit, range);
-  } catch {
-    return hit; // a range we cannot slice falls back to the whole file (a 200 is valid for any request)
+  if (isAudioRequest(url)) {
+    try {
+      const network = await fetcher(request);
+      if ((network?.ok || network?.type === 'opaque') && (network.type === 'opaque' || network.status === 200) && !range) cacheInBackground(url, network, caches, waitUntil);
+      return network;
+    } catch {
+      const hit = await matchResource(url, caches);
+      return hit ? cachedReply(hit, range) : null;
+    }
   }
+  const hit = await matchResource(url, caches);
+  if (hit) return cachedReply(hit, range);
+  try {
+    const network = await fetcher(request);
+    if ((network?.ok || network?.type === 'opaque') && (network.type === 'opaque' || network.status === 200)) cacheInBackground(url, network, caches, waitUntil);
+    return network;
+  } catch {
+    return null;
+  }
+}
+
+async function cachedReply(hit, range) {
+  if (!range) return hit;
+  try { return await rangeResponse(hit, range); } catch { return hit; }
+}
+
+function isAudioRequest(url) {
+  return url.pathname.startsWith('/media/') || resourceType(url.pathname)?.startsWith('audio/') === true;
+}
+
+function cacheAllowed(response) {
+  // Cross-origin CDN assets requested by <img>, <audio> or @font-face are often
+  // opaque responses. Cache Storage can safely retain those responses even though
+  // their status/headers are hidden from the worker.
+  if (!response || (!response.ok && response.type !== 'opaque') || (response.type !== 'opaque' && response.status !== 200)) return false;
+  if (response.type === 'opaque') return true;
+  const cc = response.headers.get('cache-control') || '';
+  return !/(?:^|,)\s*(?:no-store|private)(?:\s*(?:,|$))/i.test(cc)
+    && response.headers.get('vary') !== '*';
+}
+
+function cacheInBackground(url, response, caches, waitUntil) {
+  if (!cacheAllowed(response)) return;
+  const candidate = url.pathname.startsWith('/media/') ? mediaCandidates(url.pathname)[0] : url.href;
+  const key = absoluteUrl(candidate || url.href);
+  if (!key) return;
+  // Clone before returning the network response to the browser. Once the
+  // response is returned, the browser may start consuming its body before the
+  // asynchronous cache task gets a chance to call clone().
+  let copy;
+  try { copy = response.clone(); } catch (err) {
+    console.warn('[resources] runtime cache clone failed', key, err);
+    return;
+  }
+  const write = async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(new Request(key, { method: 'GET' }), copy);
+    await queueRuntimeIndexEntry(cache, globalThis.location?.origin, key);
+  };
+  // Do not race a clear, ZIP import or preload writer. Respond to the browser
+  // immediately; when another owner holds the lock, skip this optional write.
+  const locks = globalThis.navigator?.locks;
+  const task = (locks?.request
+    ? locks.request('stronghold-resources-preload', { mode: 'shared', ifAvailable: true }, (lock) => lock ? write() : undefined)
+    : write())
+    .catch((err) => {
+      // Runtime caching is best-effort, but keep the reason visible when a
+      // browser rejects an opaque/CDN response or runs out of storage.
+      console.warn('[resources] runtime cache write failed', key, err);
+    });
+  if (typeof waitUntil === 'function') waitUntil(task);
 }
 
 /**
@@ -61,7 +125,6 @@ async function matchResource(url, caches) {
   for (const name of names) {
     const cache = await caches.open(name);
     for (const key of keys) {
-      // eslint-disable-next-line no-await-in-loop
       const res = await cache.match(key);
       if (res) return res;
     }

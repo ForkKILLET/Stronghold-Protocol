@@ -128,12 +128,27 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   drops the ones that are not, and only then fetches what is missing — the panel says 「正在整理已保存的资源（无需重新下载）」
   while that runs. The worker prefers the current cache when a URL exists in both, so a stale copy can never shadow a
   fresh file.
-  With preload enabled, each page load revalidates the server resource manifest and checks cached URL keys against
-  the local index. Startup does not read or hash resource bodies. Cache key enumeration and index reading run in
-  parallel; simultaneous checks share in-flight reads but receive independent status snapshots. Opening resource
-  management during an active run uses that run's counters rather than starting another scan. Later checks still
-  inspect the real cache so browser eviction is detected. The client logs `[resources] preload check timings` with
-  manifestMs, cacheKeysMs, indexReadMs and total duration to distinguish network waiting from cache metadata access.
+  With preload enabled, each page load revalidates the server resource manifest (ETag/304 unchanged), then reads
+  the preload fingerprint index and the separate runtime URL index. A complete indexed selection avoids cache key
+  enumeration and pruning during startup. This is a provisional snapshot (`cacheVerified: false`), not proof that
+  the browser retained every file. Five seconds later a background full check repairs evicted metadata, discovers
+  older unindexed runtime entries, performs normal complete-set cleanup and downloads only selected missing files.
+  Opening resource management or clicking 检查资源 performs an authoritative check too. Missing indexes fall back
+  to the download's real-cache inspection rather than assuming completeness. No startup/check path hashes or reads
+  asset bodies. Full scans read cache keys and both metadata indexes in parallel; only in-flight checks of the same
+  mode are coalesced, with independent status snapshots. Active runs publish their counters to the manager.
+  Runtime writes record a URL only after Cache.put succeeds; their separate index cannot overwrite the preload/ZIP
+  hash index. Shared runtime resource locks and exclusive download/clear/repair locks prevent cleanup races; runtime
+  index updates are serialized separately. Runtime registrations are deduplicated and coalesced: each batch flushes
+  after 250 ms from its first registration or when it reaches 64 distinct URLs, whichever comes first. One batch
+  reads/merges the index once and writes it only if it changed; an already-indexed URL does not cause a rewrite.
+  Registrations arriving during I/O join a new serialized batch. Every fetch's `waitUntil` and shared resource lock
+  cover its batch flush, so neither normal SW lifetime completion nor a successful clear can leave a delayed write.
+  Failed metadata writes keep valid asset bytes; a later full inspection repairs missing metadata. Preload and ZIP
+  retain their existing 64-resource/final-flush policy; full-check repair/prune still update metadata immediately.
+  The client logs `[resources] preload check timings` with manifestMs,
+  cacheKeysMs (zero on the fast path), indexReadMs, verified, background and total duration.
+  These are standalone SW dependencies: rebuild/restart and update the worker on deployment.
 - **Voice preload scope.** The resource manager splits Chinese and Japanese voice categories and offers
   中文语音 / 日语语音 / 两种语言 / 不预载语音. `settings.preloadVoiceLang` (`cn`, `jp`, `all`, `none`) is
   persisted independently of playback `voiceLang` and per-operator overrides. Old profiles without a valid scope
@@ -210,8 +225,12 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   completion, cancellation and errors update immediately; integrity checks and cache writes continue independently.
   Category counts are maintained incrementally per completed cache key; UI updates copy only the short category list.
   Parallel imports can complete out of package order. On failure/cancellation, already-started cache puts are awaited
-  and successful writes indexed before releasing the download lock. Index writes are serialized. A console summary
-  records read, hash and cache timings after completion or interruption; stage durations are sums of overlapping work,
+  and successful writes indexed before releasing the download lock. Index writes are serialized.
+  A valid existing runtime cache copy also receives its verified preload fingerprint even when no asset rewrite is
+  needed, so subsequent metadata-only startup checks can count it. Index checkpoints flush after 64 changed records
+  and at completion/failure/cancellation; unchanged repeat imports do not rewrite the index. The final flush includes
+  writes that completed after another lane failed and retries a failed intermediate checkpoint.
+  A console summary records read, hash and cache timings after completion or interruption; stage durations are sums of overlapping work,
   not CPU measurements or fractions of the total wall time. Diagnostics stay on the client.
   If a same-version package imports far fewer files than it exported, check the server hash table: run
   `node tools/asset-hashes.mjs` after downloading/updating local assets, then reload the receiving browser to fetch the

@@ -722,6 +722,58 @@ test('parallel index checkpoints never overlap and the final index contains ever
   assert.equal((await target.store.status()).count, files.length);
 });
 
+test('ZIP verifies an unindexed runtime cache and records its fingerprint without rewriting valid asset bytes', async () => {
+  const files = [file('/assets/char/runtime.png', 'runtime'), file('/assets/audio/bgm/runtime.mp3', 'music', 2)];
+  const target = store(files);
+  const cache = await target.caches.open(CACHE_NAME);
+  for (const resource of files) await cache.put(target.store.keyOf(resource.url), new Response(resource.body));
+  assert.equal((await target.store.status({ verifyCache: false })).count, 0);
+  const puts = [];
+  const put = cache.put.bind(cache);
+  cache.put = async (key, response) => { puts.push(key); await put(key, response); };
+  const blob = await packageZip(files, { version: 2 });
+  assert.equal((await importResourceZip(target.store, blob)).imported, 0, 'valid cached bytes do not need replacing');
+  const doc = await (await cache.match(indexUrl(target.store.origin))).json();
+  assert.deepEqual(doc.files, Object.fromEntries(files.map((f) => [target.store.keyOf(f.url), f.hash])));
+  assert.equal((await target.store.status({ verifyCache: false })).count, 2);
+  assert.deepEqual(puts, [indexUrl(target.store.origin)], 'only the verified fingerprint index is written');
+});
+
+test('reimporting unchanged verified ZIP resources performs no index writes', async () => {
+  const files = [file('/assets/a.png', 'a'), file('/assets/b.png', 'b')];
+  const target = store(files);
+  const blob = await packageZip(files, { version: 2 });
+  await importResourceZip(target.store, blob);
+  const cache = await target.caches.open(CACHE_NAME);
+  let writes = 0;
+  const put = cache.put.bind(cache);
+  cache.put = async (...args) => { writes++; await put(...args); };
+  const result = await importResourceZip(target.store, blob);
+  assert.equal(result.imported, 0);
+  assert.equal(writes, 0, 'unchanged metadata is not serialized/written again');
+});
+
+test('ZIP final index retries a failed checkpoint and includes every completed resource write', async () => {
+  const files = Array.from({ length: 70 }, (_, i) => file(`/assets/${i}.png`, String(i)));
+  const target = store(files);
+  const blob = await packageZip(files, { version: 2 });
+  const cache = await target.caches.open(CACHE_NAME);
+  const put = cache.put.bind(cache);
+  let indexWrites = 0;
+  cache.put = async (key, response) => {
+    if (key === indexUrl(target.store.origin) && ++indexWrites === 1) {
+      throw new DOMException('', 'QuotaExceededError');
+    }
+    await put(key, response);
+  };
+  await assert.rejects(importResourceZip(target.store, blob), { name: 'QuotaExceededError' });
+  assert.equal(indexWrites, 2, 'the final flush retries metadata persistence after the checkpoint failed');
+  const doc = await (await cache.match(indexUrl(target.store.origin))).json();
+  const stored = (await cache.keys()).map((request) => request.url).filter((key) => key !== indexUrl(target.store.origin));
+  assert.deepEqual(Object.keys(doc.files).sort(), stored.sort());
+  assert.equal((await target.store.status({ verifyCache: false })).count, stored.length);
+});
+
 test('incremental import counters preserve same-key URL aliases and unknown resource sizes', async () => {
   const files = [file('/assets/a.png', 'a'), file('/assets/b.png', 'bbb')];
   const unknown = { ...files[1] };

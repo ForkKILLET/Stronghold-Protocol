@@ -15,6 +15,7 @@ import {
   CACHE_NAME, CACHE_PREFIX, CONTENT_HASH_RE, MAX_FILE_BYTES, TIER_ESSENTIAL, TIER_REST, RESOURCE_GROUPS, resourceGroup, resourceType, absoluteUrl, indexUrl, checkAbort, isQuotaError,
 } from './common.js';
 import { verifiedResourceBytes } from './integrity.js';
+import { readRuntimeIndex, runtimeIndexUrl, updateRuntimeIndex } from './runtimeIndex.js';
 
 /** Files above this are downloaded one at a time (a 20 MiB Spine texture should not race three others). */
 const BIG_FILE_BYTES = 4 << 20;
@@ -60,9 +61,13 @@ export class ResourceStore {
     this.bigLanes = Math.max(1, bigLanes);
     this.now = now;
     this.cacheName = CACHE_NAME;
+    // URL normalization and group detection are invariant for this manifest;
+    // don't repeat URL parsing for every startup/progress/status tally.
+    this.entries = this.files.map((file) => ({ file, key: this.keyOf(file.url), group: resourceGroup(file) }));
     /** @type {Promise<any> | null} */
     this.running = null;
     this.statusPromise = null;
+    this.fastStatusPromise = null;
   }
 
   /** Cache key (absolute URL) of a manifest entry. */
@@ -101,19 +106,29 @@ export class ResourceStore {
     let failure;
     let inFlightBytes = 0;
     let indexFlush = Promise.resolve();
+    let indexed = 0;
+    let indexRevision = index.manifest === this.manifest.version ? 0 : 1;
+    let flushedRevision = 0;
     const pending = new Set();
     const timings = { cacheCheckMs: 0, cacheWriteMs: 0, cacheWriteCount: 0, indexWriteMs: 0, maxInFlight: 0, maxInFlightBytes: 0 };
     const started = performance.now();
     const fail = (err) => { if (!failed) { failed = true; failure = err; } };
     const check = () => { if (failed) throw failure; checkAbort(signal); };
     const writeIndex = async () => {
+      const revision = indexRevision;
+      if (revision === flushedRevision) return;
       const start = performance.now();
-      try { await this.#writeIndex(cache, index.files, this.manifest.version); }
+      try {
+        await this.#writeIndex(cache, index.files, this.manifest.version);
+        // Only acknowledge the snapshot that actually persisted, not changes
+        // another import lane made while Cache.put was in flight.
+        flushedRevision = revision;
+      }
       finally { timings.indexWriteMs += performance.now() - start; }
     };
     // Update counters per completed key; publishing copies only the small category list, not the whole manifest.
     const getStatus = () => {
-      const { present: _present, ...status } = before;
+      const { present: _present, cachedKeys: _cachedKeys, ...status } = before;
       return { ...status, groups: before.groups.map((group) => ({ ...group })) };
     };
     const markPresent = (key) => {
@@ -166,11 +181,17 @@ export class ResourceStore {
           timings.cacheWriteCount++;
           try { await cache.put(key, this.storable(response)); }
           finally { timings.cacheWriteMs += performance.now() - writeStart; }
-          // A put cannot be cancelled: always index successful writes, even when another lane has since failed.
-          index.files[key] = file.hash;
+          // A put cannot be cancelled: successful writes must be counted even
+          // when another lane has since failed.
           markPresent(key);
           imported++;
-          if (imported % INDEX_FLUSH_EVERY === 0) {
+        }
+        // Also index an existing runtime entry after its own bytes were
+        // verified. It previously bypassed this step when no Cache.put was needed.
+        if (index.files[key] !== file.hash) {
+          index.files[key] = file.hash;
+          indexRevision++;
+          if (++indexed % INDEX_FLUSH_EVERY === 0) {
             indexFlush = indexFlush.then(writeIndex);
             await indexFlush;
           }
@@ -257,51 +278,78 @@ export class ResourceStore {
   }
 
   /**
-   * What is already cached *and current*: `present` holds the absolute URLs whose stored bytes match the manifest's
-   * hash, plus every counter the settings panel shows. An entry of another revision (or with no index record yet) does
-   * not count, which is what makes the next run fetch it again.
+   * Default: enumerate real cache keys and compare recorded fingerprints.
+   * verifyCache:false: return a provisional metadata-only snapshot for startup;
+   * callers must schedule a full check to detect eviction and repair the indexes.
+   * @param {{ verifyCache?: boolean }} [opts]
    */
-  async status() {
-    if (!this.statusPromise) {
-      const pending = this.#status().finally(() => { if (this.statusPromise === pending) this.statusPromise = null; });
-      this.statusPromise = pending;
+  async status({ verifyCache = true } = {}) {
+    const field = verifyCache ? 'statusPromise' : 'fastStatusPromise';
+    if (!this[field]) {
+      const pending = this.#status({ verifyCache }).finally(() => { if (this[field] === pending) this[field] = null; });
+      this[field] = pending;
     }
-    const status = await this.statusPromise;
+    const status = await this[field];
     // Coalesce only in-flight reads. Each caller gets its own counters/set; later calls check real cache eviction.
-    return { ...status, groups: status.groups.map((group) => ({ ...group })), present: new Set(status.present) };
+    return { ...status, groups: status.groups.map((group) => ({ ...group })), present: new Set(status.present),
+      ...(status.cachedKeys ? { cachedKeys: new Set(status.cachedKeys) } : {}) };
   }
 
-  async #status() {
+  async #status({ verifyCache }) {
     const started = performance.now();
     const cache = await this.caches.open(this.cacheName);
     let keysMs = 0;
     let indexMs = 0;
-    const [keys, index] = await Promise.all([
-      (async () => {
-        const start = performance.now();
-        try { return await cache.keys(); } finally { keysMs = performance.now() - start; }
-      })(),
-      (async () => {
-        const start = performance.now();
-        try { return await this.#readIndex(cache); } finally { indexMs = performance.now() - start; }
-      })(),
-    ]);
-    const cached = new Set(keys.map((k) => k.url));
+    const readIndex = async () => {
+      const start = performance.now();
+      try {
+        const [index, runtime] = await Promise.all([this.#readIndex(cache), readRuntimeIndex(cache, this.origin)]);
+        return { ...index, files: { ...runtime, ...index.files } };
+      } finally { indexMs = performance.now() - start; }
+    };
+    const readKeys = async () => {
+      const start = performance.now();
+      try { return await cache.keys(); } finally { keysMs = performance.now() - start; }
+    };
+    const [index, keys] = await Promise.all([readIndex(), verifyCache ? readKeys() : null]);
+    const cached = new Set(keys ? keys.map((k) => k.url) : Object.keys(index.files));
     const fresh = this.#fresh(cached, index);
-    return { ...this.#tally(fresh), present: fresh,
-      checkTimings: { statusMs: performance.now() - started, cacheKeysMs: keysMs, indexReadMs: indexMs } };
+    return { ...this.#tally(fresh), present: fresh, ...(verifyCache ? { cachedKeys: cached } : {}), cacheVerified: !!verifyCache,
+      checkTimings: { statusMs: performance.now() - started, cacheKeysMs: keysMs, indexReadMs: indexMs, verified: !!verifyCache } };
   }
 
-  /** The subset of `cached` whose recorded hash equals the manifest's (an entry without a hash counts as current). */
+  /** The subset of `cached` whose recorded hash equals the manifest's.
+   * Runtime Service Worker entries have no manifest index record yet, so they
+   * are also visible in the required/optional lists. A recorded old hash is
+   * still rejected and will be removed by normal manifest pruning.
+   */
   #fresh(cached, index) {
     const fresh = new Set();
-    for (const f of this.files) {
-      const key = this.keyOf(f.url);
+    for (const { file: f, key } of this.entries) {
       if (!cached.has(key)) continue;
-      if (f.hash && index.files[key] !== f.hash) continue;
+      if (f.hash && index.files[key] && index.files[key] !== f.hash) continue;
       fresh.add(key);
     }
     return fresh;
+  }
+
+  /** Called under the shared download lock after a full scan. Repairs legacy
+   * runtime entries and removes evicted metadata without reading asset bodies.
+   */
+  async reconcileRuntimeIndex(status) {
+    if (!status.cacheVerified || !status.cachedKeys) throw new Error('完整缓存检查后才能修复索引');
+    const cache = await this.caches.open(this.cacheName);
+    const index = await this.#readIndex(cache);
+    let changed = false;
+    for (const key of Object.keys(index.files)) {
+      // Retain known stale fingerprints until the bytes themselves are replaced
+      // or pruned. Dropping them would misclassify stale bytes as unindexed runtime art.
+      if (!status.cachedKeys.has(key)) { delete index.files[key]; changed = true; }
+    }
+    if (changed) await this.#writeIndex(cache, index.files, index.manifest);
+    await updateRuntimeIndex(cache, this.origin, {
+      add: [...status.present].filter((key) => !Object.hasOwn(index.files, key)), present: status.cachedKeys,
+    });
   }
 
   /** Caches of earlier builds this app wrote: their entries carry no hash record and are verified before being kept. */
@@ -357,9 +405,9 @@ export class ResourceStore {
     let tier2Wanted = 0;
     const groups = Object.fromEntries(Object.entries(RESOURCE_GROUPS).map(([id, group]) => [id,
       { id, ...group, total: 0, wanted: 0, present: 0, bytes: 0, totalBytes: 0, unknownSize: 0 }]));
-    for (const f of this.files) {
-      const hit = present.has(this.keyOf(f.url));
-      const group = groups[resourceGroup(f)];
+    for (const { file: f, key, group: groupId } of this.entries) {
+      const hit = present.has(key);
+      const group = groups[groupId];
       group.total++;
       if (f.tier === TIER_ESSENTIAL) tier1++; else tier2++;
       if (!this.eligible(f)) { skipped++; continue; }
@@ -425,6 +473,7 @@ export class ResourceStore {
     let tier1Done = start.tier1Present;
     let tier2Done = start.tier2Present;
     let pendingFlush = 0;
+    let indexFlush = Promise.resolve();
     // Migration and network traffic are reported separately: the panel says "整理已保存的资源" while nothing is fetched.
     let adopted = 0;
     let downloaded = 0;
@@ -477,9 +526,11 @@ export class ResourceStore {
             downloaded++;
           }
           // The file is current only once the index says so: a run stopped before its next flush re-fetches this one.
-          if (file.hash) {
-            index.files[key] = file.hash;
-            if (++pendingFlush >= INDEX_FLUSH_EVERY) { pendingFlush = 0; await this.#writeIndex(cache, index.files, this.manifest.version); }
+          index.files[key] = file.hash || null;
+          if (++pendingFlush >= INDEX_FLUSH_EVERY) {
+            pendingFlush = 0;
+            indexFlush = indexFlush.then(() => this.#writeIndex(cache, index.files, this.manifest.version));
+            await indexFlush;
           }
           const group = groupsById.get(resourceGroup(file));
           group.present++;
@@ -503,9 +554,16 @@ export class ResourceStore {
       };
       const drain = async (list, lanes) => {
         let next = 0;
+        let failure = null;
         await Promise.all(Array.from({ length: Math.min(lanes, list.length) }, async () => {
-          for (let i = next++; i < list.length; i = next++) await one(list[i]);
+          for (let i = next++; i < list.length && !failure; i = next++) {
+            try { await one(list[i]); } catch (err) { failure ??= err; }
+          }
         }));
+        // A Cache.put is not cancellable. Stop assigning work after a fatal
+        // failure, but join every started lane before the final index flush
+        // and before the caller releases its resource lock.
+        if (failure) throw failure;
       };
       try {
         await drain(small, this.smallLanes);
@@ -520,6 +578,7 @@ export class ResourceStore {
       checkAbort(signal);
     }
     const after = await this.status();
+    await this.reconcileRuntimeIndex(after);
     const result = { ...after, phase: 'ready', failed, failures: failures.slice(), adopted, downloaded };
     onProgress?.(result);
     // Only a complete set may drop anything: a partial run never deletes files it did not replace.
@@ -552,15 +611,22 @@ export class ResourceStore {
    */
   async pruneStale() {
     const cache = await this.caches.open(this.cacheName);
-    const wanted = new Set(this.files.map((f) => this.keyOf(f.url)));
+    const wanted = new Map(this.files.map((f) => [this.keyOf(f.url), f]));
     const indexKey = indexUrl(this.origin);
+    const runtimeKey = runtimeIndexUrl(this.origin);
     const keys = await cache.keys();
-    const doomed = keys.filter((k) => k.url !== indexKey && !wanted.has(k.url));
+    const index = await this.#readIndex(cache);
+    const doomed = keys.filter((k) => {
+      if (k.url === indexKey || k.url === runtimeKey) return false;
+      const file = wanted.get(k.url);
+      return !file || (file.hash && index.files[k.url] && index.files[k.url] !== file.hash);
+    });
     if (!doomed.length) return 0;
     await Promise.all(doomed.map((k) => cache.delete(k)));
-    const index = await this.#readIndex(cache);
     for (const k of doomed) delete index.files[k.url];
     await this.#writeIndex(cache, index.files, this.manifest.version);
+    const removed = new Set(doomed.map((k) => k.url));
+    await updateRuntimeIndex(cache, this.origin, { present: new Set(keys.map((k) => k.url).filter((key) => !removed.has(key))) });
     return doomed.length;
   }
 

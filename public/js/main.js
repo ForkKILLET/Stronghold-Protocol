@@ -449,8 +449,8 @@ async function boot() {
 }
 
 /**
- * Optional asset preload (docs/ASSETS.md「Preload」): off by default, and loaded after the first paint so a
- * player who never enables it downloads nothing. The settings panel writes the switch; main.js mirrors it into
+ * Runtime resource caching is installed after the first paint; bulk asset preload remains off by default, so a
+ * player who never enables it downloads no complete manifest. The settings panel writes the switch; main.js mirrors it into
  * public/js/resources/index.js (idempotent: the settings store also fires for volume changes).
  */
 function installResourcePreload() {

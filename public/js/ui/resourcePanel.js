@@ -57,6 +57,7 @@ function stateText(st, enabled) {
   if (st.archive) return st.archive === 'import' ? t('正在导入') : t('正在导出');
   if (st.phase === 'foreign') return t('另一标签页处理中');
   if (busy(st)) return t('处理中');
+  if (st.cacheVerified === false && st.selectionComplete && st.tier1Total) return t('缓存索引已读取');
   if (st.complete) return t('全部已保存');
   if (st.selectionComplete && st.tier1Total) return st.optional ? t('所选资源已齐全。') : t('必备已保存');
   return enabled ? t('已暂停') : t('未开启');

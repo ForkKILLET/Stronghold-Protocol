@@ -1263,6 +1263,8 @@
   "清理缓存": "Clear cache",
   "关闭预载": "Disable preload",
   "关闭预载会保留已缓存资源。": "Disabling preload retains cached resources.",
+  "缓存索引已读取": "Cache index loaded",
+  "已读取本机缓存索引，稍后在后台核对缓存。": "Local cache index loaded. Cached files will be checked in the background.",
   "修改快捷键": "Edit shortcuts",
   "帧率上限": "Frame rate limit",
   "不限帧率": "Unlimited frame rate",

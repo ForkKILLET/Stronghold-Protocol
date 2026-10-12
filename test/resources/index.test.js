@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CACHE_NAME, CACHE_PREFIX, MANIFEST_URL, SW_URL, cacheName } from '../../public/js/resources/common.js';
+import { CACHE_NAME, MANIFEST_URL, SW_URL, cacheName, indexUrl } from '../../public/js/resources/common.js';
 import { DOWNLOAD_LOCK } from '../../public/js/resources/index.js';
 import { createHash } from 'node:crypto';
 import { ResourceStore } from '../../public/js/resources/store.js';
@@ -87,7 +87,8 @@ test('controller ZIP import/export uses shared lock, automatically enables prelo
   assert.equal(env.calls.fetch.length, previous);
   await mod.syncResources(true, true);
   assert.deepEqual(env.calls.fetch.slice(previous), FILES.filter((f) => f.tier === 2).map((f) => ORIGIN + f.url));
-  assert.ok(locks.length >= 4 && locks.every((name) => name === DOWNLOAD_LOCK));
+  assert.ok(locks.filter((name) => name === DOWNLOAD_LOCK).length >= 4);
+  assert.ok(locks.every((name) => name === DOWNLOAD_LOCK || name === 'stronghold-resources-runtime-index'));
   Object.defineProperty(globalThis.navigator, 'locks', { configurable: true, value: { request: async (_, options, job) => job(null) } });
   const cached = mod.resourceState().done;
   await assert.rejects(mod.exportResources(), /另一个标签页/);
@@ -129,13 +130,52 @@ test('opening resource management during startup shares its active check instead
   cache.keys = async () => { scans++; started.resolve(); await gate.promise; return keys(); };
   const startup = mod.syncResources(true, false);
   await started.promise;
-  assert.equal(mod.resourceState().phase, 'checking');
+  assert.equal(mod.resourceState().phase, 'download', 'the fast index check finishes before the download scan');
   await mod.inspectResources();
   await mod.inspectResources();
   assert.equal(scans, 1);
   gate.resolve();
   await startup;
   assert.equal(mod.resourceState().selectionComplete, true);
+  await mod.syncResources(false);
+});
+
+test('complete indexed startup skips scans; deferred verification detects eviction and refills', async (t) => {
+  const env = stubEnv();
+  t.after(env.restore);
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  let deferred;
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true, value: {
+      setTimeout: (fn, ms) => { assert.equal(ms, 5000); deferred = fn; return 1; },
+      clearTimeout: () => { deferred = null; },
+    },
+  });
+  t.after(() => { if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow); else delete globalThis.window; });
+  const mod = await import('../../public/js/resources/index.js?fast-complete-startup');
+  const cache = await env.caches.open(CACHE_NAME);
+  const files = {};
+  for (const file of FILES) {
+    const key = ORIGIN + file.url;
+    await cache.put(key, new Response('b'.repeat(file.size)));
+    files[key] = null;
+  }
+  await cache.put(indexUrl(ORIGIN), new Response(JSON.stringify({ version: 1, manifest: MANIFEST.version, files })));
+  const keys = cache.keys.bind(cache);
+  let scans = 0;
+  cache.keys = async () => { scans++; return keys(); };
+  await mod.syncResources(true, false);
+  assert.equal(scans, 0);
+  assert.equal(mod.resourceState().cacheVerified, false);
+  assert.equal(mod.resourceState().phase, 'ready');
+  assert.deepEqual(env.calls.fetch, [MANIFEST_URL]);
+  await cache.delete(ORIGIN + FILES[1].url);
+  deferred();
+  await mod.startResources(); // joins the active background verification
+  assert.equal(mod.resourceState().cacheVerified, true);
+  assert.equal(mod.resourceState().selectionComplete, true);
+  assert.deepEqual(env.calls.fetch.slice(1), [ORIGIN + FILES[1].url], 'only evicted resource is fetched');
+  assert.ok(scans > 0);
   await mod.syncResources(false);
 });
 
@@ -305,15 +345,15 @@ test('the preload controller: off by default, downloads in two passes, serves of
   assert.equal(mod.resourceState().phase, 'off');
   assert.equal(mod.resourceState().enabled, false);
 
-  // nothing happens while the player has not turned it on (the settings store reports `preload: false` on every change)
+  // Bulk download is off, but the runtime caching worker is still registered.
   await mod.syncResources(false);
   assert.equal(env.calls.fetch.length, 0, 'no manifest request while the preload is off');
-  assert.equal(env.calls.registered.length, 0);
+  assert.equal(env.calls.registered.length, 1, 'the worker is registered even when bulk preload is off');
 
   // turning it on: manifest, worker, essential tier first, then the rest
   await mod.syncResources(true, true);
   const st = mod.resourceState();
-  assert.equal(env.calls.registered.length, 1);
+  assert.equal(env.calls.registered.length, 1, 'enabling bulk preload reuses the existing worker');
   assert.deepEqual(env.calls.registered[0], [SW_URL, { type: 'module', scope: '/', updateViaCache: 'none' }]);
   assert.equal(env.calls.fetch[0], MANIFEST_URL);
   assert.equal(env.calls.fetchOptions[0].cache, 'no-cache', 'manifest reads revalidate the HTTP cache instead of bypassing it');
@@ -351,7 +391,7 @@ test('the preload controller: off by default, downloads in two passes, serves of
   assert.deepEqual(await env.caches.keys(), [], 'every cache of this app is gone');
   assert.equal(mod.resourceState().phase, 'off');
   assert.equal(mod.resourceState().done, 0);
-  assert.equal(env.calls.unregistered, 1, 'nothing left to serve ⇒ the worker is removed');
+  assert.equal(env.calls.unregistered, 0, 'disabling preload never unregisters the runtime worker');
 });
 
 test('a second tab does not download the same files twice (Web Locks)', async (t) => {
@@ -410,6 +450,71 @@ test('the worker entry (public/resource-sw.js) intercepts resources only', async
   assert.equal(fire(`${ORIGIN}/data/assets.json`), null, 'game data passes through');
   assert.equal(fire(`${ORIGIN}/assets/e2e/a.png`, 'POST'), null, 'only GET');
   assert.deepEqual(answered, [asset]);
+});
+
+test('the worker caches successful visual loads on demand and uses network-first audio', async () => {
+  const saved = ['self', 'caches', 'fetch'].map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]);
+  const handlers = {};
+  const caches = new MemoryCaches();
+  const calls = [];
+  Object.defineProperty(globalThis, 'self', { value: { addEventListener: (name, fn) => { handlers[name] = fn; } }, configurable: true, writable: true });
+  Object.defineProperty(globalThis, 'caches', { value: caches, configurable: true, writable: true });
+  Object.defineProperty(globalThis, 'fetch', { value: async (request) => {
+    calls.push(request.url);
+    return new Response(request.url.endsWith('.mp3') ? 'network-audio' : 'network-image', {
+      status: 200, headers: { 'Content-Type': request.url.endsWith('.mp3') ? 'audio/mpeg' : 'image/png' },
+    });
+  }, configurable: true, writable: true });
+  try {
+    await import('../../public/resource-sw.js?runtime-cache');
+    const fire = (url) => {
+      let promise;
+      const waits = [];
+      handlers.fetch({ request: new Request(url), respondWith: (p) => { promise = p; }, waitUntil: (p) => waits.push(p) });
+      return Promise.all([promise, ...waits]).then(([response]) => response);
+    };
+    const image = `${ORIGIN}/assets/runtime/image.png`;
+    assert.equal(await (await fire(image)).text(), 'network-image');
+    assert.equal(await (await (await caches.open(CACHE_NAME)).match(image)).text(), 'network-image');
+    calls.length = 0;
+    assert.equal(await (await fire(image)).text(), 'network-image');
+    assert.deepEqual(calls, [], 'visual resources are cache-first after the first successful load');
+
+    const audio = `${ORIGIN}/assets/audio/runtime.mp3`;
+    assert.equal(await (await fire(audio)).text(), 'network-audio');
+    assert.equal(calls.at(-1), audio);
+  } finally {
+    for (const [k, d] of saved) {
+      if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k];
+    }
+  }
+});
+
+test('the worker also stores successful opaque CDN responses', async () => {
+  const saved = ['self', 'caches', 'fetch'].map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]);
+  const handlers = {};
+  const caches = new MemoryCaches();
+  Object.defineProperty(globalThis, 'self', { value: { addEventListener: (name, fn) => { handlers[name] = fn; } }, configurable: true, writable: true });
+  Object.defineProperty(globalThis, 'caches', { value: caches, configurable: true, writable: true });
+  Object.defineProperty(globalThis, 'fetch', { value: async () => new Response(null, { status: 200 }), configurable: true, writable: true });
+  try {
+    await import('../../public/resource-sw.js?runtime-opaque');
+    let response;
+    const waits = [];
+    handlers.fetch({
+      request: new Request('https://cdn.example/assets/runtime/opaque.png'),
+      respondWith: (promise) => { response = promise; },
+      waitUntil: (promise) => waits.push(promise),
+    });
+    await response;
+    await Promise.all(waits);
+    const cache = await caches.open(CACHE_NAME);
+    assert.ok(await cache.match('https://cdn.example/assets/runtime/opaque.png'));
+  } finally {
+    for (const [k, d] of saved) {
+      if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k];
+    }
+  }
 });
 
 test('a browser without Cache Storage is reported instead of downloading', async (t) => {
