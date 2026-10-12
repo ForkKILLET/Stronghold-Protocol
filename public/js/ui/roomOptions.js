@@ -32,6 +32,6 @@ export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSe
   <div class="room-config-summary__values"><span>${t(DIFFICULTY_NAMES[difficulty] || difficulty)}</span>
    <span>${t('休整期')} · ${mode==='solo'?t('不限时'):prepSeconds!=null?t('每回合 {seconds} 秒',{seconds:prepSeconds}):prepTimeLabel(prepMultiplier)}</span>
    <span>${t('战斗倍速')} · ${battleSpeed}×</span></div>
-  <${Button} variant="secondary" size="sm" icon="settings" disabled=${disabled} onClick=${onOpen}>${editable?t('调整配置'):t('查看配置')}<//>
+  <${Button} variant="secondary" size="sm" icon="edit" disabled=${disabled} onClick=${onOpen}>${editable?t('调整配置'):t('查看配置')}<//>
  </div>`;
 }
