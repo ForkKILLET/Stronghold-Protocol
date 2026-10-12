@@ -92,11 +92,13 @@ for (const [width, height] of [[320, 568], [390, 844], [560, 320], [640, 360], [
   });
 }
 
-test('normal desktop room chrome retains its existing three-column layout and height', () => {
+test('desktop footer separates options/status from actions and grows with wrapped controls', () => {
   assert.equal(property(['.topbar', '.room-screen .topbar'], 'height', 1920, 1080), '1.36rem');
   assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-columns', 1920, 1080),
     'minmax(0, 1fr) auto minmax(0, 1fr)');
-  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', 1920, 1080), '1.5rem');
+  assert.equal(property(['.room-bar'], 'grid-template-columns', 1920, 1080), 'minmax(0, 1fr) auto');
+  assert.equal(property(['.room-bar'], 'grid-template-areas', 1920, 1080), '"options actions" "status actions"');
+  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'min-height', 1920, 1080), '1.5rem');
 });
 
 test('the room title remains on the same row as controls and invitation at phone widths', () => {

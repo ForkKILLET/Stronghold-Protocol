@@ -398,13 +398,13 @@ export function RoomScreen() {
     <div class="room-prep-rule"><span>${t('战斗倍速')}</span><b>${room.battleSpeed ?? 2}×</b></div>
     <footer class="room-bar">
       <div class="room-bar__left">
-        <span class="room-bar__label">${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></span>
-        <${DifficultyPicker} room=${room} isHost=${facts.isHost} busy=${busy} onPick=${setDifficulty} />
-        ${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
+        <div class="room-bar__difficulty"><span class="room-bar__label">${t('模拟难度')}<${MicroLabel}>DIFFICULTY<//></span>
+        <${DifficultyPicker} room=${room} isHost=${facts.isHost} busy=${busy} onPick=${setDifficulty} /></div>
+        <div class="room-bar__tools">${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
           class="room-console-btn" disabled=${(!room.consoleEnabled && !!room.matching) || !online} onClick=${room.consoleEnabled ? disableConsole : openConsole}
           title=${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}>${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}<//>`
           : room.consoleEnabled ? html`<span class="room-console-status"><${Icon} name="terminal" />${t('控制台已启用')}</span>` : null}
-          <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} />
+          <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} /></div>
       </div>
       <div class="room-bar__center">
         <div class="ready-count" hidden=${!coop}>
