@@ -13,15 +13,19 @@ import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 // config.json mode texts come localized from data.js.
 
 import { RoomOptionsPage } from '../ui/roomOptions.js';
+import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, OnlineCount, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
 import { AnnouncementButton } from '../ui/announcement.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
+import { openStats } from './stats.js';
+import { SettingsButton } from '../ui/settings.js';
+import { PwaInstallButton } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
 import { net, identity } from '../net.js';
-import { store, useStore, shallowEqual, loadPref, savePref, serverNow } from '../store.js';
+import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
 import { getConfig, getMode, getStage, useData } from '../data.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 
@@ -88,7 +92,7 @@ const MODE_CARDS = [
   {
     id: 'match', name: N_('同盟匹配'), en: 'ALLIANCE MATCHMAKING', icon: 'signal',
     desc: N_('独自进入公共匹配池，与其他博士组成同盟后开始模拟。'),
-    points: [N_('单人加入 · 自动匹配队友'), N_('60 秒后可由 AI 补齐空位')],
+    points: [N_('单人加入 · 自动匹配队友'), N_('仅匹配真人 · 满四人后开始')],
   },
 ];
 
@@ -244,17 +248,11 @@ function DifficultyCard({ roomMode, difficulty, selected, onSelect }) {
 }
 
 function MatchQueuePanel({ queue, onCancel }) {
-  const [now, setNow] = useState(() => serverNow());
-  useEffect(() => {
-    const id = setInterval(() => setNow(serverNow()), 250);
-    return () => clearInterval(id);
-  }, []);
   if (!queue) return null;
-  const left = Math.max(0, Math.ceil((Number(queue.deadlineAt) - now) / 1000));
   return html`<section class="match-queue brackets" aria-live="polite">
     <div class="match-queue__scan" aria-hidden="true"></div>
     <div class="match-queue__head"><${Icon} name="signal" /><div><${MicroLabel} tone="mint">ALLIANCE MATCHMAKING<//><strong>${t('正在寻找同盟队友')}</strong></div><span class="match-queue__count num">${queue.count}/${queue.capacity}</span></div>
-    <div class="match-queue__meta"><span>${t('匹配剩余')} <b class="num">${left}s</b></span><span>${queue.fillBots ? t('倒计时结束后由 AI 补齐空位') : t('仅匹配真实队友')}</span></div>
+    <div class="match-queue__meta"><span>${t('仅匹配真实队友')}</span><span>${t('满四人后开始')}</span></div>
     <${Button} variant="danger" size="sm" icon="close" onClick=${onCancel}>${t('退出匹配')}<//>
   </section>`;
 }
@@ -304,7 +302,7 @@ export function LobbyScreen() {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
     return run('create', () => net.request('room.create', { mode: roomMode, difficulty, prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
   };
-  const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty, fillBots: true }));
+  const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
   const join = (c = code) => {
     // `onClick=${join}` hands the click EVENT as the first argument, and a default parameter only applies to
@@ -346,6 +344,13 @@ export function LobbyScreen() {
         <div class="connection-status">
           <${PingPill} ms=${conn.ping} online=${online} />
           <${OnlineCount} online=${presence.online} />
+          <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
+        </div>
+        <span class="topbar__sep" aria-hidden="true"></span>
+        <div class="topbar__tools">
+          <${SettingsButton} class="lobby-settings" variant="secondary" square=${true} />
+          <${GuideButton} class="lobby-guide" variant="secondary" square=${true} />
+          <${PwaInstallButton} class="lobby-pwa" square=${true} />
         </div>
       </div>
       <div class="topbar__center">
@@ -353,16 +358,16 @@ export function LobbyScreen() {
         <h1 class="topbar__title">${t('选择模拟协议')}</h1>
       </div>
       <div class="topbar__right">
-        <${AnnouncementButton} />
-        <${GuideButton} class="lobby-guide" variant="secondary" label=${t('玩法说明')} />
+        <${ResumeMatchButton} />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" label=${t('干员调配')} />
-        <div class="me-chip">
+        <button type="button" class="me-chip me-chip--btn stats-entry" onClick=${openStats} title=${t('统计数据')} aria-label=${t('统计数据')}>
           <${AvatarFrame} size="sm" name=${me.name} seat=${0} self=${true} />
-          <div class="me-chip__text">
+          <span class="me-chip__text">
             <span class="me-chip__name">${me.name || t('博士')}</span>
             <${MicroLabel}>${me.playerId != null ? `DOCTOR #${doctorNo(me.playerId)}` : 'DOCTOR'}<//>
-          </div>
-        </div>
+          </span>
+          <${Icon} name="chart" class="me-chip__stats" />
+        </button>
       </div>
     </header>
 

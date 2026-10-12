@@ -10,14 +10,19 @@ import { unitStatsEntry } from '../../../shared/protocol.js';
 import { PHASE, ERR, EMOTES, EMOTE_COOLDOWN_MS, GEO } from '../../../shared/constants.js';
 import { deriveSeed } from '../../sim/rng.js';
 import { OK, fail } from './common.js';
+import { onHumanEmote } from '../botEmotes.js';
+import { validChatText } from '../../../shared/chat.js';
 
 export class MatchIntents {
   _handle(ps, msg) {
     switch (msg.t) {
       case 'g.infoReady':
         if (this.phase !== PHASE.INFO_CHECK) return fail(ERR.WRONG_PHASE);
+        if (this.setupVote) return fail(ERR.WRONG_PHASE, 'setup reroll vote in progress');
+        if ((msg.setupRevision ?? 0) !== this.setupRevision) return fail(ERR.BAD_TARGET, 'setup changed; confirm the current revision');
         if (!ps.infoReady) { ps.infoReady = true; this.markPublic(); this.maybeEndInfo(); }
         return OK;
+      case 'g.rerollVote': return this.voteSetupReroll(ps, msg.voteId, msg.agree);
       case 'g.band': return this.pickBand(ps, msg.bandId);
       case 'g.bandSkip': return this.skipBand(ps);
       // the strategy highlighted in the draft screen (what a timed-out turn takes, timeoutBand)
@@ -33,9 +38,12 @@ export class MatchIntents {
       case 'g.art': return ps.useArt(msg.itemUid, msg.row, msg.col, msg.dir);
       case 'g.destroy': return ps.destroy(msg.uid);
       case 'g.reward': return ps.pickReward(msg.idx);
-      case 'g.choice': return this.pickCard(ps, msg.idx);
+      case 'g.choice': return msg.choiceId !== undefined
+        ? this.pickPersonalChoice(ps, msg.idx, msg.choiceId)
+        : this.pickCard(ps, msg.idx);
       case 'g.ready': return ps.setReady(!!msg.ready);
       case 'g.emote': return this.emote(ps, msg.id);
+      case 'g.chat': return this.chat(ps, msg.text);
       // playerId: the player tapped (a shared field names two) — the watch preference (item 56)
       case 'g.watch': return this.watch(ps, msg.fieldId, msg.playerId ?? null);
       case 'g.autoplay': return this.setAutoplay(ps, !!msg.on);
@@ -56,6 +64,17 @@ export class MatchIntents {
     if (now - ps.lastEmoteAt < EMOTE_COOLDOWN_MS) return fail(ERR.RATE);
     ps.lastEmoteAt = now;
     this.broadcast({ t: 'm.emote', playerId: ps.playerId, id });
+    // an AI teammate can react to a human's emote (enabled by default: server/match/botEmotes.js, SP_BOT_EMOTES=0 silences it)
+    onHumanEmote(this, ps.playerId, id);
+    return OK;
+  }
+
+  chat(ps, text) {
+    if (!validChatText(text)) return fail(ERR.BAD_MSG, 'chat must contain 1–20 characters');
+    const now = this.sched.now();
+    if (now - ps.lastEmoteAt < EMOTE_COOLDOWN_MS) return fail(ERR.RATE);
+    ps.lastEmoteAt = now;
+    this.broadcast({ t: 'm.chat', playerId: ps.playerId, name: ps.name, text: text.trim(), at: now });
     return OK;
   }
 
@@ -83,7 +102,8 @@ export class MatchIntents {
    * band and 机变 effects — computed exactly by the shared sim. The player's battle input after the onBattleStart meta
    * handlers (`ev.preview: true`, no enemies — those handlers must not change the match for a preview) builds a Battle
    * of the battle's options that is started (initial deployment + battleStart hooks), read and dropped: it is never
-   * stepped, so skills and timed effects do not show. Pushed to the player as `m.unitStats { seq, round, units }`
+   * stepped: deployment skills contribute their initial stats but their timers do not advance. No SP / skill timer is
+   * sent, and the real battle gets fresh units. Pushed to the player as `m.unitStats { seq, round, units }`
    * (units: shared/protocol.js unitStatsEntry, board operators and summons by uid); cached per input (a build costs
    * ≈ 0.3–0.7 ms). Prep phases only (ROUND_START, 机变, PREP); a battle's live stats come from the browser's own sim.
    * @param {PlayerState} ps @param {number|null} seq echoed (the client keeps the newest answer)
@@ -157,6 +177,7 @@ export class MatchIntents {
     } else if (kind === 'item') {
       const rec = this.gd.item(id);
       if (!rec || rec.isDiy || rec.isHidden) return fail(ERR.BAD_TARGET, 'unknown equipment');
+      if (!this.itemPool.canGain(id)) return fail(ERR.SOLD_OUT, 'equipment stock exhausted');
       grantedName = rec.name || id;
       piece = ps.acquireItem(id, { source: 'console' });
       granted = !!piece;

@@ -50,3 +50,22 @@ test('worker completion cannot apply AI or battle results until the pause is wit
  h.sched.advance(10000);assert.equal(applied,0);
  vote(h,'p_0',false);h.sched.advance(1);assert.equal(applied,1);h.m.dispose();
 });
+
+test('host setup-reroll routes and votes cannot change the opening while globally paused', () => {
+ const h=makeMatch({mode:'coop',humans:2,fake:true,instant:false}).start();
+ const m=h.m;
+ vote(h,'p_0');vote(h,'p_1');
+ assert.equal(m.requestSetupReroll('p_0',0).error,ERR.WRONG_PHASE);
+ assert.equal(m.setupVote,null);
+ vote(h,'p_1',false);
+ assert.deepEqual(m.requestSetupReroll('p_0',0),{ok:true});
+ const id=m.setupVote.id;
+ vote(h,'p_1');assert.equal(m.paused,true);
+ assert.equal(m.cancelSetupReroll('p_0',id).error,ERR.WRONG_PHASE);
+ assert.equal(m.voteSetupReroll(h.ps('p_1'),id,true).error,ERR.WRONG_PHASE);
+ assert.equal(m.setupRevision,0);
+ vote(h,'p_0',false);
+ assert.deepEqual(m.voteSetupReroll(h.ps('p_1'),id,true),{ok:true});
+ assert.equal(m.setupRevision,1);
+ m.dispose();
+});

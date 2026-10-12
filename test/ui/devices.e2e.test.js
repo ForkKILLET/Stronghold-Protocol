@@ -12,7 +12,7 @@
 //     button works with taps, two-tap buy works with taps, a long press on a shop card opens its detail (no purchase);
 //   * safe-area insets (a notch on the left) move the HUD, not the field;
 // plus graceful degradation: WebGL disabled → the DOM view with a notice, local-client art missing → CSS look-alikes,
-// portrait → the rotate hint.
+// portrait phones retain the mandatory rotate hint on all screens, including utility overlays.
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -375,12 +375,16 @@ describe('multi-device (Chrome device emulation)', { skip: !ENABLED && 'set SP_E
     }
   });
 
-  test('portrait phone: the rotate hint covers the page', async () => {
+  test('portrait phone: mandatory rotate hint covers every screen and utility state', async () => {
     const page = await browser.newPage();
     await page.emulate({ viewport: { width: 390, height: 844, deviceScaleFactor: 3, isMobile: true, hasTouch: true }, userAgent: IOS_UA });
     await page.goto(`${base}/`, { waitUntil: 'networkidle0' });
     await sleep(400);
-    assert.equal(await page.$eval('.rotate-hint', (el) => getComputedStyle(el).display), 'grid');
+    assert.equal(await page.$eval('.rotate-hint', (el) => getComputedStyle(el).display), 'grid', 'title requires landscape too');
+    for (const cls of ['sp-in-match', 'sp-loadout-open', 'sp-stats-open']) {
+      await page.evaluate((name) => document.documentElement.classList.add(name), cls);
+      assert.equal(await page.$eval('.rotate-hint', (el) => getComputedStyle(el).display), 'grid', `${cls} cannot bypass landscape`);
+    }
     await page.screenshot({ path: path.join(OUT, 'device-portrait-rotate.png') });
     await page.close();
     // review regression: a narrow desktop window (half a 1080p screen, portrait monitor) cannot be "rotated" — no hint

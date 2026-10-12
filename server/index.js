@@ -1,7 +1,7 @@
 // server/index.js — process entry & boot (DESIGN §1, §2). Plain node:http + ws, no framework: startServer() below
 // wires the modules under server/http/, in this order —
 //
-//   http/config.js     ROOT, the served directories, the environment (PORT 3000, HOST 0.0.0.0, TRUST_PROXY auto, DEBUG),
+//   http/config.js     ROOT, the served directories, the environment (PORT 3000, HOST '::' dual-stack, TRUST_PROXY auto, DEBUG),
 //                      which startServer() options go to net.js / lobby.js, the console logger
 //   http/websocket.js  session wiring (SessionRegistry → Lobby → Network) and the WebSocket at /ws (maxPayload 64 KB;
 //                      refused at upgrade with 404 / 429 per network / 503)
@@ -21,11 +21,15 @@
 // The server only auto-listens when this file is the process entry point.
 
 import http from 'node:http';
+import { nameModerationFromEnv } from './nameModeration.js';
+import { createNameModerationRoute } from './http/nameModeration.js';
 import path from 'node:path';
 import { parseAssetCdn, parseEnvLimit, parseWsCompression } from './http/config.js';
 import { openStoreFromEnv } from './redis.js';
 import { Persister, restoreServer, SAVE_MS } from './persist.js';
 import { SimulationPool, workerSettings } from './workers/pool.js';
+import { RoomWorkerPool } from './workers/roomPool.js';
+import { MatchWorkerPool } from './workers/matchPool.js';
 import { Announcements } from './announcements.js';
 import { createPublicApi } from './publicApi.js';
 import { sendJson, sendError } from './http/common.js';
@@ -34,7 +38,7 @@ export { WS_DEFLATE_THRESHOLD } from './http/websocket.js';
 export { rewriteAssetPaths } from '../shared/cdn.js';
 
 import { getData, loadData } from './data.js';
-import { ROOT, listenAddress, serveDirs, makeLogger, parseTrustProxy } from './http/config.js';
+import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustProxy } from './http/config.js';
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
 import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
 import { createPackRegistry } from './packs.js';
@@ -42,7 +46,7 @@ import { MIME, COMPRESSIBLE, acceptsGzip, parseRange } from './http/files.js';
 import { BUILD_INPUTS, computeBuildTag, buildTag, resetBuildTag } from './http/buildTag.js';
 import { createRequestHandler } from './http/routes.js';
 import { answerClientError } from './http/common.js';
-import { lanUrls, isProcessEntry, runMain } from './http/boot.js';
+import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
 
 // The public API of this module (tests and tools import it from here); the code lives in ./http/.
 export {
@@ -53,15 +57,16 @@ export {
 /**
  * Build and start the HTTP + WebSocket server.
  * @param {{
+ *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
  *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string,
  *   MatchClass?: Function, seedFn?: () => number,
- *   lobbyGraceMs?: number, matchmakingWaitMs?: number, matchmakingTickMs?: number, reconnectWindowMs?: number, heartbeatMs?: number, helloTimeoutMs?: number,
+ *   lobbyGraceMs?: number, matchmakingTickMs?: number, reconnectWindowMs?: number, heartbeatMs?: number, helloTimeoutMs?: number,
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
  *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string,
- *   workers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
+ *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
  *   announcementsFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: import('ws').WebSocketServer,
@@ -70,6 +75,7 @@ export {
  *                     close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
+  const nameModeration = opts.nameModeration !== undefined ? opts.nameModeration : nameModerationFromEnv();
   const { port, host } = listenAddress(opts);
   const log = opts.log || makeLogger(!!opts.quiet);
   const { publicDir, dataDir, sharedDir, packsDir } = serveDirs(opts);
@@ -100,15 +106,33 @@ export async function startServer(opts = {}) {
   if (!Number.isInteger(workerConfig.size) || workerConfig.size < 0 || workerConfig.size > 32) {
     throw new RangeError('workers must be 0..32');
   }
-  const workerPool = ownsWorkerPool ? (workerConfig.size > 0 ? new SimulationPool({ data, ...workerConfig }) : null) : opts.workerPool;
-  const { registry, lobby, network } = createSessionStack(opts, { data, log, workerPool });
+  const rawRoomWorkers = opts.roomWorkers ?? process.env.SP_ROOM_WORKERS;
+  const roomWorkers = rawRoomWorkers == null || String(rawRoomWorkers).trim() === '' ? 0 : Number(rawRoomWorkers);
+  if (!Number.isInteger(roomWorkers) || roomWorkers < 0 || roomWorkers > 32) throw new RangeError('roomWorkers must be 0..32');
+  if (roomWorkers > workerConfig.size) throw new RangeError('roomWorkers cannot exceed workers');
+  const workerPool = ownsWorkerPool
+    ? (workerConfig.size > 0
+      ? (roomWorkers > 0
+        ? new RoomWorkerPool({ data, lanes: roomWorkers, totalWorkers: workerConfig.size, maxQueue: workerConfig.maxQueue, timeoutMs: workerConfig.timeoutMs })
+        : new SimulationPool({ data, ...workerConfig }))
+      : null)
+      : opts.workerPool;
+  const rawMatchWorkers = opts.matchWorkers ?? process.env.SP_MATCH_WORKERS;
+  const matchWorkers = rawMatchWorkers == null || String(rawMatchWorkers).trim() === '' ? 0 : Number(rawMatchWorkers);
+  if (!Number.isInteger(matchWorkers) || matchWorkers < 0 || matchWorkers > 32) throw new RangeError('matchWorkers must be 0..32');
+  const ownsMatchWorkerPool = opts.matchWorkerPool === undefined;
+  const matchWorkerPool = ownsMatchWorkerPool && matchWorkers > 0
+    ? new MatchWorkerPool({ data, lanes: matchWorkers, log, timeoutMs: workerConfig.timeoutMs })
+    : opts.matchWorkerPool || null;
+  const { registry, lobby, network } = createSessionStack({ ...opts, nameModeration }, { data, log, workerPool, matchWorkerPool });
   // Resume the last state before listening: every reconnecting client is recognized by its token right away.
   const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs }) : null;
   if (store && opts.resume !== false) {
     try {
       const doc = await store.load();
       if (doc) {
-        const stats = restoreServer({ doc, registry, lobby, log, now: Date.now() });
+        const initialStats = restoreServer({ doc, registry, lobby, log, now: Date.now() });
+        const stats = initialStats.ready ? await initialStats.ready : initialStats;
         if (stats.ok) {
           await persister.seed(doc);
           log.info(`[persist] state loaded (${stats.sessions} session(s), ${stats.rooms} room(s), ${stats.matches} match(es), ${stats.expired} expired${stats.droppedSeats ? `, ${stats.droppedSeats} seat(s) dropped` : ''}${stats.deferredMatches ? `, ${stats.deferredMatches} checkpoint(s) retained` : ''})`);
@@ -133,7 +157,10 @@ export async function startServer(opts = {}) {
   const announcements = new Announcements({ file: announcementFile ? path.resolve(announcementFile) : null,
     broadcast: (msg) => network.broadcast(msg), log, pollMs: opts.announcementPollMs });
   await announcements.start();
-  const serveApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });
+  const servePublicApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });
+
+  const serveNameReview = createNameModerationRoute({ moderation: nameModeration, trustProxy: network.opts.trustProxy });
+  const serveApi = async (req, res, pathname) => await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
 
   // content packs (docs/PACKS.md): scanned now — the start log names them — and again whenever their folders change
   const packs = createPackRegistry({ publicDir, dataDir, packsDir }, { log });
@@ -144,25 +171,49 @@ export async function startServer(opts = {}) {
   resetBuildTag();
   buildTag(ROOT, { clientBuild });
 
-  const server = http.createServer(createRequestHandler({ serveStatic, health: { startedAt, network, registry, lobby }, serveApi, diagnostics: { persister, workerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log }));
+  const server = http.createServer(createRequestHandler({ serveStatic, health: { startedAt, network, registry, lobby }, serveApi,
+    diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements });
 
+  // The address actually bound. The default may fall back to IPv4; the returned host and url follow that.
+  let boundHost;
   try {
-    await new Promise((resolve, reject) => {
-      const onError = (e) => { server.off('listening', onListening); reject(e); };
-      const onListening = () => { server.off('error', onError); resolve(); };
-      server.once('error', onError);
-      server.once('listening', onListening);
-      server.listen(port, host);
-    });
+    // A host with IPv6 switched off refuses '::'. Fall back to IPv4 rather than not booting. Only the default is
+    // retried: an explicit HOST is literal (server/http/config.js bindCandidates).
+    let bound = null;
+    let lastError = null;
+    const candidates = bindCandidates(host);
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
+      try {
+        await new Promise((resolve, reject) => {
+          const onError = (e) => { server.off('listening', onListening); reject(e); };
+          const onListening = () => { server.off('error', onError); resolve(); };
+          server.once('error', onError);
+          server.once('listening', onListening);
+          server.listen(port, candidate);
+        });
+        bound = candidate;
+        break;
+      } catch (e) {
+        lastError = e;
+        const retry = ['EAFNOSUPPORT', 'EADDRNOTAVAIL', 'EINVAL'].includes(e.code) && i < candidates.length - 1;
+        if (!retry) break;
+        log.warn(`[boot] cannot bind ${candidate} (${e.code}) — falling back to IPv4 only`);
+      }
+    }
+    if (bound === null) throw lastError;
+    boundHost = bound;
   } catch (e) {
     await announcements.stop();
+    nameModeration?.close?.();
     network.close(); // stop heartbeat/sweep timers of the half-built server
     persister?.stop();
     await persister?.encoder.close();
     lobby.shutdown('shutdown');
     if (ownsWorkerPool) await workerPool?.close();
+    if (ownsMatchWorkerPool) await matchWorkerPool?.close();
     throw e;
   }
   server.on('error', (e) => log.error('[http] server error', e));
@@ -170,13 +221,14 @@ export async function startServer(opts = {}) {
 
   const addr = server.address();
   const actualPort = typeof addr === 'object' && addr ? addr.port : port;
-  const url = `http://${host === '0.0.0.0' || host === '::' ? 'localhost' : host}:${actualPort}`;
+  const url = `http://${displayHost(boundHost)}:${actualPort}`;
 
   let closing = null;
   async function close() {
     if (closing) return closing;
     closing = (async () => {
       network.beginShutdown();
+      nameModeration?.close?.();
       lobby.stopMatchmaking();
       await announcements.stop();
       // the state (match checkpoints included) is written while the rooms still exist, then the rooms are disposed
@@ -188,6 +240,7 @@ export async function startServer(opts = {}) {
       try { lobby.shutdown('shutdown'); } catch (e) { log.error('[shutdown] lobby', e); }
       network.close();
       if (ownsWorkerPool) await workerPool?.close();
+      if (ownsMatchWorkerPool) await matchWorkerPool?.close();
       await new Promise((resolve) => {
         server.close(() => resolve());
         server.closeIdleConnections?.();
@@ -199,7 +252,8 @@ export async function startServer(opts = {}) {
     return closing;
   }
 
-  return { port: actualPort, host, url, server, wss, lobby, network, registry, packs, store: store || null, persister, workerPool, announcements, close };
+  return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, store: store || null, persister,
+    workerPool, matchWorkerPool, announcements, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).

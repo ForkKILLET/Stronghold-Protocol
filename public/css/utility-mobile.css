@@ -1,0 +1,382 @@
+/* Management UI only. Loaded after devices.css in source and Vite builds.
+   Never change html's rem, the battlefield, shop, HUD bands or the chat panel.
+   Compact controls have real, non-overlapping hit boxes (no oversized ::before).
+   Text size settings still apply; density comes from columns and spacing, not scale()/zoom or hiding content. */
+
+.modal__titles { display: flex; flex-direction: column; gap: .04rem; min-width: 0; }
+.utility-modal { width: var(--utility-width, min(6.4rem, 94vw)); max-width: 100%; min-height: 0; }
+.utility-modal.resource-modal { width: min(10.4rem, calc(100vw - .4rem)); }
+.utility-modal .modal__head { flex: none; flex-direction: row; align-items: center; justify-content: space-between; }
+.utility-modal .modal__title { overflow-wrap: anywhere; }
+.utility-modal .modal__body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  touch-action: pan-y; -webkit-overflow-scrolling: touch;
+}
+.utility-modal__close {
+  display: grid; place-items: center; flex: none; width: max(.36rem, 32px); height: max(.36rem, 32px);
+  padding: 0; background: var(--bg-1); border: 1px solid var(--line-2); color: var(--text-md);
+}
+.utility-modal__close .icon { width: 50%; height: 50%; }
+.utility-modal__close:hover { color: var(--mint-400); border-color: var(--mint-700); }
+
+@media (max-width: 1000px), (max-height: 600px) {
+  /* A local readable floor derived from the saved text size. --t remains owned by theme.css.
+     Consumers use this fallback only for typography, never layout geometry or the global rem. */
+  :is(.utility-modal, .lobby-screen, .room-screen) { --utility-text: max(var(--t), 64px); }
+  /* device.js updates --sp-vh from visualViewport: the soft keyboard must not cover the close/actions region.
+     Only management surfaces adopt this height; the battlefield retains its own viewport ownership. */
+  .modal--utility, .guide, .lo, .st {
+    bottom: auto; height: min(100dvh, calc(var(--sp-vh, 1dvh) * 100));
+  }
+  .title-screen, .lobby-screen, .room-screen {
+    bottom: auto; height: calc(min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--sa-t, 0px) - var(--sa-b, 0px));
+  }
+
+  .modal--utility {
+    padding: calc(var(--sa-t, 0px) + 6px) calc(var(--sa-r, 0px) + 6px)
+      calc(var(--sa-b, 0px) + 6px) calc(var(--sa-l, 0px) + 6px);
+  }
+  .modal--utility .utility-modal {
+    width: min(12rem, 100%);
+    max-height: calc(100vh - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px);
+    max-height: calc(min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px);
+    font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px);
+  }
+  .modal--utility .resource-modal { width: min(17rem, 100%); }
+  .modal--utility .settings-modal { width: min(14rem, 100%); }
+  .modal--utility .minfo-dlg { width: min(17rem, 100%); }
+  .modal--utility .console-modal { width: min(14rem, 100%); }
+  .utility-modal .modal__head { padding: 6px 10px 4px; gap: 8px; }
+  .utility-modal .modal__head .micro { font-size: max(calc(.1 * var(--utility-text, var(--t))), 9px); letter-spacing: .08em; white-space: normal; }
+  .utility-modal .modal__title { font-size: max(calc(.22 * var(--utility-text, var(--t))), 15px); line-height: 1.25; letter-spacing: .02em; }
+  .utility-modal .modal__body { padding: 6px 10px 8px; }
+  .utility-modal .modal__actions { flex-wrap: wrap; gap: 6px; padding: 6px 10px; }
+  .utility-modal .modal__actions .btn { min-height: 30px; height: auto; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .utility-modal .modal__text { line-height: 1.5; }
+  .utility-modal :is(.btn, .set-toggle, .set-seg button, .shortcut-key) {
+    min-height: 30px; height: auto; padding: 5px 9px; line-height: 1.25;
+    font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); letter-spacing: .02em;
+  }
+  .utility-modal :is(.btn--square, .utility-modal__close) { width: 30px; height: 30px; padding: 0; }
+  /* devices.css's invisible 44px targets must not cover a neighbouring compact control. */
+  .sp-coarse :is(.utility-modal, .lo, .st, .lobby-screen, .room-screen, .title-screen) :is(.btn, .tabs__tab, .set-toggle, .set-seg button, .fsbtn)::before {
+    inset: 0; width: 100%; height: 100%; transform: none;
+  }
+  .utility-modal :is(input:not([type="radio"]):not([type="checkbox"]):not([type="range"]), textarea, select) {
+    font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); /* iOS focus zoom guard */
+  }
+
+  /* Resources: both tiers fit side by side on landscape phones; real narrow widths stack.
+     Category names, counts, archive checks and the current import group stay visible. */
+  .resource-manager { gap: 8px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .resource-manager p { line-height: 1.45; }
+  .resource-manager__intro, .resource-manager__maintenance { color: var(--text-lo); }
+  .resource-manager__tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
+  .resource-tier, .resource-archive { padding: 8px; min-width: 0; }
+  .resource-tier h3, .resource-archive h3 { font-size: max(calc(.19 * var(--utility-text, var(--t))), 13px); }
+  .resource-tier__head { gap: 6px; flex-wrap: wrap; }
+  .resource-tier__head p, .resource-archive p, .resource-voice-choice p,
+  .resource-tier__summary, .resource-tier__list li, .resource-manager__maintenance {
+    font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px);
+  }
+  .resource-choice, .resource-voice-choice .resource-choice {
+    min-height: 28px; gap: 5px; white-space: normal; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px);
+  }
+  .resource-choice input { flex: none; width: 14px; height: 14px; margin: 0; }
+  .resource-voice-choice { margin-top: 6px; padding: 4px 6px; }
+  .resource-voice-choice__options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; }
+  .resource-tier__summary { margin: 6px 0 4px; gap: 3px; }
+  .resource-tier__list { margin-top: 4px; }
+  .resource-tier__list li { gap: 5px; padding: 4px 0; align-items: baseline; }
+  .resource-tier__list .num { white-space: nowrap; }
+  .resource-tier__list small { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
+  .resource-manager__status { padding: 6px; }
+  .resource-archive .res-actions, .resource-archive .pbar { margin-top: 6px; }
+  .resource-modal .res-link { min-height: 28px; font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
+  .resource-modal .pbar__meta { flex-wrap: wrap; gap: 2px 6px; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
+  .resource-modal .pbar__value { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
+
+  /* Settings: remove empty micro-label space, keep full controls and diagnostic text. */
+  .settings-modal .set-list { gap: 6px; padding-top: 0; }
+  .settings-modal .set-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; gap: 8px; min-height: 30px; }
+  .settings-modal .set-row__label { gap: 5px; line-height: 1.35; }
+  .settings-modal .set-row__label { font-size: calc(.18 * var(--utility-text, var(--t))); }
+  .settings-modal .set-row__label .micro { display: none; }
+  .settings-modal .set-row__label .icon { width: 14px; height: 14px; }
+  .settings-modal .set-row__val { min-width: 2.5em; }
+  .settings-modal .set-row__val { font-size: calc(.18 * var(--utility-text, var(--t))); }
+  .settings-modal .set-seg { width: 100%; }
+  .settings-modal .set-seg button { min-width: 0; padding: 4px 7px; }
+  .settings-modal .set-toggle { padding: 4px 8px; }
+  .settings-modal .set-toggle i { width: 28px; height: 16px; }
+  .settings-modal .set-toggle i::after { left: 2px; top: 2px; width: 12px; height: 12px; }
+  .settings-modal .set-toggle.is-on i::after { transform: translateX(12px); }
+  .settings-modal .set-range { min-width: 0; height: 28px; border-block: 10px solid transparent; background-clip: padding-box; }
+  .settings-modal .set-range::-webkit-slider-thumb { width: 14px; height: 20px; }
+  .settings-modal .set-range::-moz-range-thumb { width: 14px; height: 20px; }
+  .settings-modal .set-row--fps { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  .settings-modal .set-row--fps .set-seg--fps button { min-width: 0; }
+  .settings-modal .set-hint { margin: 0; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); line-height: 1.45; color: var(--text-lo); }
+  .settings-modal .set-res { gap: 4px; }
+  .settings-modal .set-res__body { gap: 4px; }
+  .settings-modal .set-diag { gap: 4px; padding-top: 6px; }
+  .settings-modal .set-diag__text { height: 96px; min-height: 64px; }
+  .utility-modal .shortcut-row { min-height: 30px; grid-template-columns: minmax(0, 1fr) 90px; gap: 8px; }
+  .utility-modal .shortcut-list { gap: 4px; }
+  .utility-modal .lo-io__text { height: 120px; min-height: 72px; }
+  .utility-modal .title-about__links { gap: 6px; }
+  .utility-modal .title-about__disclaimer, .utility-modal .title-about__hint { line-height: 1.5; }
+  .utility-modal .title-about__disclaimer p + p { margin-top: 8px; }
+  .resume-modal .btn--block { margin-top: 6px; white-space: normal; overflow-wrap: anywhere; }
+  .utility-modal .console-ui { min-height: 0; gap: 6px; }
+  .utility-modal .console-ui__list { max-height: none; }
+  .utility-modal .console-ui__entry { min-height: 30px; padding: 5px 6px; }
+  .utility-modal .console-ui__tabs { flex-wrap: wrap; gap: 4px; }
+  .utility-modal .console-ui__amount { flex-wrap: wrap; }
+  .utility-modal .console-ui__amount input { min-height: 30px; width: 4em; }
+  .utility-modal .console-ui__warning { line-height: 1.4; }
+  .utility-modal .console-ui__warning, .utility-modal .console-ui__amount,
+  .utility-modal .console-ui__entry-text b, .utility-modal .shortcut-row {
+    font-size: max(calc(.15 * var(--utility-text, var(--t))), 11px);
+  }
+
+  /* Lobby and waiting rooms: full usable width, compact cards, no removal of rule explanations. */
+  :is(.lobby-screen, .room-screen) .btn { min-height: 30px; height: auto; padding: 5px 9px; line-height: 1.25; }
+  :is(.lobby-screen, .room-screen) .btn--square { min-width: 30px; width: 30px; height: 30px; padding: 0; }
+  :is(.lobby-screen, .room-screen) .btn--xl { min-height: 36px; font-size: calc(.24 * var(--utility-text, var(--t))); letter-spacing: .08em; }
+  :is(.lobby-screen, .room-screen) .field__box { min-height: 34px; height: auto; padding: 4px 8px; }
+  :is(.lobby-screen, .room-screen) .field__input { min-width: 0; font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
+  :is(.lobby-screen, .room-screen) .micro { font-size: max(calc(.11 * var(--utility-text, var(--t))), 9px); letter-spacing: .08em; }
+  .lobby-screen .lobby-body { max-width: none; padding: 8px 10px; gap: 12px; }
+  .lobby-screen .mode-cards { gap: 6px; margin-bottom: 8px; }
+  .lobby-screen .mode-card { min-height: 0; gap: 6px; padding: 8px; }
+  .lobby-screen .mode-card__icon { width: 30px; height: 30px; }
+  .lobby-screen .mode-card__icon .icon { width: 50%; height: 50%; }
+  .lobby-screen .mode-card__name { font-size: calc(.25 * var(--utility-text, var(--t))); letter-spacing: .02em; }
+  .lobby-screen .mode-card__text { gap: 4px; }
+  .lobby-screen .mode-card__desc { line-height: 1.4; }
+  .lobby-screen .mode-card__points { display: flex; gap: 2px; font-size: max(calc(.14 * var(--utility-text, var(--t))), 10px); }
+  .lobby-screen .mode-card__check { top: 4px; right: 4px; padding: 2px 4px; font-size: max(calc(.12 * var(--utility-text, var(--t))), 9px); }
+  .lobby-screen .diff-list { gap: 4px; }
+  .lobby-screen .diff-card { padding-block: 5px; }
+  .lobby-screen .diff-card__effects { display: flex; }
+  .lobby-screen .create-box { margin-top: 8px; gap: 4px; }
+  .lobby-screen .create-box__hint { display: flex; }
+  .lobby-screen .join-panel .panel__body { padding: 8px; gap: 6px; }
+  .lobby-screen .tips { display: block; margin-top: 8px; padding: 8px; }
+  .lobby-screen .tips__text { margin-top: 4px; line-height: 1.4; }
+  /* Room chrome owns explicit areas at every compact width, including 761–1000px landscape phones.
+     Override the generic <=760px grid-area rules and the room's desktop fixed heights together. */
+  .room-screen .topbar {
+    height: auto; min-height: 0; padding: 6px 8px; gap: 6px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas: "controls title invite";
+  }
+  .room-screen .topbar__left { grid-area: controls; justify-self: start; min-width: 0; max-width: 100%; flex-wrap: wrap; gap: 4px; }
+  .room-screen .topbar__center { grid-area: title; min-width: 0; padding: 0; }
+  .room-screen .topbar__center > .micro { display: none; }
+  .room-screen .topbar__title {
+    justify-content: center; flex-wrap: nowrap; white-space: nowrap; min-width: 0; max-width: 100%; gap: 4px;
+    font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); letter-spacing: 0;
+  }
+  .room-screen .topbar__right { grid-area: invite; justify-self: end; max-width: 100%; min-width: 0; gap: 0; }
+  .room-screen .room-topbar__tools { display: flex; flex: none; gap: 4px; align-items: center; }
+  .room-screen .room-topbar__tools .btn--square { width: 30px; height: 30px; min-width: 30px; flex: none; padding: 0; }
+  .room-screen .room-ping { align-items: flex-start; gap: 0; min-width: 0; }
+  .room-screen .room-ping > .micro { display: none; }
+  .room-screen .connection-status { flex-wrap: wrap; gap: 4px; max-width: 100%; }
+  .room-screen .invite { min-width: 0; max-width: 100%; padding: 3px 4px; gap: 2px 4px; }
+  .room-screen .invite__label { flex-wrap: nowrap; gap: 3px; }
+  .room-screen .invite__label .micro { display: none; }
+  .room-screen .invite__code { gap: 3px; }
+  .room-screen .invite__code { gap: 1px; }
+  .room-screen .invite__code span {
+    width: .72em; height: 1em; flex: none; font-size: max(calc(.2 * var(--utility-text, var(--t))), 12px);
+  }
+  .room-screen .invite__btns { flex-direction: row; gap: 2px; }
+  .room-screen .invite__btns .btn { min-width: 26px; width: 26px; min-height: 26px; height: 26px; padding: 3px; font-size: 0; }
+  .room-screen .invite__btns .icon { width: 16px; height: 16px; }
+  .room-screen--coop { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+  .room-screen .seats { padding: 8px 10px; gap: 8px; grid-template-rows: minmax(0, 1fr); overflow-y: auto; }
+  .room-screen--coop .seats { flex: 1 0 144px; min-height: 144px; }
+  .room-screen .seat { padding: 6px; gap: 4px; }
+  .room-screen .seat__art .avatar { --av: min(1.5rem, 18vh); }
+  .room-screen .seat__name { font-size: calc(.2 * var(--utility-text, var(--t))); }
+  .room-screen .seat__state { min-width: 0; max-width: 100%; overflow-wrap: anywhere; line-height: 1.25; }
+  .room-screen .seat__foot { flex-wrap: wrap; gap: 4px; }
+  .room-screen--coop .seat__foot .tt-anchor { position: static; flex: none; }
+  .room-screen .solo-brief { padding: 10px; gap: 6px; overflow-y: auto; touch-action: pan-y; }
+  .room-screen .solo-brief h2 { font-size: calc(.26 * var(--utility-text, var(--t))); }
+  .room-screen .specbar { padding: 0 10px 6px; gap: 6px; }
+  .room-screen .room-bar {
+    height: auto; min-height: 0; padding: 6px 10px; gap: 6px 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "options actions" "status actions";
+  }
+  .room-screen .room-bar__left, .room-screen .room-bar__right { gap: 6px; flex-wrap: wrap; }
+  .room-screen .room-bar__left { grid-area: options; min-width: 0; }
+  .room-screen .room-bar__label .micro { display: none; }
+  .room-screen .room-bar__center { grid-area: status; flex-direction: row; flex-wrap: wrap; justify-self: start; gap: 4px 8px; min-width: 0; text-align: left; }
+  .room-screen .room-bar__right { grid-area: actions; min-width: 0; align-items: flex-end; justify-content: flex-end; }
+  .room-screen .room-bar__status { overflow-wrap: anywhere; }
+  .room-screen .room-bar .btn--xl { min-width: 0; }
+  .room-screen .dpick { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+  .room-screen .dpick__opt { height: auto; min-height: 28px; padding: 4px 7px; }
+  .room-screen .room-match-actions { min-width: 0; max-width: 100%; }
+  .room-screen .room-match-state { flex-wrap: wrap; }
+  .room-screen .room-loadout { max-width: 100%; flex-wrap: wrap; white-space: normal; }
+  .room-screen .ailast { max-width: 100%; flex-wrap: wrap; gap: 4px; }
+
+  /* Title login remains scrollable on short / narrow viewports; decorative art does not occupy form space. */
+  .title-screen { --utility-text: max(var(--t), 64px); overflow-y: auto; justify-content: flex-start; }
+  .title-screen .title-main { flex: none; width: 100%; min-width: 0; margin: auto 0; padding: 10px 8px; }
+  .title-screen .title-login { width: min(7.2rem, 100%); margin-top: 12px; gap: 6px; padding: 10px; }
+  .title-screen .title-login .field__box { min-height: 34px; height: auto; }
+  .title-screen .title-login .field__input { font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
+  .title-screen .title-login .btn--xl { height: auto; min-height: 36px; padding: 6px 10px; letter-spacing: .16em; font-size: max(calc(.24 * var(--utility-text, var(--t))), 14px); }
+  .title-screen .title-login .title-invite, .title-screen .title-conn { font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
+  .title-screen .title-conn { flex-wrap: wrap; gap: 4px; }
+  .title-screen .title-settings, .title-screen .title-fs { width: 28px; height: 28px; }
+  .title-screen .title-tag { font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); letter-spacing: .02em; text-align: center; }
+  .title-screen .title-foot { position: relative; inset: auto; width: 100%; flex-wrap: wrap; padding: 6px 10px; gap: 4px; font-size: max(calc(.13 * var(--utility-text, var(--t))), 10px); }
+  .title-screen .title-corner--tl { display: none; }
+  .title-screen .title-corner--tr { position: relative; inset: auto; flex: none; width: 100%; padding: 6px 10px; justify-content: flex-end; }
+  .title-screen .title-corner--tr > div > .micro, .title-screen .title-corner--tr > div > br { display: none; }
+  .title-screen .title-corner__tools { margin: 0; gap: 6px; }
+  .title-screen .title-corner__tools .btn, .title-screen .title-lang button { height: auto; min-height: 30px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .title-screen .lang-select select { height: 30px; font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
+  .title-screen .res-pill__head { min-height: 30px; flex-wrap: wrap; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .title-screen .res-pill__state { font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
+  .title-screen .title-en { display: none; }
+  .title-screen .emblem { margin-bottom: 6px; }
+  .title-screen .emblem__svg { height: 32px; width: 30px; }
+  .title-screen .emblem__bracket { height: 38px; }
+
+  /* Operator management and local history: reduce independent px floors and keep aligned, scrollable columns.
+     The roster's quick-choice/detail workflow and all data columns remain intact. */
+  :is(.lo-top, .st-top) { height: auto; min-height: 40px; padding: 4px 8px; gap: 6px; }
+  :is(.lo-top__left, .lo-top__right, .st-top__left, .st-top__right) { gap: 4px; min-width: 0; }
+  :is(.lo-top, .st-top) .micro { display: none; }
+  .lo .lo-back, .lo .lo-top__right .btn, .st .st-back, .st .st-top__right .btn {
+    height: 30px; padding: 4px 7px; min-width: 30px;
+  }
+  :is(.lo-tab, .st-tab) { min-height: 30px; font-size: max(calc(.2 * var(--utility-text, var(--t))), 12px); letter-spacing: 0; padding: 4px 6px; }
+  .lo-body { padding: 6px 8px; gap: 6px; }
+  .lo-filters { gap: 4px; }
+  .lo-frow { gap: 4px; }
+  .lo-list, .sp-coarse .lo-list {
+    --q: max(.4rem, 28px); --qg: 3px; --art: max(.48rem, 30px);
+    --cols: minmax(100px, 1fr) calc(3 * var(--q) + 2 * var(--qg)) calc(4 * var(--q) + 3 * var(--qg)) minmax(148px, .8fr);
+    padding-right: 0;
+  }
+  .lo-list__head, .lo .lo-card { column-gap: 6px; }
+  .lo-card__art { width: var(--art); height: var(--art); }
+  .lo .lo-card { padding-block: 3px; }
+  .lo-card__name { font-size: max(calc(.17 * var(--utility-text, var(--t))), 11px); }
+  .lo-card__pick { gap: 5px; }
+  .lo-card__bonds { display: flex; }
+  .lo .lo-search .field__box { min-height: 30px; height: auto; }
+  .lo .lo-search .field__input, .lo-select select, .lo .lo-cult .lo-select select { font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
+  .lo-select { height: auto; min-height: 30px; }
+  .lo .lo-chip, .lo .lo-toggle { min-height: 28px; }
+  .lo .lo-seg button { min-height: 26px; }
+  .own-card { padding: 5px 6px; }
+  .own-grid, .diy-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 6px; }
+  .diy-pick__list .diy-opt { min-height: 44px; }
+  .st-body { padding: 6px 8px 10px; }
+  .st-body > * { max-width: none; }
+  .st-cards { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 4px; }
+  .st-card { padding: 5px 6px; }
+  .st-sec__h { margin-bottom: 5px; }
+  .st-table td, .st-table th { padding: 5px 6px; }
+  .st-titles { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 4px; }
+  .st-sums { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 4px; }
+  .st-note.is-warn { display: flex; } /* damaged/newer data warnings must never disappear on short screens */
+
+  /* Rank rows must never shrink behind fixed summary chrome. Give the window a definite height, keep only
+     title/scope/close pinned and let the entire remaining body scroll, with the ranking first. */
+  .combat-metrics {
+    width: min(max(7.2rem, 360px), calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - .48rem));
+    height: min(10rem, var(--combat-available-height, 240px));
+    max-height: min(10rem, var(--combat-available-height, 240px));
+  }
+  .combat-metrics[data-viewport-docked="true"] {
+    position: fixed; left: calc(var(--sa-l, 0px) + .24rem);
+    top: var(--combat-viewport-top, calc(var(--sa-t, 0px) + 6px)); bottom: auto;
+    height: min(10rem, var(--combat-viewport-height, calc(100dvh - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px)));
+    max-height: min(10rem, var(--combat-viewport-height, calc(100dvh - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px)));
+  }
+  .combat-metrics__head { flex-wrap: nowrap; padding: 4px 8px; gap: 6px; }
+  .combat-metrics__head > div:first-child { min-width: 0; }
+  .combat-metrics__head h2 { font-size: max(calc(.2 * var(--utility-text, var(--t))), 14px); overflow-wrap: anywhere; }
+  .combat-metrics__micro { display: none; }
+  .combat-metrics__close { order: 1; width: 28px; min-width: 28px; height: 28px; min-height: 28px; }
+  .combat-metrics__body { display: flex; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+  .combat-metrics__head > .combat-metrics__tools { flex: 1 1 0; min-width: 0; padding: 0; }
+  .combat-metrics__scopes button { min-height: 28px; padding: 3px 6px; white-space: normal; overflow-wrap: anywhere; }
+  .combat-metrics__totals { padding: 0 8px 4px; gap: 6px; }
+  .combat-metrics__totals b { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
+  .combat-metrics__legend { gap: 3px 8px; padding: 0 8px 4px; }
+  .combat-metrics__list { order: -1; flex: none; min-height: 0; padding: 0 8px; overflow: visible; }
+  .combat-metrics__row { grid-template-columns: 16px 26px minmax(0, 1fr); padding: 4px 0; gap: 5px; }
+  .combat-metrics__row > .uthumb { width: 26px; height: 26px; }
+  .combat-metrics__bar { margin: 3px 0; height: 4px; }
+  .combat-metrics__values { gap: 4px; }
+  .combat-metrics__values span { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; }
+  .combat-metrics__values b { font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
+  .combat-metrics__note { padding: 4px 8px; font-size: max(calc(.1 * var(--utility-text, var(--t))), 10px); line-height: 1.3; }
+  .combat-metrics__note br { display: none; }
+
+  /* Guide uses dynamic height AND both horizontal safe areas, including its text fallback. */
+  .guide__box {
+    max-width: calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - 12px);
+    max-height: calc(min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px);
+    padding: 6px; gap: 6px; min-height: 0; overflow: hidden;
+  }
+  .guide__head { min-height: 30px; gap: 6px; }
+  .guide__chapters { min-width: 0; overflow-x: auto; }
+  .guide__chapter { flex: none; min-width: 60px; height: 30px; padding: 3px 7px; }
+  .guide__chname { font-size: max(calc(.19 * var(--utility-text, var(--t))), 11px); letter-spacing: .02em; }
+  .guide__chmicro { display: none; }
+  .guide__close { width: 30px; height: 30px; }
+  .guide__close .icon { width: 50%; height: 50%; }
+  .guide__page {
+    width: min(calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - 28px),
+      calc((min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--sa-t, 0px) - var(--sa-b, 0px) - 90px) * 16 / 9));
+  }
+  .guide__stage--text { min-height: 0; width: 100%; max-height: none; overflow-y: auto; touch-action: pan-y; }
+  .guide__tips li { font-size: max(calc(.18 * var(--utility-text, var(--t))), 12px); }
+  .guide__foot { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; gap: 6px; min-height: 24px; }
+  .guide__dots { overflow-x: auto; min-width: 0; max-width: 100%; touch-action: pan-x; }
+  .guide__dot { flex: none; height: 24px; min-width: 24px; }
+  .guide__ptitle { font-size: max(calc(.18 * var(--utility-text, var(--t))), 11px); }
+  .guide__count { font-size: max(calc(.22 * var(--utility-text, var(--t))), 12px); }
+
+  /* Archived settlement belongs to local history; live battle/result screens are deliberately untouched. */
+  .st--replay .result__main { grid-template-columns: minmax(0, .7fr) minmax(0, 1.6fr); gap: 10px; padding: 8px; }
+  .st--replay .rcard__head { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; }
+  .st--replay .rcard__mid { grid-column: 1 / -1; }
+  .st--replay .rcard__title { grid-column: 1 / -1; }
+  .st--replay .rcard__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .st--replay .result__headline { font-size: max(calc(.5 * var(--utility-text, var(--t))), 22px); }
+}
+
+@media (max-width: 560px) {
+  .resource-manager__tiers { grid-template-columns: minmax(0, 1fr); }
+  .lobby-screen .lobby-body { grid-template-columns: minmax(0, 1fr); }
+  .room-screen .seats { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-y: auto; align-content: start; }
+  .room-screen .seat { min-height: 140px; }
+  .room-screen--coop .seats { flex-basis: 304px; grid-template-rows: none; grid-auto-rows: minmax(140px, auto); }
+  .room-screen .seats--solo { grid-template-columns: minmax(0, 1fr); }
+  .room-screen .topbar { grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) minmax(0, .85fr); grid-template-areas: "controls title invite"; }
+  .room-screen .topbar__left { flex-direction: column; align-items: flex-start; }
+  .room-screen .topbar__right { justify-self: end; }
+  .room-screen .invite { display: flex; flex-direction: column; align-items: center; width: auto; }
+  .room-screen .invite__btns { flex-direction: row; justify-content: center; flex-wrap: nowrap; }
+  .room-screen .room-bar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "options" "status" "actions"; }
+  .room-screen .room-bar__right { justify-self: stretch; }
+  .lo-top, .st-top { grid-template-columns: auto minmax(0, 1fr); }
+  .lo-top__center, .st-top__center { grid-column: 1 / -1; grid-row: 2; }
+  .lo-top__right, .st-top__right { grid-column: 2; grid-row: 1; }
+  .st--replay .result__main { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+}

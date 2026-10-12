@@ -7,7 +7,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
-import { createStaticHandler, computeBuildTag } from '../server/index.js';
+import { createStaticHandler, computeBuildTag, COMPRESSIBLE } from '../server/index.js';
 import { getData } from '../server/data.js';
 import * as nativeSpec from '../server/sim/spec.js';
 import { DataSource } from '../server/sim/simdata.js';
@@ -38,6 +38,26 @@ after(async () => {
   if (temp) await fs.rm(temp, { recursive: true, force: true });
 });
 
+test('management density overrides are bundled after touch rules without bypassing mandatory landscape', async () => {
+  const cssFiles = manifest['index.html'].css || [];
+  assert.ok(cssFiles.length);
+  const css = (await Promise.all(cssFiles.map((file) => fs.readFile(path.join(outDir, file), 'utf8')))).join('\n');
+  assert.match(css, /\.modal--utility/);
+  assert.match(css, /--utility-text:\s*max\(var\(--t\),\s*64px\)/);
+  assert.match(css, /\.sp-rotatable \.rotate-hint\s*\{\s*display:\s*grid/);
+  assert.doesNotMatch(css, /\.sp-rotatable:(?:not|is)\(/);
+  assert.match(css, /data-viewport-docked/);
+  assert.match(css, /--combat-available-height/);
+  assert.match(css, /--combat-viewport-height/);
+  assert.match(css, /\.room-screen--coop/);
+  assert.match(css, /\.room-topbar__tools/);
+  assert.match(css, /grid-template-areas:[^;}]*controls title invite/);
+  assert.ok(css.lastIndexOf('.settings-modal .set-row--fps') > css.indexOf('.set-row--fps'),
+    'compact overrides follow original settings styles');
+  assert.ok(css.lastIndexOf('.combat-metrics__body') > css.indexOf('.combat-metrics__body'),
+    'compact scroll override follows short-screen fallback');
+});
+
 test('built HTML, hashed assets, runtime CDN and data routes preserve the production contracts', async () => {
   for (const route of ['/', '/index.html', '/build/index.html']) {
     const response = await fetch(origin + route);
@@ -51,7 +71,9 @@ test('built HTML, hashed assets, runtime CDN and data routes preserve the produc
       const asset = await fetch(origin + url);
       assert.equal(asset.status, 200, url);
       assert.equal(asset.headers.get('cache-control'), 'public, max-age=31536000, immutable', url);
-      assert.equal(asset.headers.get('content-encoding'), 'gzip', url);
+      const stat = await fs.stat(path.join(outDir, url.slice('/build/'.length)));
+      const compressed = COMPRESSIBLE.has(path.extname(url)) && stat.size >= 512;
+      assert.equal(asset.headers.get('content-encoding'), compressed ? 'gzip' : null, url);
       assert.equal((await fetch(origin + url, { headers: { 'If-None-Match': asset.headers.get('etag') } })).status, 304);
       await asset.arrayBuffer();
     }
@@ -122,7 +144,7 @@ test('built simulation retains operator kits and domain mechanics: same determin
   }
 });
 
-test('built simulation matches Node for sleep, Egir, 0.2.0 stand-ins and self-selected operator kits', async () => {
+test('built simulation matches Node for sleep, Egir, stand-ins, self-selected kits and 0.2.4 bonds', async () => {
   const simulation = Object.values(manifest).find((m) => m.name === 'simulation');
   const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
   const spec = namespaces.find((n) => typeof n?.createBattleFromSpec === 'function');
@@ -131,11 +153,11 @@ test('built simulation matches Node for sleep, Egir, 0.2.0 stand-ins and self-se
   simdata.setSimData(raw);
   const selected = [
     ...scenariosOf('roster').filter((sc) => ['roster-039', 'roster-042'].includes(sc.id)),
-    ...scenariosOf('bonds').filter((sc) => sc.id === 'bond-egirShip-high'),
+    ...scenariosOf('bonds').filter((sc) => ['bond-egirShip-high', 'bond-raidShip-high', 'bond-steadShip-high'].includes(sc.id)),
     ...scenariosOf('standins').filter((sc) => ['standin-01', 'standin-09'].includes(sc.id)),
-    ...scenariosOf('diy').filter((sc) => ['diy-001', 'diy-019', 'diy-048', 'diy-100'].includes(sc.id)),
+    ...scenariosOf('diy').filter((sc) => ['diy-001', 'diy-019', 'diy-048', 'diy-100', 'diy-135', 'diy-136'].includes(sc.id)),
   ];
-  assert.equal(selected.length, 9, 'representative upstream scenarios exist');
+  assert.equal(selected.length, 13, 'includes Clementia in both forms and the 0.2.4 Raid/Steadfastness mechanisms');
   for (const sc of selected) {
     const input = nativeSpec.buildBattleSpec({ ...sc, battleId: sc.id, fieldId: sc.fieldId ?? 'g', content: 'full' });
     const options = { quiet: true, recordEvents: true };

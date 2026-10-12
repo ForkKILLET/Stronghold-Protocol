@@ -66,7 +66,8 @@ export const NET_DEFAULTS = Object.freeze({
 
 /**
  * Intents that also draw from the per-connection heavy bucket: g.watch (its reply is a large state resend, m.field),
- * room.loadout (a ≤ 160-entry map validated against the game data; the client debounces its edits), room.ownership
+ * room.loadout (a ≤ 160-entry map and ≤ 256 operator settings validated against the game data; the client debounces its
+ * edits), room.ownership
  * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way) and room.spectate
  * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
  * state.resync requests a full match recovery; it also uses the lobby's per-session resync coalescing.
@@ -101,6 +102,8 @@ export class Session {
     this.ws = null;
     /** @type {boolean} */
     this.connected = false;
+    /** @type {number | null} local first-welcome stamp of the attached client (optional, not authentication) */
+    this.claimAt = null;
     /** @type {number} ms epoch of the last inbound frame / pong */
     this.lastSeen = now;
     /** @type {number | null} ms epoch when the socket was lost (null while connected) */
@@ -115,6 +118,8 @@ export class Session {
     this.resyncAt = -Infinity;
     /** @type {Record<string, { skill: number, module: string|null }> | null} checked operator loadout (lobby-owned, DESIGN §16) */
     this.loadout = null;
+    /** @type {Readonly<Record<string, { potential: number, cultivate: number }>> | null} checked per-operator 潜能 / 练度 (lobby-owned, 0.2.2; room.loadout `ops`) */
+    this.ops = null;
     /** @type {readonly string[] | null} checked not-owned chess ids (干员持有, lobby-owned, 0.2.0 补位) */
     this.notOwned = null;
     /** @type {Readonly<Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>> | null} checked 自选 picks (lobby-owned, 0.2.0 自选编队) */
@@ -203,6 +208,7 @@ export class SessionRegistry {
     s.resumeWindowMs = Number.isFinite(doc.resumeWindowMs) && doc.resumeWindowMs > 0 ? Number(doc.resumeWindowMs) : null;
     s.roomCode = typeof doc.roomCode === 'string' && doc.roomCode ? doc.roomCode : null;
     s.loadout = doc.loadout && typeof doc.loadout === 'object' ? doc.loadout : null;
+    s.ops = doc.ops && typeof doc.ops === 'object' ? doc.ops : null;
     s.notOwned = Array.isArray(doc.notOwned) ? doc.notOwned : null;
     s.diy = doc.diy && typeof doc.diy === 'object' ? doc.diy : null;
     s.lang = doc.lang || 'zh-CN';
@@ -535,6 +541,8 @@ class Connection {
     this.alive = true;
     /** @type {Session | null} */
     this.session = null;
+    this.helloReview = 0;
+    this.reviewPending = false;
     this.bucket = new TokenBucket(opts.ratePerSec, opts.rateBurst, now);
     this.heavy = new TokenBucket(opts.heavyPerSec, opts.heavyBurst, now);
     this.dropWindowAt = now;
@@ -557,6 +565,7 @@ const PEEK_RID_MAX_BYTES = 2048;
 export class Network {
   /**
    * @param {{
+   *   nameModeration?: { check: Function },
    *   registry: SessionRegistry,
    *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function, welcomeInfo?: Function },
    *   log?: { info: Function, warn: Function, error: Function, debug?: Function },
@@ -564,7 +573,8 @@ export class Network {
    *   options?: Partial<typeof NET_DEFAULTS>,
    * }} opts
    */
-  constructor({ registry, handler, log = noopLog, now = Date.now, options = {} }) {
+  constructor({ registry, handler, log = noopLog, now = Date.now, options = {}, nameModeration = null }) {
+    this.nameModeration = nameModeration;
     this.registry = registry;
     this.handler = handler;
     this.log = log;
@@ -801,6 +811,7 @@ export class Network {
     }
     if (this.draining) { this.reply(conn, errorMsg(ERR.INTERNAL, rid, 'server shutting down')); return; }
     if (msg.t === 'hello') { this.onHelloMsg(conn, msg, now); return; }
+    if (conn.reviewPending) { this.reply(conn, errorMsg(ERR.RATE, rid, 'hello review pending')); return; }
     if (!conn.session) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'hello required')); return; }
     if (HEAVY_TYPES.has(msg.t) && !conn.heavy.take(now)) { this.reply(conn, errorMsg(ERR.RATE, rid, `${msg.t} too often`)); return; }
 
@@ -814,6 +825,20 @@ export class Network {
       this.log.error(`[net] handler crashed on ${msg.t}`, e);
       res = { error: ERR.INTERNAL };
     }
+    if (res && typeof res.then === 'function') {
+      Promise.resolve(res).then(
+        (result) => this.replyHandlerResult(conn, msg, rid, result),
+        (err) => {
+          this.log.error(`[net] async handler failed on ${msg.t}`, err);
+          this.replyHandlerResult(conn, msg, rid, { error: ERR.INTERNAL });
+        },
+      );
+      return;
+    }
+    this.replyHandlerResult(conn, msg, rid, res);
+  }
+
+  replyHandlerResult(conn, msg, rid, res) {
     if (res && res.error) {
       // fire-and-forget battle progress (no rid) that reached no running match — the match just ended, the room went
       // back to the lobby — is stale, not a client mistake: never answered (DESIGN §14; a rid-less error frame would
@@ -832,6 +857,34 @@ export class Network {
     }
     const name = sanitizeName(msg.name);
     if (!name) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'bad field name')); return; }
+    if (this.nameModeration) {
+      const generation = ++conn.helloReview;
+      conn.reviewPending = true;
+      Promise.resolve().then(() => this.nameModeration.check(name, conn.key || limitKeyOf(conn.ip)))
+        .catch(() => ({ allowed: true })).then((result) => {
+        if (generation !== conn.helloReview || conn.closing || this.closed || this.draining || conn.ws.readyState !== WS_OPEN) return;
+        conn.reviewPending = false;
+        if (result?.allowed !== true && [ERR.NAME_REJECTED, ERR.BAD_MSG].includes(result?.code)) {
+          // Only explicit moderation rejection is audited; no attempts, approvals, format errors or failures.
+          if (result.code === ERR.NAME_REJECTED) this.log.info?.('[names] moderation rejected WebSocket hello');
+          this.reply(conn, errorMsg(result.code, rid));
+          return;
+        }
+        this.acceptHello(conn, msg, name, this.now());
+      }).catch(() => {
+        if (generation !== conn.helloReview || conn.closing || this.closed || this.draining) return;
+        conn.reviewPending = false;
+        // An error binding the game session is not a review failure; never retry binding.
+        this.reply(conn, errorMsg(ERR.INTERNAL, rid));
+      });
+      return;
+    }
+    this.acceptHello(conn, msg, name, now);
+  }
+
+  // Only bind/create/rename after approval. Re-resolve tokens after the async boundary.
+  acceptHello(conn, msg, name, now) {
+    const rid = msg.rid;
     if (!conn.session && msg.token && this.registry.recoveryPending && !this.registry.byToken(msg.token)) {
       conn.close(1013, 'saved session recovery pending');
       return;
@@ -843,6 +896,11 @@ export class Network {
     if (!session) {
       session = msg.token ? this.registry.byToken(msg.token) : null;
       if (session) {
+        if (session.connected && session.ws && session.ws !== conn.ws
+          && (msg.noReplace || (Number.isFinite(msg.claimAt) && session.claimAt != null && msg.claimAt > session.claimAt))) {
+          this.reply(conn, errorMsg(ERR.SESSION_IN_USE, rid));
+          return;
+        }
         resumed = true;
         if (session.ws && session.ws !== conn.ws) this.detachReplaced(session.ws);
       } else {
@@ -852,6 +910,7 @@ export class Network {
       conn.session = session;
       session.ws = conn.ws;
       session.connected = true;
+      session.claimAt = Number.isFinite(msg.claimAt) ? msg.claimAt : null;
       session.disconnectedAt = null;
     }
     session.name = name;

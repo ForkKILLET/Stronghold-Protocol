@@ -10,9 +10,10 @@ import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMul
 //     Humans and bots take the lowest free seat index; seat indexes never compact.
 //   * ▸ Being in a LOBBY room and sending room.create / room.join implicitly leaves it. While your room is
 //     in a match, create/join of another room fails with ROOM_STARTED (send g.leave or room.leave first).
-//   * Host-only: room.setDifficulty, room.addBot, room.removeBot, room.kick, room.start. ▸ Changing the difficulty
-//     un-readies the other humans. ▸ room.start requires every other human to be connected and ready;
-//     the host's start counts as the host's ready (the host may still toggle room.ready for display).
+//   * Host-only: room.setDifficulty, room.setAiPicksLast, room.addBot, room.removeBot, room.kick, room.start.
+//     ▸ Changing the difficulty or the AI-picks-last option (co-op only) un-readies the other humans.
+//     ▸ room.start requires every other human to be connected and ready; the host's start counts as the host's
+//     ready (the host may still toggle room.ready for display).
 //   * room.kick {seat, playerId} (community report #17, owner approved): before the match only, the host removes another
 //     human like an AI seat (an AI seat stays room.removeBot's; never the host itself). `playerId` names the player the
 //     host confirmed: a seat that changed hands meanwhile (left, someone else joined) is refused with BAD_TARGET. The
@@ -21,7 +22,8 @@ import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMul
 //     (it stays the player's identity: net.js sessions belong to players, not seats). ▸ No ban: the player may join
 //     again with the code.
 //   * Host migration: when the host leaves (or is removed), the lowest-seat remaining human (connected
-//     ones first) becomes host. A room without humans is disposed (bots never keep a room alive).
+//     ones first) becomes host. A room without humans is disposed (bots never keep a room alive), except while its
+//     matchmaking context still owns human teammates from outside the room. Its code/lane/checkpoint stay unchanged.
 //   * Disconnect in LOBBY: the seat shows connected=false and is freed after `lobbyGraceMs` (60 s); a
 //     session that comes back after that gets `room.closed {reason:'timeout'}`.
 //     Disconnect in a match: the seat is kept and match.onDisconnect(playerId) is called.
@@ -39,10 +41,10 @@ import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMul
 //     that window coalesce into one deferred resync, so hello spam cannot amplify into ~15 KB per request.
 //   * Result replay: the match's final m.public and each human's m.result are kept after the match ends. A
 //     human who resyncs (resume after a drop, a reloaded tab, a repeated hello) while the room is back in LOBBY
-//     gets room.state followed by those two frames again, until they act in the room (ready, difficulty, AI
-//     seats, start), leave it, or a new match starts. A human removed by the lobby grace gets them right after
-//     `room.closed {timeout}` on their next resume (Match.onReconnect cannot do this: the lobby drops the
-//     match reference at onEnd and disposes it on the next macrotask).
+//     gets room.state followed by those two frames again, until they act in the room (ready, difficulty, the
+//     AI-picks-last option, AI seats, start), leave it, or a new match starts. A human removed by the lobby grace
+//     gets them right after `room.closed {timeout}` on their next resume (Match.onReconnect cannot do this: the
+//     lobby drops the match reference at onEnd and disposes it on the next macrotask).
 //   * Per-network limits (internet clients only, see net.js clientAddress): at most `maxRoomsPerAddr` rooms
 //     created from one network may exist at once and at most `maxMatchesPerAddr` matches started from one
 //     network may run at once (room.create / room.start → ERR.RATE). Without them a socket loop could fill
@@ -69,6 +71,9 @@ import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMul
 //     (or outside a room) it simply replaces the stored one; while the room's match runs it is also handed to
 //     match.setLoadout(playerId, loadout), which accepts it only during INFO_CHECK (the 干员调配 entry of the briefing)
 //     and refuses it afterwards (WRONG_PHASE: the match's loadout is locked, the stored one applies to the next match).
+//     ▸ Its `ops` (0.2.2: the per-operator 潜能 / 练度, shared/protocol.js checkLoadoutOps — an operator of the 干员调配
+//     roster or the 自选 owned pool, strict like the entries) travel with it: session.ops / seat.ops / seats[].ops and
+//     match.setLoadout(playerId, loadout, ops); a message without `ops` sets none (every operator 潜能 6, 精英2 Lv.60).
 //   * Operator ownership (干员持有, 0.2.0 补位, owner's decision 2026-10-05): room.ownership { notOwned } — the base chess
 //     ids the player marked as not owned — is checked leniently (shared/protocol.js checkNotOwned: anything that is not
 //     a droppable NORMAL chess is dropped, never the whole list; only a malformed list is BAD_MSG) and stored on the
@@ -101,7 +106,7 @@ import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMul
 
 import { randomBytes, randomInt } from 'node:crypto';
 import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, DIFFICULTIES, modeIdFor } from '../shared/constants.js';
-import { checkLoadout, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
+import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
 import { encode, isErrCode, sendRaw, sendSession } from './net.js';
 import { resetStateDelta } from './stateTransport.js';
 import { getData as defaultGetData, lookup } from './data.js';
@@ -110,6 +115,7 @@ import { restoreMatch as applyMatchCheckpoint } from './match/snapshot.js';
 import { createRngFromState } from './sim/rng.js';
 import { KITTED_CHARS } from './sim/content/kits/index.js';
 import { t } from '../shared/i18n.js';
+import { validChatText } from '../shared/chat.js';
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -122,7 +128,6 @@ export const LOBBY_DEFAULTS = Object.freeze({
   maxMatchesPerAddr: 8,   // matches started from one client network that may run at once (0 = unlimited)
   resyncMinGapMs: 1000,   // heavy resyncs (match state / result replay) per session at most this often on repeated hellos
   soloReconnectWindowMs: null, // a dropped solo run stays resumable this long (null = data singleReconnectTime, 24 h)
-  matchmakingWaitMs: 60_000,   // queue wait before an AI teammate is added
   matchmakingTickMs: 1_000,    // queue scheduling cadence
 });
 
@@ -139,6 +144,7 @@ const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 /**
  * @typedef {{ seat: number, playerId: string, name: string, isBot: boolean, ready: boolean,
  *             connected: boolean, left: boolean, loadout?: Record<string, { skill: number, module: string|null }> | null,
+ *             ops?: Readonly<Record<string, { potential: number, cultivate: number }>> | null,
  *             notOwned?: readonly string[] | null, diy?: Readonly<Record<string, DiyLoadout>> | null }} Seat
  * @typedef {{ charId: string, skillIndex: number, uniEquipId: string|null }} DiyLoadout
  */
@@ -148,6 +154,22 @@ function freezeLoadout(loadout) {
   const out = {};
   for (const [id, e] of Object.entries(loadout || {})) out[id] = Object.freeze({ skill: e.skill, module: e.module ?? null });
   return Object.freeze(out);
+}
+
+/** Deep-frozen copy of checked operator settings (0.2.2 潜能 / 练度; shared by the session, the seat and the match). */
+function freezeOps(ops) {
+  const out = {};
+  for (const [id, e] of Object.entries(ops || {})) out[id] = Object.freeze({ potential: e.potential, cultivate: e.cultivate });
+  return Object.freeze(out);
+}
+
+/** The charIds a player may set a potential / 练度 for, per data object (shared/protocol.js cultivationCharIds). */
+const OPS_IDS = new WeakMap();
+function opsCharIds(data) {
+  if (!data || typeof data !== 'object') return new Set();
+  let ids = OPS_IDS.get(data);
+  if (!ids) { ids = cultivationCharIds(data.chess, data.backups); OPS_IDS.set(data, ids); }
+  return ids;
 }
 
 /** Deep-frozen copy of checked 自选 picks (shared by the session, the seat and the match's PlayerState). */
@@ -164,6 +186,11 @@ export class Room {
     this.code = code;
     this.mode = mode;
     this.difficulty = difficulty;
+    /**
+     * 「AI 队友最后选择」 (room.setAiPicksLast, GitHub #338; co-op only, off by default): the match's strategy and 机变 drafts
+     * put every human seat before every AI seat (Match opts.aiPicksLast). Kept across the room's matches.
+     */
+    this.aiPicksLast = false;
     /** @type {string | null} */
     this.hostId = null;
     /** @type {(Seat | null)[]} */
@@ -186,7 +213,7 @@ export class Room {
     this.ownerKey = null;
     /** @type {string | null} per-network limit key of whoever started the running match */
     this.matchKey = null;
-    /** @type {{ queueId: string, queuedAt: number, deadlineAt: number, fillBots: boolean } | null} */
+    /** @type {{ queueId: string, queuedAt: number, count: number, capacity: number } | null} */
     this.matching = null;
     /** Owner opt-in for the in-match developer console. Public matchmaking never has a Room flag. */
     this.consoleEnabled = false;
@@ -220,6 +247,7 @@ export class Room {
       hostId: this.hostId,
       mode: this.mode,
       difficulty: this.difficulty,
+      aiPicksLast: this.aiPicksLast,
       inMatch: !!this.match,
       matching: this.matching ? { ...this.matching } : null,
       consoleEnabled: !!this.consoleEnabled,
@@ -246,14 +274,20 @@ export class Lobby {
    *   seedFn?: () => number,
    *   options?: Partial<typeof LOBBY_DEFAULTS>,
    *   workerPool?: object | null,
+   *   matchWorkerPool?: object | null,
+   *   nameModeration?: { checkChat?: Function } | null,
    * }} opts
    */
-  constructor({ registry, log = noopLog, MatchClass = DefaultMatch, getData = defaultGetData, now = Date.now, seedFn, options = {}, workerPool = null }) {
+  constructor({ registry, log = noopLog, MatchClass = DefaultMatch, getData = defaultGetData, now = Date.now, seedFn, options = {}, workerPool = null, matchWorkerPool = null, nameModeration = null }) {
     this.registry = registry;
     this.log = log;
     this.MatchClass = MatchClass;
     this.getData = getData;
     this.workerPool = workerPool;
+    this.matchWorkerPool = matchWorkerPool;
+    this.nameModeration = nameModeration;
+    this.chatReviews = new WeakMap();
+    this.shuttingDown = false;
     this.now = now;
     this.seedFn = seedFn || (() => randomInt(2 ** 32));
     this.opts = { ...LOBBY_DEFAULTS, ...options };
@@ -278,6 +312,11 @@ export class Lobby {
     this.queueSeq = 0;
     this.matchQueueTimer = setInterval(() => this.processMatchQueues(), Math.max(100, Number(this.opts.matchmakingTickMs) || 1000));
     this.matchQueueTimer.unref?.();
+  }
+
+  /** Return the room-pinned lane when enabled, otherwise preserve the existing shared pool. */
+  workerPoolFor(key) {
+    return this.workerPool?.assign ? this.workerPool.assign(key) : this.workerPool;
   }
 
   /** @param {string} code @returns {Room | null} */
@@ -398,12 +437,15 @@ export class Lobby {
       case 'room.leave': return this.leave(session);
       case 'room.ready': return this.ready(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
+      case 'room.setAiPicksLast': return this.setAiPicksLast(session, msg);
       case 'room.addBot': return this.addBot(session);
       case 'room.removeBot': return this.removeBot(session, msg);
       case 'room.kick': return this.kick(session, msg);
       case 'room.start': return this.start(session);
       case 'room.console.enable': return this.enableConsole(session);
       case 'room.console.disable': return this.disableConsole(session);
+      case 'room.rerollSetup': return this.rerollSetup(session, msg);
+      case 'room.cancelReroll': return this.rerollSetup(session, msg, true);
       case 'room.loadout': return this.loadout(session, msg);
       case 'match.join': return this.matchJoin(session, msg);
       case 'match.leave': return this.matchLeave(session);
@@ -464,6 +506,7 @@ export class Lobby {
    * @param {string} [reason]
    */
   shutdown(reason = 'shutdown') {
+    this.shuttingDown = true;
     this.stopMatchmaking();
     for (const entry of [...new Set(this.queueByPlayer.values())]) this.cancelMatchQueue(entry, reason);
     for (const room of [...this.rooms.values()]) this.disposeRoom(room, reason);
@@ -484,13 +527,13 @@ export class Lobby {
 
   /**
    * Rebuild the rooms of a persisted document. Seats whose session did not survive (or whose player had already left)
-   * are dropped; a room without a human is not restored at all, and every restored seat starts disconnected with a
-   * fresh lobby grace (the players are reconnecting right now).
+   * are dropped; a room without a human is restored only as a verified running queue container. Every restored seat
+   * starts disconnected with a fresh lobby grace (the players are reconnecting right now).
    * @param {object[]} docs room documents (server/persist.js roomDoc)
-   * @param {{ now?: number }} [opts]
+   * @param {{ now?: number, allowEmpty?: boolean }} [opts] empty containers require a verified queue checkpoint
    * @returns {{ rooms: number, seats: number, droppedSeats: number }}
    */
-  restoreRooms(docs, { now = this.now() } = {}) {
+  restoreRooms(docs, { now = this.now(), allowEmpty = false } = {}) {
     const stats = { rooms: 0, seats: 0, droppedSeats: 0 };
     for (const d of Array.isArray(docs) ? docs : []) {
       if (!d || typeof d.code !== 'string' || d.code.length !== ROOM_CODE_LEN || this.rooms.has(d.code)) { stats.droppedSeats++; continue; }
@@ -504,6 +547,7 @@ export class Lobby {
       room.prepSeconds = mode === 'coop' ? normalizePrepSeconds(d.prepSeconds) : null;
       room.prepMultiplier = mode === 'coop' ? normalizePrepMultiplier(d.prepMultiplier) : null;
       room.battleSpeed = normalizeBattleSpeed(d.battleSpeed);
+      room.aiPicksLast = mode !== 'solo' && d.aiPicksLast === true;
       for (const s of Array.isArray(d.seats) ? d.seats : []) {
         if (!s || typeof s.playerId !== 'string' || !Number.isInteger(s.seat) || s.seat < 0 || s.seat >= MAX_SEATS || room.seats[s.seat]) continue;
         const isBot = !!s.isBot;
@@ -519,12 +563,13 @@ export class Lobby {
           connected: false,
           left,
           loadout: isBot ? null : (session?.loadout || (s.loadout && typeof s.loadout === 'object' ? s.loadout : null)),
+          ops: isBot ? null : session?.ops || s.ops || null,
           notOwned: isBot ? null : session?.notOwned || s.notOwned || null,
           diy: isBot ? null : session?.diy || s.diy || null,
         };
         stats.seats++;
       }
-      if (room.activeHumans().length === 0) { stats.droppedSeats += room.seats.filter(Boolean).length; continue; }
+      if (room.activeHumans().length === 0 && !allowEmpty) { stats.droppedSeats += room.seats.filter(Boolean).length; continue; }
       const host = room.seatOf(d.hostId);
       room.hostId = host && !host.isBot && !host.left ? d.hostId : null;
       if (!room.hostId) this.migrateHost(room);
@@ -552,6 +597,7 @@ export class Lobby {
       return this.restoreQueuedMatch(doc, { room, departedPlayerIds: [...departed], sessionMatchKeys });
     }
     const res = this.startMatchWith(room, room.matchKey, doc, { departedPlayerIds: [...departed] });
+    if (res && typeof res.then === 'function') return res.then((value) => !(value && value.error));
     if (res && res.error) return false;
     return true;
   }
@@ -624,6 +670,7 @@ export class Lobby {
     const prepared = this.prepareRecovery(checkpoint, { room, departedPlayerIds, sessionMatchKeys });
     if (!prepared) return false;
     const { doc, departed } = prepared;
+    if (this.matchWorkerPool) return this.restoreQueuedMatchWorker(doc, { room, departedPlayerIds: [...departed], sessionMatchKeys });
     checkpoint = doc;
     const players = doc.players;
     const seats = players.map((p, i) => ({
@@ -633,7 +680,7 @@ export class Lobby {
       isBot: !!p.isBot,
       left: !p.isBot && departed.has(p.playerId),
       connected: false,
-      loadout: p.isBot ? null : (p.loadout || null), notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+      loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
     }));
     const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, room,
       members: seats, lastPublic: null, sharedResult: null, results: new Map() };
@@ -643,10 +690,10 @@ export class Lobby {
     try {
       const match = new this.MatchClass({
         roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats,
-        consoleEnabled: false, seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
-        data: this.safeData(), workerPool: this.workerPool, log: this.log, now: this.now,
+        consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast, seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
+        data: this.safeData(), workerPool: this.workerPoolFor(room?.code || roomCode), log: this.log, now: this.now,
         send: (playerId, msg, encoded) => (ctx.live ? this.queueMatchSend(ctx, playerId, msg, encoded) : false),
-        broadcast: (msg) => { if (ctx.live) this.queueMatchBroadcast(ctx, msg); },
+        broadcast: (msg, encoded) => { if (ctx.live) this.queueMatchBroadcast(ctx, msg, encoded); },
         onEnd: (summary) => this.onQueuedMatchEnd(ctx, summary),
       });
       ctx.match = match;
@@ -678,6 +725,47 @@ export class Lobby {
     }
   }
 
+  async restoreQueuedMatchWorker(checkpoint, { room = null, departedPlayerIds = [], sessionMatchKeys = null } = {}) {
+    const players = checkpoint.players;
+    const seats = players.map((p, i) => ({
+      seat: Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS ? p.seat : i,
+      playerId: p.playerId, name: typeof p.name === 'string' ? p.name : t('博士'), isBot: !!p.isBot,
+      left: !p.isBot && departedPlayerIds.includes(p.playerId), connected: false,
+      loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+    }));
+    const roomCode = typeof checkpoint.roomCode === 'string' && checkpoint.roomCode
+      ? checkpoint.roomCode : `M${randomBytes(3).toString('hex').toUpperCase()}`;
+    const mode = checkpoint.mode === 'solo' ? 'solo' : 'coop';
+    const difficulty = typeof checkpoint.difficulty === 'string' && checkpoint.difficulty ? checkpoint.difficulty : 'NORMAL';
+    const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, workerKey: roomCode, room,
+      members: seats, lastPublic: null, sharedResult: null, results: new Map() };
+    try {
+      const match = await this.matchWorkerPool.create(roomCode, {
+        roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
+        seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
+      }, {
+        created: (match) => this.attachQueuedWorker(ctx, room, match),
+        send: (playerId, msg, encoded) => { if (ctx.live) return this.queueMatchSend(ctx, playerId, msg, encoded); return false; },
+        broadcast: (msg, encoded) => { if (ctx.live) this.queueMatchBroadcast(ctx, msg, encoded); },
+        end: (summary) => this.onQueuedMatchEnd(ctx, summary),
+      }, checkpoint, departedPlayerIds);
+      if (ctx.disposed || room?.disposed || (room && room.matchCtx !== ctx)) {
+        await match.dispose();
+        return false;
+      }
+      if (room) room.replay = null;
+      if (this.completeRecoveredMatch(ctx, room)) return true;
+      await match.invoke('flush', true);
+      if (room && !room.disposed) this.broadcastState(room);
+      return true;
+    } catch (e) {
+      this.log.error(`[match] ${roomCode} matchmaking Worker restore failed`, e);
+      if (room?.matchCtx === ctx) { room.match = null; room.matchCtx = null; room.matchKey = null; }
+      this.disposeMatchCtx(ctx);
+      return false;
+    }
+  }
+
   /** If partial recovery legitimately finishes the game, preserve its settlement for reconnecting humans. */
   completeRecoveredMatch(ctx, room) {
     const match = ctx.match;
@@ -700,10 +788,10 @@ export class Lobby {
 
   /**
    * Join the shared matchmaking pool. A player outside a room contributes one seat; a room host contributes the
-   * whole connected party. `fillBots` controls whether other queued parties may be combined, while the 60 s deadline
-   * always fills the remaining seats with AI as required by the game flow.
+   * whole connected human party. All tickets may combine; only a full human team starts, without an AI timeout.
+   * Legacy clients may still send `fillBots`, but it no longer affects matchmaking.
    */
-  matchJoin(session, { mode, difficulty, fillBots = true }) {
+  matchJoin(session, { mode, difficulty }) {
     const room = this.roomOf(session);
     const active = this.activeMatchOf(session);
     if (active) return fail(ERR.ROOM_STARTED, 'match already running');
@@ -712,7 +800,7 @@ export class Lobby {
       if (room) return fail(ERR.MATCHING, 'leave the room before solo matchmaking');
       // Compatibility for clients from the first queue rollout. The current UI keeps independent simulation on its
       // solo room path and only sends mode=coop from the in-room teammate-match option.
-      const entry = this.makeQueueEntry({ mode: 'coop', difficulty, fillBots: true, room: null,
+      const entry = this.makeQueueEntry({ mode: 'coop', difficulty, room: null,
         players: [{ ...this.humanSeat(0, session), connected: session.connected }] });
       this.enqueueMatchEntry(entry);
       this.processMatchQueues();
@@ -724,19 +812,20 @@ export class Lobby {
       if (room.consoleEnabled) return fail(ERR.MATCHING, 'console and matchmaking are mutually exclusive');
       if (room.prepSeconds != null || room.prepMultiplier != null || room.battleSpeed !== 2) return fail(ERR.MATCHING, 'custom preparation time cannot join public matchmaking');
       if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+      if (room.seats.some((s) => s?.isBot)) return fail(ERR.BAD_MSG, t('请先移除 AI 队友，再匹配真人队友'));
       const humans = room.activeHumans();
       if (!humans.length || humans.some((s) => !s.connected)) return fail(ERR.NOT_READY, 'all party members must be connected');
       if (humans.some((s) => this.queueByPlayer.has(s.playerId))) return fail(ERR.MATCHING);
-      const players = room.seats.filter(Boolean).map((s) => ({ seat: s.seat, playerId: s.playerId, name: s.name,
-        isBot: !!s.isBot, connected: s.connected !== false, loadout: s.isBot ? null : s.loadout || null,
-        notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null }));
-      const entry = this.makeQueueEntry({ mode, difficulty: room.difficulty, fillBots: !!fillBots, room, players });
+      const players = humans.map((s) => ({ seat: s.seat, playerId: s.playerId, name: s.name,
+        isBot: false, connected: true, loadout: s.loadout || null, ops: s.ops || null,
+        notOwned: s.notOwned || null, diy: s.diy || null }));
+      const entry = this.makeQueueEntry({ mode, difficulty: room.difficulty, room, players });
       this.enqueueMatchEntry(entry);
       this.broadcastState(room);
       this.processMatchQueues();
       return OK;
     }
-    const entry = this.makeQueueEntry({ mode, difficulty, fillBots: true, room: null,
+    const entry = this.makeQueueEntry({ mode, difficulty, room: null,
       players: [{ ...this.humanSeat(0, session), connected: session.connected }] });
     this.enqueueMatchEntry(entry);
     this.processMatchQueues();
@@ -750,12 +839,12 @@ export class Lobby {
     return OK;
   }
 
-  makeQueueEntry({ mode, difficulty, fillBots, room, players }) {
+  makeQueueEntry({ mode, difficulty, room, players }) {
     const now = this.now();
     const entry = {
       queueId: `Q${(++this.queueSeq).toString(36).toUpperCase()}`,
-      mode, difficulty, fillBots: !!fillBots, room: room || null, players: players.map((p) => ({ ...p })),
-      queuedAt: now, deadlineAt: now + Math.max(1000, Number(this.opts.matchmakingWaitMs) || 60_000),
+      mode, difficulty, room: room || null, players: players.map((p) => ({ ...p })),
+      queuedAt: now,
       removed: false,
     };
     return entry;
@@ -772,37 +861,26 @@ export class Lobby {
       this.queueByPlayer.set(p.playerId, entry);
     }
     if (entry.room) {
-      entry.room.matching = { queueId: entry.queueId, queuedAt: entry.queuedAt, deadlineAt: entry.deadlineAt, fillBots: entry.fillBots };
+      entry.room.matching = { queueId: entry.queueId, queuedAt: entry.queuedAt, count: entry.players.length, capacity: MAX_SEATS };
     }
-    // A newly matched human party gives its teammates a fresh AI wait. Use the same packing as processing,
-    // so another difficulty, a private ticket or a party that does not fit cannot extend their deadline.
-    const groups = this.groupMatchEntries(bucket);
-    const selected = groups.find((group) => group.includes(entry));
-    if (selected.length > 1) for (const teammate of selected) {
-      teammate.deadlineAt = entry.deadlineAt;
-      if (teammate.room?.matching) {
-        teammate.room.matching.deadlineAt = teammate.deadlineAt;
-        this.broadcastState(teammate.room);
-      }
-    }
-    this.broadcastQueueCounts(entry.mode, entry.difficulty, groups);
+    this.broadcastQueueCounts(entry.mode, entry.difficulty);
   }
 
-  /** Oldest-first party packing without splitting parties or combining private tickets. */
+  /** Oldest-first party packing without splitting parties. Legacy AI flags are ignored. */
   selectMatchEntries(bucket) {
     const first = bucket[0];
     const selected = [first];
     let total = first.players.length;
-    if (first.fillBots) for (let i = 1; i < bucket.length && total < MAX_SEATS; i++) {
+    for (let i = 1; i < bucket.length && total < MAX_SEATS; i++) {
       const next = bucket[i];
-      if (!next || next.removed || !next.fillBots || total + next.players.length > MAX_SEATS) continue;
+      if (!next || next.removed || total + next.players.length > MAX_SEATS) continue;
       selected.push(next);
       total += next.players.length;
     }
     return selected;
   }
 
-  /** Use identical groups for counts, AI deadline resets and match launch. */
+  /** Use identical groups for counts and match launch. */
   groupMatchEntries(bucket) {
     const remaining = bucket.filter((entry) => entry && !entry.removed);
     const groups = [];
@@ -813,7 +891,7 @@ export class Lobby {
     const used = new Set();
     for (let i = 0; i < remaining.length; i++) {
       const entry = remaining[i];
-      if (entry.fillBots && entry.players.length > 0 && entry.players.length <= MAX_SEATS) bySize[entry.players.length].push(i);
+      if (entry.players.length > 0 && entry.players.length <= MAX_SEATS) bySize[entry.players.length].push(i);
     }
     for (let i = 0; i < remaining.length; i++) {
       if (used.has(i)) continue;
@@ -821,7 +899,7 @@ export class Lobby {
       const selected = [first];
       used.add(i);
       let total = first.players.length;
-      while (first.fillBots && total < MAX_SEATS) {
+      while (total < MAX_SEATS) {
         let next = Infinity;
         for (let size = 1; size <= MAX_SEATS - total; size++) {
           const candidates = bySize[size];
@@ -843,14 +921,18 @@ export class Lobby {
     const bucket = this.matchQueues.get(`${mode}:${difficulty}`) || [];
     for (const group of groups || this.groupMatchEntries(bucket)) {
       const count = group.reduce((n, entry) => n + entry.players.filter((p) => !p.isBot).length, 0);
-      for (const entry of group) this.sendQueueState(entry, 'queued', null, count);
+      for (const entry of group) {
+        this.sendQueueState(entry, 'queued', null, count);
+        if (entry.room?.matching && entry.room.matching.count !== count) {
+          entry.room.matching.count = count;
+          this.broadcastState(entry.room);
+        }
+      }
     }
   }
 
-  /** Process each bucket oldest-first. Full teams start immediately; otherwise AI fills seats after the latest
-   * teammate's fresh wait expires. Regular scheduler ticks never extend that wait. */
+  /** Full human teams start immediately. Incomplete groups keep waiting without blocking later full groups. */
   processMatchQueues() {
-    const now = this.now();
     for (const [key, bucket] of this.matchQueues) {
       for (let i = bucket.length - 1; i >= 0; i--) {
         if (!bucket[i] || bucket[i].removed) bucket.splice(i, 1);
@@ -858,18 +940,18 @@ export class Lobby {
       for (const selected of this.groupMatchEntries(bucket)) {
         const first = selected[0];
         const total = selected.reduce((n, entry) => n + entry.players.length, 0);
-        if (total < MAX_SEATS && now < first.deadlineAt) continue;
+        if (total < MAX_SEATS) continue;
         for (const entry of selected) {
           this.removeQueueReferences(entry);
         }
         const players = selected.flatMap((entry) => entry.players.map((p) => ({ ...p })));
-        while (players.length < MAX_SEATS) {
-          const seat = players.length;
-          players.push({ seat, playerId: `ai_${randomBytes(4).toString('hex')}`, name: BOT_NAMES[seat % BOT_NAMES.length],
-            isBot: true, connected: true, loadout: null });
-        }
         const owner = selected.find((entry) => entry.room) || first;
-        this.startQueuedMatch(owner, players, selected);
+        Promise.resolve(this.startQueuedMatch(owner, players, selected)).then((result) => {
+          if (result?.error) this.failedQueuedStart(selected);
+        }).catch((e) => {
+          this.log.error(`[match] queued start failed: ${e?.message || e}`);
+          this.failedQueuedStart(selected);
+        });
       }
       const waiting = bucket.filter((entry) => !entry.removed);
       if (waiting.length !== bucket.length) {
@@ -878,6 +960,18 @@ export class Lobby {
         this.broadcastQueueCounts(mode, difficulty);
       }
       if (!waiting.length) this.matchQueues.delete(key);
+    }
+  }
+
+  /** A rejected async launch must clear the client's old queue UI, without cancelling a newer ticket/game. */
+  failedQueuedStart(entries) {
+    for (const entry of entries) {
+      const players = entry.players.filter((p) => {
+        const session = this.registry.byId(p.playerId);
+        return !p.isBot && session && !this.activeMatchOf(session) && !session.matchQueue;
+      });
+      if (players.length) this.sendQueueState({ ...entry, players }, 'closed', 'start_failed');
+      if (entry.room && !entry.room.disposed && !entry.room.match) this.broadcastState(entry.room);
     }
   }
 
@@ -909,7 +1003,7 @@ export class Lobby {
   sendQueueState(entry, status = 'queued', reason = null, count = entry.players.filter((p) => !p.isBot).length) {
     const msg = { t: 'match.queue', status, queueId: entry.queueId, mode: entry.mode, difficulty: entry.difficulty,
       count, capacity: MAX_SEATS, queuedAt: entry.queuedAt,
-      deadlineAt: entry.deadlineAt, fillBots: entry.fillBots, ...(reason ? { reason } : {}) };
+      ...(reason ? { reason } : {}) };
     for (const p of entry.players) if (!p.isBot) {
       const session = this.registry.byId(p.playerId);
       if (session?.connected) sendSession(session, msg);
@@ -1097,6 +1191,22 @@ export class Lobby {
     return OK;
   }
 
+  /** 「AI 队友最后选择」 (GitHub #338): host-only, before the match, co-op rooms only (a solo room has no AI seat). */
+  setAiPicksLast(session, { on }) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.mode === 'solo') return fail(ERR.BAD_TARGET, 'solo rooms have no AI teammates');
+    this.dropReplay(room, session.playerId);
+    if (room.aiPicksLast !== on) {
+      room.aiPicksLast = on;
+      for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+      this.broadcastState(room);
+    }
+    return OK;
+  }
+
   addBot(session) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);
@@ -1176,28 +1286,53 @@ export class Lobby {
     return this.startMatch(room, key);
   }
 
+  /** Host authorization stays in the lobby; the match owns the vote and setup. */
+  rerollSetup(session, msg, cancel = false) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
+    const method = cancel ? 'cancelSetupReroll' : 'requestSetupReroll';
+    if (!room.match || typeof room.match[method] !== 'function') return fail(ERR.WRONG_PHASE);
+    return this.callMatch(room, method, session.playerId, cancel ? msg.voteId : msg.setupRevision) || fail(ERR.INTERNAL);
+  }
+
   /**
-   * room.loadout (DESIGN §16): check the operator loadout against the game data, store it on the session and the seat,
-   * and — while a match runs — hand it to the match (accepted only during INFO_CHECK, see the header).
+   * room.loadout (DESIGN §16): check the operator loadout — and its per-operator 潜能 / 练度 `ops` (0.2.2) — against the
+   * game data, store both on the session and the seat, and — while a match runs — hand them to the match (accepted only
+   * during INFO_CHECK, see the header). Either part refused: nothing is stored.
    */
-  loadout(session, { entries }) {
+  loadout(session, { entries, ops }) {
     const data = this.safeData();
     const res = checkLoadout(entries, (id) => lookup('chess', id, data));
     if (!res || res.error) return fail(res && isErrCode(res.error) ? res.error : ERR.BAD_MSG, res && res.detail);
+    const ids = opsCharIds(data);
+    const resOps = checkLoadoutOps(ops, (id) => ids.has(id));
+    if (!resOps || resOps.error) return fail(resOps && isErrCode(resOps.error) ? resOps.error : ERR.BAD_MSG, resOps && resOps.detail);
     const loadout = freezeLoadout(res.loadout);
+    const opsSet = freezeOps(resOps.ops);
     session.loadout = loadout;
+    session.ops = opsSet;
     const room = this.roomOf(session);
     if (!room) return OK;
     const seat = room.seatOf(session.playerId);
-    if (seat) seat.loadout = loadout;
+    if (seat) { seat.loadout = loadout; seat.ops = opsSet; }
     if (!room.match || !seat) return OK; // a spectator's loadout stays on its session, never reaching the match
     if (typeof room.match.setLoadout !== 'function') return fail(ERR.ROOM_STARTED, 'stored for the next match');
     let r;
     try {
-      r = room.match.setLoadout(session.playerId, loadout);
+      r = room.match.setLoadout(session.playerId, loadout, opsSet);
     } catch (e) {
       this.log.error(`[lobby] ${room.code} match.setLoadout threw`, e);
       return fail(ERR.INTERNAL);
+    }
+    if (r && typeof r.then === 'function') {
+      return r.then((value) => {
+        if (value && typeof value === 'object' && value.error) {
+          return fail(isErrCode(value.error) ? value.error : ERR.INTERNAL, typeof value.detail === 'string' ? value.detail : undefined);
+        }
+        return OK;
+      }).catch(() => fail(ERR.INTERNAL));
     }
     if (r && typeof r === 'object' && r.error) {
       return fail(isErrCode(r.error) ? r.error : ERR.INTERNAL, typeof r.detail === 'string' ? r.detail : undefined);
@@ -1262,20 +1397,91 @@ export class Lobby {
    * @param {Room} room @param {string | null} key @param {object | null} checkpoint
    */
   startMatchWith(room, key, checkpoint, { departedPlayerIds = [] } = {}) {
+    if (this.matchWorkerPool) return this.startMatchWithWorker(room, key, checkpoint, { departedPlayerIds });
+    return this.startMatchWithLocal(room, key, checkpoint, { departedPlayerIds });
+  }
+
+  async startMatchWithWorker(room, key, checkpoint, { departedPlayerIds = [] } = {}) {
+    if (room.disposed || room.match) return fail(ERR.ROOM_STARTED);
     const host = room.seatOf(room.hostId);
     if (host && !checkpoint) host.ready = true;
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
         seat: p.seat, playerId: p.playerId, name: p.name, isBot: !!p.isBot, connected: false,
-        loadout: p.isBot ? null : (p.loadout || null), notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+        loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+      }))
+      : room.seats.filter(Boolean).map((s) => ({
+        seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
+        loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
+      }));
+    const ctx = { live: false, ended: false, disposed: false, match: null, workerKey: room.code,
+      lastPublic: null, sharedResult: null, results: new Map() };
+    let seed = 0;
+    try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
+    if (checkpoint && Number.isInteger(checkpoint.seed)) seed = checkpoint.seed >>> 0;
+    const matchNo = checkpoint ? Math.max(1, room.matchCount) : room.matchCount + 1;
+    try {
+      const match = await this.matchWorkerPool.create(room.code, {
+        roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: modeIdFor(room.mode, room.difficulty),
+        seats, spectators: room.spectators.map((s) => s.playerId), consoleEnabled: !!room.consoleEnabled,
+        seed, matchNo, aiPicksLast: !!room.aiPicksLast,
+        prepSeconds: room.prepSeconds, prepMultiplier: room.prepMultiplier, combatSpeed: room.battleSpeed,
+      }, {
+        created: (match) => {
+          ctx.match = match;
+          ctx.live = true;
+          room.match = match;
+          room.matchCtx = ctx;
+          room.matchKey = key;
+        },
+        send: (playerId, msg, encoded) => { if (ctx.live) return this.matchSend(room, ctx, playerId, msg, encoded); return false; },
+        broadcast: (msg, encoded) => { if (ctx.live) this.matchBroadcast(room, ctx, msg, encoded); },
+        end: (summary) => this.onMatchEnd(room, ctx, summary),
+      }, checkpoint, departedPlayerIds);
+      if (ctx.disposed || room.disposed || room.matchCtx !== ctx) {
+        await match.dispose();
+        return fail(ERR.NOT_IN_ROOM, 'match initialization cancelled');
+      }
+      room.replay = null;
+      if (!checkpoint) room.matchCount++;
+      ctx.live = true;
+      this.broadcastState(room);
+      if (checkpoint) {
+        if (this.completeRecoveredMatch(ctx, room)) return OK;
+        match._lastPubJson = '';
+        await match.invoke('flush', true);
+        this.log.info(`[lobby] ${room.code} match #${room.matchCount} restored in Worker (${room.mode}/${room.difficulty})`);
+      } else {
+        this.log.info(`[lobby] ${room.code} match #${room.matchCount} starting in Worker (${room.mode}/${room.difficulty}, ${seats.length} seats, seed ${seed})`);
+        await match.start();
+        if (!ctx.ended && !ctx.disposed) this.notifyMatchStarted(room.code, match);
+      }
+      return OK;
+    } catch (e) {
+      this.log.error(`[lobby] ${room.code} Worker match failed to start`, e);
+      if (room.matchCtx === ctx) { room.match = null; room.matchCtx = null; room.matchKey = null; }
+      this.disposeMatchCtx(ctx);
+      this.broadcastState(room);
+      return fail(ERR.INTERNAL, 'match failed to start');
+    }
+  }
+
+  startMatchWithLocal(room, key, checkpoint, { departedPlayerIds = [] } = {}) {
+    const host = room.seatOf(room.hostId);
+    if (host && !checkpoint) host.ready = true;
+    const seats = checkpoint
+      ? checkpoint.players.map((p) => ({
+        seat: p.seat, playerId: p.playerId, name: p.name, isBot: !!p.isBot, connected: false,
+        loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
         seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
         // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
-        loadout: s.isBot ? null : s.loadout || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
+        loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
-    const ctx = { live: !checkpoint, ended: false, disposed: false, match: null, lastPublic: null, sharedResult: null, results: new Map() };
+    const ctx = { live: !checkpoint, ended: false, disposed: false, match: null, workerKey: room.code,
+      lastPublic: null, sharedResult: null, results: new Map() };
     const matchNo = checkpoint ? Math.max(1, room.matchCount) : room.matchCount + 1;
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
@@ -1286,6 +1492,8 @@ export class Lobby {
         mode: room.mode,
         difficulty: room.difficulty,
         modeId: modeIdFor(room.mode, room.difficulty),
+        // 「AI 队友最后选择」 (GitHub #338): fixed for the match
+        aiPicksLast: room.mode !== 'solo' && room.aiPicksLast === true,
         seats,
         // the spectator seats (header): watched like eliminated players, never players
         spectators: room.spectators.map((s) => s.playerId),
@@ -1297,11 +1505,11 @@ export class Lobby {
         // the room's match number: with the seed it keeps battleIds unique across the room's matches (DESIGN §14)
         matchNo,
         data: this.safeData(),
-        workerPool: this.workerPool,
+        workerPool: this.workerPoolFor(room.code),
         log: this.log,
         now: this.now,
         send: (playerId, msg, encoded) => (ctx.live ? this.matchSend(room, ctx, playerId, msg, encoded) : false),
-        broadcast: (msg) => { if (ctx.live) this.matchBroadcast(room, ctx, msg); },
+        broadcast: (msg, encoded) => { if (ctx.live) this.matchBroadcast(room, ctx, msg, encoded); },
         onEnd: (summary) => this.onMatchEnd(room, ctx, summary),
       });
       ctx.match = match;
@@ -1346,6 +1554,24 @@ export class Lobby {
   /** Start a match created by the matchmaking queue. Room members keep their room; individual queue members do not
    * acquire one, so the result screen returns them to the public lobby. */
   startQueuedMatch(owner, players, selected = [owner]) {
+    if (players.some((p) => p.isBot)) return fail(ERR.BAD_MSG, 'matchmaking only accepts human players');
+    if (this.matchWorkerPool) return this.startQueuedMatchWorker(owner, players, selected);
+    return this.startQueuedMatchLocal(owner, players, selected);
+  }
+
+  /** Reserve room and session ownership before the Worker init yields. */
+  attachQueuedWorker(ctx, room, match) {
+    ctx.match = match;
+    ctx.live = true;
+    this.activeQueueMatches.add(ctx);
+    if (room) { room.match = match; room.matchCtx = ctx; }
+    for (const p of ctx.members) if (!p.isBot && !p.left) {
+      const session = this.registry.byId(p.playerId);
+      if (session) session.activeMatchCtx = ctx;
+    }
+  }
+
+  async startQueuedMatchWorker(owner, players, selected = [owner]) {
     const room = owner?.room || null;
     if (room && (room.disposed || room.match)) return fail(ERR.ROOM_STARTED);
     const used = new Set();
@@ -1356,11 +1582,72 @@ export class Lobby {
       return { ...p, seat, connected: p.isBot ? true : p.connected !== false };
     }).sort((a, b) => a.seat - b.seat);
     const allHumanIds = seats.filter((p) => !p.isBot).map((p) => p.playerId);
-    const ctx = { live: true, ended: false, disposed: false, queue: true, match: null, room, members: seats,
+    const matchCode = room?.code || `M${randomBytes(3).toString('hex').toUpperCase()}`;
+    const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, workerKey: matchCode, room,
+      members: seats, lastPublic: null, sharedResult: null, results: new Map() };
+    let seed = 0;
+    try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
+    try {
+      const match = await this.matchWorkerPool.create(matchCode, {
+        roomCode: matchCode, mode: owner.mode, difficulty: owner.difficulty, modeId: modeIdFor(owner.mode, owner.difficulty),
+        seats, consoleEnabled: !!room?.consoleEnabled, aiPicksLast: !!room?.aiPicksLast, seed, matchNo: room ? room.matchCount + 1 : 1,
+      }, {
+        created: (match) => {
+          this.attachQueuedWorker(ctx, room, match);
+          for (const id of allHumanIds) {
+            const session = this.registry.byId(id);
+            if (session) session.pendingResult = null;
+          }
+          if (room) room.matchKey = this.registry.byId(room.hostId)?.limitKey || null;
+        },
+        send: (playerId, msg, encoded) => { if (ctx.live) return this.queueMatchSend(ctx, playerId, msg, encoded); return false; },
+        broadcast: (msg, encoded) => { if (ctx.live) this.queueMatchBroadcast(ctx, msg, encoded); },
+        end: (summary) => this.onQueuedMatchEnd(ctx, summary),
+      });
+      if (ctx.disposed || ctx.ended || room?.disposed || (room && room.matchCtx !== ctx)
+        || !ctx.members.some((p) => !p.isBot && !p.left && this.registry.byId(p.playerId)?.activeMatchCtx === ctx)) {
+        this.disposeMatchCtx(ctx);
+        await match.dispose();
+        return fail(ERR.NOT_IN_ROOM, 'match initialization cancelled');
+      }
+      if (room) {
+        room.matchCount++; room.replay = null; this.broadcastState(room);
+      }
+      for (const entry of selected) this.sendQueueState(entry, 'matched');
+      ctx.live = true;
+      await match.start();
+      if (!ctx.ended && !ctx.disposed) this.notifyMatchStarted(room?.code || `queue:${match.roomCode}`, match);
+      return OK;
+    } catch (e) {
+      this.log.error(`[match] ${matchCode} matchmaking Worker start failed`, e);
+      for (const id of allHumanIds) {
+        const session = this.registry.byId(id);
+        if (session?.activeMatchCtx === ctx) session.activeMatchCtx = null;
+      }
+      if (room && room.matchCtx === ctx) { room.match = null; room.matchCtx = null; room.matchKey = null; this.broadcastState(room); }
+      this.disposeMatchCtx(ctx);
+      if (room) this.disposeEmptyRoom(room);
+      return fail(ERR.INTERNAL, 'match failed to start');
+    }
+  }
+
+  startQueuedMatchLocal(owner, players, selected = [owner]) {
+    const room = owner?.room || null;
+    if (room && (room.disposed || room.match)) return fail(ERR.ROOM_STARTED);
+    const used = new Set();
+    const seats = players.map((p, i) => {
+      let seat = Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS && !used.has(p.seat) ? p.seat : -1;
+      if (seat < 0) { for (let j = 0; j < MAX_SEATS; j++) if (!used.has(j)) { seat = j; break; } }
+      used.add(seat);
+      return { ...p, seat, connected: p.isBot ? true : p.connected !== false };
+    }).sort((a, b) => a.seat - b.seat);
+    const allHumanIds = seats.filter((p) => !p.isBot).map((p) => p.playerId);
+    const ctx = { live: true, ended: false, disposed: false, queue: true, match: null, workerKey: null, room, members: seats,
       lastPublic: null, sharedResult: null, results: new Map() };
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     const matchCode = room?.code || `M${randomBytes(3).toString('hex').toUpperCase()}`;
+    ctx.workerKey = matchCode;
     try {
       const match = new this.MatchClass({
         roomCode: matchCode,
@@ -1369,18 +1656,19 @@ export class Lobby {
         modeId: modeIdFor(owner.mode, owner.difficulty),
         seats,
         consoleEnabled: !!room?.consoleEnabled,
+        aiPicksLast: !!room?.aiPicksLast,
         seed,
         matchNo: room ? room.matchCount + 1 : 1,
-        data: this.safeData(), workerPool: this.workerPool, log: this.log, now: this.now,
+        data: this.safeData(), workerPool: this.workerPoolFor(matchCode), log: this.log, now: this.now,
         send: (playerId, msg, encoded) => (ctx.live ? this.queueMatchSend(ctx, playerId, msg, encoded) : false),
-        broadcast: (msg) => { if (ctx.live) this.queueMatchBroadcast(ctx, msg); },
+        broadcast: (msg, encoded) => { if (ctx.live) this.queueMatchBroadcast(ctx, msg, encoded); },
         onEnd: (summary) => this.onQueuedMatchEnd(ctx, summary),
       });
       ctx.match = match;
       this.activeQueueMatches.add(ctx);
       for (const id of allHumanIds) {
         const session = this.registry.byId(id);
-        if (session) session.activeMatchCtx = ctx;
+        if (session) { session.activeMatchCtx = ctx; session.pendingResult = null; }
       }
       if (room) {
         room.match = match;
@@ -1416,15 +1704,16 @@ export class Lobby {
     if (!ctx || ctx.disposed) return false;
     const p = ctx.members.find((x) => x.playerId === playerId);
     if (!p || p.isBot || p.left) return false;
+    // Settlement belongs to an offline teammate too; keep their encoded result before checking the socket.
+    if (msg?.t === 'm.result') ctx.results.set(playerId, encoded ?? encode(msg));
     const session = this.registry.byId(playerId);
     if (!session || !session.connected || session.activeMatchCtx !== ctx) return false;
-    if (msg?.t === 'm.result') ctx.results.set(playerId, encode(msg));
     return sendSession(session, msg, encoded);
   }
 
-  queueMatchBroadcast(ctx, msg) {
+  queueMatchBroadcast(ctx, msg, encoded = null) {
     if (!ctx || ctx.disposed) return null;
-    const data = encode(msg);
+    const data = encoded ?? encode(msg);
     if (data == null) return null;
     if (msg?.t === 'm.public') ctx.lastPublic = data;
     else if (msg?.t === 'm.result') ctx.sharedResult = data;
@@ -1441,8 +1730,13 @@ export class Lobby {
     for (const p of ctx.members) if (!p.isBot) {
       const session = this.registry.byId(p.playerId);
       if (session?.activeMatchCtx === ctx) {
+        // External teammates cannot use the owning room's replay (and it may be emptied at settlement).
+        if (!p.left && (!room || !room.seatOf(p.playerId))) {
+          const result = ctx.results.get(p.playerId) || ctx.sharedResult;
+          if (result) session.pendingResult = [ctx.lastPublic, result].filter(Boolean);
+        }
+        // A matched player may still own a different lobby room; only detach the ended match.
         session.activeMatchCtx = null;
-        if (!room) session.roomCode = null;
       }
     }
     if (room) {
@@ -1484,15 +1778,15 @@ export class Lobby {
   /** Match unicast; m.result frames are also kept for the replay. */
   matchSend(room, ctx, playerId, msg, encoded = null) {
     if (msg && msg.t === 'm.result') {
-      const data = encode(msg);
+      const data = encoded ?? encode(msg);
       if (data != null) ctx.results.set(playerId, data);
     }
     return this.sendToPlayer(room, playerId, msg, encoded);
   }
 
   /** Match broadcast; the latest m.public and a broadcast m.result are also kept for the replay. */
-  matchBroadcast(room, ctx, msg) {
-    const data = this.broadcastRoom(room, msg);
+  matchBroadcast(room, ctx, msg, encoded = null) {
+    const data = this.broadcastRoom(room, msg, encoded);
     if (data == null) return;
     if (msg.t === 'm.public') ctx.lastPublic = data;
     else if (msg.t === 'm.result') ctx.sharedResult = data;
@@ -1597,6 +1891,37 @@ export class Lobby {
 
   /** Route a 'g.*' intent to the running match. */
   routeGame(session, msg) {
+    if (msg.t === 'g.chat' && this.nameModeration?.checkChat) {
+      if (!validChatText(msg.text)) return fail(ERR.BAD_MSG);
+      const active = this.activeMatchOf(session);
+      const room = this.roomOf(session);
+      const match = active?.match || room?.match;
+      if (!match || (room && room.spectatorOf(session.playerId))) return this.routeGameUnchecked(session, msg);
+      if (this.chatReviews.has(session)) return fail(ERR.RATE);
+      const socket = session.ws;
+      const text = msg.text.trim();
+      // Bind the reviewed bytes to this session, socket and Match generation. A late verdict
+      // must never follow a player into a new game, a replacement tab or a reconnect.
+      const review = Promise.resolve().then(() => this.nameModeration.checkChat(text, session.limitKey || '?'))
+        .catch(() => ({ allowed: true }));
+      this.chatReviews.set(session, review);
+      return review.then((result) => {
+        const current = this.activeMatchOf(session);
+        if (this.shuttingDown || !session.connected || this.registry.byId(session.playerId) !== session
+          || session.ws !== socket || current?.match !== match || current.disposed || current.ended
+          || match.disposed || match.ended) return fail(ERR.WRONG_PHASE);
+        if (result?.allowed !== true && [ERR.NAME_REJECTED, ERR.BAD_MSG].includes(result?.code)) {
+          // Never log message content/identity, attempts, approvals, format errors or fail-open results.
+          if (result.code === ERR.NAME_REJECTED) this.log.info?.('[chat] moderation rejected in-match message');
+          return fail(result.code === ERR.BAD_MSG ? ERR.BAD_MSG : ERR.CHAT_REJECTED);
+        }
+        return this.routeGameUnchecked(session, { ...msg, text });
+      }).finally(() => { if (this.chatReviews.get(session) === review) this.chatReviews.delete(session); });
+    }
+    return this.routeGameUnchecked(session, msg);
+  }
+
+  routeGameUnchecked(session, msg) {
     const active = this.activeMatchOf(session);
     const room = this.roomOf(session);
     const match = active?.match || room?.match;
@@ -1616,8 +1941,19 @@ export class Lobby {
       this.log.error(`[lobby] ${(room?.code || active?.match?.roomCode || 'queue')} match.handle(${msg.t}) threw`, e);
       return fail(ERR.INTERNAL);
     }
+    if (res && typeof res.then === 'function' && match.remote) {
+      return Promise.resolve(res).then((value) => {
+        if (value && typeof value === 'object' && value.error) {
+          return fail(isErrCode(value.error) ? value.error : ERR.INTERNAL, typeof value.detail === 'string' ? value.detail : undefined);
+        }
+        return OK;
+      }).catch((e) => {
+        const matchLabel = room?.code || active?.match?.roomCode || 'queue';
+        this.log.error(`[lobby] ${matchLabel} async match.handle(${msg.t}) rejected`, e);
+        return fail(ERR.INTERNAL);
+      });
+    }
     if (res && typeof res.then === 'function') {
-      // Contract violation (handle must be synchronous): never let the rejection go unhandled.
       const matchLabel = room?.code || active?.match?.roomCode || 'queue';
       this.log.error(`[lobby] ${matchLabel} match.handle(${msg.t}) returned a Promise; it must be synchronous`);
       Promise.resolve(res).catch((e) => this.log.error(`[lobby] ${matchLabel} match.handle(${msg.t}) rejected`, e));
@@ -1642,7 +1978,13 @@ export class Lobby {
     if (!ctx?.match) return undefined;
     const fn = ctx.match[method] || (method === 'onLeave' ? ctx.match.onDisconnect : null);
     if (typeof fn !== 'function') return undefined;
-    try { return fn.apply(ctx.match, args); } catch (e) {
+    try {
+      const result = fn.apply(ctx.match, args);
+      if (result && typeof result.then === 'function') {
+        result.catch((e) => this.log.error(`[lobby] ${ctx.match.roomCode || 'queue'} ${method} rejected`, e));
+      }
+      return result;
+    } catch (e) {
       this.log.error(`[lobby] ${ctx.match.roomCode || 'queue'} ${method} threw`, e);
       return undefined;
     }
@@ -1650,10 +1992,14 @@ export class Lobby {
 
   leaveQueuedMatchPlayer(ctx, playerId) {
     const member = ctx.members?.find((p) => p.playerId === playerId);
-    if (member) { member.left = true; member.connected = false; }
+    if (!member || member.isBot || member.left || ctx.disposed) return;
+    // Main-thread membership is authoritative even before a Worker acknowledges onLeave.
+    member.left = true;
+    member.connected = false;
     this.callMatchContext(ctx, 'onLeave', playerId);
     const session = this.registry.byId(playerId);
     if (session?.activeMatchCtx === ctx) session.activeMatchCtx = null;
+    if (ctx.room) this.disposeEmptyRoom(ctx.room);
   }
 
   /** Call an optional match hook without letting it throw. onLeave falls back to onDisconnect. */
@@ -1664,7 +2010,11 @@ export class Lobby {
     if (typeof fn !== 'function' && method === 'onLeave') fn = m.onDisconnect;
     if (typeof fn !== 'function') return undefined;
     try {
-      return fn.apply(m, args);
+      const result = fn.apply(m, args);
+      if (result && typeof result.then === 'function') {
+        result.catch((e) => this.log.error(`[lobby] ${room.code} match.${method} rejected`, e));
+      }
+      return result;
     } catch (e) {
       this.log.error(`[lobby] ${room.code} match.${method} threw`, e);
       return undefined;
@@ -1682,6 +2032,9 @@ export class Lobby {
       if (session.activeMatchCtx === ctx) session.activeMatchCtx = null;
     }
     try { ctx.match?.dispose?.(); } catch (e) { this.log.error('[lobby] match.dispose threw', e); }
+    const key = ctx.workerKey || ctx.match?.roomCode || ctx.room?.code;
+    if (key && this.workerPool?.release) this.workerPool.release(key);
+    if (key && ctx.match && this.matchWorkerPool?.release) this.matchWorkerPool.release(key, ctx.match);
   }
 
   safeData() {
@@ -1715,6 +2068,7 @@ export class Lobby {
     return {
       seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
       loadout: session.loadout || null,
+      ops: session.ops || null,
       notOwned: session.notOwned || null,
       diy: session.diy || null,
     };
@@ -1727,6 +2081,7 @@ export class Lobby {
    */
   removeMember(room, playerId) {
     const session = this.registry.byId(playerId);
+    const active = session?.activeMatchCtx;
     if (session && session.roomCode === room.code) session.roomCode = null;
     this.clearGrace(playerId);
     this.dropReplay(room, playerId);
@@ -1737,15 +2092,26 @@ export class Lobby {
       seat.left = true;
       seat.connected = false;
       seat.ready = false;
-      this.callMatch(room, 'onLeave', playerId);
+      if (room.matchCtx?.queue) this.leaveQueuedMatchPlayer(room.matchCtx, playerId);
+      else this.callMatch(room, 'onLeave', playerId);
       if (session?.activeMatchCtx === room.matchCtx) session.activeMatchCtx = null;
     } else {
       room.seats[seat.seat] = null;
+      if (active?.queue) this.leaveQueuedMatchPlayer(active, playerId);
     }
     if (room.disposed) return; // onLeave may have ended the match and emptied the room
     if (room.hostId === playerId) this.migrateHost(room);
-    if (room.activeHumans().length === 0) this.disposeRoom(room, 'empty');
-    else this.broadcastState(room);
+    this.disposeEmptyRoom(room);
+    if (!room.disposed) this.broadcastState(room);
+  }
+
+  /** An empty party is not an empty match: retain the original code/lane while external humans still own it. */
+  disposeEmptyRoom(room) {
+    if (room.disposed || room.activeHumans().length) return;
+    const ctx = room.matchCtx;
+    if (ctx?.queue && !ctx.ended && !ctx.disposed && ctx.members.some((p) =>
+      !p.isBot && !p.left && this.registry.byId(p.playerId)?.activeMatchCtx === ctx)) return;
+    this.disposeRoom(room, 'empty');
   }
 
   /**
@@ -1864,9 +2230,9 @@ export class Lobby {
   }
 
   /** Match broadcast: encode once, send to every connected member. @returns {string | null} the encoded frame */
-  broadcastRoom(room, msg) {
+  broadcastRoom(room, msg, encoded = null) {
     if (room.disposed) return null;
-    const data = encode(msg);
+    const data = encoded ?? encode(msg);
     if (data == null) { this.log.error(`[lobby] ${room.code} unserializable broadcast ${msg && msg.t}`); return null; }
     for (const session of this.memberSessions(room)) sendSession(session, msg, data);
     return data;

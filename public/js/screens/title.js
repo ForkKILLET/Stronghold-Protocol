@@ -10,16 +10,18 @@
 // entry/loading illustration names) it is layered under the CSS art; otherwise the screen is
 // pure CSS/SVG (radar, ridgelines, glow), so it never issues a request that can 404.
 
+import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useMemo, useState } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION, DEV_BUILD } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, TextField, PingPill, Modal } from '../ui/components.js';
 import { AnnouncementButton } from '../ui/announcement.js';
 import { GuideButton } from '../ui/guide.js';
+import { openStats } from './stats.js';
 import { toast } from '../ui/toasts.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual } from '../store.js';
 import { data, useData } from '../data.js';
-import { FullscreenButton, detectFeatures } from '../ui/device.js';
+import { FullscreenButton, PwaInstallButton, detectFeatures } from '../ui/device.js';
 import { updateSettings, useSettings } from '../ui/settings.js';
 import { LangToggle, useLang } from '../ui/lang.js';
 import { t, N_ } from '../../../shared/i18n.js';
@@ -83,6 +85,15 @@ export function enterSession(rawName) {
   identity.setEntered(true);
   store.set((s) => ({ me: { ...s.me, name }, session: { ...s.session, entered: true } }));
   net.setName(name);
+  return true;
+}
+
+/** Explicit rejection always returns to the editable title, even if a rename preserved the accepted session. */
+export function returnToTitleAfterNameReview(error, connection = net, sessionIdentity = identity, state = store) {
+  if (error?.code !== 'NAME_REJECTED' && !(error?.code === 'BAD_MSG' && connection.status !== 'online')) return false;
+  sessionIdentity.setEntered(false);
+  state.patch('session', { entered: false });
+  state.patch('ui', { restoring: false });
   return true;
 }
 
@@ -250,7 +261,10 @@ export function TitleScreen() {
     </div>
     <div class="title-corner title-corner--tr">
       <div>
-        <${LangToggle} class="title-lang" />
+        <div class="title-corner__tools">
+          <${Button} variant="ghost" size="sm" icon="chart" class="title-stats" onClick=${openStats} title=${t('统计数据')}>${t('统计')}<//>
+          <${LangToggle} class="title-lang" />
+        </div>
         <${MicroLabel} tone="hi">TARGET POINT<//><br /><${MicroLabel}>STRONGHOLD PROTOCOL<//>
       </div>
     </div>
@@ -294,11 +308,13 @@ export function TitleScreen() {
     <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
 
     <footer class="title-foot">
+      <${ResumeMatchButton} />
+      <${PwaInstallButton} />
       <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>
       <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
       ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
     </footer>
-    <${Modal} open=${aboutOpen} title=${t('关于本服务器')} class="title-about" width="min(7.4rem, 94vw)"
+    <${Modal} open=${aboutOpen} title=${t('关于本服务器')} class="title-about" width="min(7.4rem, 94vw)" utility=${true}
       onClose=${() => setAboutOpen(false)}
       actions=${html`<${Button} variant="primary" data-autofocus onClick=${() => setAboutOpen(false)}>${t('关闭')}<//>`}>
       <dl class="title-about__links">

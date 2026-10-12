@@ -88,7 +88,7 @@ export function ConsoleModal({ open, priv, onClose }) {
     if (ok) setSelectedBond(null);
     return ok;
   };
-  return html`<${Modal} open=${open} title=${t('控制台')} micro="DEVELOPER CONSOLE" tone="red" onClose=${onClose} width="8.6rem"
+  return html`<${Modal} open=${open} title=${t('控制台')} micro="DEVELOPER CONSOLE" tone="red" onClose=${onClose} width="8.6rem" utility=${true} class="console-modal"
       actions=${html`<${Button} variant="secondary" icon="close" onClick=${onClose}>${t('关闭')}<//>`}>
     <div class="console-ui">
       <div class="console-ui__warning"><${Icon} name="warn" />${t('仅供必要时使用 · 每回合 {roundLimit} 次 · 全场 {totalLimit} 次', { roundLimit, totalLimit })}</div>
@@ -120,7 +120,7 @@ function BondAmountModal({ bond, value, busy, onChange, onPreset, onConfirm, onC
   if (!bond) return null;
   const amount = Number(value);
   const valid = Number.isInteger(amount) && amount > 0;
-  return html`<${Modal} open=${true} title=${t('增加 {0} 层数', { 0: bond.name || bond.id })} micro="BOND LAYERS" tone="red"
+  return html`<${Modal} open=${true} title=${t('增加 {0} 层数', { 0: bond.name || bond.id })} micro="BOND LAYERS" tone="red" utility=${true}
       onClose=${onClose} width="4.8rem"
       actions=${html`<${Button} variant="secondary" onClick=${onClose}>${t('取消')}<//>
         <${Button} variant="danger" icon="plus" loading=${busy} disabled=${!valid} onClick=${() => onConfirm(amount)}>${t('确定增加')}<//>`}>

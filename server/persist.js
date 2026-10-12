@@ -52,7 +52,7 @@ export function sessionDoc(s, now, activeMatchKey = null) {
     token: s.token,
     name: s.name,
     roomCode: s.roomCode || null,
-    loadout: s.loadout || null, notOwned: s.notOwned || null, diy: s.diy || null, lang: s.lang || 'zh-CN',
+    loadout: s.loadout || null, ops: s.ops || null, notOwned: s.notOwned || null, diy: s.diy || null, lang: s.lang || 'zh-CN',
     resumeWindowMs: typeof s.resumeWindowMs === 'number' && s.resumeWindowMs > 0 ? s.resumeWindowMs : null,
     connected: !!s.connected,
     disconnectedAt: s.connected || s.disconnectedAt == null ? now : s.disconnectedAt,
@@ -67,7 +67,7 @@ function seatDoc(seat) {
   return {
     seat: seat.seat, playerId: seat.playerId, name: seat.name, isBot: !!seat.isBot,
     ready: !!seat.ready, left: !!seat.left, connected: !!seat.connected && !seat.left,
-    loadout: seat.loadout || null, notOwned: seat.notOwned || null, diy: seat.diy || null,
+    loadout: seat.loadout || null, ops: seat.ops || null, notOwned: seat.notOwned || null, diy: seat.diy || null,
   };
 }
 
@@ -77,7 +77,7 @@ export function roomDoc(room) {
     code: room.code,
     mode: room.mode,
     difficulty: room.difficulty,
-    consoleEnabled: !!room.consoleEnabled,
+    consoleEnabled: !!room.consoleEnabled, aiPicksLast: !!room.aiPicksLast,
     prepSeconds: room.prepSeconds ?? null,
     prepMultiplier: room.prepMultiplier ?? null,
     battleSpeed: room.battleSpeed ?? 2,
@@ -102,14 +102,16 @@ export function snapshotServer({ registry, lobby, matchDocs = null, now = Date.n
     for (const [code, doc] of matchDocs) if (doc) matches[code] = doc;
   }
   // Membership may change during combat, while the last safe game checkpoint stays in PREP.
-  for (const { key, match } of lobby.persistenceMatches()) {
+  for (const { key, match, ctx, room } of lobby.persistenceMatches()) {
     const previous = lobby.recoveryDocs?.get(key);
     if (previous) {
       const archiveKey = `superseded:${key}:${previous.checkpoint?.seed}:${previous.checkpoint?.savedAt}`;
       lobby.recoveryDocs.set(archiveKey, { ...previous, key, superseded: true });
       lobby.recoveryDocs.delete(key);
     }
-    const departed = (match.order || []).filter((p) => !p.isBot && p.left).map((p) => p.playerId);
+    // Main-thread membership is authoritative even if a Worker dies before acknowledging onLeave.
+    const departed = [...new Set([...(match.order || []), ...(ctx?.members || []), ...(room?.seats || [])]
+      .filter((p) => p && !p.isBot && p.left).map((p) => p.playerId))];
     if (departed.length) matchDepartures[key] = departed;
     if (Number.isInteger(match._battleSeq)) matchBattleSeq[key] = match._battleSeq;
   }
@@ -183,7 +185,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
         disconnectedAt: since,
         resumeWindowMs: windowMs,
         roomCode: s.roomCode,
-        loadout: s.loadout, notOwned: s.notOwned, diy: s.diy, lang: s.lang,
+        loadout: s.loadout, ops: s.ops, notOwned: s.notOwned, diy: s.diy, lang: s.lang,
         addr: s.addr,
         notice: s.notice, pendingResult: s.pendingResult,
       }, { allowOverCapacity: activeIds.has(s.playerId) });
@@ -208,8 +210,14 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       const players = Array.isArray(cp?.players) ? cp.players.filter((p) => p && typeof p.playerId === 'string') : [];
       const seats = Array.isArray(original.seats) ? original.seats.filter((s) => s && typeof s.playerId === 'string').map((s) => ({ ...s })) : [];
       const hasHuman = seats.some((s) => !s.isBot && !s.left && registry.byId(s.playerId));
+      // A known queue room can remain as an empty match container after its original party leaves. Keep external
+      // teammates' actual room ownership; do not promote them into this room just to keep its checkpoint alive.
+      // Missing-room reconstruction still uses the legacy fallback below (its synthesized record has no seats).
+      const allowEmpty = !hasHuman && original.queueMatch === true && seats.length > 0 && players.some((p) =>
+        !p.isBot && !p.left && registry.byId(p.playerId) && !departures(key).includes(p.playerId)
+        && (!sessionMatchKeys.has(p.playerId) || sessionMatchKeys.get(p.playerId) === key));
       // An owning room can disappear while its public teammates and checkpoint survive.
-      if (!hasHuman && cp) for (const p of players) {
+      if (!hasHuman && cp && !allowEmpty) for (const p of players) {
         if (p.isBot || p.left || !registry.byId(p.playerId) || departures(key).includes(p.playerId)) continue;
         const owner = sessionMatchKeys.get(p.playerId);
         if (owner && owner !== key) continue;
@@ -230,13 +238,24 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       });
       const record = { ...original, seats: normalized, mode: original.mode === 'solo' ? 'solo' : 'coop',
         difficulty: DIFFICULTIES.includes(original.difficulty) ? original.difficulty : DIFFICULTIES.includes(cp?.difficulty) ? cp.difficulty : 'NORMAL' };
-      const result = lobby.restoreRooms([record], { now });
+      const result = lobby.restoreRooms([record], { now, allowEmpty });
       stats.rooms += result.rooms;
       stats.droppedSeats += result.droppedSeats;
     } catch (e) { log.warn?.(`[persist] ${key}: room restore failed (${e.message}); other rooms continue`); }
   }
   const ordered = [...matches].sort(([ak, a], [bk, b]) => Number(Object.hasOwn(retained, ak)) - Number(Object.hasOwn(retained, bk))
     || (Number(b?.savedAt) || 0) - (Number(a?.savedAt) || 0));
+  const pendingRestores = [];
+  const deferMatch = (key, raw) => {
+    stats.deferredMatches++;
+    const ids = new Set(Array.isArray(raw.players) ? raw.players.map((p) => p?.playerId) : []);
+    lobby.recoveryDocs?.set(key, { checkpoint: raw, room: roomDocs.get(key) || null,
+      sessions: [...sessionDocs.values()].filter((s) => ids.has(s.playerId)), departedPlayerIds: departures(key),
+      battleSeq: Number(doc.matchBattleSeq?.[key]) || Number(retained[key]?.battleSeq) || 0 });
+    const room = lobby.getRoom(key);
+    if (room && !room.match) lobby.disposeEmptyRoom(room);
+    log.warn?.(`[persist] ${key}: checkpoint retained for a later recovery attempt`);
+  };
   for (const [key, raw] of ordered) {
     if (!raw) continue;
     let restored = false;
@@ -248,17 +267,16 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       restored = key.startsWith('queue:') ? lobby.restoreQueuedMatch(checkpoint, opts)
         : !!room && lobby.restoreMatch(room, checkpoint, { ...opts, queue: roomDocs.get(key)?.queueMatch === true });
     } catch (e) { log.warn?.(`[persist] ${key}: match restore failed (${e.message}); other matches continue`); }
-    if (restored) { stats.matches++; lobby.recoveryDocs?.delete(key); }
-    else {
-      stats.deferredMatches++;
-      const ids = new Set(Array.isArray(raw.players) ? raw.players.map((p) => p?.playerId) : []);
-      lobby.recoveryDocs?.set(key, { checkpoint: raw, room: roomDocs.get(key) || null,
-        sessions: [...sessionDocs.values()].filter((s) => ids.has(s.playerId)), departedPlayerIds: departures(key),
-        battleSeq: Number(doc.matchBattleSeq?.[key]) || Number(retained[key]?.battleSeq) || 0 });
-      log.warn?.(`[persist] ${key}: checkpoint retained for a later recovery attempt`);
-    }
+    if (restored && typeof restored.then === 'function') {
+      pendingRestores.push(Promise.resolve(restored).then((ok) => {
+        if (ok) { stats.matches++; lobby.recoveryDocs?.delete(key); }
+        else deferMatch(key, raw);
+      }).catch(() => deferMatch(key, raw)));
+    } else if (restored) { stats.matches++; lobby.recoveryDocs?.delete(key); }
+    else deferMatch(key, raw);
   }
   stats.ok = true;
+  if (pendingRestores.length) stats.ready = Promise.all(pendingRestores).then(() => stats);
   return stats;
 }
 
@@ -332,7 +350,8 @@ export class Persister {
     const doc = await this.store.load({ attempts: 1 });
     if (!doc && ['unavailable', 'invalid'].includes(this.store.loadState)) return false;
     if (doc) {
-      const stats = restoreServer({ doc, registry: this.registry, lobby: this.lobby, now: this.now(), log: this.log });
+      const initialStats = restoreServer({ doc, registry: this.registry, lobby: this.lobby, now: this.now(), log: this.log });
+      const stats = initialStats.ready ? await initialStats.ready : initialStats;
       if (!stats.ok) return false;
       await this.seed(doc);
       this.log.info?.(`[persist] deferred state loaded (${stats.matches} match(es), ${stats.deferredMatches} checkpoint(s) retained)`);
@@ -377,7 +396,18 @@ export class Persister {
 
   async checkpoint(item) {
     try {
-      const capture = captureMatch(item.match);
+      if (typeof item.match.captureSnapshotBytes === 'function') {
+        const bytes = await item.match.captureSnapshotBytes();
+        if (!bytes) return false;
+        if (!this.generations.has(item.match)) this.generations.set(item.match, ++this.generationSeq);
+        // Transfer ownership onward without inspecting/decoding the capture on the main thread.
+        await this.encoder.request('checkpointBytes', { key: item.key, generation: this.generations.get(item.match), bytes }, [bytes.buffer]);
+        this.checkpointKeys.add(item.key);
+        return true;
+      }
+      const capture = typeof item.match.captureSnapshot === 'function'
+        ? await item.match.captureSnapshot()
+        : captureMatch(item.match);
       if (!capture) return false;
       if (!this.generations.has(item.match)) this.generations.set(item.match, ++this.generationSeq);
       await this.encoder.request('checkpoint', { key: item.key, generation: this.generations.get(item.match), capture });

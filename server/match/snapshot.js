@@ -182,6 +182,7 @@ const MATCH_FIELDS = Object.freeze([
   'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
   'botRehearsal', 'clientCombat', 'verifyMode', 'headlessSliceMs', 'verifyStats', '_battleSeq', 'pausedMs',
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
+  'aiPicksLast', 'setupRevision', '_setupVoteSeq',
   'round', 'uidSeq', 'loneHuman', 'hiddenLayerSum', 'hiddenReached', 'errors', 'errorCount', 'simErrors',
   'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves',
 ]);
@@ -192,7 +193,7 @@ const PLAYER_FIELDS = Object.freeze([
   'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
   '_tempDue', 'board', 'layers', 'pendingLayerGains', 'bondCountBonus', 'effects', 'bounties', 'counters', 'round',
   'deployCapBonus', 'deployCapMin', 'deviceOverrides', 'tileOverrides', 'stats', 'eliminatedRound', 'lpAtFinal',
-  'lastResult', 'standIns', 'diy', 'diyStock', 'diyBanned',
+  'ops', 'personalChoice', 'lastResult', 'standIns', 'diy', 'diyStock', 'diyBanned',
 ]);
 
 /** The RNG streams the match owns (server/sim/rng.js createRng, state()/setState). */
@@ -236,6 +237,8 @@ export function captureMatch(m) {
   }
   // the phase clock travels as *remaining* time: the match is frozen while the server is down
   doc.deadlineRemainingMs = m.deadline > 0 ? Math.max(0, Math.round(m.deadline - now)) : 0;
+  // Votes are cancelled on restart; retain their paused confirmation budget, not a zero deadline.
+  if (m.setupVote && m.phase === PHASE.INFO_CHECK) doc.deadlineRemainingMs = m.setupVote.remainingMs || 0;
   doc.startedAtAgoMs = Math.max(0, Math.round(now - (Number(m.startedAt) || now)));
   // the shared pool: only the remaining copies live in the checkpoint (cap/tier are data-derived)
   doc.poolLeft = {};
@@ -347,7 +350,9 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
   if (doc.poolLeft && typeof doc.poolLeft === 'object') {
     for (const [id, left] of Object.entries(doc.poolLeft)) {
       const e = m.pool.entries.get(id);
-      if (e) e.left = Math.max(0, Math.min(e.cap, Math.trunc(Number(left) || 0)));
+      // 0.2.4 Mimic grants may overdraw stock. A deficit must survive restart or returns expose free copies too early.
+      const balance = Number(left);
+      if (e) e.left = Math.min(e.cap, Math.trunc(Number.isFinite(balance) ? balance : 0));
     }
   }
   for (const name of RNG_NAMES) {
@@ -399,7 +404,8 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     ps.initDiyStock(new Set([...(m.disabledBonds || []), ...(m.staticInactiveBonds || [])]));
     if (stockEntries instanceof Map) for (const [id, saved] of stockEntries) {
       const entry = ps.diyStock.entries.get(id);
-      if (entry) entry.left = Math.max(0, Math.min(entry.cap, Math.trunc(Number(saved.left) || 0)));
+      const balance = Number(saved.left);
+      if (entry) entry.left = Math.min(entry.cap, Math.trunc(Number.isFinite(balance) ? balance : 0));
     }
     ps.connected = ps.isBot ? true : false;   // every socket is gone: the lobby rebinds on hello
     ps._deployMap = null;

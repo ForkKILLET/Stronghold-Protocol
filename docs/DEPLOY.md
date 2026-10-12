@@ -10,7 +10,7 @@
 | 服务器 CPU | 战斗默认在各玩家浏览器里模拟（DESIGN §14）。服务器管理回合、经济和校验；AI 阵容预演、普通/联防战场的服务器模拟、结果复算默认交给固定 Worker 池，见 §3.5。必要计算在池不可用时退回约 8 ms 分片执行。`SP_VERIFY=all` 会复算每个真人普通/联防战场，CPU 成本明显增加；具体容量应通过真实多房间压测确定。 |
 | 服务器内存 | 空闲约 100 MB，每个进行中的对局再增加几 MB。 |
 | 网络 | 4 人对局中服务器每回合下行约 0.25 MB（DESIGN §14 实测）。首次进入游戏时浏览器要从主机下载所需的图片 / Spine 模型 / 音频（按需加载，之后走浏览器缓存），公网隧道带宽小时第一次会慢一些。 |
-| 磁盘 | 素材约 460 MB（`public/assets`）+ 依赖约 125 MB（`node_modules`；整合包只带运行依赖，约 65 MB）；可选的本地提取约 40 MB（`.venv-extract`）+ 70 MB 贴图（见第 6 节）。完整包解压后约 625 MB。 |
+| 磁盘 | 素材约 550 MB（`public/assets`，含中文约 65 MB、日文约 85 MB 两套干员语音）+ 依赖约 125 MB（`node_modules`；整合包只带运行依赖，约 65 MB）；可选的本地提取约 40 MB（`.venv-extract`）+ 70 MB 贴图（见第 6 节）。完整包解压后约 710 MB。 |
 | 玩家设备 | 支持 WebGL 的现代浏览器（Chrome / Edge / Firefox / Safari 最新版），电脑或手机平板（横屏）。老旧设备可在设置里调低画质或访问 `/?board=2d`。 |
 
 WebSocket 默认启用 `permessage-deflate`，仅压缩不小于 1 KB 的消息，并关闭客户端和服务端上下文复用。大型 `m.public` / `b.snap` 消息通常能显著减少带宽，小消息不会增加压缩开销；压缩会消耗 CPU，真实容量应在目标机器上压测。设置 `SP_WS_COMPRESSION=off` 或 `0` 可关闭；`/metrics.websocket` 会报告当前开关和阈值。
@@ -28,13 +28,13 @@ WebSocket 默认启用 `permessage-deflate`，仅压缩不小于 1 KB 的消息�
    ```
    装完**关闭并重新打开**终端，`node -v` 应显示 v22 或更高（winget 的 LTS 目前是 v24.x，同样可用）。没有 winget 时从 <https://nodejs.org/zh-cn/download> 和 <https://git-scm.com/download/win> 下载安装。
 2. 下载，三选一。建议放在一个固定、短、**不在 OneDrive 同步范围内**的目录，例如 `C:\Stronghold-Protocol`：
-   - **完整包（推荐）**：在仓库的 [Releases](https://github.com/sganggs/Stronghold-Protocol/releases) 页面下载最新版本的 `Stronghold-Protocol-v<版本>.zip`（约 430 MB，解压后约 625 MB；已含运行依赖、前端库和全部素材，包括官方 3D 棋盘等本地客户端素材），解压后把里面的 `Stronghold-Protocol` 文件夹放到上述位置。不需要 Git，首次启动也不用再下载素材。素材版权归上海鹰角网络 / Yostar，仅限非商业使用，见 [NOTICE.md](../NOTICE.md)。
-   - **精简包**：同一页面的 `Stronghold-Protocol-v<版本>-lite.zip`（约 22 MB）。代码、运行依赖和前端库与完整包相同，但不带素材：美术、Spine 模型、音频、字体、表情和「玩法说明」教程图在首次启动时由 setup 从公开镜像下载（约 460 MB，显示进度，可中断续传；镜像设置见下面的「国内镜像下载」）。官方 3D 棋盘等本地客户端素材需要用本机客户端提取，或从同一版本的完整包复制（第 6 节）。适合下载大文件不方便、或想先下一个小包的情况；放置方式同完整包。
+   - **完整包（推荐）**：在仓库的 [Releases](https://github.com/sganggs/Stronghold-Protocol/releases) 页面下载最新版本的 `Stronghold-Protocol-v<版本>.zip`（约 505 MB，解压后约 710 MB；已含运行依赖、前端库和全部素材，包括中文、日文两套干员语音和官方 3D 棋盘等本地客户端素材），解压后把里面的 `Stronghold-Protocol` 文件夹放到上述位置。不需要 Git，首次启动也不用再下载素材。素材版权归上海鹰角网络 / Yostar，仅限非商业使用，见 [NOTICE.md](../NOTICE.md)。
+   - **精简包**：同一页面的 `Stronghold-Protocol-v<版本>-lite.zip`（约 22 MB）。代码、运行依赖和前端库与完整包相同，但不带素材：美术、Spine 模型、音频（含两套干员语音）、字体、表情和「玩法说明」教程图在首次启动时由 setup 从公开镜像下载（约 550 MB，显示进度，可中断续传；镜像设置见下面的「国内镜像下载」）。官方 3D 棋盘等本地客户端素材需要用本机客户端提取，或从同一版本的完整包复制（第 6 节）。适合下载大文件不方便、或想先下一个小包的情况；放置方式同完整包。
    - **源码**：
      ```powershell
      git clone https://github.com/ForkKILLET/Stronghold-Protocol.git C:\Stronghold-Protocol
      ```
-3. 双击 `C:\Stronghold-Protocol\scripts\start-windows.bat`。首次会：安装依赖（`npm ci`；整合包已含，跳过）→ 复制前端库（整合包已含，跳过）→ 下载约 460 MB 素材（完整包已含，跳过；精简包和源码在这一步下载，显示进度，中断后再次启动会续传）→ 若检测到本机的明日方舟客户端，询问是否提取官方贴图（可跳过）→ 启动服务器并打开浏览器。
+3. 双击 `C:\Stronghold-Protocol\scripts\start-windows.bat`。首次会：安装依赖（`npm ci`；整合包已含，跳过）→ 复制前端库（整合包已含，跳过）→ 下载约 550 MB 素材（完整包已含，跳过；精简包和源码在这一步下载，显示进度，中断后再次启动会续传）→ 若检测到本机的明日方舟客户端，询问是否提取官方贴图（可跳过）→ 启动服务器并打开浏览器。
 4. 窗口里会打印朋友可用的地址，例如 `http://192.168.1.23:3000`。用另一台设备打开它确认能进入。关闭窗口即停止服务器。
 
 等价的手动命令：`npm ci`、`node tools/setup.mjs`、`npm start`。
@@ -126,7 +126,7 @@ powershell -ExecutionPolicy Bypass -File scripts\install-service-windows.ps1
 winget install NSSM.NSSM            # 或从 https://nssm.cc 下载
 nssm install StrongholdProtocol "C:\Program Files\nodejs\node.exe" server\index.js
 nssm set StrongholdProtocol AppDirectory C:\Stronghold-Protocol
-nssm set StrongholdProtocol AppEnvironmentExtra PORT=3000 HOST=0.0.0.0
+nssm set StrongholdProtocol AppEnvironmentExtra PORT=3000 HOST=::
 nssm set StrongholdProtocol AppStdout C:\Stronghold-Protocol\logs\server.log
 nssm set StrongholdProtocol AppStderr C:\Stronghold-Protocol\logs\server.log
 nssm start StrongholdProtocol
@@ -224,7 +224,7 @@ https / wss 说明：页面通过 https 打开时客户端自动连接 `wss://�
 ## 3. Docker
 
 ```bash
-# A) 构建时下载素材（需要联网，约 460 MB）
+# A) 构建时下载素材（需要联网，约 550 MB）
 docker build -t stronghold-protocol --build-arg FETCH_ASSETS=1 .
 docker run -d --name stronghold -p 3000:3000 --restart unless-stopped stronghold-protocol
 
@@ -256,7 +256,7 @@ services:
 
 设置 `SP_REDIS_URL`（例如 `redis://127.0.0.1:6379/0`）后，服务器每 `SP_REDIS_SAVE_MS`（默认 10 秒）以及**优雅关闭时**把一份状态文档写入 Redis，启动时读回。容器 `docker restart` / `docker compose up -d` 之后，玩家用浏览器重开页面（同一浏览器、同一令牌）就回到原房间原座位。
 
-持久化使用一个按需启动的专用 Worker，独立于战斗 / AI 计算池。检查点的复杂状态编码、JSON 序列化和缓存由该 Worker 完成；Redis 接收已编码的字节。主线程仍需提取字段和进行 `postMessage` 的结构化复制，每次发送一局，等待 Worker 完成后再处理下一局，避免在同一轮 event loop 中集中处理所有对局。因此主线程开销降低，但并非零开销；也不会降低序列化所需的总 CPU。Worker 故障或超时时跳过本次保存并记录日志，不退回主线程序列化；下次保存重建 Worker，从最近成功保存的检查点继续。优雅关闭会等待正在执行的保存，再保存最终状态并关闭 Worker。
+持久化使用一个按需启动的专用 Worker，独立于战斗 / AI 计算池。检查点的复杂状态编码、JSON 序列化和缓存由该 Worker 完成；Redis 接收已编码的字节。普通本地 Match 仍由主线程提取字段并通过 `postMessage` 复制原始 capture；完整 Match Worker 则在所属 lane 中将 capture 序列化成独占字节缓冲，转移到主线程后再转移给持久化 Worker，主线程不解码、不复制 capture 对象。持久化 Worker 解码后仍调用原来的 `encodeMatchCapture`，保留 Map、波次隐藏排期及原 Redis 文档格式；此字节格式只用于当前进程 IPC，不写入 Redis、不作为跨版本存档。每次等待一局完成后再处理下一局，失败保留最近安全检查点并继续其他局；不回退主线程编码。主线程仍汇总房间/会话、发送控制消息和 Redis 数据，开销并非零，也不承诺降低全进程序列化 CPU。持久化 Worker 故障或超时时跳过本次保存并记录日志；下次保存重建 Worker，从最近成功保存的检查点继续。优雅关闭会等待正在执行的保存，再保存最终状态并关闭 Worker。
 
 可以运行 `node tools/persistbench.mjs` 比较同步快照与 Worker 保存的耗时及 event-loop 心跳间隔。基准重复使用真实四席位对局的第 4 回合休整期状态，FakeBattle 只用于快速构造该状态；不含真实 Redis 网络、并发战斗或浏览器负载，不能用来推断线上容量。
 
@@ -413,7 +413,7 @@ location = /resource-sw.js {
 
 ### 3.5 多核计算：固定 Worker 池
 
-服务器为所有房间共用一个计算池。WebSocket、经济、结算和 Boss 共享血量由主线程管理；Worker 只计算 AI 候选布局评分、普通/联防战场的完整模拟和客户端结果复算。`SP_COMBAT=server` 的实时推流和 Boss 共享战场仍使用主线程的原有调度。
+默认模式下，服务器为所有房间共用一个计算池。WebSocket、经济、结算和 Boss 共享血量由主线程管理；Worker 只计算 AI 候选布局评分、普通/联防战场的完整模拟和客户端结果复算。`SP_COMBAT=server` 的实时推流和 Boss 共享战场仍使用主线程的原有调度。下面的计算池队列、重建和回退规则适用于该模式，不等同于完整对局 Worker。
 
 | 变量 | 默认值 | 用途 |
 |---|---|---|
@@ -439,7 +439,25 @@ location = /resource-sw.js {
 
 计算池支持单进程利用多个核。多实例部署仍需房间/重连路由和独立存档归属；直接用 PM2 cluster 并共用同一 Redis 存档键会导致路由错误和存档覆盖。
 
+**可选房间分流**：`SP_ROOM_WORKERS=1..32`（默认 0，不能超过 `SP_WORKERS`）只把模拟任务按房间固定到计算线程组，对局对象仍在主线程。`SP_MATCH_WORKERS=1..32`（默认 0）则把完整对局状态、计时器、AI、视图和结算移到独立线程，主线程保留 WebSocket、身份、大厅和房间目录；`/ws` 路径与客户端协议不变。这些线程额外计入进程 CPU/内存预算；完整对局模式不会使用主线程计算池来执行其对局内部任务，不能把两组线程数相加当作对局并行度。
+
+完整对局模式在等待初始化完成前同步占用房间及匹配身份；初始化期间的退出、关闭和失败会取消并清理该实例。实例带有独立代号，旧对局的回调或延迟销毁不能影响复用同一房间号的新对局。潜能/练度及“AI 最后选择”在普通开局、匹配开局和恢复路径中保持一致。
+
+每个完整对局 lane 在首次使用时只接收一次服务器游戏数据快照，先安装为该线程的数据源，再导入游戏模块；同 lane 的多个 Match 共用这份深冻结数据，但玩家库存、共享池、RNG 和对局状态各自独立。开局、同房间再开及检查点恢复不重复传输完整数据。Worker 的有效单播/广播只携带消息类型和 JSON 编码，不再同时复制完整消息对象；主线程复用同一编码用于发送及结算回放，旧回调读取完整字段或枚举消息时才按需解码，旧式对象 IPC 仍兼容。私人状态编码继续独立。状态增量从编码解析自己的快照，不借用回调暴露的可变对象；旧客户端转发不需要解码完整消息，现代客户端只按原有基线规则解析一次传输快照。初始化回复提供完整代理元数据，后续回复仅传发生变化的字段，玩家连接/退出及战斗序号变化仍同步；IPC 复制失败不推进元数据基线。
+
+这些优化不迁移主线程的 WebSocket 收发、状态增量解析/diff/编码及连接基线；持久化仍经主线程转交，但完整 Match capture 仅转移缓冲所有权。可靠入队后才推进状态基线及操作确认的语义不变。默认仍不启用完整对局 Worker；线上须核对 `/metrics.matchWorkers` 的存在、`rooms` 和 `failedLanes`，普通 `workers.threads` 不能代替完整对局启用证明。`handlerMs` 只统计主线程同步回调，不包含 Worker 等待/执行及异步回复发送；启用后该值下降不等于操作状态到达延迟下降。
+
+本机 IPC 微基准：`node tools/match-workerbench.mjs --matches 32 --lanes 2 --rounds 100`。创建真实四人 Match，但只发送过期战斗进度消息；报告数据传输次数、无变化回复的元数据数量、编码广播数量、往返耗时、主线程事件循环利用率及全进程 CPU 时间（含所有 Worker）。不包含实际战斗、WebSocket、Redis、TLS、浏览器或线上容量；主线程事件循环 active 时间不等于主线程 CPU。验收仍需真实多房间操作状态解码 p95、失败率、主线程 CPU 与内存，不能用微基准或普通确认耗时替代。
+
+更窄的缓存/传输微基准：`node tools/server-hotpathsbench.mjs --matches 32 --lanes 2 --rounds 20 --checks 50`，分别测量资源清单缓存命中正文读取次数、真实四席 Match 强制公共状态经 IPC 转发到模拟连接，以及 INFO_CHECK 检查点保存到内存接收器；报告重复消息对象、capture 对象/转移缓冲数量及主线程 postMessage 同步耗时。只用于路径对照，不包含真实 WebSocket、Redis、战斗、TLS、浏览器或部署，不能据此承诺线上满核已解决。
+
+`SP_WORKER_TIMEOUT_MS` 同时限制完整对局 Worker 的单次 IPC 请求（默认 120000 ms，从请求发往线程起计时，不包含代理串行队列等待）。线程错误、意外退出（包括退出码 0）或请求超时会隔离该线程并拒绝后续请求；不重试可能已执行的游戏操作，也不把其权威状态转移到主线程。`/metrics.matchWorkers` 的 `failedLanes` 和 `lanes[].failed` 显示故障，`threads` 为尚未退出的线程数，`rooms` 包含仍为持久化保留的故障对局代理；`busy` 仅表示有待回复 IPC，不代表实时 CPU 占用。新对局只使用健康线程；全部线程故障时拒绝开局。
+
+持久化继续保留故障对局的最近安全检查点，并保存其他健康对局及主线程已确认的退出名单；安全检查点尚未成功保存的对局不能承诺恢复。完整对局线程当前**不支持在线自动重建或对局自动迁移**；配置 Redis 时需优雅保存并重启服务后按原有 best-effort 规则恢复，战斗中断仍回退最近安全阶段。无 Redis 时线程崩溃丢失的状态无法恢复。不要套用模拟计算池“失败后重建并重试”的规则；也不要从这些边界测试推断晚高峰容量。
+
 **高并发 WebSocket 延迟**：全服广播与心跳每批最多处理 128 个连接或连续工作 2 ms，批次间让出主线程，广播之间保持 FIFO 顺序。在线人数每 10 秒最低优先级刷新，只保留最新待发快照；普通广播/心跳及操作回复先处理，忙连接跳过本轮，welcome仍即时提供在线人数；关闭或已替换的连接不会继续接收旧批次。普通/联防的本地模拟回退及 AI 预演续步共用 FIFO 工作队列，每轮预算 4 ms；一个不可中断的步骤可能超过预算，但随后必须让出事件循环，不再让所有房间各自的分片在同轮集中执行。虚拟时间调度保持原有行为。私有状态发送复用去重时生成的 JSON，匹配分组按队伍大小维护 FIFO 候选，批量开局只在结束后广播剩余队列人数。
+
+资源清单缓存命中先检查三个源清单及已发现的棋盘裁切表的 size/mtime，不读取正文、不重新 CDN 改写或遍历全部素材；并发检查/重建只共享进行中的任务。源清单或裁切表出现、删除和变更仍使缓存失效，后续请求重新检查，不长期缓存检查结果；失败返回错误而非伪装旧数据，重置时未完成的旧任务不得覆盖新缓存。HTTP 的 ETag、gzip、GET/HEAD、304 及资源指纹协议不变。
 
 `/metrics.websocket.diagnostics` 提供仅服务端保留的诊断，不增加 `/healthz` 字段、不记录地址或消息内容：
 
@@ -553,7 +571,7 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
   [Service]
   WorkingDirectory=/opt/Stronghold-Protocol
   ExecStart=/usr/bin/node server/index.js
-  Environment=PORT=3000 HOST=0.0.0.0
+  Environment=PORT=3000 HOST=::
   Restart=always
   RestartSec=5
   User=stronghold
@@ -614,7 +632,7 @@ npm run package -- --out <目录>        # 完整包 Stronghold-Protocol-v<版�
 npm run package:lite -- --out <目录>   # 精简包 Stronghold-Protocol-v<版本>-lite.zip
 ```
 
-- **打进去的**：`git ls-files` 里的 `server/`、`shared/`、`data/`、`public/`（不含 `public/dev/`）、`packs/`（随仓库提交的内容包；只在本机安装、没提交的不打进去）、启动脚本、玩家会运行的工具（setup、vendor、fetch-assets 与 `tools/assets/`、doctor，以及 setup 调用的 `tools/local-extract/` 和 `crop-board-atlas.mjs`）、服务器和 fetch-assets 读取的 4 张研究数据表（`docs/research/` 的 `03-operators`、`05-enemies`、`05-maps`、`07-assets` 四个 JSON）、`package.json` / `package-lock.json`、许可证与说明（`LICENSE`、`NOTICE.md`、`THIRD-PARTY-NOTICES.md`、`README.md`、`CHANGELOG.md`）、`docs/PLAYING.md` 和本文；然后在临时目录里生成 `packs/index.json`（打进去的语言包和内容包的列表，供纯静态托管使用；服务器自己会实时列出，见 [PACKS.md](PACKS.md)），再 `npm ci --omit=dev` 装上运行依赖和 `public/vendor`。完整包再加上 `data/assets.json` 列出的素材、`public/fonts`，以及本地提取的 `public/assets/local/` 和 `data/local-assets.json`。磁盘上有、清单却没列出的文件不打进去（例如 0.2.0 移出自选的焰狐龙梓兰的旧素材）。
+- **打进去的**：`git ls-files` 里的 `server/`、`shared/`、`data/`、`public/`（不含 `public/dev/`）、`packs/`（随仓库提交的内容包；只在本机安装、没提交的不打进去）、启动脚本、玩家会运行的工具（setup、vendor、fetch-assets 与 `tools/assets/`、doctor，以及 setup 调用的 `tools/local-extract/` 和 `crop-board-atlas.mjs`）、服务器和 fetch-assets 读取的 4 张研究数据表（`docs/research/` 的 `03-operators`、`05-enemies`、`05-maps`、`07-assets` 四个 JSON）、`package.json` / `package-lock.json`、许可证与说明（`LICENSE`、`NOTICE.md`、`THIRD-PARTY-NOTICES.md`、`README.md`、`CHANGELOG.md`）、`docs/PLAYING.md` 和本文；然后在临时目录里生成 `packs/index.json`（打进去的语言包和内容包的列表，供纯静态托管使用；服务器自己会实时列出，见 [PACKS.md](PACKS.md)），再 `npm ci --omit=dev` 装上运行依赖和 `public/vendor`。完整包再加上 `data/assets.json` 列出的素材、`public/fonts`，以及本地提取的 `public/assets/local/` 和 `data/local-assets.json`。磁盘上有、清单却没列出的文件不打进去（例如 0.2.0 移出自选的焰狐龙梓兰的旧素材）。日文干员语音（`audio.voiceJp`，`public/assets/audio/voice/jp/` 的 2674 个文件，约 85 MB，zip 后约 76 MB）默认也打进完整包；`tools/package.mjs` 里的开关 `FULL_ZIP_JP_VOICE` 改成 `false` 时，完整包不带这些文件：玩家首次启动时 setup 会像精简包那样下载它们，下载完成前选「日本語」会播中文语音。
 - **不打进去的**：`test/`、维护用的工具（数据构建、golden、botbench、i18n、导入检查、本工具等）、`scripts/make-windows-bundle.mjs`（Windows 便携包，见 [WINDOWS.md](WINDOWS.md)）、其他文档、研究笔记和 `docs/img/`、`handoff/`、`.github/`、`types/`、lint / 编辑器 / Docker 配置。和 0.1.x 的整树打包（全部跟踪文件加上 `public/assets` 的全部内容）相比，0.2.0 的完整包少了约 640 个文件、解压后小约 26 MB，zip 小约 8 MB。
 - **打包前的检查**（`--dry-run` 也全部做一遍）：拒绝名单（`pv`、`review`、`.cache`、`.claude`、`.git`、`logs`、`.env`、`scripts/service.env.cmd`、`handoff`、`test` 等）；每个打进去的模块的相对导入、玩家用的 npm 脚本（start / setup / doctor / launch / postinstall / vendor / assets）都指向包里的文件；完整包里 `data/assets.json` 和 `data/local-assets.json` 列出的文件都在（缺了先运行 `node tools/fetch-assets.mjs`）；没有只差大小写的两个路径；包里的文件（二进制素材也查）不含个人目录路径（`/Users/…`、`C:\Users\…`、`/home/…`）或本机的账户名（运行时从系统读取；`SP_PACKAGE_SCAN_NAMES=a,b` 可以再加名字）；打进去的已跟踪文件没有未提交的改动（重新生成的 `data/assets.json` 要先提交）。有任何问题都会列出原因、以非零状态结束，不写 zip；正式打包时还会核对临时目录里的文件和计划完全一致。
 - **需要**：已下载素材的仓库（完整包）——打包前先联网运行一次 `node tools/fetch-assets.mjs`，补齐清单计划但本机还没有的素材（清单只列出磁盘上有的文件，打包工具看不出缺了哪些；`data/assets.json` 有变化就先提交）；能访问 npm 的网络（`npm ci`）；`zip`（或 bsdtar 的 `tar`，Windows 10 起自带）。`--out` 默认是系统临时目录下的 `stronghold-protocol-release`，不能在仓库里面；`--force` 覆盖已有的 zip，`--keep-stage` 保留打包用的目录供检查。

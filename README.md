@@ -2,9 +2,9 @@
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–4 人联机合作。
 
-本仓库基于 [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol) 的 `c744f7e`，原项目为 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)。保留上游历史、许可证与素材声明；本分支更新见 [CHANGELOG.md](CHANGELOG.md)。
+本仓库基于 [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol) 的 `278a06ca`，原项目为 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)。保留上游历史、许可证与素材声明；本分支更新见 [CHANGELOG.md](CHANGELOG.md)。
 
-![version](https://img.shields.io/badge/version-0.2.1-2ea44f)
+![version](https://img.shields.io/badge/version-0.2.4-2ea44f)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
 ![node](https://img.shields.io/badge/node-22%20%7C%2024-339933)
 
@@ -28,7 +28,7 @@ English summary: [below](#english).
 
 ## 目录
 
-- [声明](#声明) · [简介](#简介) · [功能一览](#功能一览)
+- [声明](#声明) · [简介](#简介) · [本分支定位](#本分支定位) · [功能一览](#功能一览)
 - [快速开始](#快速开始)：[整合包](#方式一整合包推荐) · [从源码运行](#方式二从源码运行) · [系统要求](#系统要求) · [端口与配置](#端口与配置) · [局域网联机](#和朋友一起玩局域网)
 - [联机方式](#联机方式) · [操作](#操作) · [文档](#文档) · [开发与测试](#开发与测试) · [项目结构](#项目结构)
 - [许可证](#许可证) · [致谢与数据来源](#致谢与数据来源) · [贡献](#贡献)
@@ -37,9 +37,19 @@ English summary: [below](#english).
 
 「卫戍协议：盟约」是自走棋 + 塔防：休整期在调度中心招募干员、摆阵、配装备，作战期干员自动部署，迎击从红门涌来的敌人，漏过去的敌人扣目标生命值。本项目在浏览器里复刻了这一玩法，规则和数值尽量对照官方数据表与 PRTS 核对。
 
-- **独立模拟**（单人）、**同盟模拟**（私人房间）与**同盟匹配**（单人进入公共队列，组成 1–4 人同盟）。
+- **独立模拟**（单人）、**同盟模拟**（私人房间）与**同盟匹配**（单人或组队进入公共队列，组成四人真人同盟）。
 - 服务器是一个 Node.js 程序，**战斗在各玩家的浏览器里模拟**（和官方一样），服务器只管经济与回合，一台低功耗小主机就能开服。
-- 当前版本 0.2.1：联防保留本回合的战场，干员按满潜能计算，并修复了 0.2.0 发布后玩家和 GitHub 上反馈的问题，详见 [CHANGELOG.md](CHANGELOG.md)。本分支保留自己的构建和部署方式，不提供上游新增的发行更新 ZIP。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。
+- 当前版本 0.2.4：按官方补齐共享卡池与装备库存，修正突袭复活选敌、克莱门莎、浊心斯卡蒂与坚守等规则，联机首领战突袭可以跳到空半场，并修复了 0.2.3 发布后玩家和 GitHub 上反馈的问题，详见 [CHANGELOG.md](CHANGELOG.md)。仍有少数规则按推断实现，与官方不一致的地方欢迎在 Issue 里反馈。 本分支保留自己的构建和部署方式，不提供发行更新 ZIP。
+
+### 本分支定位
+
+**本仓库是面向公开服务器与高并发运行场景设计的优化分支，重点投入前后端优化和用户体验。**
+
+- **服务端优化**：围绕网络与 WebSocket、房间与匹配、Worker、持久化恢复、监控和部署，改善多人同时在线时的响应、资源利用与运行稳定性。
+- **前端与体验优化**：围绕按需加载、构建与缓存、CDN、资源预载及移动端交互，改善加载效率和日常游玩体验。
+- **玩法同步上游**：绝大部分干员、敌人、技能、数值及战斗规则持续同步上游，不以独立维护另一套游戏规则为目标。少量明确的分支规则差异与合并取舍记录在 [AGENTS.md](AGENTS.md) 和 [设计说明](docs/DESIGN.md#本分支规则与合并约定)，合并上游时保留本分支的优化与特色功能。
+
+高并发是本分支的设计方向，不代表对任意硬件或在线人数的容量保证；实际部署仍需结合配置、监控与压测评估。
 
 ## 功能一览
 
@@ -72,8 +82,8 @@ English summary: [below](#english).
 
 [Releases](https://github.com/sganggs/Stronghold-Protocol/releases/latest) 里有两种整合包，代码和运行依赖完全相同，二选一：
 
-- **完整包** `Stronghold-Protocol-v<版本>.zip`（约 430 MB，解压后约 625 MB）：附带全部美术 / 音频（含官方 3D 棋盘贴图），解压就能玩，不需要再下载任何东西。**推荐。**
-- **精简包** `Stronghold-Protocol-v<版本>-lite.zip`（约 22 MB）：不带素材，第一次启动时自动从公开镜像下载美术、Spine 模型、音频、字体、表情和「玩法说明」教程图（约 460 MB，可中断，再次启动会续传）；官方 3D 棋盘等本地客户端素材不在其中（见下面的「本地客户端素材」）。适合下载大文件不方便的情况。
+- **完整包** `Stronghold-Protocol-v<版本>.zip`（约 505 MB，解压后约 710 MB）：附带全部美术 / 音频（含中文、日文两套干员语音和官方 3D 棋盘贴图），解压就能玩，不需要再下载任何东西。**推荐。**
+- **精简包** `Stronghold-Protocol-v<版本>-lite.zip`（约 22 MB）：不带素材，第一次启动时自动从公开镜像下载美术、Spine 模型、音频、字体、表情和「玩法说明」教程图（约 550 MB，可中断，再次启动会续传）；官方 3D 棋盘等本地客户端素材不在其中（见下面的「本地客户端素材」）。适合下载大文件不方便的情况。
 
 两种包都只含运行和部署需要的文件（服务器、客户端、数据、启动脚本、setup / doctor / 素材下载工具、许可证与说明、[docs/PLAYING.md](docs/PLAYING.md) 和 [docs/DEPLOY.md](docs/DEPLOY.md)）；测试、开发工具和设计文档只在源码仓库里。
 
@@ -93,7 +103,7 @@ English summary: [below](#english).
 git clone https://github.com/ForkKILLET/Stronghold-Protocol.git
 cd Stronghold-Protocol
 npm install        # 安装依赖（postinstall 会把 pixi / preact / three 复制到 public/vendor）
-npm run setup      # 检查环境，并从公开镜像下载约 460 MB 美术 / 音频（可中断，再次运行会续传）
+npm run setup      # 检查环境，并从公开镜像下载约 550 MB 美术 / 音频（可中断，再次运行会续传）
 npm run build      # Vite 打包 JS / CSS（setup 已自动构建时可跳过）
 npm start          # 启动服务器：http://localhost:3000
 ```
@@ -110,7 +120,7 @@ npm start          # 启动服务器：http://localhost:3000
 
 | 项目 | 要求 |
 |---|---|
-| 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 600–750 MB（素材、依赖与本地提取贴图：完整包解压后约 625 MB）；内存空闲约 100 MB，每局再加几 MB |
+| 开服的电脑 | Windows / macOS / Linux，Node.js 22 或 24（LTS）；磁盘约 700–850 MB（素材、依赖与本地提取贴图：完整包解压后约 710 MB）；内存空闲约 100 MB，每局再加几 MB |
 | 玩家 | 支持 WebGL 的现代浏览器（Chrome / Edge / Firefox / Safari 最新版），电脑、手机或平板（横屏） |
 | 网络 | 首次进入游戏时，每位玩家要从开服的电脑下载几十 MB 素材（之后走浏览器缓存）；对局中流量很小 |
 
@@ -123,7 +133,7 @@ npm start          # 启动服务器：http://localhost:3000
 | 环境变量 | 默认 | 说明 |
 |---|---|---|
 | `PORT` | `3000` | 监听端口 |
-| `HOST` | `0.0.0.0` | 监听地址（`127.0.0.1` = 只允许本机，放在反向代理后面时使用） |
+| `HOST` | `::` | 监听地址。默认 `::` 是双栈：同一个端口同时接受 IPv6 和 IPv4；`0.0.0.0` = 只 IPv4；`127.0.0.1` = 只允许本机，放在反向代理后面时使用 |
 | `SP_COMBAT` | `client` | `client`：各玩家浏览器模拟自己的战斗（服务器负载极低）；`server`：由服务器模拟并推流 |
 | `SP_VERIFY` | `off` | 服务器复算客户端上报的战斗结果：`off` / `sample`（约 1/8 抽查）/ `all`（全部复算，更耗 CPU） |
 | `SP_WORKERS` | 自动，最多 8 | 固定计算线程数：可用 CPU 数减 2，至少 1；`0` 关闭，支持 1–32。AI 预演、普通/联防战场接管、结果复算使用此池 |
@@ -146,6 +156,7 @@ npm start          # 启动服务器：http://localhost:3000
 | `SP_BOT_REHEARSAL` | `3` | AI 席位在休整期用真实战斗模拟预演几个候选摆位（`0`–`8`，`0` = 只用启发式摆位）。这是**最省 CPU 的旋钮**：预演约占一局服务器 CPU 的 70%，调到 `0` 大约把对局 CPU 降到三分之一（代价是 AI 摆位差一些） |
 | `DEBUG` | 空 | 设为任意值输出详细日志 |
 | `SP_NO_BROWSER` | 空 | 设为 `1` 时启动脚本不自动打开浏览器 |
+| `SP_BOT_EMOTES` | 空 | AI 队友的对局表情回应（战斗、整备、合成、联防、收礼时即刻的 `m.emote` 广播）；设为 `0` 时整体关闭 |
 
 设置方式：macOS / Linux `PORT=8080 npm start`；PowerShell `$env:PORT=8080; npm start`；cmd `set "PORT=8080" && npm start`。健康检查与房间 / 对局 / 连接计数：`GET /healthz`；详细运行状态：`GET /metrics`（JSON，含持久化、Worker、内存、缓存和限额使用统计）。
 
@@ -156,7 +167,7 @@ npm start          # 启动服务器：http://localhost:3000
 3. 所有人点「准备就绪」后房主开始。
 4. 同一 Wi-Fi / 路由器下的朋友打开启动窗口里列出的地址（形如 `http://192.168.x.x:3000`）即可。打不开时多半是防火墙：Windows 首次启动时在弹窗中允许「专用网络」，或运行 `npm run doctor` 查看具体命令；访客 Wi-Fi 常开启「AP 隔离」，也会导致连不上。
 
-独立模拟会创建 `solo` 房间并直接开始，不会进入同盟队列。同盟匹配会让单人进入公共队列，等待其他玩家加入；同盟房间内，房主也可以勾选「匹配同盟队友」，再点击「立即开始」进入同盟匹配。勾选 AI 补齐后，等待 60 秒仍不足的空位由 AI 补齐；房间匹配的对局结束后会回到原房间。
+独立模拟会创建 `solo` 房间并直接开始，不会进入同盟队列。同盟匹配会让单人进入公共队列，等待其他玩家加入；同盟房间内，房主也可以勾选「匹配同盟队友」，再点击「立即开始」进入同盟匹配。所有匹配只使用真人，满四人立即开始，不足四人持续等待且可以取消，不设 AI 补位倒计时。房间已有 AI 队友时须先移除，才能加入真人匹配；不匹配、直接启动的私人房间仍可手动添加 AI。房间匹配的对局结束后会回到原房间。
 
 刷新页面或断线后，同盟模拟 10 分钟内、独立模拟 24 小时内重新打开即可回到原座位。服务器把房间和对局都保存在内存里，**重启服务器会结束所有对局**。
 
@@ -182,7 +193,7 @@ npm start          # 启动服务器：http://localhost:3000
 | 操作 | 方法 |
 |---|---|
 | 购买 / 升级调度中心 / 机变选卡 | 点一次选中，再点一次确认（`D` 升级） |
-| 部署 / 移动干员 | 从整备区拖到棋盘格 → 出现方向轮盘 → 往上 / 右 / 下 / 左滑动选择朝向后松手；松在中心或点「✕ 点击取消」取消。拖动时模型在指针 / 手指下，指针所在的格子就是落点 |
+| 部署 / 移动干员 | 从整备区拖到棋盘格 → 出现方向轮盘 → 往上 / 右 / 下 / 左滑动选择朝向后松手；松在中心或点「✕ 点击取消」取消。拖动时指针 / 手指所在的格子就是落点，能放下时模型直接站在这一格上（不能放下时跟在指针下） |
 | 调整朝向 | 把干员拖回它自己的格子，再选方向 |
 | 出售 / 撤退 / 销毁装备 | 点击单位所在的格子 → 底部按钮「出售 +1」「撤退」；也可以把棋盘上的干员拖回整备区撤退。整备区里的装备与法术只能「销毁」，已配发的装备锁定在干员身上（干员出售或合成精锐时退回整备区） |
 | 装备 | 把装备拖到干员所在的格子上（每人 2 件；满了会弹出替换窗口，被替换的一件会被销毁）；法术拖到地块上并选方向 |
@@ -192,6 +203,7 @@ npm start          # 启动服务器：http://localhost:3000
 | 全局暂停 | 点「请求暂停」或按 `Space`；同盟模拟须所有仍参与的在线真人请求后生效，AI／观战席不计票。任一人撤回即恢复；战斗、休整、选卡与阶段切换计时一起冻结，断线／退出解除 |
 | 表情 | 左下角「交流」，左右滑动（或方向键）换主题，冷却 1 秒 |
 | 观战 | 自己的作战结束后（或休整期）点左侧队友头像 →「前往查看」；不参战的朋友可以在大厅输入同盟密钥点「观战」（每个同盟最多 2 名观战者，本作新增） |
+| 统计（本机） | 标题画面右上角、大厅、等待室的「统计」：胜率、策略通过率、称号、战斗累计和对局记录（点一行回看结算页）；只存在本机浏览器里，可以导出 / 导入，没清完第一个回合就退出的对局不计入统计（[玩法指南 §12](docs/PLAYING.md#13-统计本机)） |
 
 完整的规则、数值和小技巧见 **[docs/PLAYING.md](docs/PLAYING.md)**（游戏内左下角也有「玩法说明」）。
 
@@ -223,9 +235,11 @@ SP_E2E=1 node --test test/ui/mock.e2e.test.js        # 浏览器端到端测试�
 SP_REAL_E2E=1 node --test test/ui/real.e2e.test.js   # 需要 Chrome + 已下载的素材
 RENDER_E2E=1 node --test 'test/render/*.browser.test.js'   # 渲染测试，部分需要本地提取的棋盘贴图
 GOLDEN_FULL=1 node --test test/golden.test.js           # 黄金结果：固定种子的整套战斗与人机对局摘要（默认只跑快速子集）
+node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧耗时基准（Chrome 降速 CPU 近似中低端手机），需要 Chrome + 已下载的素材
 ```
 
 - 游戏数据由 `npm run build-data`（`tools/build-data.mjs`）从官方数据表生成，不要手工修改 `data/*.json`。
+- 性能测试：`/dev/battle-perf.html` 在浏览器里跑一场真实战斗（对局用的战斗运行器、模拟和渲染），实时显示帧率与逐帧耗时；在手机上打开后点击「开始测量（10 秒）」，生成的报告可以复制后附在反馈中。用到的战斗来自 `node tools/capture-specs.mjs` 从固定种子的机器人对局里截取的数据（`public/dev/perf/`）。
 - 只重构、不改玩法的提交不能改变 `test/golden/*.json`；有意改变玩法时运行 `npm run golden:update`，检查差异后随改动一起提交（见 [test/golden/README.md](test/golden/README.md)）。
 - GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 与 Windows、Node 22 / 24 上运行 `npm ci`、`node --test` 和服务器冒烟测试。
 - 代码怎么分层、改某个规则该从哪个文件入手，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
@@ -275,7 +289,7 @@ GOLDEN_FULL=1 node --test test/golden.test.js           # 黄金结果：固定�
 
 An **unofficial, non-commercial fan remake** of Arknights' seasonal auto-chess tower-defense mode *Stronghold Protocol: Alliance*, played in the browser: solo, or 1–4 player co-op (AI teammates can fill seats). Combat is simulated in each player's browser, so a low-power PC can host.
 
-- **Run:** download the full bundle `Stronghold-Protocol-v<version>.zip` (~430 MB, all the art inside) from [Releases](https://github.com/sganggs/Stronghold-Protocol/releases/latest) — or the lite one, `…-lite.zip` (~22 MB), which downloads the art (~460 MB) on its first start — install Node.js 22 or 24, then double-click `scripts\start-windows.bat` (Windows) or run `./scripts/start.sh` (macOS / Linux) and open <http://localhost:3000>. From source: `npm install && npm run setup && npm start` (setup downloads ~460 MB of art from public mirrors, the emotes and the how-to-play pages included; the official 3D board, some official HUD icons, two enemy models and 39 summon models are extracted from a local Arknights client — without one the game uses the 2D board and look-alike stand-ins (the summons show their avatars), and a server can copy `public/assets/local/` and `data/local-assets.json` from the full bundle of the same version).
+- **Run:** download the full bundle `Stronghold-Protocol-v<version>.zip` (~505 MB, all the art inside, the Chinese and Japanese operator voices included) from [Releases](https://github.com/sganggs/Stronghold-Protocol/releases/latest) — or the lite one, `…-lite.zip` (~22 MB), which downloads the art (~550 MB) on its first start — install Node.js 22 or 24, then double-click `scripts\start-windows.bat` (Windows) or run `./scripts/start.sh` (macOS / Linux) and open <http://localhost:3000>. From source: `npm install && npm run setup && npm start` (setup downloads ~550 MB of art from public mirrors, the emotes and the how-to-play pages included; the official 3D board, some official HUD icons, two enemy models and 39 summon models are extracted from a local Arknights client — without one the game uses the 2D board and look-alike stand-ins (the summons show their avatars), and a server can copy `public/assets/local/` and `data/local-assets.json` from the full bundle of the same version).
 - **Languages:** Chinese (the default), English, 日本語, 한국어 and 繁體中文 — switch on the title screen or in Settings. Game texts come from the official clients; the Japanese, Korean and Traditional Chinese interface strings are machine translations (corrections welcome: [docs/I18N.md](docs/I18N.md)).
 - **Play with friends:** create a co-op room and share the 4-letter key or the `?room=KEY` link. On a LAN, use the address printed at start; otherwise use a virtual-LAN tool, a tunnel or a VPS — see [docs/DEPLOY.md](docs/DEPLOY.md).
 - **Disclaimer:** not affiliated with or endorsed by Hypergryph or Yostar. All Arknights names, art, audio, text and data are © their respective owners and are **not** covered by this project's GPL licence. For study and personal non-commercial use only — no selling, paid distribution, paid servers or monetisation of any kind. Content will be removed on request of the rights holders. Provided "as is", without warranty.
