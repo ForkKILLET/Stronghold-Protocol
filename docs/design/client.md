@@ -49,6 +49,29 @@ Audio: autochess BGM per phase, UI SFX (buy/sell/refresh/level/merge/ready/timer
 
 ---
 
+### Branch room and combat UI
+
+`ui/roomOptions.js` is a separate room-configuration page; LobbyScreen owns the
+creation draft so returning preserves values. The bracket frame is outside the
+scrolling body to avoid its outward pseudo-element producing spurious overflow.
+Small viewports keep vertical scrolling. Matchmaking/AI-fill inputs retain native
+checkbox semantics with square mint styling, focus/disabled states and touch targets.
+
+Equipment and bounty decisions share local hide/reopen behavior through
+`draftLogic.js`; hiding leaves the server timer active. A new round or decider
+resets disclosure and unconfirmed selections. Pause controls on the top bar and
+draft screens share server votes; shortcut listeners follow screen ownership and
+exclude spectators/eliminated players. Full-room sound only plays on a transition
+to four occupied coop seats (AI included), not repeated room-state broadcasts.
+
+`combatHistory.js` caches the latest match locally (schema 1, at most 128 battle
+records), keyed by match identity and battle ID. Longer snapshots replace earlier
+ones, so repeated observing/replaying does not double count. Match transitions
+save the old cache before changing keys. Disabled, corrupt or quota-limited
+storage does not break play. `CombatMetricsPanel` adds round pagination; ResultScreen
+opens round history. Statistics remain own-player-only when observing teammates,
+and are never uploaded. Unfinished fights are not promised to survive refresh.
+
 ## 13. Local-client art (optional, host-side)
 
 `tools/local-extract/extract.py` (Python: UnityPy + lz4 + Pillow; decodes Arknights' custom **LZ4AK** bundle compression via `aklz4.py`) extracts the art the web download does not include (some of it, most official HUD sprites among it, is on the public mirror too — §22.5) from a locally installed client (CrossOver Windows build or PlayCover iOS build) into `public/assets/local/**` and writes `data/local-assets.json` (`{ groups: { '<subdir>': { name: { path, w, h, kind } } } }`). Everything here is **optional**: clients must render correctly when the file or any entry is missing (fall back to the web assets / procedural art). The emotes and the guide pages below are on the public mirror too (§22.5): fetch-assets downloads them (data/assets.json `ui['emoticon/<dir>/<picId>']`, `ui['guide/<key>']`) and the client shows the local copy first, then that one (`data.js artUrls`); docs/DEPLOY.md §6 lists what still needs the client.

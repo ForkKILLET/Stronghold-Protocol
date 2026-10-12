@@ -108,3 +108,27 @@ Official rule (bwiki 盟约, 更新公告 5114): before a match the player canno
 ---
 
 本分支 Boss：单人 `bloodPoint × 1`，多人 `bloodPoint × 4 × min(alive, 4) / 4`；模式优先，模式禁用盟约仅过滤干员池。
+
+
+### Branch room rules and global pause
+
+Room creation validates `prepMultiplier` (null/1 = data default, 0 = untimed,
+0.5–4 in 0.25 steps) and `battleSpeed` (1/2/3/4, default 2). Preparation scales
+each round's own default and rounds to whole seconds; one human remains untimed.
+Custom rules cannot join public matchmaking. Both values survive room/match
+snapshots. Battle pacing changes real-time scheduling only: `TICK = 1/30` and
+simulation-time budgets stay unchanged.
+
+Pause is available in every active phase, excluding LOBBY/RESULT and terminal
+settlement. Voters are connected, alive, non-left humans; AI and spectators do
+not count. All voters must request pause. Any withdrawal resumes; disconnect or
+leave clears votes and resumes. `pausedAt`, `pauseRequests` and `pauseRequired`
+are published alongside `paused`. Stable timer tokens retain remaining delays;
+resume shifts phase/draft/battle deadlines. Gameplay inputs are rejected while
+paused; watch, emote and late battle reports remain accepted. Late reports,
+field completion and Worker callbacks are deferred until resume. Pause votes do
+not survive restart.
+
+Completed normal fields are retained during UNITE and cleared on the next prep.
+Watching another field never removes a player's authoritative simulation or its
+reporting responsibility; boss-pair visibility remains unchanged.
