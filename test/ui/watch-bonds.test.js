@@ -1,3 +1,4 @@
+import { watchingTeammate } from '../../public/js/ui/gameLogic/watch.js';
 // The bond strip follows the watched player (DESIGN §20.15, user report after playtest #6: "观看队友时（不仅是休整时候，
 // 还有自己战斗结束时，联防时，最终boss战）盟约栏应该变成当前队友的盟约以及他的层数"). Node tests of the selection logic
 // (public/js/ui/watchBonds.js): which field is on screen, whose bonds the strip shows in every watch situation — prep
@@ -463,5 +464,21 @@ describe('§20.15 the popup of a card\'s bond chip: the UNIT owner\'s bond (a sh
     const mine = detailBondOwner(unit(11), { pub, myId: ME, stripOwnerId: right.ownerId });
     const pop2 = popupView({ open: toggleBond(null, 'yanShip', mine, 'detail'), pub, priv: PRIV, myId: ME, field: b1 });
     assert.deepEqual([pop2.self, pop2.name, pop2.entry.layers], [true, null, 12]);
+  });
+});
+
+
+describe('return from explicit teammate viewing across shared-field transitions', () => {
+  test('selection retains its return affordance when own home becomes the same unite field', () => {
+    assert.equal(watchingTeammate('u', 'n:p1', 'p1', {fieldId:'u', playerId:'p2'}), true);
+    assert.equal(watchingTeammate('u', 'u', 'p1', {fieldId:'u', playerId:'p2'}), true);
+    assert.equal(watchingTeammate(null, 'u', 'p1', null), false);
+    assert.equal(watchingTeammate('u', 'u', 'p1', {fieldId:'u', playerId:'p1'}), false);
+    assert.equal(watchingTeammate('n:p1', 'u', 'p1', null), false);
+  });
+  test('settlement keeps the combat return control; returning resets the selected camera half', () => {
+    const src=read('public/js/screens/game.js');
+    assert.match(src, /const observingName = cc && \(combat \|\| settleMode\) && watchedFid/);
+    assert.match(src, /setWatching\(null\);\s*setWatchWho\(null\);\s*setLayer\('ALL'\);/);
   });
 });

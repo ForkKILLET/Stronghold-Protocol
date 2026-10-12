@@ -8,6 +8,12 @@ import { t } from '../../../../shared/i18n.js';
 /** Own normal field id (DESIGN §8.3). */
 export const ownFieldId = (playerId) => `n:${playerId}`;
 
+/** Explicit teammate selection can share your unite/boss field after a phase transition. */
+export function watchingTeammate(watching, home, myId, who = null) {
+  return !!watching && ((watching !== home && watching !== ownFieldId(myId))
+    || (who?.fieldId === watching && !!who.playerId && who.playerId !== myId));
+}
+
 /**
  * Field the player sits in right now (own normal field, or the unite/boss field that lists them).
  * @param {any} pub
