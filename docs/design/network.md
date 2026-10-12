@@ -125,6 +125,24 @@ Piece = { uid, kind: 'chess'|'item'|'token', id, golden: bool, tier, items: [ { 
 
 ---
 
+### Matchmaking room lifetime
+
+A matchmaking match owns all matched humans, not just the seats of the party room that supplied its code. When the
+original party leaves or expires, external teammates keep playing and reconnecting. The now-empty room stays only
+as the match container, with the same code, Worker lane and persistence key, until settlement or the last human's
+departure. Bots and spectators alone do not keep an empty container alive. Ordinary private/lobby room cleanup and
+server shutdown are unchanged.
+
+Every queue departure updates main-thread membership before calling the Match hook, including room members and
+departures through `room.leave`. Checkpoints retain these independent departure flags even if a Worker fails before
+acknowledgement. Restoring a known empty queue container does not put its external teammates into the original room
+or change their own room ownership; missing-room reconstruction keeps its existing best-effort fallback. Offline
+external teammates retain their own encoded settlement replay after the container is released. A failed recovery
+keeps the original checkpoint and tokens without leaving an unused empty room behind.
+
+Regression coverage: `test/matchmaking-lifecycle.test.js`, `test/memory-lifecycle.test.js`,
+`test/persist-queue-recovery.test.js` and `test/match-worker-lifecycle.test.js`.
+
 ### Opening reroll messages and local seat recovery
 
 C→S adds host-only `room.rerollSetup {setupRevision}` / `room.cancelReroll {voteId}` and participant

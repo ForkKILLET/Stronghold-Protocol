@@ -5,6 +5,7 @@ import { Lobby } from '../server/lobby.js';
 import { StubMatch } from '../server/match/StubMatch.js';
 import { SimulationPool } from '../server/workers/pool.js';
 import { startServer } from '../server/index.js';
+import { setImmediate as nextTurn } from 'node:timers/promises';
 
 function setup(t) {
   const registry = new SessionRegistry();
@@ -19,7 +20,7 @@ function setup(t) {
   return { registry, lobby, player, start };
 }
 
-test('closing a matchmaking room unbinds external teammates when its last room member leaves', (t) => {
+test('a matchmaking room survives its original members and releases everything after the last teammate leaves', async (t) => {
   const { registry, lobby, player, start } = setup(t);
   for (let i = 0; i < 25; i++) {
     const host = player(), guest = player();
@@ -27,9 +28,16 @@ test('closing a matchmaking room unbinds external teammates when its last room m
     const room = lobby.getRoom(host.roomCode);
     const ctx = start(room, [...room.seats.filter(Boolean), { seat: 1, playerId: guest.playerId, name: 'guest', isBot: false, connected: true }]);
     lobby.removeMember(room, host.playerId);
+    assert.equal(room.disposed, false);
+    assert.equal(ctx.disposed, false);
+    assert.equal(ctx.members.find((p) => p.playerId === host.playerId).left, true);
+    assert.equal(guest.activeMatchCtx, ctx, 'the surviving public teammate keeps the live Match');
+    assert.deepEqual(lobby.routeGame(guest, { t: 'g.autoplay', on: true }), { ok: true });
+    lobby.routeGame(guest, { t: 'g.leave' });
+    await nextTurn();
     assert.equal(ctx.disposed, true);
     assert.equal(ctx.match.disposed, true);
-    assert.equal(guest.activeMatchCtx, null, 'the surviving public teammate must not retain the disposed Match');
+    assert.equal(guest.activeMatchCtx, null);
   }
   assert.equal(lobby.rooms.size, 0);
   assert.equal(lobby.activeQueueMatches.size, 0);

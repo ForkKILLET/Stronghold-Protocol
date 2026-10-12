@@ -42,6 +42,73 @@ function store(name = 'state') {
   return new StateStore({ url: REDIS_URL, prefix: PREFIX, ttlSec: 120, name, log: quietLog });
 }
 
+for (const matchWorkers of [0, 1]) {
+  test(`matched teammates outlive their original room party through two real Redis restarts (Workers=${matchWorkers})`,
+    { skip: !available && `no Redis at ${REDIS_URL}`, timeout: 30000 }, async (t) => {
+      const name = `empty-party-${matchWorkers}`;
+      const servers = [], clients = [], identities = [];
+      const probe = store(name);
+      t.after(async () => {
+        for (const c of clients) await c.terminate().catch(() => {});
+        for (const srv of servers) await srv.close().catch(() => {});
+        await probe.clear();
+        await probe.close();
+      });
+      const boot = async () => {
+        const srv = await startServer({ host: '127.0.0.1', port: 0, quiet: true, log: quietLog,
+          workers: 0, roomWorkers: 0, matchWorkers, store: store(name), nameModeration: null });
+        servers.push(srv);
+        return srv;
+      };
+      const connect = async (srv, i, token) => {
+        const client = await TestClient.connect(`ws://127.0.0.1:${srv.port}/ws`);
+        clients.push(client);
+        const welcome = await client.hello(`RedisQ${i}`, token);
+        return { client, welcome };
+      };
+      let srv = await boot();
+      const current = [];
+      for (let i = 0; i < 4; i++) {
+        const { client, welcome } = await connect(srv, i);
+        identities.push(welcome);
+        current.push(client);
+      }
+      await current[0].request({ t: 'room.create', mode: 'coop', difficulty: 'NORMAL' });
+      const code = (await current[0].waitFor('room.state')).code;
+      // Another party's lobby room must stay theirs, both before and after restart.
+      await current[2].request({ t: 'room.create', mode: 'coop', difficulty: 'NORMAL' });
+      const otherCode = (await current[2].waitFor('room.state')).code;
+      await current[3].request({ t: 'room.join', code: otherCode });
+      for (const i of [0, 1, 2]) assert.equal((await current[i].request({ t: 'match.join', mode: 'coop', difficulty: 'NORMAL' })).t, 'ok');
+      for (const c of current) await c.waitFor('m.public', () => true, 10000);
+      assert.equal((await current[0].request({ t: 'g.leave' }, 10000)).t, 'ok');
+      assert.equal((await current[1].request({ t: 'g.autoplay', on: false }, 10000)).t, 'ok');
+      for (const c of current) await c.close();
+      for (let restart = 0; restart < 2; restart++) {
+        assert.equal(await srv.persister.flush('empty-party-restart'), true);
+        await srv.close();
+        const doc = await probe.load();
+        assert.ok(doc.matches[code]);
+        assert.deepEqual(doc.matchDepartures[code], [identities[0].playerId]);
+        srv = await boot();
+        assert.equal(srv.lobby.stats().matches, 1);
+        const room = srv.lobby.getRoom(code);
+        assert.equal(room.activeHumans().length, 0);
+        assert.equal(srv.registry.byId(identities[1].playerId).roomCode, null);
+        for (const i of [2, 3]) assert.equal(srv.registry.byId(identities[i].playerId).roomCode, otherCode);
+        for (let i = 1; i < 4; i++) {
+          const { client, welcome } = await connect(srv, i, identities[i].token);
+          assert.equal(welcome.resumed, true);
+          assert.equal(welcome.playerId, identities[i].playerId);
+          await client.waitFor('m.public', () => true, 10000);
+          await client.waitFor('m.private', () => true, 10000);
+          assert.equal((await client.request({ t: 'g.autoplay', on: false }, 10000)).t, 'ok');
+          await client.close();
+        }
+      }
+    });
+}
+
 // ---------------------------------------------------------------------------------------------------
 // configuration (no Redis needed)
 // ---------------------------------------------------------------------------------------------------

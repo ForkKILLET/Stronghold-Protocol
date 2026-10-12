@@ -20,7 +20,8 @@
 //     (it stays the player's identity: net.js sessions belong to players, not seats). ▸ No ban: the player may join
 //     again with the code.
 //   * Host migration: when the host leaves (or is removed), the lowest-seat remaining human (connected
-//     ones first) becomes host. A room without humans is disposed (bots never keep a room alive).
+//     ones first) becomes host. A room without humans is disposed (bots never keep a room alive), except while its
+//     matchmaking context still owns human teammates from outside the room. Its code/lane/checkpoint stay unchanged.
 //   * Disconnect in LOBBY: the seat shows connected=false and is freed after `lobbyGraceMs` (60 s); a
 //     session that comes back after that gets `room.closed {reason:'timeout'}`.
 //     Disconnect in a match: the seat is kept and match.onDisconnect(playerId) is called.
@@ -518,13 +519,13 @@ export class Lobby {
 
   /**
    * Rebuild the rooms of a persisted document. Seats whose session did not survive (or whose player had already left)
-   * are dropped; a room without a human is not restored at all, and every restored seat starts disconnected with a
-   * fresh lobby grace (the players are reconnecting right now).
+   * are dropped; a room without a human is restored only as a verified running queue container. Every restored seat
+   * starts disconnected with a fresh lobby grace (the players are reconnecting right now).
    * @param {object[]} docs room documents (server/persist.js roomDoc)
-   * @param {{ now?: number }} [opts]
+   * @param {{ now?: number, allowEmpty?: boolean }} [opts] empty containers require a verified queue checkpoint
    * @returns {{ rooms: number, seats: number, droppedSeats: number }}
    */
-  restoreRooms(docs, { now = this.now() } = {}) {
+  restoreRooms(docs, { now = this.now(), allowEmpty = false } = {}) {
     const stats = { rooms: 0, seats: 0, droppedSeats: 0 };
     for (const d of Array.isArray(docs) ? docs : []) {
       if (!d || typeof d.code !== 'string' || d.code.length !== ROOM_CODE_LEN || this.rooms.has(d.code)) { stats.droppedSeats++; continue; }
@@ -557,7 +558,7 @@ export class Lobby {
         };
         stats.seats++;
       }
-      if (room.activeHumans().length === 0) { stats.droppedSeats += room.seats.filter(Boolean).length; continue; }
+      if (room.activeHumans().length === 0 && !allowEmpty) { stats.droppedSeats += room.seats.filter(Boolean).length; continue; }
       const host = room.seatOf(d.hostId);
       room.hostId = host && !host.isBot && !host.left ? d.hostId : null;
       if (!room.hostId) this.migrateHost(room);
@@ -1573,6 +1574,10 @@ export class Lobby {
       }, {
         created: (match) => {
           this.attachQueuedWorker(ctx, room, match);
+          for (const id of allHumanIds) {
+            const session = this.registry.byId(id);
+            if (session) session.pendingResult = null;
+          }
           if (room) room.matchKey = this.registry.byId(room.hostId)?.limitKey || null;
         },
         send: (playerId, msg, encoded) => { if (ctx.live) return this.queueMatchSend(ctx, playerId, msg, encoded); return false; },
@@ -1601,6 +1606,7 @@ export class Lobby {
       }
       if (room && room.matchCtx === ctx) { room.match = null; room.matchCtx = null; room.matchKey = null; this.broadcastState(room); }
       this.disposeMatchCtx(ctx);
+      if (room) this.disposeEmptyRoom(room);
       return fail(ERR.INTERNAL, 'match failed to start');
     }
   }
@@ -1642,7 +1648,7 @@ export class Lobby {
       this.activeQueueMatches.add(ctx);
       for (const id of allHumanIds) {
         const session = this.registry.byId(id);
-        if (session) session.activeMatchCtx = ctx;
+        if (session) { session.activeMatchCtx = ctx; session.pendingResult = null; }
       }
       if (room) {
         room.match = match;
@@ -1678,9 +1684,10 @@ export class Lobby {
     if (!ctx || ctx.disposed) return false;
     const p = ctx.members.find((x) => x.playerId === playerId);
     if (!p || p.isBot || p.left) return false;
+    // Settlement belongs to an offline teammate too; keep their encoded result before checking the socket.
+    if (msg?.t === 'm.result') ctx.results.set(playerId, encoded ?? encode(msg));
     const session = this.registry.byId(playerId);
     if (!session || !session.connected || session.activeMatchCtx !== ctx) return false;
-    if (msg?.t === 'm.result') ctx.results.set(playerId, encoded ?? encode(msg));
     return sendSession(session, msg, encoded);
   }
 
@@ -1703,8 +1710,13 @@ export class Lobby {
     for (const p of ctx.members) if (!p.isBot) {
       const session = this.registry.byId(p.playerId);
       if (session?.activeMatchCtx === ctx) {
+        // External teammates cannot use the owning room's replay (and it may be emptied at settlement).
+        if (!p.left && (!room || !room.seatOf(p.playerId))) {
+          const result = ctx.results.get(p.playerId) || ctx.sharedResult;
+          if (result) session.pendingResult = [ctx.lastPublic, result].filter(Boolean);
+        }
+        // A matched player may still own a different lobby room; only detach the ended match.
         session.activeMatchCtx = null;
-        if (!room) session.roomCode = null;
       }
     }
     if (room) {
@@ -1960,10 +1972,14 @@ export class Lobby {
 
   leaveQueuedMatchPlayer(ctx, playerId) {
     const member = ctx.members?.find((p) => p.playerId === playerId);
-    if (member) { member.left = true; member.connected = false; }
+    if (!member || member.isBot || member.left || ctx.disposed) return;
+    // Main-thread membership is authoritative even before a Worker acknowledges onLeave.
+    member.left = true;
+    member.connected = false;
     this.callMatchContext(ctx, 'onLeave', playerId);
     const session = this.registry.byId(playerId);
     if (session?.activeMatchCtx === ctx) session.activeMatchCtx = null;
+    if (ctx.room) this.disposeEmptyRoom(ctx.room);
   }
 
   /** Call an optional match hook without letting it throw. onLeave falls back to onDisconnect. */
@@ -2045,6 +2061,7 @@ export class Lobby {
    */
   removeMember(room, playerId) {
     const session = this.registry.byId(playerId);
+    const active = session?.activeMatchCtx;
     if (session && session.roomCode === room.code) session.roomCode = null;
     this.clearGrace(playerId);
     this.dropReplay(room, playerId);
@@ -2055,15 +2072,26 @@ export class Lobby {
       seat.left = true;
       seat.connected = false;
       seat.ready = false;
-      this.callMatch(room, 'onLeave', playerId);
+      if (room.matchCtx?.queue) this.leaveQueuedMatchPlayer(room.matchCtx, playerId);
+      else this.callMatch(room, 'onLeave', playerId);
       if (session?.activeMatchCtx === room.matchCtx) session.activeMatchCtx = null;
     } else {
       room.seats[seat.seat] = null;
+      if (active?.queue) this.leaveQueuedMatchPlayer(active, playerId);
     }
     if (room.disposed) return; // onLeave may have ended the match and emptied the room
     if (room.hostId === playerId) this.migrateHost(room);
-    if (room.activeHumans().length === 0) this.disposeRoom(room, 'empty');
-    else this.broadcastState(room);
+    this.disposeEmptyRoom(room);
+    if (!room.disposed) this.broadcastState(room);
+  }
+
+  /** An empty party is not an empty match: retain the original code/lane while external humans still own it. */
+  disposeEmptyRoom(room) {
+    if (room.disposed || room.activeHumans().length) return;
+    const ctx = room.matchCtx;
+    if (ctx?.queue && !ctx.ended && !ctx.disposed && ctx.members.some((p) =>
+      !p.isBot && !p.left && this.registry.byId(p.playerId)?.activeMatchCtx === ctx)) return;
+    this.disposeRoom(room, 'empty');
   }
 
   /**

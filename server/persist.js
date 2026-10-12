@@ -207,8 +207,14 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       const players = Array.isArray(cp?.players) ? cp.players.filter((p) => p && typeof p.playerId === 'string') : [];
       const seats = Array.isArray(original.seats) ? original.seats.filter((s) => s && typeof s.playerId === 'string').map((s) => ({ ...s })) : [];
       const hasHuman = seats.some((s) => !s.isBot && !s.left && registry.byId(s.playerId));
+      // A known queue room can remain as an empty match container after its original party leaves. Keep external
+      // teammates' actual room ownership; do not promote them into this room just to keep its checkpoint alive.
+      // Missing-room reconstruction still uses the legacy fallback below (its synthesized record has no seats).
+      const allowEmpty = !hasHuman && original.queueMatch === true && seats.length > 0 && players.some((p) =>
+        !p.isBot && !p.left && registry.byId(p.playerId) && !departures(key).includes(p.playerId)
+        && (!sessionMatchKeys.has(p.playerId) || sessionMatchKeys.get(p.playerId) === key));
       // An owning room can disappear while its public teammates and checkpoint survive.
-      if (!hasHuman && cp) for (const p of players) {
+      if (!hasHuman && cp && !allowEmpty) for (const p of players) {
         if (p.isBot || p.left || !registry.byId(p.playerId) || departures(key).includes(p.playerId)) continue;
         const owner = sessionMatchKeys.get(p.playerId);
         if (owner && owner !== key) continue;
@@ -229,7 +235,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       });
       const record = { ...original, seats: normalized, mode: original.mode === 'solo' ? 'solo' : 'coop',
         difficulty: DIFFICULTIES.includes(original.difficulty) ? original.difficulty : DIFFICULTIES.includes(cp?.difficulty) ? cp.difficulty : 'NORMAL' };
-      const result = lobby.restoreRooms([record], { now });
+      const result = lobby.restoreRooms([record], { now, allowEmpty });
       stats.rooms += result.rooms;
       stats.droppedSeats += result.droppedSeats;
     } catch (e) { log.warn?.(`[persist] ${key}: room restore failed (${e.message}); other rooms continue`); }
@@ -243,6 +249,8 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
     lobby.recoveryDocs?.set(key, { checkpoint: raw, room: roomDocs.get(key) || null,
       sessions: [...sessionDocs.values()].filter((s) => ids.has(s.playerId)), departedPlayerIds: departures(key),
       battleSeq: Number(doc.matchBattleSeq?.[key]) || Number(retained[key]?.battleSeq) || 0 });
+    const room = lobby.getRoom(key);
+    if (room && !room.match) lobby.disposeEmptyRoom(room);
     log.warn?.(`[persist] ${key}: checkpoint retained for a later recovery attempt`);
   };
   for (const [key, raw] of ordered) {
