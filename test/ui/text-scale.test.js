@@ -24,7 +24,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
 const CSS = 'public/css';
 
-/** Every stylesheet under public/css (index.html loads all of them, devices.css last), as { rel, src }. */
+/** Every stylesheet under public/css (index.html loads all, utility-mobile.css after devices.css), as { rel, src }. */
 function stylesheets() {
   const out = [];
   const visit = (rel) => {
@@ -192,7 +192,7 @@ describe('文字大小: the CSS text root', () => {
     for (const [src, re, what] of want) assert.match(src, re, what);
     const byRel = new Map(sheets.map((s) => [s.rel, s.src]));
     const samples = [
-      ['components.css', /\.btn \{[^}]*font-size: calc\(\.18 \* var\(--t\)\)/s],
+      ['components.css', /\.btn \{[^}]*font-size: calc\(\.18 \* (?:var\(--t\)|var\(--utility-text, var\(--t\)\))\)/s],
       ['screens/game.css', /\.set-row__label \{[^}]*font-size: calc\(\.18 \* var\(--t\)\)/s],
       ['screens/game-panels.css', /\.dtext \{ font-size: calc\(\.15 \* var\(--t\)\); line-height: 1\.65;/],
       ['screens/guide.css', /\.guide__tips li \{ font-size: calc\(\.18 \* var\(--t\)\)/],

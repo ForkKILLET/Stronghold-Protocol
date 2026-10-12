@@ -314,7 +314,7 @@ export function TitleScreen() {
       <${MicroLabel}>v${APP_VERSION} · WEB SIMULATION<//>
       ${DEV_BUILD ? html`<span class="title-dev" role="note">${t('开发版 · 不稳定，请勿用于公开服务器')}</span>` : null}
     </footer>
-    <${Modal} open=${aboutOpen} title=${t('关于本服务器')} class="title-about" width="min(7.4rem, 94vw)"
+    <${Modal} open=${aboutOpen} title=${t('关于本服务器')} class="title-about" width="min(7.4rem, 94vw)" utility=${true}
       onClose=${() => setAboutOpen(false)}
       actions=${html`<${Button} variant="primary" data-autofocus onClick=${() => setAboutOpen(false)}>${t('关闭')}<//>`}>
       <dl class="title-about__links">

@@ -38,6 +38,26 @@ after(async () => {
   if (temp) await fs.rm(temp, { recursive: true, force: true });
 });
 
+test('management density overrides are bundled after touch rules without bypassing mandatory landscape', async () => {
+  const cssFiles = manifest['index.html'].css || [];
+  assert.ok(cssFiles.length);
+  const css = (await Promise.all(cssFiles.map((file) => fs.readFile(path.join(outDir, file), 'utf8')))).join('\n');
+  assert.match(css, /\.modal--utility/);
+  assert.match(css, /--utility-text:\s*max\(var\(--t\),\s*64px\)/);
+  assert.match(css, /\.sp-rotatable \.rotate-hint\s*\{\s*display:\s*grid/);
+  assert.doesNotMatch(css, /\.sp-rotatable:(?:not|is)\(/);
+  assert.match(css, /data-viewport-docked/);
+  assert.match(css, /--combat-available-height/);
+  assert.match(css, /--combat-viewport-height/);
+  assert.match(css, /\.room-screen--coop/);
+  assert.match(css, /\.room-topbar__tools/);
+  assert.match(css, /grid-template-areas:[^;}]*controls title invite/);
+  assert.ok(css.lastIndexOf('.settings-modal .set-row--fps') > css.indexOf('.set-row--fps'),
+    'compact overrides follow original settings styles');
+  assert.ok(css.lastIndexOf('.combat-metrics__body') > css.indexOf('.combat-metrics__body'),
+    'compact scroll override follows short-screen fallback');
+});
+
 test('built HTML, hashed assets, runtime CDN and data routes preserve the production contracts', async () => {
   for (const route of ['/', '/index.html', '/build/index.html']) {
     const response = await fetch(origin + route);

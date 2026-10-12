@@ -1,5 +1,5 @@
 /* ==========================================================================================
-   devices.css — multi-device layer (loaded last). Desktop Chrome / Edge / Firefox / Safari, iPad and Android tablets
+   devices.css — multi-device layer (after game styles; scoped utility-mobile.css follows). Desktop Chrome / Edge / Firefox / Safari, iPad and Android tablets
    in landscape, phones in landscape (≥ 640×360 CSS px). js/ui/device.js puts the feature classes on <html>
    (sp-touch, sp-coarse, sp-hover / sp-no-hover, sp-fs, sp-standalone, sp-reduced-motion) — never UA sniffing.
 
@@ -156,3 +156,4 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 
 .rotate-hint__pwa { pointer-events: auto; margin-top: 6px; }
 .rotate-hint__pwa[hidden] { display: none; }
+.rotate-hint__fullscreen[hidden] { display: none; }

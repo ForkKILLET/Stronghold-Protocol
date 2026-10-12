@@ -279,6 +279,12 @@ export function installDeviceSupport(win = globalThis) {
     on(pwaBtn, 'click', () => { pwaInstall.request(); });
   }
 
+  const fullscreenBtn = doc?.getElementById?.('rotate-hint-fullscreen');
+  if (fullscreenBtn) {
+    fullscreenBtn.hidden = !fullscreen.supported(win);
+    on(fullscreenBtn, 'click', () => { fullscreen.enter(win); });
+  }
+
   installed = () => { for (const off of offs.splice(0)) { try { off(); } catch { /* ignore */ } } clearTimeout(rotTimer); installed = null; };
   return installed;
 }

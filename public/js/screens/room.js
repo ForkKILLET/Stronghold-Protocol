@@ -28,6 +28,16 @@ import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../stor
 import { difficultyInfo } from './lobby.js';
 import { t, tc } from '../../../shared/i18n.js';
 
+/** Co-op room utilities are icon-only on every device; solo keeps its existing labels. */
+export function RoomTools({ coop }) {
+  return html`<div class="room-topbar__tools">
+    <${Button} variant="secondary" size="sm" square=${coop} icon="chart" class="stats-entry" onClick=${openStats}
+      title=${t('统计数据')} aria-label=${t('统计数据')}>${coop ? null : t('统计')}<//>
+    <${SettingsButton} class="room-settings" variant="secondary" square=${coop} label=${t('设置')} />
+    <${GuideButton} class="room-guide" variant="secondary" square=${coop} label=${t('玩法说明')} />
+  </div>`;
+}
+
 /**
  * Seats padded to the room's capacity (co-op 4, solo 1), each null or a seat record.
  * @param {any} room room.state payload
@@ -207,7 +217,7 @@ function DifficultyPicker({ room, isHost, busy, onPick }) {
 
 function ConsoleWarning({ open, remaining, busy, onCancel, onConfirm }) {
   const ready = remaining <= 0;
-  return html`<${Modal} open=${open} title=${t('启用控制台')} micro="DEVELOPER CONSOLE" tone="red" closeOnBackdrop=${false}
+  return html`<${Modal} open=${open} title=${t('启用控制台')} micro="DEVELOPER CONSOLE" tone="red" closeOnBackdrop=${false} utility=${true}
       onClose=${onCancel}
       actions=${html`<${Button} variant="secondary" onClick=${onCancel}>${t('取消')}<//>
         <${Button} variant="danger" icon="terminal" loading=${busy} disabled=${!ready} onClick=${onConfirm}>${ready ? t('确定启用') : t('请等待 {remaining} 秒', { remaining })}<//>`}>
@@ -286,7 +296,7 @@ export function RoomScreen() {
   // confirmed player's id goes along: if they left and someone else took the seat meanwhile, the server refuses it.
   const kick = async (seat, name, playerId) => {
     if (inFlight.current) return;
-    const ok = await confirmDialog({ title: t('移出同盟'), text: t('确定将「{name}」移出同盟吗？对方可以凭同盟密钥重新加入。', { name: name || t('博士') }), okText: t('移出'), danger: true });
+    const ok = await confirmDialog({ utility: true, title: t('移出同盟'), text: t('确定将「{name}」移出同盟吗？对方可以凭同盟密钥重新加入。', { name: name || t('博士') }), okText: t('移出'), danger: true });
     if (ok) run(`kick${seat}`, () => net.request('room.kick', { seat, playerId }));
   };
   const setDifficulty = (difficulty) => run('diff', () => net.request('room.setDifficulty', { difficulty }));
@@ -311,7 +321,7 @@ export function RoomScreen() {
     if (inFlight.current) return;
     const othersHere = facts.humans.some((s) => s.playerId !== me.playerId);
     if (facts.isHost && othersHere) {
-      const ok = await confirmDialog({ title: t('离开同盟'), text: t('你是同盟的创建者，离开后创建者身份将移交或同盟解散。确定离开吗？'), okText: t('离开'), danger: true });
+      const ok = await confirmDialog({ utility: true, title: t('离开同盟'), text: t('你是同盟的创建者，离开后创建者身份将移交或同盟解散。确定离开吗？'), okText: t('离开'), danger: true });
       if (!ok) return;
     }
     inFlight.current = true;
@@ -342,7 +352,7 @@ export function RoomScreen() {
         ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
-  return html`<div class="screen room-screen">
+  return html`<div class=${`screen room-screen${coop ? ' room-screen--coop' : ''}`}>
     <header class="topbar">
       <div class="topbar__left">
         <${Tooltip} text=${t('离开同盟')} placement="bottom">
@@ -356,9 +366,7 @@ export function RoomScreen() {
           </div>
           <${MicroLabel}>${t('连接状态')}<//>
         </div>
-        <${Button} variant="secondary" size="sm" icon="chart" class="stats-entry" onClick=${openStats} title=${t('统计数据')} aria-label=${t('统计数据')}>${t('统计')}<//>
-        <${SettingsButton} class="room-settings" variant="secondary" label=${t('设置')} />
-        <${GuideButton} class="room-guide" variant="secondary" label=${t('玩法说明')} />
+        <${RoomTools} coop=${coop} />
       </div>
       <div class="topbar__center">
         <${MicroLabel} tone="mint">${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}<//>

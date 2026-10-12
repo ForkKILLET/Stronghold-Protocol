@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, useTicker } from './components.js';
 import { UnitThumb } from './gameComponents.js';
 import { battleRunner } from '../battle/runner.js';
 import { t, N_ } from '../../../shared/i18n.js';
+import { combatMetricsLayout } from './combatMetricsLayout.js';
 
 const TYPES = Object.freeze([
   { id: 'phys', label: N_('物理') }, { id: 'arts', label: N_('法术') },
@@ -28,15 +29,40 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
     window.addEventListener('keydown', onKey);
     return () => { window.removeEventListener('keydown', onKey); previous?.focus?.(); };
   }, []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const panel = panelRef.current;
     const corner = panel?.parentElement;
-    const measure = () => panel?.style.setProperty('--combat-corner-height', `${corner?.getBoundingClientRect().height || 44}px`);
+    const viewport = window.visualViewport;
+    const measure = () => {
+      if (!panel || !corner) return;
+      const rect = corner.getBoundingClientRect();
+      const rootStyle = getComputedStyle(document.documentElement);
+      const layout = combatMetricsLayout({
+        cornerTop: rect.top, cornerBottom: rect.bottom,
+        viewportHeight: viewport?.height || window.innerHeight,
+        viewportTop: viewport?.offsetTop || 0,
+        rem: parseFloat(rootStyle.fontSize) || 40,
+        safeTop: parseFloat(rootStyle.getPropertyValue('--sa-t')) || 0,
+        safeBottom: parseFloat(rootStyle.getPropertyValue('--sa-b')) || 0,
+      });
+      panel.style.setProperty('--combat-corner-height', `${rect.height || 44}px`);
+      panel.style.setProperty('--combat-available-height', `${layout.availableHeight}px`);
+      panel.style.setProperty('--combat-viewport-height', `${layout.viewportSpace}px`);
+      panel.style.setProperty('--combat-viewport-top', `${layout.viewportPanelTop}px`);
+      panel.dataset.viewportDocked = String(layout.viewportDocked);
+    };
     measure();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (corner) observer?.observe(corner);
     window.addEventListener('resize', measure);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+    viewport?.addEventListener('resize', measure);
+    viewport?.addEventListener('scroll', measure);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', measure);
+      viewport?.removeEventListener('resize', measure);
+      viewport?.removeEventListener('scroll', measure);
+    };
   }, []);
   const result = (myId ? runner?.combatMetrics({ scope, ownerId: myId }) : null) || { rows: [], damage: 0, healing: 0 };
   const maximum = Math.max(1, ...result.rows.map((r) => r.damage));
@@ -45,14 +71,14 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner }) {
     <header class="combat-metrics__head">
       <div><span class="combat-metrics__micro">COMBAT ANALYSIS</span><h2>${t('作战统计')}</h2></div>
       <button ref=${closeRef} type="button" class="combat-metrics__close" aria-label=${t('关闭作战统计')} onClick=${onClose}><${Icon} name="close" /></button>
-    </header>
-    <div class="combat-metrics__body">
-    <div class="combat-metrics__tools">
-      <div class="combat-metrics__scopes" role="group" aria-label=${t('统计范围')}>
-        ${[['battle', t('当前战斗')], ['match', t('本局累计')]].map(([id, label]) => html`<button type="button" key=${id}
-          aria-pressed=${scope === id} onClick=${() => setScope(id)}>${label}</button>`)}
+      <div class="combat-metrics__tools">
+        <div class="combat-metrics__scopes" role="group" aria-label=${t('统计范围')}>
+          ${[['battle', t('当前战斗')], ['match', t('本局累计')]].map(([id, label]) => html`<button type="button" key=${id}
+            aria-pressed=${scope === id} onClick=${() => setScope(id)}>${label}</button>`)}
+        </div>
       </div>
-    </div>
+    </header>
+    <div class="combat-metrics__body" tabindex="0">
     <div class="combat-metrics__totals">
       <span>${t('总伤害')} <b>${number(result.damage)}</b></span><span>${t('总治疗')} <b>${number(result.healing)}</b></span>
     </div>
