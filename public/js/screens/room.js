@@ -28,13 +28,13 @@ import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../stor
 import { difficultyInfo } from './lobby.js';
 import { t, tc } from '../../../shared/i18n.js';
 
-/** Co-op room utilities are icon-only on every device; solo keeps its existing labels. */
+/** Room header utilities use the same compact icon-button treatment in solo and co-op rooms. */
 export function RoomTools({ coop }) {
   return html`<div class="room-topbar__tools">
-    <${Button} variant="secondary" size="sm" square=${coop} icon="chart" class="stats-entry" onClick=${openStats}
-      title=${t('统计数据')} aria-label=${t('统计数据')}>${coop ? null : t('统计')}<//>
-    <${SettingsButton} class="room-settings" variant="secondary" square=${coop} label=${t('设置')} />
-    <${GuideButton} class="room-guide" variant="secondary" square=${coop} label=${t('玩法说明')} />
+    <${Button} variant="secondary" size="sm" square=${true} icon="chart" class="stats-entry" onClick=${openStats}
+      title=${t('统计数据')} aria-label=${t('统计数据')} />
+    <${SettingsButton} class="room-settings" variant="secondary" square=${true} label=${t('设置')} />
+    <${GuideButton} class="room-guide" variant="secondary" square=${true} label=${t('玩法说明')} />
   </div>`;
 }
 

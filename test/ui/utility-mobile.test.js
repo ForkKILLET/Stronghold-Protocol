@@ -62,7 +62,19 @@ test('the source and build entry load the density layer after the existing touch
   sheet.walkDecls((decl) => {
     if (/var\(--utility-text/.test(decl.value)) assert.equal(decl.prop, 'font-size', `${decl.prop} cannot move layout`);
   });
-  assert.match(declaration(':is(.utility-modal, .lobby-screen, .room-screen)', '--utility-text', MOBILE), /max\(var\(--t\), 64px\)/);
+  assert.match(declaration('.utility-modal', '--utility-text', MOBILE), /max\(var\(--t\), 64px\)/);
+  assert.equal(declaration(':is(.title-screen, .lobby-screen, .room-screen)', '--utility-text', MOBILE), 'var(--t)');
+  assert.equal(declaration('.title-screen .title-tag', 'font-size', MOBILE), 'calc(.16 * var(--utility-text, var(--t)))');
+  assert.equal(declaration('.lobby-screen .mode-card__points', 'font-size', MOBILE), 'calc(.14 * var(--utility-text, var(--t)))');
+  assert.equal(declaration('.title-screen .title-cn', 'font-size', MOBILE), 'calc(.72 * var(--t))');
+  assert.equal(declaration('.lobby-screen .lobby-body', 'padding', MOBILE), '.2rem .25rem');
+  assert.equal(declaration(':is(.lobby-screen, .room-screen) .btn', 'min-height', MOBILE), '.75rem');
+  assert.match(declaration(':is(.lobby-screen, .room-screen) .field__input', 'font-size', MOBILE), /16px/);
+  assert.equal(declaration('.title-screen .title-login .field__input', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
+  assert.equal(declaration('.title-screen .lang-select select', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
+  assert.equal(declaration('.settings-modal :is(.set-seg button, .set-toggle, .shortcut-key)', 'font-size', MOBILE),
+    'calc(.16 * var(--t))');
+  assert.equal(declaration('.settings-modal :is(.set-seg button, .set-toggle, .shortcut-key)', 'min-height', MOBILE), '.75rem');
 });
 
 test('short-screen density does not change field/shop/chat layout or hide functional entries', () => {
@@ -82,7 +94,7 @@ test('compact utility controls have real hit boxes instead of overlapping 44px p
   assert.equal(declaration(selector, 'inset', MOBILE), '0');
   assert.equal(declaration(selector, 'width', MOBILE), '100%');
   assert.equal(declaration(selector, 'transform', MOBILE), 'none');
-  assert.equal(declaration('.resource-choice', 'min-height', MOBILE), '28px');
+  assert.equal(declaration('.resource-choice', 'min-height', MOBILE), '.7rem');
   assert.equal(declaration('.guide__dot', 'min-width', MOBILE), '24px');
   assert.equal(declaration('.guide__dots', 'overflow-x', MOBILE), 'auto');
   assert.match(declaration('.lo .lo-cult .lo-select select', 'font-size', MOBILE), /16px/, 'native select focus zoom guard');
@@ -91,7 +103,7 @@ test('compact utility controls have real hit boxes instead of overlapping 44px p
 test('resource tiers stay in two columns on landscape phones and stack only at genuinely narrow widths', () => {
   assert.equal(declaration('.resource-manager__tiers', 'grid-template-columns', MOBILE), 'repeat(2, minmax(0, 1fr))');
   assert.equal(declaration('.resource-manager__tiers', 'grid-template-columns', '(max-width: 560px)'), 'minmax(0, 1fr)');
-  assert.equal(declaration('.resource-tier__list li', 'padding', MOBILE), '4px 0');
+  assert.equal(declaration('.resource-tier__list li', 'padding', MOBILE), '.1rem 0');
   assert.match(read('public/js/ui/resourcePanel.js'), /group\.present.*group\.wanted/s, 'category progress/counts retained');
   assert.match(read('public/js/ui/resourcePanel.js'), /archiveGroup === group\.id/, 'current import category retained');
 });
@@ -105,8 +117,8 @@ test('damage meter keeps its measured dock, four numeric columns and type bars; 
   assert.equal(declaration('.combat-metrics__list', 'overflow', MOBILE), 'visible');
   assert.equal(declaration('.combat-metrics__list', 'flex', MOBILE), 'none');
   assert.equal(declaration('.combat-metrics__list', 'order', MOBILE), '-1');
-  assert.equal(declaration('.combat-metrics__close', 'min-height', MOBILE), '28px', 'coarse-pointer 44px minimum is explicitly overridden');
-  assert.equal(declaration('.combat-metrics__close', 'min-width', MOBILE), '28px');
+  assert.equal(declaration('.combat-metrics__close', 'min-height', MOBILE), '.7rem', 'coarse-pointer 44px minimum is explicitly overridden');
+  assert.equal(declaration('.combat-metrics__close', 'min-width', MOBILE), '.7rem');
   assert.equal(declaration('.combat-metrics__head > .combat-metrics__tools', 'flex', MOBILE), '1 1 0');
   assert.equal(declaration('.combat-metrics[data-viewport-docked="true"]', 'position', MOBILE), 'fixed');
   assert.equal(declaration('.combat-metrics__values span', 'flex-direction', MOBILE), 'row');
