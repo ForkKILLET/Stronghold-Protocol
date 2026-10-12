@@ -129,7 +129,7 @@ export function collectResourceFiles(assets, local) {
       const prev = byUrl.get(url);
       if (prev == null || tier < prev.tier) byUrl.set(url, { tier, source });
       // The crop tool writes this companion beside the board atlas, outside local-assets.json.
-      if (source === 'local' && /\/assets\/local\/map\/autochess\/TX_autochessi_D\.png$/.test(url)) {
+      if (source === 'local' && /\/assets\/local\/map\/autochess\/TX_autochessi_D\.(?:png|webp)$/.test(url)) {
         byUrl.set(url.replace(/[^/]+$/, 'tiles.json'), { tier: TIER_ESSENTIAL, source });
       }
       return;

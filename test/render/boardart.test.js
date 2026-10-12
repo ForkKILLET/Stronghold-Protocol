@@ -18,7 +18,7 @@ import { FX_KINDS, fxSpec, tilesAround } from '../../public/js/render/fx.js';
 import { statusIconKey } from '../../public/js/render/style.js';
 import { STATUS_KEYS } from '../../public/js/render/textures.js';
 import { createAssets, localAssetUrl } from '../../public/js/assets.js';
-import { loadBoardArt, resetBoardArt } from '../../public/js/render/boardArt.js';
+import { loadBoardArt, resetBoardArt, sourceUrl } from '../../public/js/render/boardArt.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const stages = JSON.parse(readFileSync(path.join(ROOT, 'data/stages.json'), 'utf8'));
@@ -332,6 +332,33 @@ describe('board art CDN loading', () => {
       assert.equal(art.tiles.source.external.path, paths.external, 'absolute URLs stay unchanged');
       assert.equal(await loadBoardArt(assets, { assetsCdn }), art, 'existing per-page cache is retained');
       assert.equal(requests.length, 1);
+    });
+  }
+  for (const assetsCdn of ['', 'https://cdn.example.com/stronghold', '/cdn']) {
+    test(`PNG crop tables select manifest WebP without a duplicate download (${assetsCdn || 'same origin'})`, async t => {
+      const originalFetch = globalThis.fetch;
+      resetBoardArt();
+      t.after(() => { globalThis.fetch = originalFetch; resetBoardArt(); });
+      const dir = '/assets/local/map/autochess';
+      const names = ['TX_autochessi_D', 'TX_autochessi_common_D', 'TX_autochessi_BG'];
+      const images = [];
+      globalThis.fetch = async url => {
+        assert.equal(url, assetsCdn + dir + '/tiles.json');
+        return { ok: true, json: async () => ({ version: 2, materials: {},
+          source: Object.fromEntries(['D', 'common', 'BG'].map((key, i) => [key, { path: `${dir}/${names[i]}.png` }])) }) };
+      };
+      const assets = createAssets({ assetsCdn, manifest: {},
+        fetch: async () => ({ ok: true, json: async () => ({ groups: { 'map/autochess':
+          Object.fromEntries(names.map(name => [name, { path: `${dir}/${name}.webp` }])) } }) }),
+        loadImage: async url => { images.push(url); return { width: 2048 }; },
+      });
+      const art = await loadBoardArt(assets, { assetsCdn });
+      assert.ok(art);
+      assert.deepEqual(images, names.map(name => `${assetsCdn}${dir}/${name}.webp`));
+      assert.equal(sourceUrl(assets, `${dir}/${names[0]}.png`), `${assetsCdn}${dir}/${names[0]}.webp`);
+      assert.equal(sourceUrl({}, `${dir}/missing.png`), `${dir}/missing.png`);
+      const external = `https://other.example.com${dir}/${names[0]}.png`;
+      assert.equal(sourceUrl(assets, external), external, 'explicit URLs are not silently redirected');
     });
   }
 });

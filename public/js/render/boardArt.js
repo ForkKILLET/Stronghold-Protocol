@@ -15,6 +15,16 @@ let cached = null;
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 
+export const BOARD_GROUP = 'map/autochess';
+
+/** Prefer the manifest's PNG/WebP texture for a local crop-table path; explicit external URLs stay untouched. */
+export function sourceUrl(assets, path) {
+  if (!/^\/assets\/local\/map\/autochess\/[^/]+$/.test(path)) return path;
+  const name = path.replace(/^.*\//, '').replace(/\.[^.]*$/, '');
+  const listed = name && typeof assets?.localUrl === 'function' ? assets.localUrl(BOARD_GROUP, name) : null;
+  return typeof listed === 'string' && listed ? listed : path;
+}
+
 /**
  * @param {any} assets store of public/js/assets.js (needs local(), localUrl(), image())
  * @param {{ assetsCdn?: string }} [options] runtime CDN by default; injectable for tests.
@@ -25,7 +35,7 @@ export function loadBoardArt(assets, { assetsCdn = ASSETS_CDN } = {}) {
     if (!assets || typeof assets.local !== 'function' || typeof assets.image !== 'function') return null;
     const manifest = await assets.local().catch(() => null);
     if (!manifest) return null;
-    const atlasUrl = assets.localUrl ? assets.localUrl('map/autochess', 'TX_autochessi_D') : null;
+    const atlasUrl = assets.localUrl ? assets.localUrl(BOARD_GROUP, 'TX_autochessi_D') : null;
     if (!atlasUrl) return null;
     const dir = atlasUrl.replace(/\/[^/]*$/, '');
     let tiles = null;
@@ -34,7 +44,11 @@ export function loadBoardArt(assets, { assetsCdn = ASSETS_CDN } = {}) {
       tiles = res.ok ? await res.json() : null;
     } catch { tiles = null; }
     if (!isObj(tiles) || !isObj(tiles.materials) || !isObj(tiles.source)) return null;
-    // The crop table is a static JSON sidecar, so its root-relative image paths need the same rewrite as manifests.
+    // Share the 3D renderer's manifest-selected WebP instead of also downloading the crop table's PNG.
+    for (const entry of Object.values(tiles.source)) {
+      if (isObj(entry) && typeof entry.path === 'string') entry.path = sourceUrl(assets, entry.path);
+    }
+    // Unlisted fallback paths still need the same CDN rewrite as manifests.
     rewriteAssetPaths(tiles.source, assetsCdn);
     const images = {};
     await Promise.all(Object.entries(tiles.source).map(async ([k, s]) => {

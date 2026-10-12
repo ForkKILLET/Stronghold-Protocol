@@ -28,18 +28,28 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
     [opt]end_box / [opt]start_fly meshes, their merged additive textures, materials and prefab), the blower's texture
     (arts/maps/common/res.ab → map/common: TX_wind_device of the s_wind_device mesh) and the shared water / noise
     textures (arts/maps/effect.ab → map/water) used for deep-sea / mire / smog tiles
-  - derived PBR maps for three.js (DERIVED): Unity stores the theme's normal map as two channels (BC5: RG = XY, B = 0)
-    and metallic/gloss with the smoothness in A; the board renderer needs an RGB normal map (Z rebuilt) and a
-    roughness map in G (1 − smoothness; metalness B = 0), written next to the source as <name>_rgb.png / _rough.png
+  - derived PBR maps for three.js (DERIVED): Unity stores the theme's normal map as two channels (BC5: RG = XY, B = 0;
+    DXT5nm in an older bundle: AG = XY, R = 1) and metallic/gloss with the smoothness in A; the board renderer needs
+    an RGB normal map (Z rebuilt) and a roughness map in G (1 − smoothness; metalness B = 0), written next to the
+    source as <name>_rgb.png / _rough.png
+  - WebP copies of the board textures every player downloads with the 3D board (WEBP), written next to their PNGs;
+    the manifest lists the copy
+  - the official battlefield scenes (scenes.py SCENES: one prebuilt scene per 卫戍协议 battlefield) → scene/<stageId>/
+    scene.json + scene.bin + lightmap pages and scene/tex/ (the materials' albedo textures). The scene bundles ship
+    only while the season runs: they are read from the client when it has them, else from --scenes <dir> (default
+    .cache/official-scenes/*, filled by tools/local-extract/fetch_scenes.py)
 
 Usage:
   python3 -m venv .venv && .venv/bin/pip install -r tools/local-extract/requirements.txt
   .venv/bin/python tools/local-extract/extract.py [--game <AB root>] [--out public/assets/local] [--only <subdir prefix>]
   python3 tools/local-extract/extract.py --print-jobs     (the job table as JSON; needs no dependencies)
+  python3 tools/local-extract/extract.py --webp           (only the WebP copies, from the PNGs already extracted —
+                                                          e.g. the local art copied from a release bundle; needs Pillow)
+  .venv/bin/python tools/local-extract/extract.py --only scene [--scenes <dir of in-season bundles>]
 
-Writes <out>/**.png|.skel|.atlas and data/local-assets.json (manifest of what was extracted). With --only, just the
-jobs whose output subdir starts with one of the prefixes run, and their groups replace those of the existing manifest
-(every other group is kept as is).
+Writes <out>/**.png|.webp|.skel|.atlas and data/local-assets.json (manifest of what was extracted). With --only, just
+the jobs whose output subdir starts with one of the prefixes run, and their groups replace those of the existing
+manifest (every other group is kept as is).
 Everything is (c) Hypergryph; for private, non-commercial fan use only.
 """
 import argparse
@@ -51,6 +61,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import scenes  # noqa: E402  (the battlefield scene table and exporter; imports UnityPy only when it runs)
 
 ROOT = Path(__file__).resolve().parents[2]
 HOME = Path.home()
@@ -145,12 +156,38 @@ TOKEN_PACKS = 'pkgrps/btl_pfb_tokens_*.ab'
 TOKEN_SPINE_SUB = 'spine/token'
 
 # Derived three.js maps: (output subdir, source texture, kind, output name). 'normal_rg' rebuilds Z of a two-channel
-# (BC5) normal map into an RGB tangent-space map; 'rough_from_gloss' turns Unity's metallic/gloss map (smoothness in
-# A) into a roughness (G) / metalness (B) map. Written after the job that exported the source texture.
+# (BC5 or DXT5nm) normal map into an RGB tangent-space map; 'rough_from_gloss' turns Unity's metallic/gloss map
+# (smoothness in A) into a roughness (G) / metalness (B) map. Written after the job that exported the source texture.
 DERIVED = [
     ('map/autochess', 'TX_autochessi_N', 'normal_rg', 'TX_autochessi_N_rgb'),
     ('map/autochess', 'TX_autochessi_M', 'rough_from_gloss', 'TX_autochessi_M_rough'),
 ]
+
+# The board textures every player downloads when a match shows the 3D board (public/js/render/board3d/load.js
+# PACK_IMAGES; D / common_D / BG also feed the 2D board art, render/boardArt.js): (output subdir, name, mode). A WebP
+# copy is written next to the PNG and the manifest lists the copy instead (≈ 6.7 MB → 2.0 MB per cold start); the PNG
+# stays for tools/crop-board-atlas.mjs and setup's check. 'lossy' = colour maps at quality 95 with the alpha lossless
+# and the RGB under transparent texels kept (`exact`: the board material is opaque and samples it); 'lossless' =
+# normal and data maps, whose channels hold independent values that lossy WebP's chroma subsampling would mix (a
+# normal map ends up tens of degrees off). A Pillow without WebP support keeps the PNG.
+WEBP = [
+    ('map/autochess', 'TX_autochessi_D', 'lossy'),
+    ('map/autochess', 'TX_autochessi_BG', 'lossy'),
+    ('map/autochess', 'TX_autochessi_common_D', 'lossy'),
+    ('map/autochess', 'TX_autochessi_N_rgb', 'lossless'),
+    ('map/autochess', 'TX_autochessi_M_rough', 'lossless'),
+    ('map/autochess', 'TX_autochessi_E', 'lossless'),
+    ('map/autochess', 'TX_autochessi_common_E', 'lossless'),
+    ('map/common', 'TX_wind_device', 'lossy'),
+    ('map/fx', '[opt]merged_textures', 'lossless'),
+    ('map/water', '[ucp]TX_water_normal', 'lossless'),
+    ('map/water', 'TX_Caustics256', 'lossy'),
+    ('map/water', 'T_noise_clouds_01', 'lossless'),
+]
+WEBP_OPTIONS = {
+    'lossy': {'quality': 95, 'method': 6, 'alpha_quality': 100, 'exact': True},
+    'lossless': {'lossless': True, 'quality': 100, 'method': 6, 'exact': True},
+}
 
 # Shader bundles loaded beside every job that exports Materials, only so that the materials' shader references
 # (external CABs) resolve to a name in materials.json (e.g. Torappu/Scene/StandardDirectional); nothing is exported
@@ -371,13 +408,16 @@ def _normal_z_table():
 
 
 def derive_normal_rg(img):
-    """RGB tangent-space normal map from a two-channel (BC5: R = X, G = Y, B unused) one: Z rebuilt per pixel."""
-    from PIL import Image
-    rgb = img.convert('RGB')
-    r, g, _ = rgb.split()
+    """RGB tangent-space normal map from Unity's two-channel one: Z rebuilt per pixel. X and Y are read the way Unity's
+    shaders unpack them (UnityCG.cginc UnpackNormalmapRGorAG: x = R · A, y = G), which covers both layouts a client
+    build holds: BC5 (R = X, G = Y, B unused, no alpha → A = 1) and DXT5nm (R = 1, G = Y, A = X — the map_autochess
+    bundle before the client update of 2026-10)."""
+    from PIL import Image, ImageChops
+    r, g, _, a = img.convert('RGBA').split()
+    x = ImageChops.multiply(r, a)  # exact when either factor is 255
     table = _normal_z_table()
-    z = bytes(table[(x << 8) | y] for x, y in zip(r.tobytes(), g.tobytes()))
-    return Image.merge('RGB', (r, g, Image.frombytes('L', rgb.size, z)))
+    z = bytes(table[(xb << 8) | yb] for xb, yb in zip(x.tobytes(), g.tobytes()))
+    return Image.merge('RGB', (x, g, Image.frombytes('L', img.size, z)))
 
 
 def derive_rough_from_gloss(img):
@@ -413,6 +453,45 @@ def run_derived(out_root, sub, manifest, log):
                                               'kind': 'Derived', 'from': src, 'derive': kind}
         n += 1
     return n
+
+
+def run_webp(out_root, sub, manifest, log):
+    """Write the WEBP copies of output subdir `sub` from its PNGs and point their manifest entries at them."""
+    n = 0
+    for wsub, name, mode in WEBP:
+        entry = manifest.get(sub, {}).get(name) if wsub == sub else None
+        png = Path(out_root) / sub / f'{name}.png'
+        if not entry or not png.exists():
+            continue
+        dst = png.with_name(f'{name}.webp')
+        try:
+            from PIL import Image
+            with Image.open(png) as img:
+                img.save(dst, 'WEBP', **WEBP_OPTIONS[mode])
+        except Exception as e:  # no WebP support in this Pillow, or a broken PNG: the entry keeps the PNG
+            log(f'  warn webp {name}: {e}')
+            continue
+        entry.update(path=f'/assets/local/{sub}/{dst.name}', webp=mode)
+        n += 1
+    return n
+
+
+def webp_only(out_root, manifest_path, log):
+    """--webp: the WEBP copies of an existing extraction (e.g. the local art copied from a release bundle)."""
+    try:
+        doc = json.loads(Path(manifest_path).read_text(encoding='utf-8'))
+    except (OSError, ValueError) as e:
+        print(f'No readable manifest at {manifest_path} ({e}). Extract the local art first.', file=sys.stderr)
+        return 2
+    groups = doc.get('groups') if isinstance(doc, dict) else None
+    if not isinstance(groups, dict):
+        print(f'{manifest_path} has no groups. Extract the local art first.', file=sys.stderr)
+        return 2
+    n = sum(run_webp(out_root, sub, groups, log) for sub in dict.fromkeys(s for s, _, _ in WEBP))
+    add_hashes(Path(out_root), groups, log)
+    Path(manifest_path).write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    log(f'done: {n} WebP copies, manifest {manifest_path}')
+    return 0 if n else 1
 
 
 def merge_manifest(old_groups, new_groups, ran_subs):
@@ -516,6 +595,9 @@ def export_bundle(ab_root, job, out_root, manifest, log):
         n += 1
     n += run_derived(out_root, sub, manifest, log)
     log(f'{rel}: {n} files -> {sub}')
+    k = run_webp(out_root, sub, manifest, log)
+    if k:
+        log(f'  {k} WebP copies -> {sub}')
     return n
 
 
@@ -648,6 +730,39 @@ def write_spine(objects, sda, sub, name, out_root, manifest, log):
     return len(files) + len(pages)
 
 
+def scene_ids(only):
+    """The stage ids of scenes.SCENES that run under --only (all with no prefix, `scene` or a parent of it)."""
+    return spine_ids(only, scenes.SCENE_SUB, [sid for sid, _deps in scenes.SCENES])
+
+
+def scene_roots(ab_root, extra):
+    """AB roots searched for the scene bundles, in order: the client, --scenes dirs, then every version kept under
+    .cache/official-scenes (newest name first)."""
+    kept = ROOT / '.cache' / 'official-scenes'
+    cached = sorted((p for p in kept.iterdir() if p.is_dir()), reverse=True) if kept.is_dir() else []
+    return [Path(ab_root), *[Path(p) for p in extra], *cached]
+
+
+def export_scenes(ab_root, out_root, manifest, log, ids, roots):
+    """scenes.SCENES (the ids in `ids`) → scene/<stageId>/ (scenes.export_scene); a stage without a scene bundle in
+    any root is skipped."""
+    root = Path(ab_root)
+    shader_deps = dep_bundles(root, {'Material'})
+    n = 0
+    for sid, deps in scenes.SCENES:
+        if sid not in ids:
+            continue
+        src = scenes.find_scene(sid, roots)
+        if src is None:
+            log(f'skip (no scene bundle: off-season client, see --scenes) {scenes.scene_bundle(sid)}')
+            continue
+        try:
+            n += scenes.export_scene(sid, deps, src, root, out_root, manifest, log, material_info, shader_deps)
+        except Exception as e:  # one broken scene must not stop the others
+            log(f'FAIL scene {sid}: {e}')
+    return n
+
+
 def export_enemy_spines(ab_root, out_root, manifest, log, ids=None):
     """ENEMY_SPINES (or `ids`) from the enemy art bundles (each bundle loaded on its own; stops once every model was
     found)."""
@@ -685,8 +800,8 @@ def add_hashes(out_root, groups, log):
     """Record a content hash per entry (docs/ASSETS.md「Preload」).
 
     The preload stores files by hash: with `hash` in the manifest the client replaces only the entries whose art really
-    changed, instead of re-downloading the whole set when this manifest is regenerated. Only the files written by the
-    run are re-hashed; entries kept from a previous manifest keep the hash they already carry.
+    changed, instead of re-downloading the whole set when this manifest is regenerated. Hash the actual file selected
+    by each entry, including WebP conversions; unreadable files must not retain an unverifiable old fingerprint.
     """
     hashed = 0
     for group in groups.values():
@@ -756,19 +871,32 @@ def main():
     ap.add_argument('--manifest', default=str(ROOT / 'data/local-assets.json'))
     ap.add_argument('--only', action='append', default=[], metavar='SUBDIR',
                     help='only run the jobs whose output subdir starts with this prefix (repeatable), e.g. emoticon')
+    ap.add_argument('--scenes', action='append', default=[], metavar='DIR',
+                    help='an AB root holding the battlefield scene bundles of an in-season version (repeatable; '
+                         'searched after --game and before .cache/official-scenes/*)')
     ap.add_argument('--print-jobs', action='store_true', help='print the job table as JSON and exit')
+    ap.add_argument('--webp', action='store_true',
+                    help='only write the WebP copies of the board textures from the PNGs already under --out and list '
+                         'them in the manifest (needs Pillow, not the client)')
     args = ap.parse_args()
 
     if args.print_jobs:
         jobs = [{'bundle': rel, 'sub': sub, 'kinds': sorted(kinds), 'keep': keep.pattern if keep else None}
                 for rel, sub, kinds, keep in map(job_parts, JOBS)]
         derived = [{'sub': sub, 'from': src, 'derive': kind, 'name': name} for sub, src, kind, name in DERIVED]
+        webp = [{'sub': sub, 'name': name, 'mode': mode} for sub, name, mode in WEBP]
         print(json.dumps({'emoteThemes': [{'themeId': t, 'dir': d} for t, d in EMOTE_THEMES], 'jobs': jobs,
-                          'derived': derived,
+                          'derived': derived, 'webp': webp,
                           'enemySpines': {'bundles': ENEMY_ART, 'sub': ENEMY_SPINE_SUB, 'ids': ENEMY_SPINES},
-                          'tokenSpines': {'bundles': TOKEN_PACKS, 'sub': TOKEN_SPINE_SUB, 'ids': TOKEN_SPINES}},
+                          'tokenSpines': {'bundles': TOKEN_PACKS, 'sub': TOKEN_SPINE_SUB, 'ids': TOKEN_SPINES},
+                          'scenes': {'sub': scenes.SCENE_SUB, 'tex': scenes.TEX_SUB,
+                                     'stages': [{'id': sid, 'bundle': scenes.scene_bundle(sid), 'deps': deps}
+                                                for sid, deps in scenes.SCENES]}},
                          ensure_ascii=False))
         return 0
+
+    if args.webp:
+        return webp_only(Path(args.out), Path(args.manifest), print)
 
     ab_root = Path(args.game) if args.game else next((p for p in CANDIDATES if p.exists()), None)
     if not ab_root or not ab_root.exists():
@@ -777,7 +905,8 @@ def main():
     jobs = select_jobs(args.only)
     enemy_ids = spine_ids(args.only, ENEMY_SPINE_SUB, ENEMY_SPINES)
     token_ids = spine_ids(args.only, TOKEN_SPINE_SUB, TOKEN_SPINES)
-    if not jobs and not enemy_ids and not token_ids:
+    stage_ids = scene_ids(args.only)
+    if not jobs and not enemy_ids and not token_ids and not stage_ids:
         print(f'--only {args.only}: no job matches', file=sys.stderr)
         return 2
     out_root = Path(args.out)
@@ -790,6 +919,8 @@ def main():
         total += export_enemy_spines(ab_root, out_root, manifest, print, enemy_ids)
     if token_ids:
         total += export_token_spines(ab_root, out_root, manifest, print, token_ids)
+    if stage_ids:
+        total += export_scenes(ab_root, out_root, manifest, print, stage_ids, scene_roots(ab_root, args.scenes))
     old = {}
     if args.only and Path(args.manifest).exists():
         try:

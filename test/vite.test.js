@@ -144,7 +144,7 @@ test('built simulation retains operator kits and domain mechanics: same determin
   }
 });
 
-test('built simulation matches Node for sleep, Egir, stand-ins, self-selected kits and 0.2.4 bonds', async () => {
+test('built simulation matches Node for sleep, Egir, stand-ins, self-selected kits and 0.2.5 funnels', async () => {
   const simulation = Object.values(manifest).find((m) => m.name === 'simulation');
   const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
   const spec = namespaces.find((n) => typeof n?.createBattleFromSpec === 'function');
@@ -152,12 +152,12 @@ test('built simulation matches Node for sleep, Egir, stand-ins, self-selected ki
   const raw = getData({ log: { warn() {} } });
   simdata.setSimData(raw);
   const selected = [
-    ...scenariosOf('roster').filter((sc) => ['roster-039', 'roster-042'].includes(sc.id)),
+    ...scenariosOf('roster').filter((sc) => ['roster-004', 'roster-005', 'roster-007', 'roster-009', 'roster-039', 'roster-042'].includes(sc.id)),
     ...scenariosOf('bonds').filter((sc) => ['bond-egirShip-high', 'bond-raidShip-high', 'bond-steadShip-high'].includes(sc.id)),
     ...scenariosOf('standins').filter((sc) => ['standin-01', 'standin-09'].includes(sc.id)),
     ...scenariosOf('diy').filter((sc) => ['diy-001', 'diy-019', 'diy-048', 'diy-100', 'diy-135', 'diy-136'].includes(sc.id)),
   ];
-  assert.equal(selected.length, 13, 'includes Clementia in both forms and the 0.2.4 Raid/Steadfastness mechanisms');
+  assert.equal(selected.length, 17, 'includes Rockrock/Kjera/Vulpis in both forms, Clementia and Raid/Steadfastness');
   for (const sc of selected) {
     const input = nativeSpec.buildBattleSpec({ ...sc, battleId: sc.id, fieldId: sc.fieldId ?? 'g', content: 'full' });
     const options = { quiet: true, recordEvents: true };

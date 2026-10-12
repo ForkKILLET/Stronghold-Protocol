@@ -183,7 +183,7 @@ const MATCH_FIELDS = Object.freeze([
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'aiPicksLast', 'setupRevision', '_setupVoteSeq',
   'round', 'uidSeq', 'loneHuman', 'hiddenLayerSum', 'hiddenReached', 'errors', 'errorCount', 'simErrors',
-  'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves',
+  'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves', 'bossPairs',
 ]);
 
 /** PlayerState fields of a checkpoint (bonds/deploy map are recomputed on restore). */
@@ -321,6 +321,16 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     catch (e) { reset(label, e); }
   };
   for (const k of MATCH_FIELDS) if (k !== 'round') field(m, doc, k, k);
+  // A pre-0.2.5 checkpoint can already contain boss preparation waves with authoritative partners/sides.
+  // Keep those instead of drawing again after a restart.
+  const validPairs = pairs => Array.isArray(pairs) && pairs.length > 0
+    && pairs.every(ids => Array.isArray(ids) && ids.length >= 1 && ids.length <= 2
+      && ids.every(id => typeof id === 'string' && m.players.has(id)))
+    && new Set(pairs.flat()).size === pairs.flat().length;
+  if (!validPairs(m.bossPairs)) {
+    const previous = Array.isArray(m.bossWaves) ? m.bossWaves.map(w => w?.players) : null;
+    m.bossPairs = validPairs(previous) ? previous.map(ids => ids.slice()) : null;
+  }
   m.round = Number(doc.round) || 0;
   if (bestEffort && (!Number.isInteger(m.round) || m.round < 0
     || (m.round === 0 && [PHASE.PREP, PHASE.ROUND_START, PHASE.SP_DRAFT].includes(doc.phase)))) {

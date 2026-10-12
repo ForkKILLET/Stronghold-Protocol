@@ -86,23 +86,24 @@ test('export/import round trip includes only cached files and serves imported by
   assert.equal((await importResourceZip(target.store, exported.blob)).imported, 1, 'a damaged cached copy is replaced by verified package bytes');
 });
 
-test('board JSON metadata and bracket textures preload, round-trip through ZIP and match encoded CDN requests', async () => {
+test('board/scene JSON metadata and bracket textures preload, round-trip through ZIP and match encoded CDN requests', async () => {
   const paths = ['/assets/local/map/fx/materials.json', '/assets/local/map/fx/prefab.json', '/assets/local/map/autochess/tiles.json',
-    '/assets/local/map/fx/[opt]merged_textures.png', '/assets/local/map/water/[ucp]TX_water_normal.png'];
+    '/assets/local/map/fx/[opt]merged_textures.png', '/assets/local/map/water/[ucp]TX_water_normal.png',
+    '/assets/local/scene/act2autochess_m02/scene.json', '/assets/local/scene/act2autochess_m02/scene.bin'];
   const files = paths.map((url) => file(url, url.endsWith('.json') ? '{"board":true}' : 'texture'));
   const source = store(files);
-  assert.equal((await source.store.download({ tiers: [1] })).count, 5);
+  assert.equal((await source.store.download({ tiers: [1] })).count, paths.length);
   const exported = await exportResourceZip(source.store);
-  assert.equal(exported.count, 5);
+  assert.equal(exported.count, paths.length);
   const targetFiles = files.map((f) => ({ ...f, url: 'https://cdn.example/game' + encodeURI(f.url) }));
   const target = store(targetFiles);
-  assert.equal((await importResourceZip(target.store, exported.blob)).imported, 5);
+  assert.equal((await importResourceZip(target.store, exported.blob)).imported, paths.length);
   for (const f of targetFiles) {
     const response = await handleResourceRequest(new Request(f.url), { caches: target.caches });
     assert.equal(await response.text(), f.body);
     if (f.url.endsWith('.json')) assert.match(response.headers.get('content-type'), /application\/json/);
   }
-  assert.equal((await target.store.status()).tier1Present, 5);
+  assert.equal((await target.store.status()).tier1Present, paths.length);
 });
 
 test('legacy ZIP raw bracket paths match new encoded paths; encoded duplicates and unrelated JSON are refused', async () => {

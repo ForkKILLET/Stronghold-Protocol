@@ -101,6 +101,13 @@ describe('resource manifest building', () => {
     }
     assert.equal(isResourcePath('/assets/x.png'), true);
     assert.equal(isResourcePath('/data/x.json'), false);
+    const scene = { groups: { 'scene/act2autochess_m02': {
+      scene: { path: '/assets/local/scene/act2autochess_m02/scene.json', hash: '0123456789ab' },
+      bin: { path: '/assets/local/scene/act2autochess_m02/scene.bin', hash: 'abcdef012345' },
+    } } };
+    const sceneFiles = collectResourceFiles({}, scene);
+    assert.equal(sceneFiles.length, 2, 'official scene description and geometry both preload');
+    assert.ok(sceneFiles.every(f => f.tier === TIER_ESSENTIAL && validateResourceUrl(f.url)));
     for (const url of ['/build/assets/index-AbCd1234.js', '/build/assets/index-AbCd1234.css', '/build/assets/x.png']) {
       assert.equal(isResourcePath(url), false);
       assert.equal(validateResourceUrl(url), false, 'bundled files are not preload resources');
@@ -368,8 +375,8 @@ describe('the served resource manifest', () => {
 });
 
 describe('the resource index cache', () => {
-  test('warm hits only stat sources/known tile companions; concurrent cold and warm checks share the work', async (t) => {
-    const atlas = '/assets/local/map/autochess/TX_autochessi_D.png';
+  for (const ext of ['png', 'webp']) test(`warm ${ext} hits only stat sources/known tile companions; concurrent cold and warm checks share the work`, async (t) => {
+    const atlas = `/assets/local/map/autochess/TX_autochessi_D.${ext}`;
     const tile = '/assets/local/map/autochess/tiles.json';
     const inst = install({ localDoc: { groups: { 'map/autochess': { atlas: { path: atlas } } } },
       hashesDoc: { files: {} }, files: [atlas.slice(1), tile.slice(1)] });
@@ -383,6 +390,7 @@ describe('the resource index cache', () => {
     const first = index.get();
     assert.equal(index.get(), first, 'cold requests share one pending build');
     const a = await first;
+    assert.ok(a.manifest.files.some(f => f.url.endsWith('/tiles.json')), 'PNG/WebP atlases both include the crop sidecar');
     assert.equal(reads.length, 4, 'three source bodies and one tile body');
     reads.length = 0; stats.length = 0;
     const checks = Array.from({ length: 20 }, () => index.get());

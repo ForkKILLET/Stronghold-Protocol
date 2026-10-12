@@ -15,6 +15,7 @@ import { DATA, makeMatch } from './match/harness.js';
 import { snapshotMatch } from '../server/match/snapshot.js';
 import { MatchWorkerPool } from '../server/workers/matchPool.js';
 import { makeCtx } from '../server/match/effectsMeta.js';
+import { PHASE } from '../shared/constants.js';
 
 const quietLog = { info() {}, warn() {}, error() {}, debug() {} };
 const REDIS_URL = process.env.SP_TEST_REDIS_URL || 'redis://127.0.0.1:6379/15';
@@ -41,6 +42,37 @@ const PREFIX = `sptest:${process.pid}:${Date.now().toString(36)}:`;
 function store(name = 'state') {
   return new StateStore({ url: REDIS_URL, prefix: PREFIX, ttlSec: 120, name, log: quietLog });
 }
+
+test('0.2.5 random boss partners and preparation sides survive two Worker restores through real Redis',
+  { skip: !available && `no Redis at ${REDIS_URL}`, timeout: 30000 }, async t => {
+    const seats = [0, 1, 2, 3].map(seat => ({ seat, playerId: `p_${seat}`, name: `Pair${seat}`, isBot: false, connected: true }));
+    const h = makeMatch({ mode: 'coop', seats, seed: 29, fake: true }).start().toPrep();
+    t.after(() => h.m.dispose());
+    h.m.round = h.m.gd.bossRound;
+    const partners = [['p_3', 'p_1'], ['p_0', 'p_2']];
+    h.m.bossPairs = partners;
+    h.m._planBossWaves();
+    h.m.phase = PHASE.PREP;
+    const probe = store('boss-pairs-025'), pools = [];
+    t.after(async () => {
+      for (const pool of pools) await pool.close();
+      try { await probe.clear(); } finally { await probe.close(); }
+    });
+    assert.equal(await probe.save({ checkpoint: snapshotMatch(h.m) }), true);
+    for (let restart = 0; restart < 2; restart++) {
+      const saved = await probe.load();
+      const pool = new MatchWorkerPool({ data: DATA, lanes: 1 });
+      pools.push(pool);
+      const match = await pool.create(`boss-pairs-${restart}`, {
+        roomCode: 'PAIR', mode: 'coop', difficulty: 'NORMAL', seed: 29, matchNo: 1, seats,
+      }, {}, saved.checkpoint);
+      const restored = await match.snapshot();
+      assert.deepEqual(restored.bossPairs, partners);
+      assert.deepEqual(restored.bossWaves.map(w => w.players), partners);
+      assert.equal(await probe.save({ checkpoint: restored }), true);
+      await pool.close();
+    }
+  });
 
 for (const matchWorkers of [0, 1]) {
   test(`matched teammates outlive their original room party through two real Redis restarts (Workers=${matchWorkers})`,

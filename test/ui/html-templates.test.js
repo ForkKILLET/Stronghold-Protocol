@@ -56,7 +56,7 @@ test('client html templates parse with the shipped htm parser', () => {
   assert.ok(count > 0);
 });
 
-for (const [file, label] of [['ui/shopBar.js', '\u5237\u65b0'], ['screens/lobby.js', '\u5339\u914d\u5269\u4f59']]) {
+for (const [file, label] of [['ui/shopBar.js', '\u5237\u65b0'], ['screens/lobby.js', '满四人后开始']]) {
   test(`${file}: translated label is span text`, () => {
     const tpl = templates(path.join(ROOT, file)).find((x) => x.text.includes(`t('${label}')`));
     assert.ok(tpl);

@@ -95,3 +95,39 @@ node tools/golden.mjs --twice                   # determinism: the corpus twice 
   the corpus there (the roster family enumerates `data/chess.json`).
 
 After the measured shared-stock update (DESIGN §29.8), the original stand-in / DIY seeds remain as outcome regressions even when they field no such operator. Companion seeds `coop2-NORMAL-1-coverage-standins` and `coop2-NORMAL-5-coverage-diy` exercise those full paths; the corpus now contains 287 scenarios.
+
+## 2026-10-12 merge of v0.2.5
+
+Target tag: `cf7a9400270d5aa79b2e601e405dab782e25f120`; no commits after the tag.
+The title-footer repository link is excluded, without removing server-about links.
+Branch gift provenance, bond activation/AI policy, Boss settings, reflection fixes and backend ownership remain.
+The user subsequently included the upstream board/scene WebP conversion; it does not affect simulation digests.
+
+An independent copy reversed only these documented gameplay differences (including stock-backed console merges),
+retained the merged Worker/scheduling implementation and used the tag's unchanged golden harness and data.
+All 287 scenarios matched the tag (49 roster, 46 bonds, 22 fields, 20 matches, 10 standins, 140 diy).
+No branch rules were temporarily overwritten in the working tree. Only after that check were the branch digests regenerated.
+
+Changes relative to the previous branch HEAD:
+
+| family | changed scenarios | reason |
+|---|---|---|
+| roster (23) | `roster-004`, `roster-005`, `roster-007`, `roster-009`, `roster-011`, `roster-012`, `roster-013`, `roster-017`, `roster-019`, `roster-023`, `roster-024`, `roster-026`, `roster-028`, `roster-032`, `roster-033`, `roster-034`, `roster-036`, `roster-038`, `roster-039`, `roster-040`, `roster-043`, `roster-046`, `roster-047` | 0.2.5 funnels, Rockrock locks, Vulpis first hit, targeting and damage-proc fixes interact with existing branch bond rules |
+| bonds (12) | `bond-deputShip-low`, `bond-emptyShip-low`, `bond-kjeragShip-high`, `bond-maniShip-low`, `bond-maniShip-high`, `bond-miraShip-low`, `bond-sargonShip-high`, `bond-soloShip-low`, `bond-victoriaShip-low`, `bond-victoriaShip-high`, `bond-visiShip-low`, `bond-yanShip-low` | 0.2.5 damage-time procs, skill follow-ups, carried HP and target eligibility |
+| fields (8) | `boss-boss_2-pair`, `boss-boss_3-pair`, `boss-boss_5-pair`, `boss-boss_5-solo`, `boss-boss_7-pair`, `hidden-boss_8-pair`, `hidden-boss_9-pair`, `hidden-boss_9-solo` | 0.2.5 damage-time procs, targeting/funnel fixes and exact carry-state ratios |
+| matches (18) | `solo-FUNNY-1`, `solo-FUNNY-2`, `solo-NORMAL-1`, `solo-NORMAL-2`, `solo-HARD-1`, `solo-ABYSS-1`, `coop2-NORMAL-3`, `coop2-HARD-4`, `coop3-ABYSS-5`, `coop4-FUNNY-6`, `coop4-ABYSS-7`, `coop2-NORMAL-8-serverrun`, `solo-HARD-9-boosted`, `coop2-ABYSS-10-boosted`, `coop2-NORMAL-14-standins`, `coop2-NORMAL-70-diy`, `coop2-NORMAL-1-coverage-standins`, `coop2-NORMAL-5-coverage-diy` | random boss pairing, displayed operator overdraw, Touch retention, DIY promotion offers, measured subsets and AI cooperation; branch gifts/bonds remain |
+| standins (3) | `standin-04`, `standin-06`, `standin-07` | 0.2.5 damage-proc, attack-target and hit-tile changes |
+| diy (2) | `diy-098`, `diy-099` | Goldenglow in both forms: the 0.2.5 funnel own-hit and redeployment multiplier changes |
+
+The scenario set is unchanged. Relative to the tag, the preserved branch differences are:
+
+- roster: `roster-005`, `roster-011`, `roster-017`, `roster-023`, `roster-029`, `roster-035`, `roster-041`, `roster-047`.
+- bonds: identical.
+- fields: identical.
+- matches: `solo-FUNNY-1`, `solo-FUNNY-2`, `coop4-FUNNY-6`.
+- standins: `standin-03`, `standin-09`.
+- diy: identical.
+
+The 8 roster / 3 matches / 2 standins differences have the same scenario identities as the v0.2.4 branch comparison;
+bonds, fields and diy match v0.2.5. The independent rule-reversal comparison validates their attribution, not browser/Docker deployment.
+Built-vs-Node checks now additionally cover both Rockrock/Kjera/Vulpis forms, comparing results, final snapshots and events.

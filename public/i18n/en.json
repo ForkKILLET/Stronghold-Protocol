@@ -155,6 +155,8 @@
   "音效": "Sound Effects",
   "静音": "Mute",
   "显示伤害数字": "Damage Numbers",
+  "官方伤害数字": "Official Damage Numbers",
+  "只显示达到官方暴击条件的红色数字。关闭时仍显示每一次命中。": "Show only red numbers that meet the official crit rule. While off, every hit still shows a number.",
   "画面质量": "Graphics Quality",
   "触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向": "Touch controls: tap a unit to select it (Retreat / Sell) · long-press a unit or card for details · after dragging to deploy, swipe to choose a direction",
   "快捷键": "Hotkeys",
@@ -707,6 +709,7 @@
   "冻结商店（下回合保留） · {key}": "Freeze Shop (kept next round) · {key}",
   "解冻": "Unfreeze",
   "刷新商店 · {key}": "Refresh Shop · {key}",
+  "正在刷新…": "Refreshing…",
   "免费 ×{free}": "Free ×{free}",
   "查看 {name} 的战场": "View {name}'s Battlefield",
   "与你在同一战场": "On your field",
@@ -1430,5 +1433,10 @@
   "{names}只能部署在召唤者相邻四格，已退回整备区": "{names} can only be deployed on the four tiles adjacent to the summoner and returned to the Bench",
   "{names}只能部署在召唤者相邻四格，整备区已满，下回合返还": "{names} can only be deployed on the four tiles adjacent to the summoner; the Bench is full, so they come back next round",
   "装备库存不足，未获得该装备": "Equipment stock is insufficient; no equipment was received",
-  "库存不足": "Out of stock"
+  "库存不足": "Out of stock",
+  "批量预载已停止；已保存的资源保留，可继续下载或清理缓存。": "Bulk preloading stopped. Saved resources are kept; resume downloading or clear the cache.",
+  "已停止批量预载。": "Bulk preloading stopped.",
+  "仅匹配真人 · 满四人后开始": "Human players only · Starts with four players",
+  "满四人后开始": "Starts with four players",
+  "请先移除 AI 队友，再匹配真人队友": "Remove AI teammates before matching with human players"
 }
