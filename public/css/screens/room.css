@@ -9,7 +9,25 @@
 .room-match-state { display: inline-flex; align-items: center; gap: .06rem; color: var(--mint-400); font-size: .15rem; }
 .room-match-state .icon { width: .18rem; height: .18rem; }
 .fill-bots { display: inline-flex; align-items: center; gap: .06rem; color: var(--text-lo); font-size: .14rem; cursor: pointer; }
-.fill-bots input { accent-color: var(--mint-500); width: .18rem; height: .18rem; }
+/* Preserve the native checkbox interaction while drawing the game's square,
+   mint selection treatment instead of the browser/OS control. */
+.fill-bots input {
+  appearance: none; -webkit-appearance: none; flex: none;
+  width: .18rem; height: .18rem; margin: 0;
+  border: 1px solid var(--line-2); border-radius: 0;
+  background: rgba(0, 0, 0, .3); cursor: pointer;
+}
+.fill-bots input:checked {
+  border-color: var(--mint-500); background-color: var(--mint-500);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m4 10 4 4 8-8' fill='none' stroke='%230d100f' stroke-width='2'/%3E%3C/svg%3E");
+  background-size: 100% 100%; background-repeat: no-repeat;
+}
+.fill-bots input:enabled:hover { border-color: var(--mint-400); }
+.fill-bots input:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 3px; }
+.fill-bots:has(input:disabled) { opacity: .5; cursor: default; }
+.fill-bots input:disabled { cursor: default; }
+@media (pointer: coarse) { .fill-bots { min-height: 44px; } }
+@media (forced-colors: active) { .fill-bots input { appearance: auto; -webkit-appearance: auto; } }
 .fill-bots--optional.is-hidden { visibility: hidden; pointer-events: none; }
 .room-match-actions > .tt-anchor { justify-self: end; }
 .room-match-actions > .tt-anchor, .room-match-actions > .tt-anchor .btn { width: 100%; }
