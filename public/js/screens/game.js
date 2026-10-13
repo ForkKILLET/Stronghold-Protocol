@@ -144,7 +144,7 @@ export function GameScreen() {
   else if (mode === 'draft') body = html`<${BandDraftScreen} />`;
   else body = html`<${MatchScreen} />`;
   return html`${body}
-    ${(['briefing', 'draft'].includes(mode) || pub.phase === PHASE.SP_DRAFT) ? html`<${DraftPause} pub=${pub} standalone=${['briefing', 'draft'].includes(mode)} />` : null}
+    ${['briefing', 'draft'].includes(mode) ? html`<${DraftPause} pub=${pub} standalone=${['briefing', 'draft'].includes(mode)} />` : null}
     ${(away || autoplay) && !hasResult && mode !== 'result' && !ended ? html`<${AwayOverlay} />` : null}
     ${ended && !hasResult && mode !== 'result' ? html`<${MatchEnded} />` : null}`;
 }
@@ -1566,6 +1566,7 @@ function MatchScreen() {
     </div>
 
     ${sp ? html`<${ChoiceOverlay} minimized=${choiceHidden} onMinimize=${(hidden) => setChoiceHiddenKey(hidden ? choiceKey : null)} pub=${pub} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy} total=${total}
+      pause=${canPause ? { paused, requested:pauseRequested, votes:pub.pauseRequests?.length || 0, required:pub.pauseRequired?.length || 1, busy:pauseBusy, onToggle:()=>togglePause(!pauseRequested) } : null}
       onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />` : null}
     ${personalChoice ? html`<${ChoiceOverlay} key=${personalChoice.id} pub=${pub} sp=${personalChoice} myId=${myId} solo=${solo} personal=${true}
       busyIdx=${personalBusy?.choiceId === personalChoice.id ? personalBusy.idx : null} total=${total}

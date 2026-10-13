@@ -1,3 +1,5 @@
+import { PauseButton } from '../../public/js/ui/hud.js';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ChoiceView, choiceVisibilityKey, bountyCanHide } from '../../public/js/ui/choiceOverlay.js';
@@ -57,4 +59,25 @@ test('equipment drafts share disclosure controls and keep their own caption', ()
   assert.ok(nodes.some(n=>n.props?.class==='spov-folded__open'));
   assert.equal(nodes[0].props['aria-label'],'装备选择已隐藏');
  }
+});
+
+test('expanded choices own their inline pause control; folded bounty/equipment use the top HUD',()=>{
+ const pause={requested:true,votes:1,required:4,onToggle(){}};
+ for(const family of ['bounty','shop','supply']){
+  const active=[...walk(ChoiceView({...props,sp:{...sp,family},pause}))];
+  const clock=active.find(n=>n.props?.class==='spov__clock');assert.ok(clock);
+  const control=[...walk(clock)].find(n=>n.type===PauseButton);assert.equal(control.props.requested,true);assert.equal(control.props.onToggle,pause.onToggle);
+  const folded=[...walk(ChoiceView({...props,sp:{...sp,family},pause,minimized:true}))];
+  assert.equal(folded.some(n=>n.type===PauseButton),false);
+  assert.equal(folded.some(n=>n.type===Countdown),true);
+ }
+ const screen=readFileSync(new URL('../../public/js/screens/game.js',import.meta.url),'utf8');
+ assert.doesNotMatch(screen,/includes\(mode\) \|\| pub.phase === PHASE.SP_DRAFT/,'no detached draft pause over the folded view');
+});
+
+test('inline pause does not discard the armed selection',()=>{
+ let cleared=0;
+ const view=ChoiceView({...props,armed:0,pause:{onToggle(){}},onDisarm:()=>cleared++});
+ view.props.onPointerDown({target:{closest:selector=>selector.includes('.pausebtn')}});assert.equal(cleared,0);
+ view.props.onPointerDown({target:{closest:()=>null}});assert.equal(cleared,1);
 });

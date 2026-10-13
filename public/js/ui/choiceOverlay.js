@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Countdown, MicroLabel, Button } from './components.js';
+import { PauseButton } from './hud.js';
 import { Img, RichText, PlayerAvatar, GIcon } from './gameComponents.js';
 import { itemIconUrl, enemyIconUrl, uiUrl } from './assetUrls.js';
 import { richTextPlain } from './richText.js';
@@ -134,7 +135,7 @@ export function bountyCanHide(sp) { return /^(?:bounty|shop|supply)(?:_s)?$/.tes
 /**
  * The overlay: keeps the two-tap selection and renders ChoiceView. `onPick(idx)` sends the confirmed card (g.choice).
  * @param {{ pub:any, sp:any, myId:string, solo:boolean, personal?:boolean, onPick:(idx:number)=>void, busyIdx?:number|null, total?:number|null,
- *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void }} props
+ *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void, pause?:object|null }} props
  */
 export function ChoiceOverlay(props) {
   const { sp, myId, solo, busyIdx = null, onPick, minimized = false, onMinimize = () => {} } = props;
@@ -164,9 +165,9 @@ export function ChoiceOverlay(props) {
  * The overlay's view (pure: no hooks — test/ui renders it as a function).
  * @param {{ pub:any, sp:any, myId:string, solo:boolean, personal?:boolean, busyIdx?:number|null, total?:number|null, armed?:number|null,
  *   onTap?:(idx:number)=>void, onConfirm?:()=>void, onDisarm?:()=>void,
- *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void }} props
+ *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void, pause?:object|null }} props
  */
-export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = null, total = null, armed = null, onTap = () => {}, onConfirm = () => {}, onDisarm = () => {}, minimized = false, onMinimize = () => {} }) {
+export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = null, total = null, armed = null, onTap = () => {}, onConfirm = () => {}, onDisarm = () => {}, minimized = false, onMinimize = () => {}, pause = null }) {
   if (!sp) return null;
   const fam = data.get('choices')?.families?.[sp.family] || null;
   const rawFam = data.getRaw('choices')?.families?.[sp.family] || null;
@@ -192,7 +193,7 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
   const onDown = (e) => {
     if (armed == null) return;
     const t = e.target;
-    if (t && typeof t.closest === 'function' && t.closest('.spcard, .spov__confirm')) return;
+    if (t && typeof t.closest === 'function' && t.closest('.spcard, .spov__confirm, .pausebtn')) return;
     onDisarm();
   };
   return html`<div class=${cx('spov', armed != null && 'has-armed')} role="dialog" aria-label=${personal ? t('教鞭选择') : t('机变阶段')} onPointerDown=${onDown}>
@@ -211,7 +212,10 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
             : html`<span class="spov__turntxt">${t('{turnName} 正在决策…', { turnName })}<${Icon} name="hourglass" /></span>`}
           ${armed != null ? html`<${Button} variant="primary" size="lg" icon="check" class="spov__confirm" data-testid="sp-confirm"
               title=${armedName ? t('确认选择「{armedName}」（再次点击卡牌亦可）', { armedName }) : t('确认选择')} onClick=${onConfirm}>${t('确认选择')}<//>` : null}
-          ${timed ? html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="sm" />` : null}
+          <div class="spov__clock">
+            ${timed ? html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="sm" />` : null}
+            ${!personal && pause ? html`<${PauseButton} ...${pause} />` : null}
+          </div>
         </div>
       </header>
       ${order.length ? html`<div class="spov__order" aria-label=${t('决策顺序')}>

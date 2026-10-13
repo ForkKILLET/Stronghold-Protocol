@@ -695,8 +695,8 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 /* Bounty disclosure uses the existing mint/gold panel palette and leaves the board interactive. */
 .spov__hide { flex-shrink: 0; min-width: 44px; min-height: 44px; }
 .spov__turn { flex-wrap: wrap; justify-content: flex-end; }
-.spov-folded { position: absolute; top: max(.9rem, env(safe-area-inset-top)); right: max(.26rem, env(safe-area-inset-right)); z-index: 20;
-  display: flex; align-items: center; gap: .12rem; max-width: calc(100% - 3.1rem); padding: .08rem .12rem;
+.spov-folded { position: absolute; top: calc(max(1.18rem, 64px) + env(safe-area-inset-top)); right: max(.26rem, env(safe-area-inset-right)); z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .12rem; max-width: calc(100% - 3.1rem); padding: .08rem .12rem;
   background: rgba(8, 18, 15, .95); border: 1px solid var(--mint-700); box-shadow: 0 .06rem .2rem rgba(0, 0, 0, .35); }
 .spov-folded__open { display: flex; align-items: center; flex-wrap: wrap; gap: .08rem; min-height: 44px;
   color: var(--mint-400); font-size: calc(.18 * var(--t)); font-weight: 700; background: transparent; border: 0; cursor: pointer; }
@@ -705,3 +705,8 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .spov-folded__open:hover { color: var(--text-hi); }
 .spov-folded__open:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 3px; }
 @media (max-width: 760px) { .spov-folded { max-width: calc(100% - .52rem); } }
+
+/* Pause belongs to the visible choice header; the folded view uses the game HUD. */
+.spov__clock { display:flex; align-items:center; flex-shrink:0; gap:.12rem; }
+.spov-folded > .countdown { flex-shrink:0; }
+.spov-folded__open { min-width:0; flex:1; text-align:left; }
