@@ -174,6 +174,32 @@ test('built simulation matches Node for sleep, Egir, stand-ins, self-selected ki
   }
 });
 
+test('built Wisdel shadows obey boss/hidden field ownership exactly like Node, including solo empty halves', async () => {
+  const simulation = Object.values(manifest).find(m => m.name === 'simulation');
+  const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
+  const spec = namespaces.find(n => typeof n?.createBattleFromSpec === 'function');
+  const simdata = namespaces.find(n => typeof n?.setSimData === 'function');
+  const raw = getData({ log: { warn() {} } });
+  simdata.setSimData(raw);
+  for (const kind of ['boss', 'hidden']) for (const side of ['L', 'R']) for (const pair of [false, true]) {
+    const units = [{ uid: 1, chessId: 'chess_char_6_diy1_a', diy: { charId: 'char_1035_wisdel', skillIndex: 0 }, row: 10, col: 8, dir: 'RIGHT' },
+      ...[[9, 8], [11, 8], [12, 8], [9, 9]].map(([row, col], i) => ({ uid: 2 + i, chessId: 'chess_char_1_01_a', row, col }))];
+    const players = [{ playerId: 'p1', side, units }];
+    if (pair) players.push({ playerId: 'p2', side: side === 'L' ? 'R' : 'L',
+      units: [{ uid: 11, chessId: 'chess_char_1_01_a', row: 12, col: 2 }] });
+    const input = nativeSpec.buildBattleSpec({ kind, seed: 557, round: 14, stageId: 'act2autochess_m02', players, timeLimit: 45 });
+    const native = nativeSpec.createBattleFromSpec(input, new DataSource(raw), { quiet: true, recordEvents: true });
+    const built = spec.createBattleFromSpec(input, new simdata.DataSource(raw), { quiet: true, recordEvents: true });
+    native.start(); built.start();
+    const shadows = b => b.allyUnits.filter(u => u.defId === 'token_10035_wisdel_wward').map(u => [u.tileR, u.tileC]);
+    assert.deepEqual(shadows(native), pair ? [[2, side === 'L' ? 11 : 9]] : [], `${kind}/${side}/${pair}: production field rule`);
+    assert.deepEqual(shadows(built), shadows(native), `${kind}/${side}/${pair}: bundled shadows`);
+    assert.deepEqual(built.snapshot(), native.snapshot());
+    assert.deepEqual(built.drainEvents(), native.drainEvents());
+    assert.equal(built.errors.length, 0);
+  }
+});
+
 test('build detection follows built files and separately served worker modules', async () => {
   const initial = computeBuildTag(temp);
   await fs.writeFile(path.join(publicDir, 'index.html'), 'source-only change');

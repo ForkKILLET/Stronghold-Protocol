@@ -3,14 +3,16 @@
 //
 //   http/config.js     ROOT, the served directories, the environment (PORT 3000, HOST '::' dual-stack, TRUST_PROXY auto, DEBUG),
 //                      which startServer() options go to net.js / lobby.js, the console logger
-//   http/websocket.js  session wiring (SessionRegistry → Lobby → Network) and the WebSocket at /ws (maxPayload 64 KB;
-//                      refused at upgrade with 404 / 429 per network / 503)
+//   http/websocket.js  session wiring (SessionRegistry → Lobby → Network) and the WebSocket at /ws (maxPayload 64 KB,
+//                      permessage-deflate from 1 KB; refused at upgrade with 404 / 429 per network / 503)
 //   http/static.js     the static mounts (/ → public/, /data/, /shared/, /sim/ `.js` only), the /data.js browser stand-in,
 //                      the content packs (/packs/index.json, /packs/<id>/<file> — the registry is packs.js)
 //   http/media.js      /media/bgm/act1 → public/assets/audio/bgm/act1.mp3 (audio addressed without its extension)
-//   http/files.js      one file → response: MIME, gzip + memory cache, ETag / Last-Modified / 304, Cache-Control, ranges
+//   http/files.js      one file → response: MIME, brotli / gzip + memory cache, ETag / Last-Modified / 304, Cache-Control, ranges
 //   http/buildTag.js   the build tag of the served browser runtime (/healthz `build`, public/js/ui/buildGuard.js)
 //   http/routes.js     the request listener: security headers, 414 / 400 / 405, GET /healthz → JSON status, else static
+//   http/traffic.js    the traffic counters: bytes sent per category (assets / audio / code / data) and on the
+//                      WebSocket, since the start (GET /healthz?traffic=1)
 //   http/common.js     what every answer shares: security headers, URL split, error page, JSON replies, bare 400
 //   http/boot.js       banner (Local / LAN / tunnel URLs), port-in-use hint, graceful shutdown on SIGINT / SIGTERM
 //
@@ -42,16 +44,17 @@ import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustP
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
 import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
 import { createPackRegistry } from './packs.js';
-import { MIME, COMPRESSIBLE, acceptsGzip, parseRange } from './http/files.js';
+import { MIME, COMPRESSIBLE, acceptsGzip, pickEncoding, parseRange } from './http/files.js';
 import { BUILD_INPUTS, computeBuildTag, buildTag, resetBuildTag } from './http/buildTag.js';
 import { createRequestHandler } from './http/routes.js';
+import { createTrafficCounter } from './http/traffic.js';
 import { answerClientError } from './http/common.js';
 import { lanUrls, displayHost, isProcessEntry, runMain } from './http/boot.js';
 
 // The public API of this module (tests and tools import it from here); the code lives in ./http/.
 export {
   ROOT, WS_MAX_PAYLOAD, DATA_SHIM_JS, MIME, COMPRESSIBLE, BUILD_INPUTS, computeBuildTag, buildTag, resetBuildTag,
-  acceptsGzip, parseRange, createStaticHandler, lanUrls, parseTrustProxy,
+  acceptsGzip, pickEncoding, parseRange, createStaticHandler, lanUrls, parseTrustProxy,
 };
 
 /**
@@ -72,7 +75,7 @@ export {
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: import('ws').WebSocketServer,
  *                     lobby: import('./lobby.js').Lobby, network: import('./net.js').Network,
  *                     registry: import('./net.js').SessionRegistry, packs: ReturnType<typeof createPackRegistry>,
- *                     close: () => Promise<void> }>}
+ *                     traffic: ReturnType<typeof createTrafficCounter>, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
   const nameModeration = opts.nameModeration !== undefined ? opts.nameModeration : nameModerationFromEnv();
@@ -171,10 +174,11 @@ export async function startServer(opts = {}) {
   resetBuildTag();
   buildTag(ROOT, { clientBuild });
 
-  const server = http.createServer(createRequestHandler({ serveStatic, health: { startedAt, network, registry, lobby }, serveApi,
-    diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log }));
+  const traffic = createTrafficCounter();
+  const server = http.createServer(createRequestHandler({ serveStatic, health: { startedAt, network, registry, lobby, traffic }, serveApi,
+    diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log, trustProxy: network.opts.trustProxy }));
   server.on('clientError', answerClientError);
-  const wss = attachWebSocket(server, { network, log, wsCompression, announcements });
+  const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic });
 
   // The address actually bound. The default may fall back to IPv4; the returned host and url follow that.
   let boundHost;
@@ -253,7 +257,7 @@ export async function startServer(opts = {}) {
   }
 
   return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, store: store || null, persister,
-    workerPool, matchWorkerPool, announcements, close };
+    workerPool, matchWorkerPool, announcements, traffic, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).

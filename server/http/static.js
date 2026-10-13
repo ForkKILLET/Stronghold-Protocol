@@ -15,9 +15,8 @@
 //     /packs/index.json → the content packs of this server (server/packs.js: the language packs of
 //                public/i18n/ and the pack folders of packs/, re-read when they change; never cached)
 //     /packs/<id>/<file> → a file of a pack folder — only one its manifest names (server/packs.js servable)
-//
-// Traversal & dotfile protection, a directory without its trailing slash → 301, 404 page; an absent
-// data/local-assets.json is answered with an empty manifest. Files go out through files.js serveFile.
+// Traversal and dotfile protection, directory redirects, and the empty optional local-art manifest.
+// Files go out through files.js serveFile with brotli / gzip negotiation.
 
 import fsp from 'node:fs/promises';
 import fs from 'node:fs';
@@ -28,7 +27,7 @@ import path from 'node:path';
 import { MEDIA_PREFIX } from '../../shared/media.js';
 import { ROOT, noopLog } from './config.js';
 import { sendError, sendJson } from './common.js';
-import { MIME, GzipCache, isNotModified, serveFile, acceptsGzip } from './files.js';
+import { MIME, CompressCache, isNotModified, serveFile, acceptsGzip } from './files.js';
 import { serveMedia } from './media.js';
 import { createPackRegistry } from '../packs.js';
 import { PACKS_URL, PACK_INDEX_FILE } from '../../shared/packs.js';
@@ -56,7 +55,7 @@ const EMPTY_LOCAL_ART = Buffer.from(JSON.stringify({ version: 1, source: 'none',
  * Create the static request handler.
  * @param {{ publicDir: string, dataDir: string, sharedDir: string, simDir?: string, packsDir?: string,
  *   packs?: ReturnType<typeof createPackRegistry>, log?: object }} dirs
- *   packs: the server's pack registry (default: one over publicDir, dataDir and packsDir — ROOT/packs)
+ *   packs: the server pack registry; runtime CDN and Vite behavior remain branch-owned.
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, rawPath: string, query: string) => Promise<void>}
  */
 export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), packs = null, log = noopLog, cdnBase = '', dataCdnBase = '', clientBuild = true }) {
@@ -77,7 +76,7 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
   ];
   const shimBody = Buffer.from(DATA_SHIM_JS);
   const shimTag = `"shim-${shimBody.length.toString(16)}"`;
-  const gzipCache = new GzipCache();
+  const gzipCache = new CompressCache(); // brotli and gzip bodies (files.js)
 
   // A small runtime module supplies the base before client data/asset loaders run; no separate config fetch needed.
   const cdnConfigBody = Buffer.from(`export const ASSETS_CDN = ${JSON.stringify(cdn)};\nexport const DATA_CDN = ${JSON.stringify(dataCdnBase)};\n`);

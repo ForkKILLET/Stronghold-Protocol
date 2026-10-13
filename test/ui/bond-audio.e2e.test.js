@@ -11,7 +11,10 @@ test('buying Matterhorn sends two live layer cues through the real client; resyn
     const srv = await startRealServer({ fast: { timerScale: 0.1, startRound: 2, kit: 0, shop: ['chess_char_1_02_a'] } });
     const c = new Client(P, srv.base, 'bond-audio', { prefix: 'bond-audio' });
     try {
-      await c.open(); await c.enter('叠层音效测试');
+      await c.open();
+      const mediaHits = [];
+      c.page.on('response', (r) => { const p = new URL(r.url()).pathname; if (p.startsWith('/media/')) mediaHits.push({ p, status: r.status(), cache: r.headers()['cache-control'] }); });
+      await c.enter('叠层音效测试');
       await c.click('.mode-card', '独立模拟'); await c.click('.diff-card', '险境');
       await c.click('.create-box button', '开始独立模拟');
       await c.waitFor(s => !!s.room, 'solo room');
