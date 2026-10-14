@@ -258,6 +258,8 @@ function cacheControlFor(ext, mountName, segments, query) {
   if (mountName === 'public' && segments.length === 3 && segments[0] === 'build' && segments[1] === 'assets'
     && /-[A-Za-z0-9_-]{8,}\.(js|css|json|webmanifest|svg|png|ico)$/.test(segments[2])) return IMMUTABLE_CACHE;
   if (/(^|&)v=/.test(query)) return IMMUTABLE_CACHE;
+  if (mountName === 'public' && segments.length === 2 && segments[0] === 'resource-packs'
+    && /^[A-Za-z0-9._-]+-[0-9a-f]{12}\.zip$/i.test(segments[1])) return IMMUTABLE_CACHE;
   if (mountName === 'public' && segments.length > 1 && LONG_CACHE_DIRS.includes(segments[0])) return LONG_CACHE;
   return 'no-cache';
 }

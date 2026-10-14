@@ -9,6 +9,8 @@
 ### 16 MB 预载传输分包
 
 `tools/resource_packs.py` 按预载分类生成最终不超过 **16,000,000 bytes** 的 ZIP 包。
+每个包完成后按 ZIP 文件自身 SHA-1 前 12 位命名，例如
+`spine-01-3f8a1c2d4e5f.zip`；内容变化会自然产生新 URL，CDN 可按 immutable 长期缓存。
 包只是传输优化，文件仍按当前资源清单的 URL、大小和 SHA-1 校验，并写入现有单一
 Cache Storage；索引或包缺失、失败时自动回退逐文件下载。
 

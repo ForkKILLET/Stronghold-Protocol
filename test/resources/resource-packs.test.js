@@ -43,4 +43,5 @@ test('Python pack builder keeps every pack below 16 MB and records verified reso
   assert.equal(index.maxBytes, RESOURCE_PACK_MAX_BYTES);
   assert.equal(index.packs.length, 1);
   assert.ok(index.packs[0].size <= RESOURCE_PACK_MAX_BYTES);
+  assert.match(index.packs[0].url, /\/resource-packs\/ui-01-[0-9a-f]{12}\.zip$/);
 });

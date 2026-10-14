@@ -108,14 +108,17 @@ def main():
             pack_id = f"{key}-{number:02d}"
             rows = make_rows(chunk)
             manifest = {"format": RESOURCE_FORMAT, "version": 2, "resourceVersion": source["version"], "files": rows}
-            target = args.output / f"{pack_id}.zip"
-            with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_STORED) as archive:
+            temporary = args.output / f".{pack_id}.zip.tmp"
+            with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_STORED) as archive:
                 for row, original in zip(rows, chunk):
                     archive.writestr(row["path"], original["data"])
                 archive.writestr(MANIFEST, json.dumps(manifest, ensure_ascii=False, separators=(",", ":")))
-            if target.stat().st_size > args.max_bytes:
-                target.unlink()
-                raise SystemExit(f"pack exceeds limit: {target}")
+            if temporary.stat().st_size > args.max_bytes:
+                temporary.unlink()
+                raise SystemExit(f"pack exceeds limit: {temporary}")
+            package_hash = digest(temporary.read_bytes())[:12]
+            target = args.output / f"{pack_id}-{package_hash}.zip"
+            temporary.replace(target)
             packs.append({"id": pack_id, "url": f"/resource-packs/{target.name}",
                           "group": key, "tier": min(row["tier"] for row in chunk),
                           "count": len(chunk), "bytes": sum(row["size"] for row in chunk),
