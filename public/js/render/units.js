@@ -78,6 +78,7 @@
 // ground point, i.e. on the pointer (render/app.js).
 
 import { UF, ANIM } from '../../../shared/constants.js';
+import { visibleSkin } from '../../../shared/skins.js';
 import { SpineActor } from './spine.js';
 import { diamondTexture, shadowTexture, fxAtlas, tierChip, statusTexture, itemTexture, hudRings, ringArc, downLabel, HUD_DISC, ELEMENT_RING } from './textures.js';
 import { COLORS, TIER_COLORS, ENEMY_FRAME, UNIT, PROJ, statusIconKey, statusIconSuppressed } from './style.js';
@@ -563,6 +564,7 @@ export class UnitView {
     this.ctx = ctx;
     this.P = P;
     this.info = { ...info };
+    this._displaySkin = visibleSkin(info.skin, ctx.settings);
     this.id = info.id;
     this.uid = info.uid ?? null;
     // the skill slot whose Spine clip the unit shows (DESIGN §16): an ally's equipped skill; an enemy's cast slot when the
@@ -698,14 +700,17 @@ export class UnitView {
   _loadPicture() {
     const a = this.ctx.assets;
     // (an ICE_TOKENS unit takes no picture: the token fallback would be its owner's face — assets.js tokenAvatarUrl)
-    const url = ICE_TOKENS.has(this.info.defId) ? null : a && (a.picture ? a.picture(this.info.avatar) || a.picture(this.info.defId) || a.picture(this.info.spine) : null);
-    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown'), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs() };
+    // 皮肤 (docs/SKINS.md): an installed skin may ship its own avatar, so the fallback diamond asks for it too;
+    // the cache key carries the skinId, else switching skins would keep the previous operator's portrait
+    const skinOpt = this._displaySkin ? { skin: this._displaySkin } : undefined;
+    const url = ICE_TOKENS.has(this.info.defId) ? null : a && (a.picture ? a.picture(this.info.avatar, skinOpt) || a.picture(this.info.defId, skinOpt) || a.picture(this.info.spine, skinOpt) : null);
+    this._pic = { key: String(this.info.avatar || this.info.defId || 'unknown') + (this._displaySkin ? `|${this._displaySkin}` : ''), color: this._frameColor(), img: null, state: 'none', shown: null, t0: nowMs() };
     if (!url || !a.image) return;
     const cached = typeof a.imageNow === 'function' ? a.imageNow(url) : null;
     if (cached) { this._pic.img = cached; this._pic.state = 'img'; return; }
     this._pic.state = 'wait';
     const pic = this._pic;
-    Promise.resolve().then(() => a.image(url)).then((img) => {
+    Promise.resolve().then(() => this.destroyed || this._pic !== pic ? null : a.image(url)).then((img) => {
       if (img) { pic.img = img; pic.state = 'img'; } else pic.state = 'none';
     }, () => { pic.state = 'none'; });
   }
@@ -729,7 +734,8 @@ export class UnitView {
     // Front/Back rule (research 07 §5.5 / 09 §1.2): Front facing right/down (mirrored for left), Back facing up — while
     // standing (a knocked-out operator lies with the model that has a fall: _wantsBack).
     const back = this._wantsBack();
-    const entry = id ? a.spineEntry(id, { back }) : null;
+    // 皮肤 (docs/SKINS.md): `info.skin` is the owner's chosen skinId; spineEntry falls back to the default model
+    const entry = id ? a.spineEntry(id, { back, skin: this._displaySkin }) : null;
     if (!entry || this.ctx.settings?.quality === 'low' && this.isEnemy && !this.isBoss && this.ctx.crowded?.()) return;
     this.entryBack = back;
     this._acquireSpine(entry, id, retry);
@@ -749,6 +755,20 @@ export class UnitView {
     if (this.actor) return;
     if (!this._spineBusy) { this._retryAt = 0; this._loadSpine(true); return; }
     if (this._spineHidden && !this._stuckAt && !globalThis.document?.hidden) this._stuckAt = nowMs() + SPINE_STUCK_MS;
+  }
+
+  /** Viewer opt-in changed: invalidate in-flight art, not the battle unit/timers or current HP/SP. */
+  refreshSkin() {
+    const skin = visibleSkin(this.info.skin, this.ctx.settings);
+    if (this.destroyed || skin === this._displaySkin) return;
+    this._displaySkin = skin;
+    this._pendingDeployElapsed = this.actor?.deployElapsed?.() ?? null;
+    this._spineReq = (this._spineReq || 0) + 1;
+    this._spineBusy = false;
+    this._stuckAt = this._retryAt = this._spineTries = 0;
+    this._dropActor();
+    this._loadPicture();
+    this._loadSpine();
   }
 
   /**
@@ -1050,8 +1070,9 @@ export class UnitView {
   _wantsBack() {
     const a = this.ctx.assets;
     const id = this.info.spine || this.info.defId;
-    if (this.isEnemy || this.dir !== 'UP' || !id || !a || typeof a.hasBack !== 'function' || !a.hasBack(id)) return false;
-    return this.alive || dieClipDur(typeof a.spineEntry === 'function' ? a.spineEntry(id, { back: true }) : null) > 0;
+    // a skin may ship its own Front/Back pair, so both questions are asked of the skin, not the operator (docs/SKINS.md)
+    if (this.isEnemy || this.dir !== 'UP' || !id || !a || typeof a.hasBack !== 'function' || !a.hasBack(id, this._displaySkin)) return false;
+    return this.alive || dieClipDur(typeof a.spineEntry === 'function' ? a.spineEntry(id, { back: true, skin: this._displaySkin }) : null) > 0;
   }
 
   /**
@@ -1237,7 +1258,7 @@ export class UnitView {
   _fallDur() {
     const a = this.ctx.assets;
     const id = this.info.spine || this.info.defId;
-    return a && typeof a.spineEntry === 'function' && id ? dieClipDur(a.spineEntry(id, { back: this._wantsBack() })) : 0;
+    return a && typeof a.spineEntry === 'function' && id ? dieClipDur(a.spineEntry(id, { back: this._wantsBack(), skin: this._displaySkin })) : 0;
   }
 
   /** Standing again (a redeploy, a revive): an operator facing UP gets its Back model back (this frame's update). */

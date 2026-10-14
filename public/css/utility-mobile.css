@@ -3,6 +3,15 @@
    Compact controls have real, non-overlapping hit boxes (no oversized ::before).
    Text size settings still apply; density comes from columns and spacing, not scale()/zoom or hiding content. */
 
+@media (max-width: 1000px), (max-height: 600px) {
+  .lo-skins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 6px; }
+  .lo-skin { min-width: 0; max-width: none; min-height: 44px; padding: 6px; gap: 6px; }
+  .lo-skin__art { width: 36px; height: 36px; }
+  .lo-skin__name { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
+  .lo-skin__group { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
+  .resource-skin-hint { font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
+}
+
 .modal__titles { display: flex; flex-direction: column; gap: .04rem; min-width: 0; }
 .utility-modal { width: var(--utility-width, min(6.4rem, 94vw)); max-width: 100%; min-height: 0; }
 .utility-modal.resource-modal { width: min(10.4rem, calc(100vw - .4rem)); }

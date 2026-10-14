@@ -1,5 +1,8 @@
 # Assets: sources, layout, manifest, credits
 
+本分支可选干员皮肤见 [SKINS.md](SKINS.md)：部署端安装、观看者默认不启用、独立 `preloadSkins`，
+未预载时按实际显示请求，不随必备或其他可选音频自动下载；安装后同步数据/素材 CDN 并更新 SW。
+
 Owner: `tools/fetch-assets.mjs` and `tools/assets/*`. Research background: `docs/research/07-assets.md`.
 
 All official game art, Spine models and audio are **downloaded at install time**. They are never committed; `public/assets/` is git-ignored.

@@ -35,6 +35,73 @@ const FILES = [
 ];
 const MANIFEST = { format: 1, version: 'testversion', count: FILES.length, tier1: 2, sized: FILES.length, totalBytes: 22, files: FILES };
 
+const SKIN_FILES = [
+  { url: '/assets/ui/base.png', tier: 1, size: 4 },
+  { url: '/assets/audio/sfx/deploy.mp3', tier: 2, size: 4 },
+  { url: '/assets/char/avatar/skin/char_x_winter_1.png', tier: 2, size: 4 },
+  { url: '/assets/spine/op/char_x/char_x_winter_1/front/char_x.skel', tier: 2, size: 4 },
+];
+const SKIN_MANIFEST = { ...MANIFEST, version: 'skin-scope', files: SKIN_FILES, tier1: 1, totalBytes: 16 };
+
+test('skin preloading is independent: optional audio never opts in skins, skins need no audio opt-in', async t => {
+  const env = stubEnv({ manifest: SKIN_MANIFEST }); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?skins-independent');
+  await mod.syncResources(true, true, 'cn', false);
+  assert.deepEqual(env.calls.fetch.slice(1), SKIN_FILES.slice(0, 2).map(cacheKey));
+  assert.equal(mod.resourceState().selectionComplete, true);
+  assert.equal(mod.resourceState().groups.find(g => g.id === 'skins').selected, false);
+  await mod.syncResources(true, false, 'cn', true);
+  assert.deepEqual(env.calls.fetch.slice(3), SKIN_FILES.slice(2).map(cacheKey));
+  assert.equal(mod.resourceState().selectedWanted, 3);
+  assert.equal(mod.resourceState().groups.find(g => g.id === 'sfx').selected, false);
+  const fetched = env.calls.fetch.length;
+  await mod.syncResources(true, true, 'cn', false);
+  assert.equal(env.calls.fetch.length, fetched, 'changing scope keeps valid cached files');
+  assert.equal(mod.resourceState().done, 4);
+  await mod.syncResources(false, false, 'cn', false);
+});
+
+test('changing skin scope during combat defers downloads and respects a manual pause', async t => {
+  const env = stubEnv({ manifest: SKIN_MANIFEST }); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?skins-combat');
+  await mod.syncResourceCombat(true);
+  await mod.syncResources(true, false, 'cn', true);
+  await mod.syncResources(true, true, 'cn', false);
+  await mod.inspectResources();
+  assert.deepEqual(env.calls.fetch, []);
+  await mod.syncResourceCombat(false);
+  assert.deepEqual(env.calls.fetch.slice(1), SKIN_FILES.slice(0, 2).map(cacheKey), 'only latest scope resumes');
+  await mod.syncResourceCombat(true); mod.pauseResources();
+  await mod.syncResources(true, false, 'cn', true);
+  const n = env.calls.fetch.length;
+  await mod.syncResourceCombat(false);
+  assert.equal(env.calls.fetch.length, n, 'changing skins does not override manual pause');
+  await mod.startResources();
+  assert.deepEqual(env.calls.fetch.slice(n), SKIN_FILES.slice(2).map(cacheKey));
+  await mod.syncResources(false, false, 'cn', false);
+});
+
+test('ZIP retains validated skins even when unselected, then fills only the selected missing category', async t => {
+  const files = SKIN_FILES.map(f => ({ ...f, hash: createHash('sha1').update('b'.repeat(f.size)).digest('hex').slice(0, 12) }));
+  const source = new ResourceStore({ ...SKIN_MANIFEST, files: files.slice(2, 3) }, {
+    caches: new MemoryCaches(), origin: ORIGIN, fetcher: async () => new Response('b'.repeat(4)),
+  });
+  await source.download();
+  const { blob } = await exportResourceZip(source);
+  const env = stubEnv({ manifest: { ...SKIN_MANIFEST, files } }); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?skins-zip');
+  await mod.syncResources(false, true, 'cn', false);
+  await mod.importResources(blob); await mod.startResources();
+  assert.deepEqual(env.calls.fetch.slice(1), files.slice(0, 2).map(cacheKey));
+  assert.equal(mod.resourceState().groups.find(g => g.id === 'skins').present, 1);
+  assert.equal((await mod.exportResources()).count, 3);
+  const n = env.calls.fetch.length;
+  await mod.syncResources(true, false, 'cn', true);
+  assert.deepEqual(env.calls.fetch.slice(n), files.slice(3).map(cacheKey));
+  assert.equal(mod.resourceState().selectionComplete, true);
+  await mod.syncResources(false, false, 'cn', false);
+});
+
 test('required-only preload stops after visuals; opting in later downloads only missing optional files', async (t) => {
   const env = stubEnv();
   t.after(env.restore);
@@ -190,9 +257,15 @@ test('ZIP quota failures are recognized by name even without an English error me
   t.after(env.restore);
   const cache = await env.caches.open(CACHE_NAME);
   const put = cache.put.bind(cache);
+  const firstWritten = Promise.withResolvers();
   cache.put = async (url, response) => {
-    if (url.endsWith(files[1].url)) throw new DOMException('', 'QuotaExceededError');
+    if (url.endsWith(files[1].url)) {
+      // Concurrent verification may finish out of ZIP order; this assertion concerns an ALREADY completed write.
+      await firstWritten.promise;
+      throw new DOMException('', 'QuotaExceededError');
+    }
     await put(url, response);
+    if (url.endsWith(files[0].url)) firstWritten.resolve();
   };
   const mod = await import('../../public/js/resources/index.js?zip-quota-name');
   let enabled = false;

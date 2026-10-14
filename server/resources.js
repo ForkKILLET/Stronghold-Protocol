@@ -104,7 +104,7 @@ export function tierForPath(keyPath) {
   const p = String(keyPath || '');
   const segments = p.split(/[./]/);
   const head = segments[0];
-  if (segments.some((s) => ['audio', 'voice', 'voices', 'sfx', 'bgm', 'guide'].includes(s))) return TIER_REST;
+  if (segments.some((s) => ['audio', 'voice', 'voices', 'sfx', 'bgm', 'guide', 'skins'].includes(s))) return TIER_REST;
   if (head === 'local') return TIER_ESSENTIAL;
   return TIER_ESSENTIAL_SECTIONS.has(head) ? TIER_ESSENTIAL : TIER_REST;
 }

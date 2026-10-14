@@ -24,6 +24,8 @@ import { html, TierChip } from './components.js';
 import { GEO } from '../../../shared/constants.js';
 import { chessAvatarUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl } from './assetUrls.js';
 import { normalizeFrameRate } from '../frameRate.js';
+import { avatarUrl } from '../assets.js';
+import { visibleSkin } from '../../../shared/skins.js';
 import { tileKey, hasFlag, UF, penPlacement, PEN, fieldTile, ownStandIn, ownDiyRecord } from './gameLogic.js';
 import { t } from '../../../shared/i18n.js';
 
@@ -32,15 +34,12 @@ const DMG_TTL = 900;
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** Avatar URL for a UnitInfo `avatar` asset id (chars / E2 / tokens / enemies). */
-function unitArt(m, info) {
+function unitArt(m, info, settings) {
   const id = info?.avatar || info?.defId;
   if (!m || !id) return null;
   if (info.side === 'enemy' || String(id).startsWith('enemy_')) return enemyIconUrl(m, id);
   if (String(id).startsWith('token_')) return tokenAvatarUrl(m, id);
-  const chars = m.chars || {};
-  if (chars[id]?.avatar) return chars[id].avatar;
-  if (String(id).endsWith('_2') && chars[id.slice(0, -2)]) return chars[id.slice(0, -2)].avatarE2 || chars[id.slice(0, -2)].avatar;
-  return null;
+  return avatarUrl(m, id, { skin: visibleSkin(info.skin, settings) });
 }
 
 /** Look of the stage tile (row, col) on the fallback board (stage coordinates). */
@@ -159,7 +158,10 @@ export function createFallbackView(host, opts = {}) {
     if (p.kind === 'item') return itemIconUrl(mm, lookup('items', p.id));
     if (p.kind === 'token') return tokenAvatarUrl(mm, p.id);
     const chess = lookup('chess', p.id);
-    return chessAvatarUrl(mm, ownSi(chess) || ownDiy(chess) || chess);
+    const replacement = ownSi(chess) || ownDiy(chess);
+    const skin = replacement ? null : visibleSkin(p.skin, st.settings);
+    return (skin ? avatarUrl(mm, chess?.assets?.avatar || chess?.charId, { skin }) : null)
+      || chessAvatarUrl(mm, replacement || chess);
   }
   /** 0.2.0 补位: the player's own piece of a chess it does not own is its stand-in, bench and board alike (render/app.js pieceInfo) */
   function ownSi(chess) {
@@ -282,7 +284,7 @@ export function createFallbackView(host, opts = {}) {
     const py = (st.rect.r1 - y + 0.5) * L.tile;
     const enemy = info.side === 'enemy';
     const size = info.boss ? L.tile * 1.3 : L.tile * 0.86;
-    const src = unitArt(m(), info);
+    const src = unitArt(m(), info, st.settings);
     const dead = anim === 4;
     const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
     const spPct = spMax > 0 ? Math.max(0, Math.min(100, (sp / spMax) * 100)) : 0;

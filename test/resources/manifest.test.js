@@ -129,6 +129,13 @@ describe('resource manifest building', () => {
     assert.equal(tierForPath('enemies.enemy_1007_slime.icon'), TIER_ESSENTIAL);
     assert.equal(tierForPath('chars.char_002_amiya.portrait'), TIER_ESSENTIAL);
     assert.equal(tierForPath('chars.char_002_amiya.spine.front.skel'), TIER_ESSENTIAL);
+    assert.equal(tierForPath('chars.char_002_amiya.skins.char_002_amiya@winter#1.spine.front.skel'), TIER_REST);
+    const skinFiles = collectResourceFiles({ chars: { c: { skins: { skin1: {
+      avatar: '/assets/char/avatar/skin/c_winter_1.png',
+      spine: { front: { skel: '/assets/spine/op/c/c_winter_1/front/c.skel' } },
+    } } } } });
+    assert.equal(skinFiles.length, 2);
+    assert.ok(skinFiles.every(f => f.tier === TIER_REST));
     assert.equal(tierForPath('tokens.token_a.spine.skel'), TIER_ESSENTIAL);
     assert.equal(tierForPath('local.groups.map.TX_autochessi_D.path'), TIER_ESSENTIAL);
     for (const group of ['map/autochess', 'mesh/map_autochess_bkg', 'spine/enemy/x', 'projectiles']) {

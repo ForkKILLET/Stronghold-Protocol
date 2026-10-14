@@ -192,6 +192,8 @@ export function SettingsModal({ open, onClose }) {
       <${Toggle} label=${t('弹药数量')} micro="AMMO COUNT" value=${s.ammoCount} onChange=${(v) => updateSettings({ ammoCount: v })} />
       <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）。官方界面没有这个数字。')}</p>
       <${ResourceRow} enabled=${s.preload} onChange=${(v) => updateSettings({ preload: v })} />
+      <${Toggle} label=${t('启用皮肤')} micro="SKINS" value=${s.skinsEnabled} onChange=${(v) => updateSettings({ skinsEnabled: v })} />
+      <p class="set-hint">${t('开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。')}</p>
       <div class="set-row"><span class="set-row__label"><${Icon} name="keyboard" />${t('快捷键')}<${MicroLabel}>SHORTCUTS<//></span>
         <${Button} variant="secondary" icon="edit" onClick=${() => setShortcutOpen(true)}>${t('修改快捷键')}<//></div>
       <div class="set-row">

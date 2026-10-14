@@ -76,7 +76,15 @@ export function avatarUrl(m, id, opts) {
     rec = get(get(m, 'chars'), base);
     if (rec && /_2$/.test(s)) e2 = true;
   }
-  if (rec) return str(e2 && rec.avatarE2) || str(rec.avatar) || null;
+  if (rec) {
+    // 皮肤 (docs/SKINS.md): an installed skin may ship its own avatar; `opts.skin` is a skinId, and an unknown one
+    // (this install does not have it) falls back to the operator's own avatar rather than failing
+    if (opts && str(opts.skin)) {
+      const skin = get(get(rec, 'skins'), opts.skin);
+      if (skin && str(skin.avatar)) return str(skin.avatar);
+    }
+    return str(e2 && rec.avatarE2) || str(rec.avatar) || null;
+  }
   return null;
 }
 
@@ -159,9 +167,19 @@ export function spineEntry(m, id, opts) {
   const s = str(id);
   if (!s) return null;
   const ch = get(get(m, 'chars'), s) || get(get(m, 'chars'), baseCharId(s));
-  if (ch && isObj(ch.spine)) {
-    const sp = (opts && opts.back && isObj(ch.spine.back)) ? ch.spine.back : ch.spine.front;
-    return validSpine(sp) ? sp : null;
+  if (ch) {
+    // 皮肤 (docs/SKINS.md): an installed skin replaces the operator's own model. `opts.skin` is a skinId; when it
+    // is absent — or names a skin this install does not have — the operator's default model is used, so a client
+    // meeting a manifest without that skin still works.
+    const skin = opts && str(opts.skin) ? get(get(ch, 'skins'), opts.skin) : null;
+    const src = validSpine(skin?.spine?.front) ? skin.spine : ch.spine;
+    if (isObj(src)) {
+      const sp = opts?.back && validSpine(src.back) ? src.back : src.front;
+      if (!validSpine(sp)) return null;
+      const fallback = opts?.back && validSpine(ch.spine?.back) ? ch.spine.back : ch.spine?.front;
+      // Missing CDN skin bytes should degrade to the original model, not an indefinite placeholder.
+      return src !== ch.spine && validSpine(fallback) ? { ...sp, fallback } : sp;
+    }
   }
   const tk = get(get(m, 'tokens'), s);
   if (tk) {
@@ -206,10 +224,13 @@ export function localSpineEntry(sl, local, web) {
   return entry;
 }
 
-/** Whether an operator/token/enemy has a Back model. */
-export function hasBackSpine(m, id) {
+/** Whether an operator/token/enemy has a Back model. `skinId` asks about an installed skin (docs/SKINS.md). */
+export function hasBackSpine(m, id, skinId) {
   const ch = get(get(m, 'chars'), str(id) || '') || get(get(m, 'chars'), baseCharId(id) || '');
-  return !!(ch && isObj(ch.spine) && validSpine(ch.spine.back));
+  if (!ch) return false;
+  const skin = str(skinId) ? get(get(ch, 'skins'), skinId) : null;
+  const src = validSpine(skin?.spine?.front) ? skin.spine : ch.spine;
+  return !!(isObj(src) && validSpine(src.back));
 }
 
 /**
@@ -229,8 +250,8 @@ export function validSpine(sp) {
 }
 
 /** Best 2D picture for a unit asset id (operator avatar, token avatar, enemy icon, item icon). */
-export function unitPictureUrl(m, id) {
-  return avatarUrl(m, id) || tokenAvatarUrl(m, id) || enemyIconUrl(m, id) || itemIconUrl(m, id) || null;
+export function unitPictureUrl(m, id, opts) {
+  return avatarUrl(m, id, opts) || tokenAvatarUrl(m, id) || enemyIconUrl(m, id) || itemIconUrl(m, id) || null;
 }
 
 // ---- audio ---------------------------------------------------------------------------------------------------
@@ -928,9 +949,9 @@ export function createAssets(options) {
     profIcon: (p, kind) => profIconUrl(m(), p, kind),
     subProfIcon: (s) => subProfIconUrl(m(), s),
     ui: (name) => uiUrl(m(), name),
-    picture: (id) => unitPictureUrl(m(), id),
+    picture: (id, o) => unitPictureUrl(m(), id, o),
     spineEntry: (id, o) => spineEntry(m(), id, localManifest ? { ...o, local: localManifest } : o),
-    hasBack: (id) => hasBackSpine(m(), id),
+    hasBack: (id, skinId) => hasBackSpine(m(), id, skinId),
     audio: {
       bgm: (kind) => bgmEntry(m(), kind),
       sfx: (group, key) => sfxUrl(m(), group, key),

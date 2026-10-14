@@ -42,6 +42,7 @@ const state = {
   archiveGroup: '',
   optional: false,
   voiceLang: 'cn',
+  skins: false,
   selectionComplete: false,
   combatPaused: false,
   manualPaused: false,
@@ -57,6 +58,7 @@ let transferPromise = null;
 let archiveController = null;
 let optional = false;
 let voiceLang = 'cn';
+let skins = false;
 let syncRevision = 0;
 let workerPromise = null;
 let cancelBackgroundCheck = null;
@@ -120,10 +122,10 @@ const counters = (s) => ({
   // migration (kept bytes) vs network (fetched bytes): 0 unless a run is/was in flight
   adopted: s.adopted ?? 0,
   downloaded: s.downloaded ?? 0,
-  ...resourceSelection(s, optional, voiceLang),
+  ...resourceSelection(s, optional, voiceLang, skins),
 });
 
-const selectionComplete = (s) => resourceSelection(s, optional, voiceLang).selectionComplete;
+const selectionComplete = (s) => resourceSelection(s, optional, voiceLang, skins).selectionComplete;
 
 /** Why this browser cannot keep the resources (empty ⇒ it can). */
 export function unsupportedReason() {
@@ -177,10 +179,10 @@ async function ensureWorker() {
  * Turn the preload on or off (idempotent: the settings store fires on every volume change).
  * @param {boolean} enabled
  */
-export async function syncResources(enabled, includeOptional = optional, preloadVoiceLang = voiceLang) {
+export async function syncResources(enabled, includeOptional = optional, preloadVoiceLang = voiceLang, preloadSkins = skins) {
   enabled = !!enabled;
   const nextVoiceLang = normalizePreloadVoiceLang(preloadVoiceLang);
-  const changed = optional !== !!includeOptional || voiceLang !== nextVoiceLang;
+  const changed = optional !== !!includeOptional || voiceLang !== nextVoiceLang || skins !== !!preloadSkins;
   if (enabled === current && !changed) {
     if (!enabled) {
       await ensureWorker().catch((err) => {
@@ -198,7 +200,8 @@ export async function syncResources(enabled, includeOptional = optional, preload
   if (!enabled || !wasEnabled) manualPaused = false;
   optional = !!includeOptional;
   voiceLang = nextVoiceLang;
-  set({ enabled, optional, voiceLang, manualPaused, ...resourceSelection(state, optional, voiceLang), error: false, message: '' });
+  skins = !!preloadSkins;
+  set({ enabled, optional, voiceLang, skins, manualPaused, ...resourceSelection(state, optional, voiceLang, skins), error: false, message: '' });
   if (!enabled) {
     resumeAfterCombat = false;
     cancelOtherTabWatch?.();
@@ -369,7 +372,7 @@ async function startDownload(signal, { verifyCache = false, background = false }
   const ready = selectionComplete(before);
   set({ ...counters(before), phase: ready ? 'ready' : 'download',
     message: ready ? !verifyCache ? t('已读取本机缓存索引，稍后在后台核对缓存。')
-      : optional ? t('所选资源已齐全。') : t('必备资源已预载完成；可选资源按需加载。') : '' });
+      : optional || skins ? t('所选资源已齐全。') : t('必备资源已预载完成；可选资源按需加载。') : '' });
   if (ready) {
     if (!verifyCache) scheduleBackgroundCheck();
     return;
@@ -387,8 +390,8 @@ async function startDownload(signal, { verifyCache = false, background = false }
       checkAbort(signal);
       await store.download({ tiers: [TIER_ESSENTIAL], signal, onProgress });
       checkAbort(signal);
-      if (optional) await store.download({ tiers: [TIER_REST], signal, onProgress,
-        includeFile: (file) => selectedResourceGroup(resourceGroup(file), true, voiceLang) });
+      if (optional || skins) await store.download({ tiers: [TIER_REST], signal, onProgress,
+        includeFile: (file) => selectedResourceGroup(resourceGroup(file), optional, voiceLang, skins) });
       return { busy: false };
     });
     if (outcome.busy) { await watchOtherTab(store); return; }
@@ -399,7 +402,7 @@ async function startDownload(signal, { verifyCache = false, background = false }
       ...counters(after),
       phase: 'ready',
       error: false,
-      message: !optional && selectionComplete(after) ? t('必备资源已预载完成；可选资源按需加载。') : after.complete
+      message: !optional && !skins && selectionComplete(after) ? t('必备资源已预载完成；可选资源按需加载。') : after.complete
         ? t('资源已全部预载完成（{0}）。', { 0: formatBytes(after.bytes) })
         : selectionComplete(after) ? t('所选资源已齐全。') : t('已保存 {count}/{total} 个文件；未完成的会在下次开启时重试。', { count: after.count, total: after.total }),
     });

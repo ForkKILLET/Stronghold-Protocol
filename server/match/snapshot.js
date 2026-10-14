@@ -1,3 +1,4 @@
+import { freezeSkins } from '../../shared/skins.js';
 // server/match/snapshot.js — checkpoints of a running match (Redis persistence, docs/DEPLOY.md「断点续玩」).
 //
 // WHY A CHECKPOINT AND NOT A REPLAY: the match engine is deterministic in virtual time (tests run whole matches on a
@@ -189,7 +190,7 @@ const MATCH_FIELDS = Object.freeze([
 /** PlayerState fields of a checkpoint (bonds/deploy map are recomputed on restore). */
 const PLAYER_FIELDS = Object.freeze([
   'playerId', 'seat', 'name', 'isBot', 'connected', 'left', 'autoplay', 'consoleRoundUses', 'consoleTotalUses', 'alive', 'lp', 'bandId', 'funds',
-  'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
+  'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'skins', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
   '_tempDue', 'board', 'layers', 'pendingLayerGains', 'bondCountBonus', 'effects', 'bounties', 'counters', 'round',
   'deployCapBonus', 'deployCapMin', 'deviceOverrides', 'tileOverrides', 'stats', 'eliminatedRound', 'lpAtFinal',
   'ops', 'personalChoice', 'lastResult', 'standIns', 'diy', 'diyStock', 'diyBanned',
@@ -408,6 +409,7 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     const stockEntries = ps.diyStock?.entries;
     ps.setNotOwned(ps.standIns || []);
     ps.setDiy(ps.diy || {});
+    ps.skins = freezeSkins(ps.isBot ? null : ps.skins, (id) => ps.gd.chess(id)); // old checkpoints: defaults
     ps.initDiyStock(new Set([...(m.disabledBonds || []), ...(m.staticInactiveBonds || [])]));
     if (stockEntries instanceof Map) for (const [id, saved] of stockEntries) {
       const entry = ps.diyStock.entries.get(id);

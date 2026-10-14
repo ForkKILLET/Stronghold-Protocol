@@ -2,6 +2,9 @@
 
 Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
+本分支外观扩展见 [SKINS.md](../SKINS.md)：默认关闭的观看者皮肤开关与独立皮肤预载，
+所属玩家元数据用于 Pixi/简化 DOM/队友观战；不以本机选择覆盖他人，不修改模拟或默认画面几何。
+
 ## 9. Client rendering contract (public/js/render)
 
 Bond-layer audio (#482): live own preparation gains arrive as `m.layer`; the displayed battle's `layer` tuples

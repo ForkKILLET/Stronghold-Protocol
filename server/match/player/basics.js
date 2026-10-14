@@ -1,3 +1,4 @@
+import { freezeSkins } from '../../../shared/skins.js';
 // server/match/player/basics.js — PlayerState methods: the basics — seat flags and counts (isHumanActive,
 // botControlled, deployCap, deployCount, tempEmpty), the prep that resolves a temp piece (tempDue, _putTemp: every
 // write into a temp slot), the operator loadout (DESIGN §16: setLoadout, loadoutFor; 0.2.2 潜能 / 练度: cultivationFor), the not-owned operators fielded
@@ -53,6 +54,14 @@ export class PlayerBasics {
   _putTemp(i, piece) {
     this.temp[i] = piece;
     this._tempDue.set(piece.uid, this._tempDueNow());
+  }
+
+  /** Cosmetic selections are public, bounded and keyed by visible base chess ids. */
+  setSkins(skins) {
+    if (this.isBot) return false;
+    this.skins = freezeSkins(skins, (id) => this.gd.chess(id));
+    this.dirty();
+    return Object.keys(this.skins).length > 0;
   }
 
   /**
