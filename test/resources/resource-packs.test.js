@@ -11,6 +11,9 @@ test('resource pack index validation accepts only 16 MB same-origin ZIP metadata
     packs: [{ id: 'ui-01', url: '/resource-packs/ui-01.zip', size: 100, tier: 1,
       files: [{ url: '/assets/ui/a.webp', size: 4, hash: '0123456789ab' }] }] };
   assert.equal(validateResourcePacks(good).length, 1);
+  // The server embeds the index's pack entries as `manifest.packs`, without the
+  // standalone index envelope. This is the shape consumed by resourceContext().
+  assert.equal(validateResourcePacks(good.packs).length, 1);
   assert.equal(validateResourcePacks({
     ...good, packs: [{ ...good.packs[0], url: 'https://cdn.example/resource-packs/ui-01-0123456789ab.zip' }],
   }).length, 1);

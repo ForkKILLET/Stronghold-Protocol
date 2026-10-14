@@ -228,9 +228,12 @@ export function validateManifest(m) {
 
 /** Optional transport packs are advisory; invalid metadata falls back to file downloads. */
 export function validateResourcePacks(doc) {
-  if (!doc || doc.format !== 'stronghold-resource-pack-index' || doc.version !== 1
-    || doc.maxBytes !== RESOURCE_PACK_MAX_BYTES || !Array.isArray(doc.packs)) return [];
-  return doc.packs.filter((pack) => {
+  // The standalone deployment index has an envelope, while /data/resource-manifest.json
+  // embeds only its already-validated `packs` array. Accept both wire shapes.
+  const packs = Array.isArray(doc) ? doc
+    : doc?.format === 'stronghold-resource-pack-index' && doc.version === 1
+      && doc.maxBytes === RESOURCE_PACK_MAX_BYTES && Array.isArray(doc.packs) ? doc.packs : [];
+  return packs.filter((pack) => {
     if (!pack || typeof pack.id !== 'string' || typeof pack.url !== 'string') return false;
     let parsed;
     try { parsed = new URL(pack.url, globalThis.location?.origin || 'https://resources.invalid'); } catch { return false; }
