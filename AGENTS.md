@@ -88,6 +88,8 @@
 
 ## 运行时 CDN 配置
 
+- 2026-10-14 用户要求进入战斗后暂停批量预载：`public/js/resources/combat.js` 监听当前页面 store 的 `COMBAT`、`UNITE`、`FINAL_ASSAULT`、`HIDDEN_CORE` 及异步 `b.start` 状态，调用资源控制器临时战斗闸门；先绑定当前状态，再同步预载设置，避免恢复进入战斗时短暂开下载。只中止批量下载、后台完整校验和自动缓存检查，保留已写缓存、运行时按需加载、ZIP 处理及用户 preload 开关；已开始 Cache.put 和索引收尾完成后释放 Web Lock。离开战斗后仅自动恢复原本启用且未手动暂停/清理的任务，关闭预载、手动暂停或清理不被战斗状态反转。战斗中资源窗口不重新扫描缓存、不允许启动批量下载；改变语音/可选范围或成功导入 ZIP 时仅延后按最新选择补缺。观战、单人战斗暂停和自身战场已完成但同局仍作战继续保持战斗闸门；不改战斗模拟和网络、素材按需请求。验证 `test/resources/combat.test.js`、`test/resources/index.test.js` 及现有资源/UI/Vite 回归。
+
 - 页面素材与数据 CDN 地址来自服务器动态生成的 `/js/asset-cdn.js`，分别导出 `ASSETS_CDN` 和 `DATA_CDN`，并非 `/healthz` 或 `/metrics`。磁盘上的 `public/js/asset-cdn.js` 是两者均为空的配置回退。任一 CDN 设置变化都必须改变运行时模块的 ETag。
 - i18n 语言 JSON 使用 `ASSETS_CDN`：`public/i18n/` 对应 CDN 的 `/i18n/`，`data/i18n/` 对应 `/data/i18n/`，目录式语言包使用 `/packs/<id>/…`。动态 `/packs/index.json` 保留同源，以源站实际安装的语言包为准。未配置素材 CDN 时保留同源路径，显式外部 URL 和自定义数据加载器 `base` 不改写；游戏文本语言包不使用 `DATA_CDN`。部署时同步相应语言目录并设置 JSON 跨域响应头，不将语言 JSON 混入素材 ZIP 或 SW 的代码/数据缓存。
 - Vite 必须将此模块保留为外部的同源绝对 URL。保留 `makeAbsoluteExternalsRelative: false`，避免把 `/js/asset-cdn.js` 当成文件系统路径改写。

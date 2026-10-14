@@ -204,6 +204,13 @@ simplified board uses the same mark with a fixed slot. The branch retains its ex
 
 ### Branch popup announcements (2026-10-14)
 
+Branch bulk preload combat gate (2026-10-14): `resources/combat.js` binds the initial and subsequent app-store combat
+state before preload settings. COMBAT / UNITE / FINAL_ASSAULT / HIDDEN_CORE and a pending local battle pause bulk
+downloads and automatic cache inspection, not simulation, runtime asset requests or manual ZIP transfers.
+The same enabled setting and selected scope resume after combat only when not manually paused/disabled/cleared;
+already started cache writes and final index flushes finish before a new download lock is acquired.
+Spectators and paused fights retain the gate. This is page-local, not a cross-tab suspension protocol.
+
 Popup notices support plain multiline text and opt-in Markdown (headings, lists/tasks, quotes, code, tables,
 links and responsive images). `announcementMarkdown.js` lazily loads a vendored Marked lexer, renders only fixed
 Preact elements, escapes raw HTML and allowlists HTTP(S) / root-relative content URLs. No HTML injection or arbitrary

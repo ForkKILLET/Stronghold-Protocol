@@ -362,6 +362,14 @@ CDN 的 `/data/` 回源可使用 Nginx 的 `alias` 指向复制的数据目录�
 
 ### 3.3 资源预载（可选，客户端开关）
 
+**战斗优先**：本页面进入普通作战、联防、最终攻势或隐秘核心时，自动暂停批量预载及后台缓存核对，
+保持用户的预载开关、下载范围和已有缓存；进入结算/休整期或退出对局后自动按最新选择补缺。
+观战、单人暂停及自身战场已结束但同局仍作战时也保持暂停。战斗素材的按需加载及 SW 缓存读取照常；
+ZIP 导入/导出不被自动取消。战斗中资源窗口不额外扫描缓存、继续下载/检查按钮暂不可用，
+可点击“暂停下载”取消战后自动恢复，也可关闭预载或清理缓存；这些手动选择不会被战斗结束反转。
+仅控制当前页面后台批量预载，其他标签页的独立任务不受此战斗状态控制。
+首次更新需重新构建、重启服务并刷新页面；使用素材 CDN 时同时同步 `public/i18n/` 语言文件。
+
 玩家在游戏里「首页右下角」或「设置 ▸ 预载资源」打开后，客户端会把对局素材存进浏览器缓存（Service Worker + Cache Storage，见 [ASSETS.md](ASSETS.md)「Preload」），之后进战斗不再等待下载：素材由 Service Worker 直接从本机缓存读取。默认关闭，服务端无需任何配置（清单 `GET /data/resource-manifest.json` 由服务端从 `data/assets.json` 自动生成）。部署上只需注意两件事：
 
 - **`/resource-sw.js` 必须由游戏服务器提供，且不要被边缘缓存。** Service Worker 脚本要能立即更新：本项目对 `public/` 下的 `.js` 已经是 `no-cache`，但如果把整个 `public/` 交给 CDN / Cloudflare，请把 `resource-sw.js` 排除（Cloudflare → Caching → Cache Rules：`http.request.uri.path eq "/resource-sw.js"` → **Bypass**）。Nginx 例：

@@ -55,6 +55,7 @@ function useResources() {
 
 function stateText(st, enabled) {
   if (st.archive) return st.archive === 'import' ? t('正在导入') : t('正在导出');
+  if (enabled && st.combatPaused && !st.manualPaused) return t('战斗中暂停');
   if (st.phase === 'foreign') return t('另一标签页处理中');
   if (busy(st)) return t('处理中');
   if (st.cacheVerified === false && st.selectionComplete && st.tier1Total) return t('缓存索引已读取');
@@ -153,8 +154,10 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
   return html`<${Modal} open=${open} onClose=${closeResources} title=${t('预载资源管理')} micro="RESOURCE MANAGER" class="resource-modal" utility=${true}
     actions=${html`
       ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy ? t('取消处理') : t('暂停下载')}<//>`
-        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported}
+        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused}
           onClick=${() => enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
+      ${enabled && st.combatPaused && !st.manualPaused && !archiveBusy ? html`<${Button} variant="secondary" icon="hourglass"
+        onClick=${pauseResources}>${t('暂停下载')}<//>` : null}
       <${Button} variant="secondary" onClick=${closeResources}>${t('关闭')}<//>`}>
     <div class="resource-manager">
       <p class="resource-manager__intro">${t('先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。')}</p>

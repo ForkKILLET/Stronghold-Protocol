@@ -624,3 +624,227 @@ test('changing language while preload is disabled updates selected progress with
   assert.equal(mod.resourceState().selectionComplete, true);
   await mod.syncResources(false);
 });
+
+test('restored combat defers enabled preload/inspection without changing user choice; leaving downloads latest selection', async t => {
+  const env = stubEnv({ manifest: VOICE_MANIFEST }); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?combat-restored');
+  await mod.syncResourceCombat(true);
+  await mod.syncResources(true, true, 'cn');
+  await mod.syncResources(true, true, 'jp');
+  await mod.inspectResources();
+  await mod.startResources();
+  assert.deepEqual(env.calls.fetch, [], 'no manifest/cache check or bulk resource request during initial combat');
+  assert.equal(mod.resourceState().enabled, true);
+  assert.equal(mod.resourceState().combatPaused, true);
+  assert.equal(mod.resourceState().voiceLang, 'jp');
+  assert.match(mod.resourceState().message, /战斗中/);
+  assert.ok(env.calls.registered.length > 0, 'runtime SW remains available');
+  await mod.syncResourceCombat(false);
+  assert.equal(mod.resourceState().selectionComplete, true);
+  assert.deepEqual(env.calls.fetch.slice(1), VOICE_FILES.filter(f => !f.url.includes('/voice/cn/')).map(cacheKey));
+  await mod.syncResources(false);
+});
+
+test('entering combat aborts the optional download after essentials, keeps cached/indexed files and resumes missing only', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?combat-download');
+  const originalFetch = globalThis.fetch, started = Promise.withResolvers();
+  let held = false, signal;
+  globalThis.fetch = async (url, options) => {
+    if (url.endsWith(FILES[2].url) && !held) {
+      held = true; signal = options.signal; started.resolve();
+      await new Promise(resolve => options.signal.addEventListener('abort', resolve, { once: true }));
+    }
+    return originalFetch(url, options);
+  };
+  const run = mod.syncResources(true, true);
+  await started.promise;
+  await mod.syncResourceCombat(true);
+  assert.equal(signal.aborted, true);
+  await run;
+  const before = env.calls.fetch.length;
+  await mod.inspectResources();
+  await mod.syncResources(true, true);
+  assert.equal(env.calls.fetch.length, before, 'same settings/manager cannot restart paused bulk');
+  assert.equal(mod.resourceState().phase, 'paused');
+  const cache = await env.caches.open(CACHE_NAME);
+  for (const file of FILES.filter(f => f.tier === 1)) assert.ok(await cache.match(cacheKey(file)), 'completed essential preserved');
+  assert.ok(await cache.match(indexUrl(ORIGIN)), 'abort flushes the index');
+  await mod.syncResourceCombat(false);
+  assert.equal(mod.resourceState().complete, true);
+  assert.ok(env.calls.fetch.slice(before).every(url => !FILES.filter(f => f.tier === 1).some(f => url.endsWith(f.url))), 'no refetch of preserved essentials');
+  await mod.syncResources(false);
+});
+
+test('combat transition during a manifest/check await remains paused; exit/reentry and changed settings never revive an obsolete run', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const gate = Promise.withResolvers(), begun = Promise.withResolvers();
+  const fetcher = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    if (url === MANIFEST_URL) { begun.resolve(); await gate.promise; }
+    return fetcher(url, options);
+  };
+  const mod = await import('../../public/js/resources/index.js?combat-check-race');
+  const run = mod.syncResources(true, false);
+  await begun.promise;
+  await mod.syncResourceCombat(true);
+  const exit = mod.syncResourceCombat(false);
+  await mod.syncResourceCombat(true);
+  const scope = mod.syncResources(true, true);
+  gate.resolve();
+  await Promise.all([run, exit, scope]);
+  assert.deepEqual(env.calls.fetch, [MANIFEST_URL]);
+  assert.equal(mod.resourceState().combatPaused, true);
+  assert.equal(mod.resourceState().phase, 'paused');
+  await mod.syncResourceCombat(false);
+  assert.equal(mod.resourceState().complete, true);
+  await mod.syncResources(false);
+});
+
+test('manual pause, clearing and disabled preload are never undone by combat end, including settings edits', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?combat-user-choice');
+  await mod.syncResources(true, false);
+  mod.pauseResources();
+  await mod.syncResourceCombat(true);
+  await mod.syncResources(true, true);
+  const count = env.calls.fetch.length;
+  await mod.syncResourceCombat(false);
+  assert.equal(env.calls.fetch.length, count);
+  assert.equal(mod.resourceState().manualPaused, true);
+  await mod.startResources();
+  assert.equal(mod.resourceState().complete, true, 'explicit resume clears manual pause');
+  await mod.syncResourceCombat(true);
+  await mod.clearResources();
+  await mod.syncResourceCombat(false);
+  assert.equal(mod.resourceState().done, 0);
+  assert.equal(env.calls.fetch.length, count + 2, 'clear is not auto-refilled');
+  await mod.startResources();
+  assert.equal(mod.resourceState().complete, true);
+  await mod.syncResourceCombat(true);
+  await mod.syncResources(false);
+  const disabled = env.calls.fetch.length;
+  await mod.syncResourceCombat(false);
+  assert.equal(mod.resourceState().enabled, false);
+  assert.equal(env.calls.fetch.length, disabled);
+});
+
+test('automatic pause waits pending Cache.put/index flush before resume obtains the download lock', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?combat-cache-write');
+  const cache = await env.caches.open(CACHE_NAME), put = cache.put.bind(cache);
+  const gate = Promise.withResolvers(), started = Promise.withResolvers();
+  let held = false, active = 0, maxActive = 0;
+  cache.put = async (key, response) => {
+    if (key.endsWith(FILES[0].url) && !held) { held = true; started.resolve(); await gate.promise; }
+    return put(key, response);
+  };
+  Object.defineProperty(globalThis.navigator, 'locks', { configurable: true, value: {
+    request: async (_name, _options, job) => {
+      active++; maxActive = Math.max(maxActive, active);
+      try { return await job({}); } finally { active--; }
+    },
+  } });
+  const run = mod.syncResources(true, false);
+  await started.promise;
+  await mod.syncResourceCombat(true);
+  const exit = mod.syncResourceCombat(false);
+  assert.equal(active, 1, 'uncancellable Cache.put still owns the first lock');
+  gate.resolve();
+  await Promise.all([run, exit]);
+  assert.equal(maxActive, 1, 'new resume cannot overlap the old writer');
+  assert.ok(await cache.match(cacheKey(FILES[0])));
+  const index = await (await cache.match(indexUrl(ORIGIN))).json();
+  assert.ok(Object.hasOwn(index.files, cacheKey(FILES[0])));
+  assert.equal(mod.resourceState().selectionComplete, true);
+  await mod.syncResources(false);
+});
+
+test('successful ZIP during combat is not cancelled and enables preload but defers missing network resources until exit', async t => {
+  const files = FILES.map(f => ({ ...f, hash: createHash('sha1').update('b'.repeat(f.size)).digest('hex').slice(0, 12) }));
+  const source = new ResourceStore({ ...MANIFEST, files: files.slice(0, 1) }, {
+    caches: new MemoryCaches(), origin: ORIGIN, fetcher: async () => new Response('b'.repeat(files[0].size)),
+  });
+  await source.download(); const { blob } = await exportResourceZip(source);
+  const env = stubEnv({ manifest: { ...MANIFEST, files } }); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?combat-zip');
+  await mod.syncResourceCombat(true);
+  let enabled = false;
+  const result = await mod.importResources(blob, { onImported: () => { enabled = true; } });
+  assert.equal(result.imported, 1);
+  assert.equal(enabled, true);
+  assert.equal(mod.resourceState().enabled, true);
+  assert.equal(mod.resourceState().combatPaused, true);
+  assert.deepEqual(env.calls.fetch, [MANIFEST_URL], 'ZIP can read metadata but no bulk asset download during combat');
+  const out = await mod.exportResources();
+  assert.equal(out.count, 1, 'manual ZIP export works during combat too');
+  await mod.syncResourceCombat(false);
+  assert.deepEqual(env.calls.fetch.slice(1), [cacheKey(files[1])]);
+  assert.equal(mod.resourceState().selectionComplete, true);
+  await mod.syncResources(false);
+});
+
+test('combat cancels deferred background verification; even a dispatched old callback cannot scan until combat ends', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const saved = Object.getOwnPropertyDescriptor(globalThis, 'window'), tasks = new Map();
+  let id = 0;
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+    setTimeout(fn, ms) { assert.equal(ms, 5000); tasks.set(++id, fn); return id; },
+    clearTimeout(key) { tasks.delete(key); },
+  } });
+  t.after(() => { if (saved) Object.defineProperty(globalThis, 'window', saved); else delete globalThis.window; });
+  const mod = await import('../../public/js/resources/index.js?combat-background');
+  const cache = await env.caches.open(CACHE_NAME), index = {};
+  for (const file of FILES) {
+    await cache.put(cacheKey(file), new Response('b'.repeat(file.size)));
+    index[cacheKey(file)] = null;
+  }
+  await cache.put(indexUrl(ORIGIN), new Response(JSON.stringify({ version: 1, manifest: MANIFEST.version, files: index })));
+  let scans = 0; const keys = cache.keys.bind(cache);
+  cache.keys = async () => { scans++; return keys(); };
+  await mod.syncResources(true, false);
+  assert.equal(scans, 0);
+  assert.equal(tasks.size, 1);
+  const old = [...tasks.values()][0];
+  await mod.syncResourceCombat(true);
+  assert.equal(tasks.size, 0);
+  old(); // simulate an old callback already dispatched before clearTimeout
+  await mod.inspectResources();
+  assert.equal(scans, 0);
+  assert.deepEqual(env.calls.fetch, [MANIFEST_URL]);
+  await mod.syncResourceCombat(false);
+  assert.equal(tasks.size, 1, 'verification is rescheduled outside battle');
+  assert.equal(scans, 0, 'resume retains the fast startup index path');
+  mod.pauseResources();
+  await mod.syncResourceCombat(true);
+  await mod.syncResourceCombat(false);
+  assert.equal(tasks.size, 0, 'manual pause prevents deferred restart too');
+  await mod.syncResources(false);
+});
+
+test('manual pause while automatically paused is authoritative; an existing preload error is not retried on every combat end', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const mod = await import('../../public/js/resources/index.js?combat-manual-during');
+  await mod.syncResourceCombat(true);
+  await mod.syncResources(true, false);
+  mod.pauseResources();
+  await mod.syncResources(true, true);
+  await mod.syncResourceCombat(false);
+  assert.deepEqual(env.calls.fetch, []);
+  assert.equal(mod.resourceState().manualPaused, true);
+  await mod.startResources();
+  assert.equal(mod.resourceState().complete, true);
+  await mod.syncResources(false);
+  const failure = stubEnv({ fail: true });
+  try {
+    const failed = await import('../../public/js/resources/index.js?combat-existing-error');
+    await failed.syncResources(true);
+    const count = failure.calls.fetch.length;
+    assert.equal(failed.resourceState().error, true);
+    await failed.syncResourceCombat(true);
+    await failed.syncResourceCombat(false);
+    assert.equal(failure.calls.fetch.length, count);
+    assert.equal(failed.resourceState().error, true);
+    await failed.syncResources(false);
+  } finally { failure.restore(); }
+});

@@ -1440,5 +1440,7 @@
   "已停止批量预载。": "Bulk preloading stopped.",
   "仅匹配真人 · 满四人后开始": "Human players only · Starts with four players",
   "满四人后开始": "Starts with four players",
-  "请先移除 AI 队友，再匹配真人队友": "Remove AI teammates before matching with human players"
+  "请先移除 AI 队友，再匹配真人队友": "Remove AI teammates before matching with human players",
+  "战斗中暂停": "Paused during combat",
+  "战斗中已暂停批量预载，战斗结束后自动继续。": "Bulk preloading is paused during combat and resumes automatically afterwards."
 }

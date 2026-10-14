@@ -49,6 +49,7 @@ import { GameScreen } from './screens/game.js';
 import { audio, installAudio } from './audio.js';
 import { settingsStore, useSettings, updateSettings } from './ui/settings.js';
 import { ResourceHost } from './ui/resourcePanel.js';
+import { bindResourceCombat } from './resources/combat.js';
 import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
@@ -462,6 +463,7 @@ async function boot() {
 function installResourcePreload() {
   import('./resources/index.js')
     .then((r) => {
+      bindResourceCombat(store, r, err => console.warn('[resources] combat sync failed', err));
       const apply = (s) => { r.syncResources(!!s.preload, !!s.preloadOptional, s.preloadVoiceLang).catch((err) => console.warn('[resources] sync failed', err)); };
       apply(settingsStore.get());
       settingsStore.subscribe(apply);
