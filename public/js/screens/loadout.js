@@ -1,3 +1,4 @@
+import { SkinSection } from '../ui/skinPicker.js';
 // 干员调配 (Operator loadout, DESIGN §16): choose the equipped skill of every chess and the module of its elite before a
 // match (official rule: "开始游戏前无法调整干员的等级，但可调整其所携带的技能和模组"). A full-screen overlay opened
 // from the lobby, the room and the briefing (INFO_CHECK) — `openLoadout(from)` / <LoadoutButton/>; <LoadoutHost/> is
@@ -338,6 +339,7 @@ function Detail({ m, chess, golden, entries, ops = {}, onChange, onOps, onReset,
     </div>
     <div class="lo-detail__body" ref=${bodyRef}>
       <${OperatorVoice} charId=${chess.charId} />
+      <${SkinSection} chess=${chess} />
       <${CultivationSection} charId=${chess.charId} ops=${ops} onSet=${onOps} standIn=${notOwned} />
       <${LoadoutGarrisons} chess=${level === 'elite' && golden ? golden : chess} m=${m} />
       <section class="lo-sec">

@@ -650,3 +650,22 @@
 }
 
 .diy-choice__tags { display: flex; flex-wrap: wrap; gap: .08rem; color: var(--text-lo); font-size: max(calc(.12 * var(--t)), 10px); }
+
+/* ---- 干员皮肤 (docs/SKINS.md, ui/skinPicker.js) --------------------------------------------------------------
+   Only deployed outfits are offered; no downloader or game-server installation is triggered by clicking a tile. */
+.lo-skins { display: flex; flex-wrap: wrap; gap: .08rem; }
+.lo-skin {
+  position: relative; flex: 1 1 1.9rem; min-width: 1.7rem; max-width: 3.2rem; display: flex; align-items: center; gap: .1rem; padding: .08rem .12rem .08rem .08rem;
+  font: inherit; color: var(--text-md); text-align: left; cursor: pointer;
+  background: rgba(255, 255, 255, .025); border: 1px solid var(--line);
+  transition: background var(--t-fast), border-color var(--t-fast); touch-action: manipulation;
+}
+.lo-skin:hover:not(:disabled) { border-color: var(--line-3); }
+.lo-skin.is-on { color: var(--text-hi); background: linear-gradient(90deg, rgba(78, 216, 175, .14), rgba(78, 216, 175, .02) 75%); border-color: rgba(78, 216, 175, .7); }
+.lo-skin:disabled { cursor: default; opacity: .45; }
+.lo-skin__art { flex: 0 0 auto; width: .46rem; height: .46rem; display: grid; place-items: center; overflow: hidden; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); }
+.lo-skin__art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.lo-skin__art--none { width: 100%; height: 100%; background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .06) 0 3px, transparent 3px 7px); }
+.lo-skin__text { min-width: 0; display: flex; flex-direction: column; gap: .01rem; }
+.lo-skin__name { font-size: calc(.16 * var(--utility-text, var(--t))); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lo-skin__group { font-family: var(--font-num); font-size: calc(.12 * var(--utility-text, var(--t))); letter-spacing: .06em; color: var(--text-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

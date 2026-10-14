@@ -1,3 +1,4 @@
+import { cleanSkins } from '../shared/skins.js';
 // server/net.js — WebSocket session layer (DESIGN §1, §8).
 //
 // Responsibilities:
@@ -72,7 +73,7 @@ export const NET_DEFAULTS = Object.freeze({
  * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
  * state.resync requests a full match recovery; it also uses the lobby's per-session resync coalescing.
  */
-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate', 'state.resync']);
+export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.skins', 'room.ownership', 'room.diy', 'room.spectate', 'state.resync']);
 
 /** Close codes (see header). */
 export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
@@ -118,6 +119,7 @@ export class Session {
     this.resyncAt = -Infinity;
     /** @type {Record<string, { skill: number, module: string|null }> | null} checked operator loadout (lobby-owned, DESIGN §16) */
     this.loadout = null;
+    this.skins = null;
     /** @type {Readonly<Record<string, { potential: number, cultivate: number }>> | null} checked per-operator 潜能 / 练度 (lobby-owned, 0.2.2; room.loadout `ops`) */
     this.ops = null;
     /** @type {readonly string[] | null} checked not-owned chess ids (干员持有, lobby-owned, 0.2.0 补位) */
@@ -208,6 +210,7 @@ export class SessionRegistry {
     s.resumeWindowMs = Number.isFinite(doc.resumeWindowMs) && doc.resumeWindowMs > 0 ? Number(doc.resumeWindowMs) : null;
     s.roomCode = typeof doc.roomCode === 'string' && doc.roomCode ? doc.roomCode : null;
     s.loadout = doc.loadout && typeof doc.loadout === 'object' ? doc.loadout : null;
+    s.skins = Object.freeze(cleanSkins(doc.skins));
     s.ops = doc.ops && typeof doc.ops === 'object' ? doc.ops : null;
     s.notOwned = Array.isArray(doc.notOwned) ? doc.notOwned : null;
     s.diy = doc.diy && typeof doc.diy === 'object' ? doc.diy : null;

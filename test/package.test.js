@@ -59,7 +59,7 @@ test('selection: runtime files in; tests, maintainer tools, other docs, dev page
     'docs/research/07-assets.json', 'CHANGELOG.md']) {
     assert.ok(keep.includes(f), `keeps ${f}`);
   }
-  assert.equal(keep.length, 35, keep.join(' '));
+  assert.equal(keep.length, 36, keep.join(' ')); // includes the skin research read by the shipped asset tools
   assert.equal(drop.length, 40, drop.join(' '));
   assert.ok(!keep.some((f) => drop.includes(f)));
 });

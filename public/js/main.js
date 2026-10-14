@@ -55,6 +55,7 @@ import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
 import { StatsHost } from './screens/stats.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
+import { installSkinsSync } from './ui/skins.js';
 import { installLoadoutSync, installOwnershipSync, installDiySync } from './ui/loadoutSync.js';
 import { startBuildGuard } from './ui/buildGuard.js';
 import { initLang, useLang, tickerText } from './ui/lang.js';
@@ -333,7 +334,8 @@ function ScreenCrashed({ error, reset }) {
 
 function ResourceManagerHost() {
   const settings = useSettings();
-  return html`<${ResourceHost} enabled=${settings.preload} optional=${settings.preloadOptional} voiceLang=${settings.preloadVoiceLang}
+  return html`<${ResourceHost} enabled=${settings.preload} optional=${settings.preloadOptional} voiceLang=${settings.preloadVoiceLang} skins=${settings.preloadSkins}
+    onSkins=${(preloadSkins) => updateSettings({ preloadSkins })}
     onVoiceLang=${(preloadVoiceLang) => updateSettings({ preloadVoiceLang })}
     onChange=${(preload) => updateSettings({ preload })} onOptional=${(preloadOptional) => updateSettings({ preloadOptional })} />`;
 }
@@ -413,6 +415,7 @@ async function boot() {
   wireNet();
   installStatsRecorder(store); // follows the match on screen, so a 放弃模拟 can be recorded (ui/stats.js)
   installLoadoutSync({ net });
+  installSkinsSync({ net, settings: settingsStore });
   installOwnershipSync({ net });
   installDiySync({ net });
   net.attachBrowserHooks();
@@ -464,7 +467,7 @@ function installResourcePreload() {
   import('./resources/index.js')
     .then((r) => {
       bindResourceCombat(store, r, err => console.warn('[resources] combat sync failed', err));
-      const apply = (s) => { r.syncResources(!!s.preload, !!s.preloadOptional, s.preloadVoiceLang).catch((err) => console.warn('[resources] sync failed', err)); };
+      const apply = (s) => { r.syncResources(!!s.preload, !!s.preloadOptional, s.preloadVoiceLang, !!s.preloadSkins).catch((err) => console.warn('[resources] sync failed', err)); };
       apply(settingsStore.get());
       settingsStore.subscribe(apply);
     })

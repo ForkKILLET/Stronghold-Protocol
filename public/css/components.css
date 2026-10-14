@@ -492,6 +492,8 @@
 .resource-tier__head p, .resource-archive p { font-size: calc(.14 * var(--utility-text, var(--t))); color: var(--text-md); }
 .resource-choice { display: flex; align-items: center; gap: .06rem; white-space: nowrap; color: var(--mint-400); cursor: pointer; }
 .resource-choice input { accent-color: var(--mint-400); }
+.resource-skin-choice { min-height: 44px; margin-top: .08rem; color: var(--text-hi); white-space: normal; }
+.resource-skin-choice + p { color: var(--text-md); font-size: calc(.13 * var(--utility-text, var(--t))); }
 .resource-voice-choice { min-width: 0; margin: .14rem 0 0; padding: .1rem; border: 1px solid var(--line-2); }
 .resource-voice-choice legend { padding: 0 .05rem; color: var(--text-hi); }
 .resource-voice-choice__options { display: flex; flex-wrap: wrap; gap: .06rem .14rem; }

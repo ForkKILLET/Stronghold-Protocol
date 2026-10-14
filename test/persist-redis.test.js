@@ -355,6 +355,8 @@ test('complete Worker matches preserve tokens and checkpoint state through three
     let srv = await boot();
     let c = await connect(srv);
     const identity = await c.hello('Worker Redis');
+    const skins = { chess_char_1_01_a: 'char_498_inside@kitchen#2' };
+    assert.equal((await c.request({ t: 'room.skins', skins })).t, 'ok');
     await c.request({ t: 'room.create', mode: 'solo', difficulty: 'NORMAL' });
     const code = (await c.waitFor('room.state')).code;
     await c.request({ t: 'room.start' }, 10000);
@@ -373,6 +375,8 @@ test('complete Worker matches preserve tokens and checkpoint state through three
       assert.equal(identityAfter.playerId, identity.playerId);
       await c.waitFor('m.public', (m) => m.phase === 'INFO_CHECK');
       const restored = await srv.lobby.getRoom(code).match.snapshot();
+      assert.deepEqual(restored.players.find(p => p.playerId === identity.playerId).skins, skins);
+      assert.deepEqual(srv.registry.byToken(identity.token).skins, skins, 'session choice survives real Redis');
       for (const key of ['seed', 'battlePrefix', 'rng', 'poolLeft', 'factions', 'disabledBonds', 'bannedChess', 'setupRevision']) {
         assert.deepEqual(restored[key], before[key], key);
       }

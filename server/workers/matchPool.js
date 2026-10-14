@@ -48,6 +48,7 @@ class RemoteMatch {
   start() { return this.invoke('start'); }
   handle(...args) { return this.invoke('handle', ...args); }
   setLoadout(...args) { return this.invoke('setLoadout', ...args); }
+  setSkins(...args) { return this.invoke('setSkins', ...args); }
   onDisconnect(...args) { return this.invoke('onDisconnect', ...args); }
   onReconnect(...args) { return this.invoke('onReconnect', ...args); }
   onLeave(...args) { return this.invoke('onLeave', ...args); }

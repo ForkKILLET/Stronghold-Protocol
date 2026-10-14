@@ -1,3 +1,4 @@
+import { freezeSkins } from '../shared/skins.js';
 // server/lobby.js — rooms, seats, host, AI seats, ready/start, reconnect, and room → Match wiring
 // (DESIGN §2, §6.1 LOBBY, §8.1). Implements the handler interface consumed by server/net.js.
 //
@@ -439,6 +440,7 @@ export class Lobby {
       case 'room.rerollSetup': return this.rerollSetup(session, msg);
       case 'room.cancelReroll': return this.rerollSetup(session, msg, true);
       case 'room.loadout': return this.loadout(session, msg);
+      case 'room.skins': return this.skins(session, msg);
       case 'match.join': return this.matchJoin(session, msg);
       case 'match.leave': return this.matchLeave(session);
       case 'room.ownership': return this.ownership(session, msg);
@@ -551,6 +553,7 @@ export class Lobby {
           ready: !!s.ready,
           connected: false,
           left,
+          skins: isBot ? null : (session?.skins || s.skins || null),
           loadout: isBot ? null : (session?.loadout || (s.loadout && typeof s.loadout === 'object' ? s.loadout : null)),
           ops: isBot ? null : session?.ops || s.ops || null,
           notOwned: isBot ? null : session?.notOwned || s.notOwned || null,
@@ -669,7 +672,7 @@ export class Lobby {
       isBot: !!p.isBot,
       left: !p.isBot && departed.has(p.playerId),
       connected: false,
-      loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+      skins: p.isBot ? null : p.skins || null, loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
     }));
     const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, room,
       members: seats, lastPublic: null, sharedResult: null, results: new Map() };
@@ -720,7 +723,7 @@ export class Lobby {
       seat: Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS ? p.seat : i,
       playerId: p.playerId, name: typeof p.name === 'string' ? p.name : t('博士'), isBot: !!p.isBot,
       left: !p.isBot && departedPlayerIds.includes(p.playerId), connected: false,
-      loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+      skins: p.isBot ? null : p.skins || null, loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
     }));
     const roomCode = typeof checkpoint.roomCode === 'string' && checkpoint.roomCode
       ? checkpoint.roomCode : `M${randomBytes(3).toString('hex').toUpperCase()}`;
@@ -805,7 +808,7 @@ export class Lobby {
       if (!humans.length || humans.some((s) => !s.connected)) return fail(ERR.NOT_READY, 'all party members must be connected');
       if (humans.some((s) => this.queueByPlayer.has(s.playerId))) return fail(ERR.MATCHING);
       const players = humans.map((s) => ({ seat: s.seat, playerId: s.playerId, name: s.name,
-        isBot: false, connected: true, loadout: s.loadout || null, ops: s.ops || null,
+        isBot: false, connected: true, skins: s.skins || null, loadout: s.loadout || null, ops: s.ops || null,
         notOwned: s.notOwned || null, diy: s.diy || null }));
       const entry = this.makeQueueEntry({ mode, difficulty: room.difficulty, room, players });
       this.enqueueMatchEntry(entry);
@@ -1281,6 +1284,28 @@ export class Lobby {
     return this.callMatch(room, method, session.playerId, cancel ? msg.voteId : msg.setupRevision) || fail(ERR.INTERNAL);
   }
 
+  /** Keep cosmetics current in seats, pending queues and external teammates' active matches. */
+  skins(session, { skins }) {
+    const data = this.safeData();
+    const clean = freezeSkins(skins, (id) => lookup('chess', id, data));
+    session.skins = clean;
+    const room = this.roomOf(session);
+    const seat = room?.seatOf(session.playerId);
+    if (seat) seat.skins = clean;
+    const queued = this.queueByPlayer.get(session.playerId);
+    const queuedSeat = queued?.players.find((p) => p.playerId === session.playerId);
+    if (queuedSeat) queuedSeat.skins = clean;
+    const active = this.activeMatchOf(session);
+    const match = active?.queue ? active.match : seat ? room.match : null;
+    if (!match || typeof match.setSkins !== 'function') return OK;
+    try {
+      return match.setSkins(session.playerId, clean) || OK;
+    } catch (e) {
+      this.log.error('[lobby] match.setSkins failed', e);
+      return fail(ERR.INTERNAL);
+    }
+  }
+
   /**
    * room.loadout (DESIGN §16): check the operator loadout — and its per-operator 潜能 / 练度 `ops` (0.2.2) — against the
    * game data, store both on the session and the seat, and — while a match runs — hand them to the match (accepted only
@@ -1392,11 +1417,11 @@ export class Lobby {
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
         seat: p.seat, playerId: p.playerId, name: p.name, isBot: !!p.isBot, connected: false,
-        loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+        skins: p.isBot ? null : p.skins || null, loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
         seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
-        loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
+        skins: s.isBot ? null : s.skins || null, loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
     const ctx = { live: false, ended: false, disposed: false, match: null, workerKey: room.code,
       lastPublic: null, sharedResult: null, results: new Map() };
@@ -1455,12 +1480,12 @@ export class Lobby {
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
         seat: p.seat, playerId: p.playerId, name: p.name, isBot: !!p.isBot, connected: false,
-        loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
+        skins: p.isBot ? null : p.skins || null, loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
         seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
         // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
-        loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
+        skins: s.isBot ? null : s.skins || null, loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
     const ctx = { live: !checkpoint, ended: false, disposed: false, match: null, workerKey: room.code,
@@ -2047,6 +2072,7 @@ export class Lobby {
   humanSeat(idx, session) {
     return {
       seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
+      skins: session.skins || null,
       loadout: session.loadout || null,
       ops: session.ops || null,
       notOwned: session.notOwned || null,

@@ -1442,5 +1442,14 @@
   "满四人后开始": "Starts with four players",
   "请先移除 AI 队友，再匹配真人队友": "Remove AI teammates before matching with human players",
   "战斗中暂停": "Paused during combat",
-  "战斗中已暂停批量预载，战斗结束后自动继续。": "Bulk preloading is paused during combat and resumes automatically afterwards."
+  "战斗中已暂停批量预载，战斗结束后自动继续。": "Bulk preloading is paused during combat and resumes automatically afterwards.",
+  "皮肤": "Skins",
+  "选择皮肤": "Select an outfit",
+  "{n} 款": "{n} outfits",
+  "干员皮肤": "Operator skins",
+  "启用皮肤": "Enable skins",
+  "预载皮肤": "Preload skins",
+  "开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。": "Choose outfits in Operator loadout and see other players’ skins. When off, everyone uses the default appearance; saved choices are kept.",
+  "未启用皮肤：自己和其他玩家均使用默认外观。": "Skins are off: you and other players use the default appearance.",
+  "独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。": "Independent of “Preload optional”; when unchecked, enabled skins load only when displayed. Existing cache is kept."
 }

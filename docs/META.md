@@ -1,5 +1,8 @@
 # META.md — match & meta engine (server/match)
 
+本分支外观协议 `room.skins` 及 Session/队列/Worker/检查点恢复见 [SKINS.md](SKINS.md)；
+仅外观，不影响经济、玩法或战斗数值；观战者不能修改玩家选择。
+
 > 本分支当前规则以文末“2026-10-06 本分支规则调整”为准：干员池 ban 保留，模式盟约可激活；Boss 单人 ×1，多人 ×4 并按存活人数 /4 衰减。
 
 Audience: **content authors** writing prep-side ("SERVER_*") effects in `server/sim/content/*.js → registerMeta(registry)`,

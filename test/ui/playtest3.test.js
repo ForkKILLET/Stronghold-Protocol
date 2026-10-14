@@ -489,6 +489,10 @@ describe('9: busy indicators and data loading', () => {
     for (const f of files) for (const m of read(f).matchAll(/data\.(?:get|lookup|list|load|status)\('([A-Za-z-]+)'/g)) used.add(m[1]);
     for (const m of read('public/js/ui/gameComponents.js').matchAll(/useData\('([A-Za-z-]+)'/g)) used.add(m[1]);
     assert.ok(used.size >= 10, [...used].join(','));
+    // The optional skin catalogue is awaited by its enabled picker, never a prerequisite for starting a match.
+    used.delete('skins');
+    assert.match(read('public/js/ui/skinPicker.js'), /useData\('skins', 'assets'\)/);
+    assert.ok(!GAME_FILES.includes('skins'), 'disabled skins must not warm the catalogue');
     const missing = [...used].filter((n) => !GAME_FILES.includes(n));
     assert.deepEqual(missing, [], 'read by the match UI but not awaited by the match screen');
     const main = read('public/js/main.js');

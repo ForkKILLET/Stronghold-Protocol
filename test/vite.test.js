@@ -145,6 +145,30 @@ test('built simulation retains operator kits and domain mechanics: same determin
   }
 });
 
+test('built simulation carries owner skins without changing deterministic combat outcomes', async () => {
+  const simulation = Object.values(manifest).find(m => m.name === 'simulation');
+  const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
+  const spec = namespaces.find(n => typeof n?.createBattleFromSpec === 'function');
+  const simdata = namespaces.find(n => typeof n?.setSimData === 'function');
+  const raw = getData({ log: { warn() {} } }); simdata.setSimData(raw);
+  const unit = { uid: 1, chessId: 'chess_char_1_01_a', row: 9, col: 5, dir: 'UP' };
+  const input = nativeSpec.buildBattleSpec({ seed: 29, kind: 'normal', stageId: Object.keys(raw.stages)[0],
+    players: [{ playerId: 'OTHER', units: [{ ...unit, skin: 'char_498_inside@kitchen#2' }] }],
+    spawns: [{ enemyKey: 'enemy_1007_slime', count: 2, time: 1 }], timeLimit: 50 });
+  const native = nativeSpec.createBattleFromSpec(input, new DataSource(raw), { quiet: true });
+  const built = spec.createBattleFromSpec(input, new simdata.DataSource(raw), { quiet: true });
+  native.start(); built.start();
+  assert.equal(built.fieldMeta().units.find(u => u.ownerId === 'OTHER')?.skin, 'char_498_inside@kitchen#2');
+  assert.deepEqual(built.fieldMeta(), native.fieldMeta());
+  native.runToEnd(100); built.runToEnd(100);
+  assert.deepEqual(spec.compactResult(built.result()), nativeSpec.compactResult(native.result()));
+  const plainInput = structuredClone(input);
+  for (const player of plainInput.players) for (const u of player.units) delete u.skin;
+  const plain = nativeSpec.createBattleFromSpec(plainInput, new DataSource(raw), { quiet: true });
+  plain.runToEnd(100);
+  assert.deepEqual(nativeSpec.compactResult(plain.result()), nativeSpec.compactResult(native.result()));
+});
+
 test('built simulation matches Node for sleep, Egir, stand-ins, self-selected kits and 0.2.5 funnels', async () => {
   const simulation = Object.values(manifest).find((m) => m.name === 'simulation');
   const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
