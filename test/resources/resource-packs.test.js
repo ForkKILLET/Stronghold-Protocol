@@ -11,6 +11,9 @@ test('resource pack index validation accepts only 16 MB same-origin ZIP metadata
     packs: [{ id: 'ui-01', url: '/resource-packs/ui-01.zip', size: 100, tier: 1,
       files: [{ url: '/assets/ui/a.webp', size: 4, hash: '0123456789ab' }] }] };
   assert.equal(validateResourcePacks(good).length, 1);
+  assert.equal(validateResourcePacks({
+    ...good, packs: [{ ...good.packs[0], url: 'https://cdn.example/resource-packs/ui-01-0123456789ab.zip' }],
+  }).length, 1);
   assert.equal(validateResourcePacks({ ...good, maxBytes: 16000001 }).length, 0);
   assert.equal(validateResourcePacks({ ...good, packs: [{ ...good.packs[0], url: 'https://evil/x.zip' }] }).length, 0);
   assert.equal(validateResourcePacks({ ...good, packs: [{ ...good.packs[0], size: RESOURCE_PACK_MAX_BYTES + 1 }] }).length, 0);

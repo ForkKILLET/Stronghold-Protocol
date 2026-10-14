@@ -29,6 +29,8 @@ python tools/resource_packs.py `
 `data/resource-packs.json` 和 `public/resource-packs/` 是部署生成物，不提交素材。
 先上传同版本 ZIP，再上传索引；包导入与逐文件下载共享资源锁和战斗暂停边界。
 包不携带可信缓存索引、删除指令或新的资源身份，不能与其他版本清单混用。
+启用 `SP_ASSETS_CDN` 时服务端会把包 URL 改写为 CDN 地址；Docker 镜像不包含
+`public/resource-packs/`，只需发布到 CDN。包访问失败会回退逐文件预载。
 
 `tools/shrink-assets.py` 默认 dry-run，只有 `--apply` 才修改候选资源；`--json` 指定的报告
 是 dry-run 唯一允许写入的输出。推荐复制到新的候选目录，而不是在活跃服务目录执行。

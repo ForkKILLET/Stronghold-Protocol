@@ -14,6 +14,8 @@ docs/img
 docs/research/*.md
 # game art is mounted at runtime or downloaded with --build-arg FETCH_ASSETS=1, never sent from the host
 public/assets
+# Transport packs are published to the CDN; keep them out of the application image.
+public/resource-packs
 # generated from node_modules inside the image
 public/vendor
 public/build

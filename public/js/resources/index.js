@@ -439,13 +439,18 @@ async function preloadTransportPacks(store, packs, tiers, signal, onProgress, in
     const selectedBytes = candidates.reduce((sum, file) => sum + (file.size || 0), 0);
     const missingBytes = candidates.reduce((sum, file) => status.present.has(store.keyOf(file.url)) ? sum : sum + (file.size || 0), 0);
     if (!selectedBytes || missingBytes < selectedBytes * 0.25) continue;
-    const response = await fetch(pack.url, { cache: 'no-store', signal });
-    if (!response.ok) throw new Error(`资源分包 HTTP ${response.status}`);
-    const { importResourceZip } = await import('./archive.js');
-    const outcome = await importResourceZip(store, await response.blob(), { signal,
-      onProgress: (progress) => onProgress?.({ ...progress, phase: 'pack', current: pack.id }) });
-    status = await store.status({ verifyCache: false });
-    if (outcome.imported) console.info('[resources] transport pack imported', { id: pack.id, imported: outcome.imported });
+    try {
+      const response = await fetch(pack.url, { cache: 'no-store', signal });
+      if (!response.ok) throw new Error(`资源分包 HTTP ${response.status}`);
+      const { importResourceZip } = await import('./archive.js');
+      const outcome = await importResourceZip(store, await response.blob(), { signal,
+        onProgress: (progress) => onProgress?.({ ...progress, phase: 'pack', current: pack.id }) });
+      status = await store.status({ verifyCache: false });
+      if (outcome.imported) console.info('[resources] transport pack imported', { id: pack.id, imported: outcome.imported });
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      console.warn('[resources] transport pack unavailable; falling back to file downloads', pack.id, error);
+    }
   }
 }
 

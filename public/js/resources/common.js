@@ -230,12 +230,18 @@ export function validateManifest(m) {
 export function validateResourcePacks(doc) {
   if (!doc || doc.format !== 'stronghold-resource-pack-index' || doc.version !== 1
     || doc.maxBytes !== RESOURCE_PACK_MAX_BYTES || !Array.isArray(doc.packs)) return [];
-  return doc.packs.filter((pack) => pack && typeof pack.id === 'string'
-    && /^\/resource-packs\/[A-Za-z0-9._-]+\.zip$/.test(pack.url)
-    && Number.isSafeInteger(pack.size) && pack.size > 0 && pack.size <= RESOURCE_PACK_MAX_BYTES
-    && Array.isArray(pack.files) && pack.files.length > 0
-    && pack.files.every((file) => file && typeof file.url === 'string' && CONTENT_HASH_RE.test(file.hash)
-      && Number.isSafeInteger(file.size) && file.size >= 0));
+  return doc.packs.filter((pack) => {
+    if (!pack || typeof pack.id !== 'string' || typeof pack.url !== 'string') return false;
+    let parsed;
+    try { parsed = new URL(pack.url, globalThis.location?.origin || 'https://resources.invalid'); } catch { return false; }
+    if (!['http:', 'https:'].includes(parsed.protocol)
+      || !/^\/resource-packs\/[A-Za-z0-9._-]+\.zip$/.test(parsed.pathname)
+      || parsed.username || parsed.password || parsed.search || parsed.hash
+      || !Number.isSafeInteger(pack.size) || pack.size <= 0 || pack.size > RESOURCE_PACK_MAX_BYTES
+      || !Array.isArray(pack.files) || pack.files.length === 0) return false;
+    return pack.files.every((file) => file && typeof file.url === 'string' && CONTENT_HASH_RE.test(file.hash)
+      && Number.isSafeInteger(file.size) && file.size >= 0);
+  });
 }
 
 /** Whether an error means "the browser is out of storage" (a quota failure must stop the run, not retry 4 000 times). */

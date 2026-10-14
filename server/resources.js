@@ -351,7 +351,14 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
     const version = shortHash([cdnBase, ...files.map((f) => `${f.url}|${fileHashes.get(f.url)}|${f.tier}`)].join('\n'));
     const manifest = buildResourceManifest({ files, sizes: await measure(files), version, hashes: fileHashes });
     const packs = packsDoc?.doc;
-    if (packs && packs.format === 'stronghold-resource-pack-index' && packs.version === 1) manifest.packs = packs.packs;
+    if (packs && packs.format === 'stronghold-resource-pack-index' && packs.version === 1) {
+      const base = String(cdnBase || '').replace(/\/+$/, '');
+      manifest.packs = (packs.packs || []).map((pack) => ({
+        ...pack,
+        url: base && typeof pack.url === 'string' && pack.url.startsWith('/')
+          ? `${base}${pack.url}` : pack.url,
+      }));
+    }
     const body = Buffer.from(JSON.stringify(manifest));
     // Hash the complete response (including tiers and sizes), so unchanged rebuilds/restarts keep their validator.
     const etag = `"resources-${crypto.createHash('sha256').update(body).digest('hex')}"`;

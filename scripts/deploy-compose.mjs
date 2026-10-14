@@ -281,6 +281,11 @@ async function prepareAssets(o, backupDir) {
   }
   await fs.cp(path.join(candidatePublic, 'resource-packs'), path.join(ROOT, 'public', 'resource-packs'),
     { recursive: true, force: true, errorOnExist: false });
+  if (await exists(path.join(candidate, '.cache', 'asset-shrink-state.json'))) {
+    await fs.mkdir(path.join(ROOT, '.cache'), { recursive: true });
+    await fs.copyFile(path.join(candidate, '.cache', 'asset-shrink-state.json'),
+      path.join(ROOT, '.cache', 'asset-shrink-state.json'));
+  }
   for (const name of ['assets.json', 'local-assets.json', 'asset-hashes.json', 'resource-packs.json']) {
     if (await exists(path.join(candidateData, name))) {
       await fs.copyFile(path.join(candidateData, name), path.join(ROOT, 'data', name));
