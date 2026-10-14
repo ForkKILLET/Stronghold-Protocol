@@ -198,7 +198,8 @@ export function localSpineEntry(sl, local, web) {
   const skel = url(sl.skel), atlas = url(sl.atlas);
   const textures = Array.isArray(sl.textures) ? sl.textures.map(url) : [];
   let entry = null;
-  if (skel && atlas && skel.replace(/\.skel$/, '.atlas') === atlas && textures.length && textures.every(Boolean)) {
+  const pairedAtlas = skel && [skel.replace(/\.skel$/, '.atlas'), skel.replace(/\.skel$/, '.webp.atlas')].includes(atlas);
+  if (skel && atlas && pairedAtlas && textures.length && textures.every(Boolean)) {
     entry = { skel, atlas, textures, pma: !!sl.pma, anims: sl.anims, animations: sl.animations, events: sl.events, hits: sl.hits, bounds: sl.bounds, local: true, fallback: web || null };
     if (!validSpine(entry)) entry = null;
   }
@@ -583,7 +584,11 @@ export async function loadSpineData(entry, opts) {
   const PIXI = globalThis.PIXI;
   if (!PIXI || !PIXI.Assets || !PIXI.spine) throw new Error('PIXI / pixi-spine not loaded');
   if (opts && opts.fresh) forgetPendingSpine(entry, opts.keep);
-  const res = await PIXI.Assets.load(entry.skel);
+  // A dual-format release retains the original .atlas/.png for old tabs. The
+  // skeleton bytes stay unchanged, while new manifests select a .webp.atlas.
+  const inferredAtlas = entry.skel.replace(/\.skel$/, '.atlas');
+  const res = await PIXI.Assets.load(entry.atlas && entry.atlas !== inferredAtlas
+    ? { src: entry.skel, data: { spineAtlasFile: entry.atlas } } : entry.skel);
   const data = res && (res.spineData || res);
   if (!data || !Array.isArray(data.animations)) throw new Error(`bad spine data: ${entry.skel}`);
   return data;

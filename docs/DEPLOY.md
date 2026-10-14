@@ -151,6 +151,11 @@ powershell -ExecutionPolicy Bypass -File scripts\install-service-windows.ps1 -Re
 
 ## 2. 让不在同一网络的朋友加入
 
+资源压缩发布是独立的离线候选流程，见 [资源压缩与双格式迁移手册](ASSET_SHRINK.md)。
+升级前不要移动线上 PNG/atlas 或原二进制；新客户端与新素材先发布，再切换匹配的三个素材
+清单。Node 支持资源同目录的预压缩 `.br/.gz`，但保留原件用于 identity/Range/指纹。
+这不替代实际 Nginx/CDN 配置和验证，也不要求玩家清空所有旧缓存。
+
 ### 2.1 Tailscale / ZeroTier（推荐给家用小主机）
 
 组一个虚拟局域网：不需要公网 IP、不需要改路由器、不暴露到互联网。

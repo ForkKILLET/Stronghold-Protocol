@@ -7,7 +7,7 @@
 // The settings panel (public/js/ui/resourcePanel.js) renders `resourceState()`; main.js calls `syncResources()` with the
 // persisted setting at boot and on every settings change.
 
-import { CACHE_PREFIX, MANIFEST_URL, SW_URL, TIER_ESSENTIAL, TIER_REST, checkAbort, formatBytes, isQuotaError, resourceGroup, normalizePreloadVoiceLang, resourceSelection, selectedResourceGroup, validateManifest } from './common.js';
+import { CACHE_PREFIX, MANIFEST_URL, SW_URL, TIER_ESSENTIAL, TIER_REST, checkAbort, formatBytes, isQuotaError, resourceGroup, normalizePreloadVoiceLang, resourceSelection, selectedResourceGroup, validateManifest, validateResourcePacks } from './common.js';
 import { ResourceStore } from './store.js';
 import { t } from '../../../shared/i18n.js';
 
@@ -142,8 +142,8 @@ export function resourceContext() {
     const reason = unsupportedReason();
     if (reason) return { unsupported: reason }; // no point in asking for a list this browser cannot store
     let res;
+    const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(10000) : undefined;
     try {
-      const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(10000) : undefined;
       // Revalidate the HTTP cache on every page load. On a wire-level 304 the browser supplies the cached JSON body.
       res = await fetch(MANIFEST_URL, { cache: 'no-cache', signal });
     } catch (err) {
@@ -157,7 +157,8 @@ export function resourceContext() {
       return { error: String(err?.message || err) };
     }
     if (!manifest.files.length) return { manifest, empty: true };
-    return { manifest, store: new ResourceStore(manifest) };
+    const packs = validateResourcePacks(manifest.packs);
+    return { manifest, packs, store: new ResourceStore(manifest) };
   })();
   return contextPromise;
 }
@@ -385,10 +386,14 @@ async function startDownload(signal, { verifyCache = false, background = false }
     // Required visuals first, then optional audio/tutorials when selected.
     const outcome = await withDownloadLock(async () => {
       checkAbort(signal);
+      await preloadTransportPacks(store, ctx.packs, [TIER_ESSENTIAL], signal, onProgress);
       await store.download({ tiers: [TIER_ESSENTIAL], signal, onProgress });
       checkAbort(signal);
-      if (optional) await store.download({ tiers: [TIER_REST], signal, onProgress,
-        includeFile: (file) => selectedResourceGroup(resourceGroup(file), true, voiceLang) });
+      if (optional) {
+        const include = (file) => selectedResourceGroup(resourceGroup(file), true, voiceLang);
+        await preloadTransportPacks(store, ctx.packs, [TIER_REST], signal, onProgress, include);
+        await store.download({ tiers: [TIER_REST], signal, onProgress, includeFile: include });
+      }
       return { busy: false };
     });
     if (outcome.busy) { await watchOtherTab(store); return; }
@@ -415,6 +420,29 @@ async function startDownload(signal, { verifyCache = false, background = false }
       : t('预载失败：{0}', { 0: err?.message || err });
     const now = await store.status().catch(() => null);
     set({ ...(now ? counters(now) : {}), phase: 'error', message, error: true });
+  }
+}
+
+/** Prefer a category pack for a first fill; small updates remain per-file incremental. */
+async function preloadTransportPacks(store, packs, tiers, signal, onProgress, includeFile = () => true) {
+  if (!Array.isArray(packs) || !packs.length) return;
+  let status = await store.status({ verifyCache: false });
+  const current = new Map(store.files.map((file) => [store.keyOf(file.url), file]));
+  for (const pack of packs) {
+    checkAbort(signal);
+    if (!tiers.includes(pack.tier)) continue;
+    const candidates = pack.files.map((entry) => current.get(store.keyOf(entry.url)))
+      .filter((file) => file && file.tier === pack.tier && includeFile(file));
+    const selectedBytes = candidates.reduce((sum, file) => sum + (file.size || 0), 0);
+    const missingBytes = candidates.reduce((sum, file) => status.present.has(store.keyOf(file.url)) ? sum : sum + (file.size || 0), 0);
+    if (!selectedBytes || missingBytes < selectedBytes * 0.25) continue;
+    const response = await fetch(pack.url, { cache: 'no-store', signal });
+    if (!response.ok) throw new Error(`资源分包 HTTP ${response.status}`);
+    const { importResourceZip } = await import('./archive.js');
+    const outcome = await importResourceZip(store, await response.blob(), { signal,
+      onProgress: (progress) => onProgress?.({ ...progress, phase: 'pack', current: pack.id }) });
+    status = await store.status({ verifyCache: false });
+    if (outcome.imported) console.info('[resources] transport pack imported', { id: pack.id, imported: outcome.imported });
   }
 }
 

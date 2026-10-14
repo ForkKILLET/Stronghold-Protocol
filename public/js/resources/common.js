@@ -24,7 +24,10 @@ export const TIER_ESSENTIAL = 1;
 /** Optional: voices, sound effects, music and tutorial illustrations. */
 export const TIER_REST = 2;
 export const MANIFEST_URL = '/data/resource-manifest.json';
+export const PACK_MANIFEST_URL = '/data/resource-packs.json';
 export const SW_URL = '/resource-sw.js';
+/** A pack is a transport optimization, never a cache identity or a second hash authority. */
+export const RESOURCE_PACK_MAX_BYTES = 16_000_000;
 
 export const RESOURCE_GROUPS = Object.freeze({
   map: { name: N_('地图与棋盘'), tier: TIER_ESSENTIAL },
@@ -217,6 +220,18 @@ export function validateManifest(m) {
     if (f.hash != null && (typeof f.hash !== 'string' || !HASH_RE.test(f.hash))) throw new Error(`资源指纹无效：${f.url.slice(0, 80)}`);
   }
   return m;
+}
+
+/** Optional transport packs are advisory; invalid metadata falls back to file downloads. */
+export function validateResourcePacks(doc) {
+  if (!doc || doc.format !== 'stronghold-resource-pack-index' || doc.version !== 1
+    || doc.maxBytes !== RESOURCE_PACK_MAX_BYTES || !Array.isArray(doc.packs)) return [];
+  return doc.packs.filter((pack) => pack && typeof pack.id === 'string'
+    && /^\/resource-packs\/[A-Za-z0-9._-]+\.zip$/.test(pack.url)
+    && Number.isSafeInteger(pack.size) && pack.size > 0 && pack.size <= RESOURCE_PACK_MAX_BYTES
+    && Array.isArray(pack.files) && pack.files.length > 0
+    && pack.files.every((file) => file && typeof file.url === 'string' && CONTENT_HASH_RE.test(file.hash)
+      && Number.isSafeInteger(file.size) && file.size >= 0));
 }
 
 /** Whether an error means "the browser is out of storage" (a quota failure must stop the run, not retry 4 000 times). */

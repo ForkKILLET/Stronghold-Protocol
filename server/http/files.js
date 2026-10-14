@@ -262,14 +262,38 @@ function cacheControlFor(ext, mountName, segments, query) {
   return 'no-cache';
 }
 
+/**
+ * Optional precompressed resource sibling. Keep raw files for identity clients,
+ * Range, setup and raw-byte fingerprints. Never follow a sidecar outside the
+ * original file's real directory; stale sidecars fall back to dynamic compression.
+ */
+async function compressedSibling(absPath, stat, encoding) {
+  const file = absPath + (encoding === 'br' ? '.br' : '.gz');
+  try {
+    const side = await fsp.stat(file);
+    if (!side.isFile() || side.size === 0 || side.size >= stat.size || side.mtimeMs < stat.mtimeMs) return null;
+    const [rawReal, sideReal] = await Promise.all([fsp.realpath(absPath), fsp.realpath(file)]);
+    if (path.dirname(rawReal) !== path.dirname(sideReal)) return null;
+    return { file: sideReal, stat: side };
+  } catch (err) {
+    if (['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM'].includes(err?.code)) return null;
+    throw err;
+  }
+}
+
 export async function serveFile(req, res, absPath, stat, mountName, segments, query, gzipCache, log) {
   const ext = path.extname(absPath).toLowerCase();
   const type = MIME[ext] || 'application/octet-stream';
   const compressible = COMPRESSIBLE.has(ext);
   const rangeHeader = req.headers.range;
   const encoding = compressible && stat.size >= GZIP_MIN_BYTES && !rangeHeader ? pickEncoding(req.headers['accept-encoding']) : null;
+  // Code/config/data keep their existing serving contract. Only resource trees
+  // can opt into static precompression; nonselected encodings are never served.
+  const sibling = encoding && mountName === 'public' && ['assets', 'fonts'].includes(segments[0])
+    ? await compressedSibling(absPath, stat, encoding) : null;
   const baseTag = `${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}`;
-  const etag = `"${baseTag}${encoding === 'br' ? '-br' : encoding === 'gzip' ? '-gz' : ''}"`;
+  const sideTag = sibling ? `-static-${sibling.stat.size.toString(16)}-${sibling.stat.mtimeMs}` : '';
+  const etag = `"${baseTag}${encoding === 'br' ? '-br' : encoding === 'gzip' ? '-gz' : ''}${sideTag}"`;
   const lastModified = stat.mtime.toUTCString();
   const isHead = req.method === 'HEAD';
 
@@ -281,7 +305,9 @@ export async function serveFile(req, res, absPath, stat, mountName, segments, qu
   };
   if (compressible) headers.Vary = 'Accept-Encoding';
 
-  if (isNotModified(req, etag, stat.mtime)) {
+  const modified = sibling && sibling.stat.mtimeMs > stat.mtimeMs ? sibling.stat.mtime : stat.mtime;
+  headers['Last-Modified'] = modified.toUTCString();
+  if (isNotModified(req, etag, modified)) {
     res.writeHead(304, headers);
     res.end();
     return;
@@ -289,6 +315,13 @@ export async function serveFile(req, res, absPath, stat, mountName, segments, qu
 
   if (encoding) {
     headers['Content-Encoding'] = encoding;
+    if (sibling) {
+      headers['Content-Length'] = sibling.stat.size;
+      res.writeHead(200, headers);
+      if (isHead) { res.end(); return; }
+      await streamTo(fs.createReadStream(sibling.file), res, log);
+      return;
+    }
     if (stat.size <= GZIP_CACHE_MAX_FILE) {
       const body = await gzipCache.get(absPath, stat, encoding);
       headers['Content-Length'] = body.length;

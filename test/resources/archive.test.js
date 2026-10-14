@@ -121,6 +121,32 @@ test('legacy ZIP raw bracket paths match new encoded paths; encoded duplicates a
   }
 });
 
+test('PNG-to-WebP migration reuses unchanged skeletons from old ZIPs, never relabels PNG bytes', async () => {
+  const skeleton = file('/assets/spine/a.skel', 'unchanged-skeleton');
+  const png = file('/assets/spine/a.png', 'legacy-png');
+  const oldAtlas = file('/assets/spine/a.atlas', 'a.png\nsize: 32,32\n');
+  const webp = file('/assets/spine/a.webp', 'converted-webp');
+  const newAtlas = file('/assets/spine/a.webp.atlas', 'a.webp\nsize: 32,32\n');
+  const optional = file('/assets/audio/bgm/a.mp3', 'music', 2);
+  const files = [skeleton, webp, newAtlas, optional];
+  const target = store(files, { version: 'compressed' });
+  const old = await packageZip([skeleton, png, oldAtlas]);
+  const imported = await importResourceZip(target.store, old);
+  assert.equal(imported.imported, 1);
+  assert.equal(imported.skippedPackage, 2);
+  assert.deepEqual(target.calls, []);
+  const cache = await target.caches.open(CACHE_NAME);
+  await cache.put(target.store.keyOf(png.url), new Response(png.body));
+  await target.store.download({ tiers: [1] });
+  assert.deepEqual(target.calls, [target.store.keyOf(webp.url), target.store.keyOf(newAtlas.url)]);
+  assert.equal(await (await cache.match(target.store.keyOf(png.url))).text(), png.body,
+    'partial selected-scope upgrade must retain old cache until full-set cleanup is safe');
+  assert.equal(await (await cache.match(target.store.keyOf(webp.url))).text(), webp.body);
+  assert.equal((await importResourceZip(target.store, await packageZip([webp, newAtlas], { version: 2 }))).imported, 0);
+  const exported = await exportResourceZip(target.store);
+  assert.equal(exported.count, 3, 'current ZIP excludes legacy PNG and old atlas');
+});
+
 test('old ZIP reuses unchanged files across CDN prefixes, skips stale/removed/unverifiable files, downloads only the remainder', async () => {
   const old = [file('/assets/map/a.png', 'same'), file('/assets/char/b.png', 'old'), file('/assets/gone.png', 'gone'), file('/fonts/x.woff2', 'font')];
   const source = store(old);

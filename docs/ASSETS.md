@@ -255,6 +255,45 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   has brought the set up to date, the caches of earlier layouts and the entries the manifest no longer lists are
   dropped. The host therefore has to serve `/resource-sw.js` and never cache it at the edge.
 
+### 离线分析与制作增量资源 ZIP
+
+For dual-format PNG/WebP compression, retained legacy URLs, static Brotli/gzip siblings and old-cache/ZIP
+migration, see [ASSET_SHRINK.md](ASSET_SHRINK.md). It operates on a private candidate, not live files; generated
+art/hashes never enter source commits. Its default conversion does not include optional audio re-encoding.
+
+`tools/resource_delta.py` 使用 Python 3.10+ 标准库，对比两个由资源管理窗口导出的 ZIP，
+无需安装依赖，也不将素材解压到磁盘。例如在仓库根目录运行：
+
+```powershell
+python tools/resource_delta.py `
+  --base "artifacts/resources/baselines/全量资源包stronghold-resources-76a510f2c124.zip" `
+  --target "artifacts/resources/baselines/stronghold-resources-fad149b815dd.zip" `
+  --output "artifacts/resources/deltas/0.2.3/stronghold-resources-76a510f2c124-to-fad149b815dd-delta.zip"
+```
+
+- 先完整校验两个输入包的 CRC、实际大小和版本对应摘要；v1 必须通过 SHA-256 和 SHA-1 短指纹，
+  v2 必须通过完整 SHA-1 和短指纹。随后按规范化资源路径、实际完整 SHA-1 和大小比较，
+  不会因 v1/v2 清单格式变化或方括号路径编码变化重复打包。
+- 增量 ZIP 只含新增和内容变化的完整文件，重新编号并生成标准 v2 `stronghold-resources.json`，
+  保留目标 `resourceVersion`。输出完成后再次逐文件校验。不是二进制差分，也不是服务端发行更新包。
+- 默认输出 `<目标包名>-delta.zip` 和同名 `.report.json`；可通过 `--report` 指定报告路径。
+  `--analyze-only` 只校验、对比并写报告，不生成 ZIP。没有新增或变化时只写报告，不生成客户端拒绝的空包。
+- 报告包含新增、变化、未变化、目标包中缺失的数量/字节数、新增/变化/缺失文件明细及增量目录统计。
+  `absentFromTarget` 只表示目标 ZIP 没有该文件：导出包可能不完整，不能据此认定游戏删除了资源。
+  不在增量 ZIP 中写入报告或删除指令。
+- 两个原始 ZIP 不变，已有输出和报告拒绝覆盖。流式读写并校验，单次正文读取最多 1 MiB；
+  保持 24 MiB 单文件、50,000 资源、32 MiB 清单及 2 GiB 包限制。失败时删除正在写入的不完整输出。
+- 玩家应先导入旧全量包，再导入增量包。现有客户端按**当前服务器**清单指纹复用缓存，
+  并继续下载所选范围内尚缺的资源；已有旧缓存不会因为缺失列表被删除。
+  增量包不能替代首次安装的全量资源，服务端仍须同步部署当前素材和真实指纹表。
+
+验证脚本及现有导入兼容性：
+
+```powershell
+python -m unittest discover -s test/resources -p resource_delta_test.py
+node --test test/resources/delta-script.test.js test/resources/archive.test.js
+```
+
 ## Running
 
 ```bash
@@ -407,7 +446,15 @@ The `stem` of a Spine model is the upstream file name. Two examples: `char_107_l
 - **Fonts:** OTF/TTF files are converted to WOFF2 by a built-in encoder (`tools/assets/woff2.mjs`: Brotli with null transforms).
   - Its output was verified lossless against Google's reference `woff2` decoder.
   - `fonts.css` lists WOFF2 first and falls back to the original file.
-- Images stay PNG. WebP conversion is not done: it would need a native dependency. The local-client board textures are the exception: `tools/local-extract/extract.py` (Python, where Pillow is already a dependency) writes WebP copies of the 12 textures the 3D board downloads (`WEBP`: colour maps lossy at quality 95 with the alpha and the RGB under transparent texels kept, normal and data maps lossless) and `data/local-assets.json` lists the copies; the PNGs stay beside them for `tools/crop-board-atlas.mjs`. The 19 local 玩法说明 pages get a WebP copy too (`GUIDE_WEBP_MODE`, lossy quality 90 since the maintainer's side-by-side look of 2026-10-12: 25.6 MB → 4.2 MB on the CN client's pages; lossless would be 17.4 MB), listed in place of the PNG, which stays beside it; the mirror copies under `ui/guide/` stay PNG. `extract.py --webp` adds the copies to an existing extraction without the client.
+- The default fetch pipeline still produces PNG. Optional offline compression now uses Pillow in
+  `tools/shrink-assets.py`: ordinary color art quality 95, tutorial art quality 90, Spine/data maps lossless;
+  both emote trees remain PNG. It keeps original files and selects verified WebP/`.webp.atlas` siblings through
+  matching manifests. See [ASSET_SHRINK.md](ASSET_SHRINK.md) for candidate-only conversion and legacy cache/ZIP
+  migration. The local extractor remains a separate upstream pipeline: `extract.py --webp` produces board/guide
+  copies without the client (board color q95, normal/data maps lossless, local guide q90), and keeps PNGs for
+  `tools/crop-board-atlas.mjs`. Scene lightmaps from older extraction may still be lossy until the optional
+  candidate conversion regenerates them from their retained PNGs. Do not infer codec policy merely from a sibling's
+  presence or manually reuse the original PNG fingerprint.
 
 ## Manifest schema (`data/assets.json`)
 

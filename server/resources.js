@@ -23,6 +23,7 @@ import zlib from 'node:zlib';
 import { canonicalResourceUrl, isBoardResourceJson } from '../shared/resourcePaths.js';
 
 export const RESOURCE_MANIFEST_FILE = 'resource-manifest.json';
+export const RESOURCE_PACK_MANIFEST_FILE = 'resource-packs.json';
 /** Per-file content hashes of the fetched assets, written by tools/asset-hashes.mjs (optional). */
 export const ASSET_HASHES_FILE = 'asset-hashes.json';
 export const RESOURCES_FORMAT = 1;
@@ -319,7 +320,7 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
 
   async function build(epoch) {
     const previous = cache;
-    const sources = await Promise.all(['assets.json', 'local-assets.json', ASSET_HASHES_FILE].map(sourceFile));
+    const sources = await Promise.all(['assets.json', 'local-assets.json', ASSET_HASHES_FILE, RESOURCE_PACK_MANIFEST_FILE].map(sourceFile));
     const sourceKey = [...sources.map(stamp), cdnBase].join('|');
     // Cache hits only stat the source files and the already-discovered board companions.
     // Keep missing companions in tileFiles so creation, not just edits/deletion, invalidates the cache.
@@ -328,7 +329,7 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
       const key = [sourceKey, ...tiles.map((file) => file?.stamp || '-')].join('|');
       if (previous.key === key) return previous;
     }
-    const [assets, local, hashesDoc] = await Promise.all(sources.map(readJson));
+    const [assets, local, hashesDoc, packsDoc] = await Promise.all(sources.map(readJson));
     const assetsDoc = assets ? rewrite(assets.doc) : null;
     const localDoc = local ? rewrite(local.doc) : null;
     const collected = collectResourceFiles(assetsDoc, localDoc);
@@ -349,6 +350,8 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
     // or any hash does — the settings panel and the /healthz-style diagnostics read it.
     const version = shortHash([cdnBase, ...files.map((f) => `${f.url}|${fileHashes.get(f.url)}|${f.tier}`)].join('\n'));
     const manifest = buildResourceManifest({ files, sizes: await measure(files), version, hashes: fileHashes });
+    const packs = packsDoc?.doc;
+    if (packs && packs.format === 'stronghold-resource-pack-index' && packs.version === 1) manifest.packs = packs.packs;
     const body = Buffer.from(JSON.stringify(manifest));
     // Hash the complete response (including tiers and sizes), so unchanged rebuilds/restarts keep their validator.
     const etag = `"resources-${crypto.createHash('sha256').update(body).digest('hex')}"`;
