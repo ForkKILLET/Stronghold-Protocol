@@ -99,6 +99,13 @@ def atomic_write(path, data, orig_root=None):
         stream.write(data)
     try:
         os.replace(tmp, path)
+        # NamedTemporaryFile is 0600 by default. The Node container runs as
+        # the non-root `node` user, so generated public data must be readable
+        # after Docker COPY/bind-mount deployment.
+        try:
+            os.chmod(path, 0o644)
+        except OSError:
+            pass
     finally:
         tmp.unlink(missing_ok=True)  # only our temporary file, never original resources
     return True

@@ -154,6 +154,20 @@ async function copyOptionalTree(source, destination, label) {
   await copyTree(source, destination, label);
 }
 
+async function normalizeReadableTree(root) {
+  if (!(await exists(root))) return;
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const target = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      await fs.chmod(target, 0o755).catch(() => {});
+      await normalizeReadableTree(target);
+    } else if (entry.isFile()) {
+      await fs.chmod(target, 0o644).catch(() => {});
+    }
+  }
+}
+
 async function copyFile(source, destination) {
   if (!(await exists(source))) return;
   if (!options.apply) { console.log(`备份 ${source} -> ${destination}`); return; }
@@ -294,6 +308,15 @@ async function main() {
     } else {
       await prepareAssets(o, backup.dir);
     }
+  }
+  if (o.apply) {
+    // Dockerfile COPY and bind mounts preserve source permissions. Normalize
+    // generated/public data before building so the non-root `node` user can
+    // read manifests and mounted resources.
+    await normalizeReadableTree(path.join(ROOT, 'data'));
+    await normalizeReadableTree(path.join(ROOT, 'public', 'assets'));
+    await normalizeReadableTree(path.join(ROOT, 'public', 'fonts'));
+    await normalizeReadableTree(path.join(ROOT, 'public', 'resource-packs'));
   }
 
   if (!o.skipData && o.dataTarget) await copyTree(path.join(ROOT, 'data'), o.dataTarget, 'data');
