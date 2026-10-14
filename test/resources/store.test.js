@@ -532,6 +532,24 @@ describe('ResourceStore', () => {
     assert.equal(res.downloaded, 1);
   });
 
+  test('an incomplete CDN update cannot endorse old bytes under the new audio fingerprint', async () => {
+    const url = '/assets/audio/voice/cn/a.mp3', old = 'old-audio', fresh = 'new-audio';
+    const oldHash = await digest(old), hash = await digest(fresh);
+    const caches = new MemoryCaches();
+    const cache = await seed(caches, ORIGIN + url, old, oldHash);
+    const { fetch, calls } = fetcherFor({ bodies: {
+      [ORIGIN + url]: old, [`${ORIGIN}${url}?sp=${hash}`]: old,
+    } });
+    const s = store(manifest([{ url, tier: 2, size: fresh.length, hash }]), { caches, fetch });
+    const result = await s.download({ tiers: [2] });
+    assert.equal(result.failed, 1);
+    assert.equal(result.downloaded, 0);
+    assert.equal(calls.length, 2);
+    assert.equal(await (await cache.match(ORIGIN + url)).text(), old);
+    assert.equal((await (await cache.match(indexUrl(ORIGIN))).json()).files[ORIGIN + url], oldHash);
+    assert.equal(result.complete, false);
+  });
+
   test('an interrupted run keeps the progress it flushed', async () => {
     const files = Array.from({ length: 70 }, (_, i) => ({ url: `/assets/f${i}.png`, tier: 1, size: 8 }));
     const ac = new AbortController();

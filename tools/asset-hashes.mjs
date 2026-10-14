@@ -107,24 +107,27 @@ export function hashesDoc({ files, count, bytes }) {
 }
 
 function parseArgs(argv) {
-  const o = { out: path.join(ROOT, 'data', 'asset-hashes.json'), check: false, concurrency: 4 };
+  const o = { root: ROOT, out: '', check: false, concurrency: 4 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--check') o.check = true;
+    else if (a === '--root') o.root = path.resolve(argv[++i] || '');
+    else if (a.startsWith('--root=')) o.root = path.resolve(a.slice(7));
     else if (a === '--out') o.out = path.resolve(argv[++i] || '');
     else if (a.startsWith('--out=')) o.out = path.resolve(a.slice(6));
     else if (a === '--concurrency') o.concurrency = Math.max(1, Number(argv[++i]) || 4);
     else if (a.startsWith('--concurrency=')) o.concurrency = Math.max(1, Number(a.slice(14)) || 4);
-    else if (a === '--help' || a === '-h') { console.log('usage: node tools/asset-hashes.mjs [--out data/asset-hashes.json] [--check] [--concurrency 4]'); process.exit(0); }
+    else if (a === '--help' || a === '-h') { console.log('usage: node tools/asset-hashes.mjs [--root candidate-directory] [--out data/asset-hashes.json] [--check] [--concurrency 4]'); process.exit(0); }
     else throw new Error(`unknown argument: ${a}`);
   }
+  if (!o.out) o.out = path.join(o.root, 'data', 'asset-hashes.json');
   return o;
 }
 
 async function main() {
   const opt = parseArgs(process.argv.slice(2));
   const t0 = Date.now();
-  const res = await collectHashes({ concurrency: opt.concurrency });
+  const res = await collectHashes({ root: opt.root, concurrency: opt.concurrency });
   const doc = hashesDoc(res);
   const body = JSON.stringify(doc, null, 2) + '\n';
   let prev = null;

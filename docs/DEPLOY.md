@@ -151,6 +151,56 @@ powershell -ExecutionPolicy Bypass -File scripts\install-service-windows.ps1 -Re
 
 ## 2. 让不在同一网络的朋友加入
 
+### Docker Compose 自动部署与回滚
+
+仓库提供 `scripts/deploy-compose.mjs`，适配游戏服务名为 `stronghold`、Redis 服务名为
+`redis` 的 Compose。它不会假设仓库中存在游戏 Compose 文件，使用服务器上的实际文件：
+
+```bash
+node scripts/deploy-compose.mjs \
+  --compose /srv/stronghold/docker-compose.yml \
+  --static-root /opt/1panel/www/sites/wei.linxia.dev/index
+```
+
+默认是 dry-run，只做 Compose 配置检查并列出同步计划。实际部署：
+
+```bash
+node scripts/deploy-compose.mjs \
+  --compose /srv/stronghold/docker-compose.yml \
+  --static-root /opt/1panel/www/sites/wei.linxia.dev/index \
+  --apply
+```
+
+脚本执行顺序：
+
+1. `docker compose config --quiet` 校验 Compose；
+2. 记录旧游戏容器镜像并备份 Compose、公告、关键 data 清单；
+3. 同步 `data` 到 `srv`、`public/assets` 到 `assets`、字体到 `fonts`，可选同步
+   `public/resource-packs` 到 `resource-packs`；
+4. `docker compose build --pull stronghold`；
+5. 只启动/重建 `stronghold`，Redis 仅确保启动和健康，不删除卷；
+6. 轮询 `http://127.0.0.1:3080/healthz`；
+7. 健康检查失败时，将旧镜像重新标记并执行 `up --no-build` 回滚，失败日志和备份目录保留。
+
+可用参数：
+
+- `--pull`：部署前执行 `git pull --ff-only`；
+- `--no-build`：跳过镜像构建；
+- `--skip-data`、`--skip-assets`、`--skip-packs`：跳过对应同步；
+- `--data-target`、`--assets-target`、`--fonts-target`、`--packs-target`：分别指定目标目录；
+- `--health URL`、`--wait 180`：修改健康检查地址和超时；
+- `--backup-root DIR`：修改备份目录。
+
+脚本不会执行 `docker compose down -v`，不会覆盖 `config/announcements.json`，不会刷新或删除
+Redis 数据卷。你的 Compose 中 `./public/assets:/app/public/assets:ro` 和 `./config:/app/config:ro`
+会覆盖镜像内对应目录，因此必须同步正确的宿主机素材和公告目录；脚本只同步 CDN 静态目录，
+不会擅自修改这些挂载源。
+
+资源压缩发布是独立的离线候选流程，见 [资源压缩与双格式迁移手册](ASSET_SHRINK.md)。
+升级前不要移动线上 PNG/atlas 或原二进制；新客户端与新素材先发布，再切换匹配的三个素材
+清单。Node 支持资源同目录的预压缩 `.br/.gz`，但保留原件用于 identity/Range/指纹。
+这不替代实际 Nginx/CDN 配置和验证，也不要求玩家清空所有旧缓存。
+
 ### 2.1 Tailscale / ZeroTier（推荐给家用小主机）
 
 组一个虚拟局域网：不需要公网 IP、不需要改路由器、不暴露到互联网。

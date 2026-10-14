@@ -514,12 +514,15 @@ export class ResourceStore {
             // `cache: 'no-store'` bypasses the HTTP cache, not Cache Storage: a Service Worker of an older build may
             // answer this fetch out of its own cache (and a stale one at that). Verify the bytes against the manifest
             // hash and, when they disagree, ask again on a URL no cache entry can match — the worker matches full URLs.
-            // If the second answer still disagrees the asset hashes are stale (tools/asset-hashes.mjs --check catches
-            // that before a deploy): keep the bytes rather than failing the file, and record the manifest's hash.
+            // A CDN publication may be incomplete. Never endorse old bytes under
+            // the new fingerprint: fail this file and retain previously cached
+            // resources so the next run can retry after deployment is fixed.
             if (file.hash && CONTENT_HASH_RE.test(file.hash)) {
               const seen = await digestOf(res);
               if (seen && seen !== file.hash) {
                 res = await this.#fetchStorable(`${key}${key.includes('?') ? '&' : '?'}sp=${file.hash}`, signal);
+                const retried = await digestOf(res);
+                if (retried && retried !== file.hash) throw new Error('资源指纹不匹配，请确认 CDN 素材与清单已同步');
               }
             }
             await cache.put(key, this.storable(res));

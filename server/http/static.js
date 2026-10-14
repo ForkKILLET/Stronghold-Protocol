@@ -22,7 +22,7 @@ import fsp from 'node:fs/promises';
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { rewriteAssetPaths } from '../../shared/cdn.js';
-import { createResourceIndex, RESOURCE_MANIFEST_FILE } from '../resources.js';
+import { createResourceIndex, RESOURCE_MANIFEST_FILE, RESOURCE_PACK_MANIFEST_FILE } from '../resources.js';
 import path from 'node:path';
 import { MEDIA_PREFIX } from '../../shared/media.js';
 import { ROOT, noopLog } from './config.js';
@@ -128,6 +128,23 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
       headers['Content-Length'] = body.length;
       res.writeHead(200, headers);
       res.end(req.method === 'HEAD' ? undefined : body);
+      return;
+    }
+    if (decoded.toLowerCase() === `/data/${RESOURCE_PACK_MANIFEST_FILE}`) {
+      const file = path.join(dataDir, RESOURCE_PACK_MANIFEST_FILE);
+      try {
+        const body = await fsp.readFile(file);
+        const st = await fsp.stat(file);
+        const etag = `"resource-packs-${createHash('sha256').update(body).digest('hex')}"`;
+        const headers = { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache', ETag: etag,
+          'Last-Modified': st.mtime.toUTCString(), 'Content-Length': body.length };
+        if (isNotModified(req, etag, st.mtime)) { res.writeHead(304, headers); res.end(); return; }
+        res.writeHead(200, headers);
+        res.end(req.method === 'HEAD' ? undefined : body);
+      } catch (error) {
+        if (error?.code === 'ENOENT') sendError(req, res, 404, '页面不存在 · Not found');
+        else { log.error('[resources] cannot read resource pack index', error); sendError(req, res, 500, '服务器内部错误 · Internal error'); }
+      }
       return;
     }
     if (decoded === '/data.js') {
