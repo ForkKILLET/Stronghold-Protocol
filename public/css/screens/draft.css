@@ -46,6 +46,8 @@
 .dband__lp i { width: .12rem; height: .14rem; background: var(--mint-500); clip-path: polygon(0 0, 30% 0, 30% 20%, 45% 20%, 45% 0, 55% 0, 55% 20%, 70% 20%, 70% 0, 100% 0, 100% 35%, 85% 50%, 85% 80%, 100% 90%, 100% 100%, 0 100%, 0 90%, 15% 80%, 15% 50%, 0 35%); }
 .dband__who { position: absolute; right: .04rem; top: .04rem; display: flex; flex-direction: column; gap: .02rem; }
 .dband__who .pavatar { --pa: .3rem; border-radius: 50%; overflow: hidden; border: 2px solid var(--mint-400); }
+/* Secondary ice frame marks teammates' unconfirmed previews; own selection keeps its mint glow. */
+.dband.is-preview::before { content:''; position:absolute; inset:0; border:2px solid var(--ice); pointer-events:none; }
 .dband.is-sel { border-color: var(--mint-400); background: linear-gradient(180deg, rgba(78, 216, 175, .18), rgba(12, 15, 14, .85)); box-shadow: 0 0 0 1px var(--mint-400), 0 0 .24rem rgba(23, 249, 183, .2); }
 .dband.is-mine::after { content: '已选择'; position: absolute; left: 0; top: 0; font-size: calc(.11 * var(--t)); font-weight: 700; padding: 0 .06rem; background: var(--mint-500); color: var(--text-on-mint); }
 

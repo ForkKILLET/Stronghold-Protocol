@@ -290,10 +290,11 @@ export function BandDraftScreen() {
         ${bands.map((b) => {
           const who = pickers.get(b.bandId) || [];
           const isTaken = taken.has(b.bandId);
+          const isPreview = !isTaken && [...draft.focus].some(([pid, bid]) => pid !== myId && bid === b.bandId);
           const offNames = bandOffBonds(b, offBonds).map((id) => gd.bond(id)?.name || id); // 本局禁用 (still selectable)
           return html`<button key=${b.bandId} type="button" role="option" aria-selected=${sel === b.bandId ? 'true' : 'false'} data-band=${b.bandId}
               aria-disabled=${isTaken ? 'true' : 'false'} title=${isTaken ? t('队友已选') : offNames.length ? bandOffLine(offNames) : undefined}
-              class=${cx('dband', sel === b.bandId && 'is-sel', myPick === b.bandId && 'is-mine', isTaken && 'is-taken', offNames.length && 'is-off')} onClick=${() => { setSel(b.bandId); audio.sfx('tab', { volume: 0.5 }); }}>
+              class=${cx('dband', isPreview && 'is-preview', sel === b.bandId && 'is-sel', myPick === b.bandId && 'is-mine', isTaken && 'is-taken', offNames.length && 'is-off')} onClick=${() => { setSel(b.bandId); audio.sfx('tab', { volume: 0.5 }); }}>
             <${BandIcon} bandId=${b.bandId} size="lg" />
             <span class="dband__name">${b.name}</span>
             <span class="dband__lp num"><i></i>${b.totalHp}</span>
