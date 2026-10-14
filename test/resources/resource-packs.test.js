@@ -48,3 +48,26 @@ test('Python pack builder keeps every pack below 16 MB and records verified reso
   assert.ok(index.packs[0].size <= RESOURCE_PACK_MAX_BYTES);
   assert.match(index.packs[0].url, /\/resource-packs\/ui-01-[0-9a-f]{12}\.zip$/);
 });
+
+test('Python pack builder decodes canonical bracket URLs when reading local files', async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), 'sp-resource-packs-brackets-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const assets = path.join(root, 'public');
+  const data = path.join(root, 'data');
+  await mkdir(path.join(assets, 'assets', 'local', 'map', 'fx'), { recursive: true });
+  await mkdir(data, { recursive: true });
+  const body = Buffer.from('bracket texture');
+  await writeFile(path.join(assets, 'assets', 'local', 'map', 'fx', '[opt]x.webp'), body);
+  const crypto = await import('node:crypto');
+  const full = crypto.createHash('sha1').update(body).digest('hex');
+  const manifestPath = path.join(root, 'manifest.json');
+  await writeFile(manifestPath, JSON.stringify({ version: 'fixture', files: [{
+    url: '/assets/local/map/fx/%5Bopt%5Dx.webp', tier: 1, size: body.length, hash: full.slice(0, 12),
+  }] }));
+  const result = spawnSync(process.env.PYTHON || 'python', [path.resolve('tools/resource_packs.py'),
+    '--manifest', manifestPath, '--assets-root', assets, '--output', path.join(root, 'packs'),
+    '--index', path.join(data, 'resource-packs.json')], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const index = JSON.parse(await readFile(path.join(data, 'resource-packs.json'), 'utf8'));
+  assert.equal(index.packs[0].files[0].url, '/assets/local/map/fx/%5Bopt%5Dx.webp');
+});

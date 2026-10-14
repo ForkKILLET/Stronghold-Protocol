@@ -12,6 +12,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+from urllib.parse import unquote
 import zipfile
 
 MAX_PACK_BYTES = 16_000_000
@@ -84,7 +85,9 @@ def main():
     files = []
     for row in source.get("files", []):
         url = canonical(row["url"])
-        path = args.assets_root / url.lstrip("/")
+        # Manifest URLs use canonical %5B/%5D encoding, while the extracted
+        # filesystem keeps literal brackets.
+        path = args.assets_root / unquote(url.lstrip("/"))
         data = path.read_bytes()
         full = digest(data)
         if full[:12] != row.get("hash") or (row.get("size") is not None and row["size"] != len(data)):
