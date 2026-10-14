@@ -286,3 +286,8 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - Sensitive-lexicon 使用 dev Docker 的 POST `/contains` `{text}` 和布尔 `contains`，不使用 `/detect`；Jev 使用服务端 key 和官方 `/v1/systemone` 单个精简 Noul 违规概率，合并类别以尽可能降低输入至 100 tokens 以下；不截断正文或声明未经实测的计费 token 数。浏览器不接触 Jev key；名称审核只在服务端直连 WS hello 触发，并通过同一 WS 返回不可用。
 - 保持服务端最终校验、同源 HTTP 安全、名字格式、缓存/并发/限流、断线竞态和 fail-open 约定。仅审核明确拒绝以固定日志标记记录，不包含昵称、聊天正文、地址、令牌、响应或 key；不记录审核触发、通过、格式错误、故障降级或审核开关状态日志。昵称拒绝提示“该名称不可用”，聊天拒绝提示“该内容不可用”，标题页无审核说明或服务不可用提示。词库后端只放受控 Docker 网络。文档 `docs/NAME_MODERATION.md`，回归 `test/name-moderation.test.js`、`test/chat-moderation-lifecycle.test.js`。
 - 首次/恢复登录及在线改名收到明确 `NAME_REJECTED` 后都自动返回可编辑昵称标题页，清除 entered 标记并关闭旧对话框；保留原 token、房间及对局，不自动退出或重试被拒名称。在线改名被拒仍保留服务器已批准的昵称和会话，用户手动改名后可继续；`CHAT_REJECTED`、限流及普通对局错误不触发此回退。
+
+## 等待室和策略选择页交流／预选
+
+- 等待室和 BAND_DRAFT 复用 `ui/communication.js` 与战斗 `EmoteWheel`／`EmoteBubble`，保留 20 字、1 秒冷却、输入法、纯文本和本地历史语义。等待室 `room.chat`／`room.emote` 只发给本房间，观战只读；审核结果绑定原会话、连接及房间，开局／离开／换房后不转发。换房／新局清空客户端历史。
+- `g.bandFocus` 实际变化时发布 `draft.focus`；未确认的队友显示预选名称／半透明图标，不提前占用策略。非计时多人也报告预选，确认／清除后移除；不修改既有超时兜底规则。策略页交流放在左栏，最新气泡不能遮盖预选和选卡，桌面／窄屏截图验证。回归 `test/room-communication.test.js` 与聊天／策略用例。

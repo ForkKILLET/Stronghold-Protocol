@@ -105,7 +105,7 @@ import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMul
 //     a player seat (the seat is kept and given back on resume).
 
 import { randomBytes, randomInt } from 'node:crypto';
-import { ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, DIFFICULTIES, modeIdFor } from '../shared/constants.js';
+import { EMOTES, EMOTE_COOLDOWN_MS, ERR, MAX_SEATS, MAX_SPECTATORS, ROOM_CODE_LEN, DIFFICULTIES, modeIdFor } from '../shared/constants.js';
 import { checkLoadout, checkLoadoutOps, cultivationCharIds, checkNotOwned, checkDiyPicks } from '../shared/protocol.js';
 import { encode, isErrCode, sendRaw, sendSession } from './net.js';
 import { resetStateDelta } from './stateTransport.js';
@@ -287,6 +287,7 @@ export class Lobby {
     this.matchWorkerPool = matchWorkerPool;
     this.nameModeration = nameModeration;
     this.chatReviews = new WeakMap();
+    this.roomMessagesAt = new WeakMap();
     this.shuttingDown = false;
     this.now = now;
     this.seedFn = seedFn || (() => randomInt(2 ** 32));
@@ -435,6 +436,7 @@ export class Lobby {
       case 'room.create': return this.create(session, msg);
       case 'room.join': return this.join(session, msg);
       case 'room.leave': return this.leave(session);
+      case 'room.chat': case 'room.emote': return this.roomCommunication(session, msg);
       case 'room.ready': return this.ready(session, msg);
       case 'room.setOptions': return this.setOptions(session, msg);
       case 'room.setDifficulty': return this.setDifficulty(session, msg);
@@ -1142,6 +1144,36 @@ export class Lobby {
       seat.ready = ready;
       this.broadcastState(room);
     }
+    return OK;
+  }
+
+  async roomCommunication(session, msg) {
+    const room = this.roomOf(session);
+    if (!room) return fail(ERR.NOT_IN_ROOM);
+    if (room.spectatorOf(session.playerId)) return fail(ERR.SPECTATOR);
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    const chat = msg.t === 'room.chat';
+    if (chat ? !validChatText(msg.text) : !EMOTES.includes(msg.id)) return fail(ERR.BAD_MSG);
+    if (this.chatReviews.has(session)) return fail(ERR.RATE);
+    const last = this.roomMessagesAt.get(session);
+    if (last && this.now() - last.at < EMOTE_COOLDOWN_MS) return fail(ERR.RATE);
+    const socket = session.ws;
+    if (chat && this.nameModeration?.checkChat) {
+      const review = Promise.resolve().then(() => this.nameModeration.checkChat(msg.text.trim(), session.limitKey || '?'))
+        .catch(() => ({allowed:true}));
+      this.chatReviews.set(session, review);
+      let verdict;
+      try { verdict = await review; } finally { if (this.chatReviews.get(session) === review) this.chatReviews.delete(session); }
+      if (this.shuttingDown || !session.connected || session.ws !== socket || this.registry.byId(session.playerId) !== session
+        || this.roomOf(session) !== room || room.disposed || room.match || !room.seatOf(session.playerId)) return fail(ERR.WRONG_PHASE);
+      if (verdict?.allowed !== true && [ERR.NAME_REJECTED,ERR.BAD_MSG].includes(verdict?.code)) {
+        if (verdict.code === ERR.NAME_REJECTED) this.log.info?.('[chat] moderation rejected room message');
+        return fail(verdict.code === ERR.BAD_MSG ? ERR.BAD_MSG : ERR.CHAT_REJECTED);
+      }
+    }
+    this.roomMessagesAt.set(session, {at:this.now()});
+    this.broadcastRoom(room, chat ? {t:'m.chat',playerId:session.playerId,name:session.name,text:msg.text.trim(),at:this.now()}
+      : {t:'m.emote',playerId:session.playerId,id:msg.id});
     return OK;
   }
 

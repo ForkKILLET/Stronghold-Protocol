@@ -1478,5 +1478,6 @@
   "调整配置": "Adjust configuration",
   "查看配置": "View configuration",
   "取消匹配后可修改配置": "Cancel matchmaking to change configuration",
-  "修改配置后，队友需要重新准备就绪": "Teammates must ready again after configuration changes"
+  "修改配置后，队友需要重新准备就绪": "Teammates must ready again after configuration changes",
+  "预选": "Preview"
 }

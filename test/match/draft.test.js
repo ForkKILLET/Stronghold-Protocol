@@ -277,3 +277,18 @@ test('a single human (a 同盟 room started alone or with AI teammates only) is 
   assert.ok(h.m.deadline > 0, 'co-op prep is timed');
   h.m.dispose();
 });
+
+test('published focus remains a preview, disappears on clear/pick and does not occupy a strategy',()=>{
+ const h=makeMatch({mode:'coop',humans:2,seed:5}).start();const m=h.m;
+ try{
+  m.handle('p_0',{t:'g.infoReady'});m.handle('p_1',{t:'g.infoReady'});h.sched.advance(1);
+  const pid=m.draftTurn();const band='band_amiya';
+  assert.deepEqual(m.handle(pid,{t:'g.bandFocus',bandId:band}),{ok:true});
+  assert.equal(m.publicView().draft.focus[pid],band);
+  assert.equal(m.publicView().draft.picks[pid],undefined);
+  assert.equal(m.bandTaken(band,pid==='p_0'?'p_1':'p_0'),false);
+  m.handle(pid,{t:'g.bandFocus',bandId:null});assert.equal(m.publicView().draft.focus[pid],undefined);
+  m.handle(pid,{t:'g.bandFocus',bandId:band});m.handle(pid,{t:'g.band',bandId:band});
+  assert.equal(m.publicView().draft.focus[pid],undefined);assert.equal(m.publicView().draft.picks[pid],band);
+ }finally{m.dispose();}
+});

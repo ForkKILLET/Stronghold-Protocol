@@ -139,7 +139,8 @@ export class MatchViews {
       const d = this.draft;
       // turnSeconds: the length of a turn (the countdown gauge's total; 0 when untimed) — deadline = turnDeadline
       v.draft = {
-        order: d.order.slice(), turn: this.draftTurn(), picks: { ...d.picks }, skipsLeft: { ...d.skipsLeft }, turnDeadline: d.turnDeadline || 0,
+        order: d.order.slice(), turn: this.draftTurn(), picks: { ...d.picks },
+        focus: Object.fromEntries([...(d.focus || new Map())].filter(([pid]) => d.order.includes(pid) && !d.picks[pid])), skipsLeft: { ...d.skipsLeft }, turnDeadline: d.turnDeadline || 0,
         turnSeconds: d.untimed ? 0 : this.bandTurnMs() / 1000, untimed: !!d.untimed,
       };
     }

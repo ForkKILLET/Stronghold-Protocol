@@ -12,7 +12,7 @@ import { t } from '../../../../shared/i18n.js';
  * object/array picks.
  * @param {any} draft
  * @param {any[]} [players]
- * @returns {{ order: string[], turnPid: string|null, picks: Map<string,string>, skipsLeft: Map<string, number>, done: boolean }}
+ * @returns {{ order: string[], turnPid: string|null, picks: Map<string,string>, focus: Map<string,string>, skipsLeft: Map<string, number>, done: boolean }}
  */
 export function normalizeDraft(draft, players = []) {
   const ids = (Array.isArray(players) ? players : []).filter(isObj).map((p) => p.playerId);
@@ -34,7 +34,8 @@ export function normalizeDraft(draft, players = []) {
   const sk = draft?.skipsLeft ?? draft?.skips;
   if (isObj(sk)) for (const [k, v] of Object.entries(sk)) if (Number.isFinite(v)) skipsLeft.set(k, v);
   const done = order.length > 0 && order.every((pid) => picks.has(pid));
-  return { order, turnPid, picks, skipsLeft, done };
+  const focus = new Map(Object.entries(isObj(draft?.focus) ? draft.focus : {}).filter(([pid,bid]) => order.includes(pid) && !picks.has(pid) && typeof bid==='string' && bid));
+  return { order, turnPid, picks, focus, skipsLeft, done };
 }
 
 /**

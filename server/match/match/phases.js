@@ -175,9 +175,9 @@ export class MatchPhases {
     const d = this.draft;
     if (d.picks[ps.playerId]) return fail(ERR.ALREADY);
     if (!(d.focus instanceof Map)) d.focus = new Map();
-    if (bandId == null) { d.focus.delete(ps.playerId); return OK; }
+    if (bandId == null) { if (d.focus.delete(ps.playerId)) this.markPublic(); return OK; }
     if (typeof bandId !== 'string' || !this.gd.bandAllowed(bandId)) return fail(ERR.BAD_TARGET);
-    d.focus.set(ps.playerId, bandId);
+    if (d.focus.get(ps.playerId) !== bandId) { d.focus.set(ps.playerId, bandId); this.markPublic(); }
     return OK;
   }
 

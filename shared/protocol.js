@@ -388,6 +388,8 @@ export const C2S = {
   'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, battleSpeed: isBattleSpeed, $optional: ['prepSeconds', 'prepMultiplier', 'battleSpeed'] },
   'room.join': { code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
+  'room.emote': { id: (v) => EMOTES.includes(v) },
+  'room.chat': { text: validChatText },
   'room.ready': { ready: isBool },
   'room.setOptions': { difficulty: (v) => DIFFICULTIES.includes(v), prepMultiplier: isPrepMultiplier, battleSpeed: (v) => [1, 2, 3, 4].includes(v) },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v) },

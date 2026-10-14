@@ -195,6 +195,7 @@ function onRoomState(msg) {
     return;
   }
   const prevRoom = store.get().room;
+  if (!prevRoom || prevRoom.code !== room.code) store.set({emotes:[],chatHistory:[]});
   // A (new) match starts: forget the previous match's state so stale results never show.
   if (room.inMatch && !(prevRoom && prevRoom.inMatch && prevRoom.code === room.code)) store.set({ match: emptyMatch(), emotes: [], chatHistory: [] });
   store.set({ room });

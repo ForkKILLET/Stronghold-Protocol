@@ -1,3 +1,4 @@
+import { CommunicationDock, CommunicationActivity } from '../ui/communication.js';
 // Band draft — BAND_DRAFT "2/2 选择策略" (research 06 §4.2, D1): left = draft order (avatar, name, state:
 // … waiting / ⌛ 决策中 / chosen band ✓), current picker highlighted; centre = grid of every band allowed
 // for the mode type (icon, name, LP); a band a teammate already picked carries the picker's avatar and is marked
@@ -216,10 +217,10 @@ export function BandDraftScreen() {
   const focusSent = useRef(null);
   useEffect(() => {
     // (a spectator seat — community report #26 — is in no draft order: it never reports)
-    if (!timed || myPick || !sel || focusSent.current === sel || !draft.order.includes(myId)) return;
+    if (solo || myPick || !sel || focusSent.current === sel || !draft.order.includes(myId)) return;
     focusSent.current = sel;
     act('g.bandFocus', { bandId: sel }, { sfx: false, quiet: true });
-  }, [sel, timed, myPick]);
+  }, [sel, solo, myPick]);
 
   // what a timeout gives me: the highlighted band while free, else the default (never 队友已选 — match/phases.js timeoutBand)
   const autoId = autoPickBand(sel, { bands, taken, myPick, defaultId });
@@ -268,9 +269,11 @@ export function BandDraftScreen() {
               <span class="dorder__state">${picked ? html`<span class="t-mint">${pband?.name || t('已选择')}</span>`
                 : cur ? html`<span class="t-gold"><${Icon} name="hourglass" />${t('决策中')}${turnSecs != null ? html`<b class="num dorder__secs">${turnSecs}s</b>` : null}</span>`
                 : html`<span class="t-dim"><${Icon} name="dots" />${t('等待中')}</span>`}</span>
+              ${!picked && draft.focus.get(p.playerId) ? html`<span class="dorder__preview" title=${gd.band(draft.focus.get(p.playerId))?.name}>${t('预选')} · ${gd.band(draft.focus.get(p.playerId))?.name || draft.focus.get(p.playerId)}</span>` : null}
             </div>
             <span class="dorder__box">
               ${picked ? html`<${BandIcon} bandId=${picked} size="sm" /><span class="dorder__check"><${Icon} name="check" /></span>`
+                : draft.focus.get(p.playerId) && p.playerId !== myId ? html`<span class="dorder__preview-icon"><${BandIcon} bandId=${draft.focus.get(p.playerId)} size="sm" /></span>`
                 : cur && p.playerId === myId ? html`<${Sprite} k="bandChoose/youturn_finger" class="dorder__finger" fallback=${html`<${Icon} name="chevronLeft" />`} />`
                 : null}
             </span>
@@ -278,7 +281,9 @@ export function BandDraftScreen() {
         })}
         <${Button} variant="secondary" icon="search" block=${true} class="draft-order__info" data-testid="match-info-open"
           aria-haspopup="dialog" onClick=${() => setInfoOpen(true)}>${t('查看禁用盟约与干员')}<//>
+        <${CommunicationActivity} players=${players} />
         ${!solo ? html`<p class="draft-order__tip" data-testid="draft-tip">${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}</p>` : null}
+        <div class="draft-communication"><${CommunicationDock} disabled=${!draft.order.includes(myId)} /></div>
       </aside>
 
       <section class="draft-grid" role="listbox" aria-label=${t('策略')}>

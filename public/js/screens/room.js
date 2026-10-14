@@ -1,3 +1,4 @@
+import { CommunicationDock, CommunicationBubble } from '../ui/communication.js';
 import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
 import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // Room screen (同盟等待室): 4 seat cards (avatar frame, name, ready state, AI badge, host crown),
@@ -145,6 +146,7 @@ function SeatCard({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot,
     <div class="seat__art">
       <div class="seat__stripes" aria-hidden="true"></div>
       <${AvatarFrame} size="xl" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} ready=${state === 'ready'} offline=${offline} />
+      <${CommunicationBubble} playerId=${seat.playerId} />
       ${seat.isBot ? html`<span class="seat__bot-label"><${Icon} name="robot" />${t('AI 队友')}</span>` : null}
     </div>
     <div class="seat__who">
@@ -393,7 +395,7 @@ export function RoomScreen() {
       <div class="room-bar__left">
         <${RoomConfigSummary} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
           editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft({difficulty:room.difficulty, prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier), battleSpeed:room.battleSpeed??2})} />
-        <div class="room-bar__tools">${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
+        <div class="room-bar__tools"><${CommunicationDock} room=${true} disabled=${facts.spectating} />${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
           class="room-console-btn" disabled=${(!room.consoleEnabled && !!room.matching) || !online} onClick=${room.consoleEnabled ? disableConsole : openConsole}
           title=${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}>${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}<//>`
           : room.consoleEnabled ? html`<span class="room-console-status"><${Icon} name="terminal" />${t('控制台已启用')}</span>` : null}
