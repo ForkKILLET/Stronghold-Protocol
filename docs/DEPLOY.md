@@ -171,6 +171,24 @@ node scripts/deploy-compose.mjs \
   --apply
 ```
 
+如果希望部署脚本同时自动补齐素材、执行压缩并生成 16MB 分类资源包：
+
+```bash
+node scripts/deploy-compose.mjs \
+  --compose /srv/stronghold/docker-compose.yml \
+  --static-root /opt/1panel/www/sites/wei.linxia.dev/index \
+  --asset-source direct \
+  --prepare-assets \
+  --apply
+```
+
+`--prepare-assets` 会先运行 `tools/setup.mjs --yes --no-local --no-scenes` 下载/续传公开
+素材，再在部署备份目录创建隔离候选，执行 `tools/shrink-assets.py all`、重算
+`asset-hashes.json`、生成运行时资源清单和不超过 16,000,000 bytes 的分类 ZIP。
+所有步骤成功后才把候选素材、清单和分包复制到当前源码目录及静态 CDN 目录；中途失败
+不会替换当前素材。Python 默认使用 Linux 的 `python3`、Windows 的 `python`，可用
+`--python /path/to/python` 指定带 Pillow 的环境。
+
 脚本执行顺序：
 
 1. `docker compose config --quiet` 校验 Compose；

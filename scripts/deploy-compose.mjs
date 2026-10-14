@@ -30,6 +30,8 @@ const DEFAULTS = {
   assetsTarget: process.env.SP_ASSETS_TARGET || '',
   fontsTarget: process.env.SP_FONTS_TARGET || '',
   packsTarget: process.env.SP_PACKS_TARGET || '',
+  python: process.env.SP_PYTHON || (process.platform === 'win32' ? 'python' : 'python3'),
+  assetSource: process.env.SP_ASSET_SOURCE || 'direct',
   backupRoot: process.env.SP_DEPLOY_BACKUP_ROOT || path.join(ROOT, '.cache', 'deploy-backups'),
   waitSeconds: 120,
   stopTimeout: 30,
@@ -42,6 +44,9 @@ const usage = `用法：
 
 重要选项：
   --apply                 实际执行；不加时只做检查和输出计划
+  --prepare-assets        自动下载素材、压缩、重算哈希并生成 16MB 分包
+  --asset-source <mode>   setup/fetch-assets 源：direct 或 mirror
+  --python <command>      Python 命令，默认 python3（Windows 默认 python）
   --pull                  apply 前执行 git pull --ff-only
   --compose <file>        Compose 文件
   --project <name>        Compose project name
@@ -64,13 +69,14 @@ const usage = `用法：
 `;
 
 function parseArgs(argv) {
-  const o = { ...DEFAULTS, apply: false, pull: false, skipData: false, skipAssets: false,
+  const o = { ...DEFAULTS, apply: false, pull: false, prepareAssets: false, skipData: false, skipAssets: false,
     skipPacks: false, noBuild: false, project: '', compose: DEFAULTS.compose };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i] || '';
     if (a === '--apply') o.apply = true;
     else if (a === '--pull') o.pull = true;
+    else if (a === '--prepare-assets') o.prepareAssets = true;
     else if (a === '--skip-data') o.skipData = true;
     else if (a === '--skip-assets') o.skipAssets = true;
     else if (a === '--skip-packs') o.skipPacks = true;
@@ -84,6 +90,8 @@ function parseArgs(argv) {
     else if (a === '--assets-target') o.assetsTarget = path.resolve(next());
     else if (a === '--fonts-target') o.fontsTarget = path.resolve(next());
     else if (a === '--packs-target') o.packsTarget = path.resolve(next());
+    else if (a === '--python') o.python = next();
+    else if (a === '--asset-source') o.assetSource = next();
     else if (a === '--backup-root') o.backupRoot = path.resolve(next());
     else if (a === '--wait') o.waitSeconds = Math.max(1, Number(next()) || DEFAULTS.waitSeconds);
     else if (a === '--stop-timeout') o.stopTimeout = Math.max(1, Number(next()) || DEFAULTS.stopTimeout);
@@ -220,6 +228,53 @@ async function rollback(o, image, imageRef) {
   catch (error) { console.error(`回滚后健康检查仍失败：${error.message}`); return false; }
 }
 
+async function prepareAssets(o, backupDir) {
+  const candidate = path.join(backupDir, 'asset-candidate');
+  const candidateData = path.join(candidate, 'data');
+  const candidatePublic = path.join(candidate, 'public');
+  const setup = [process.execPath, path.join(ROOT, 'tools', 'setup.mjs'), '--yes',
+    '--no-local', '--no-scenes', `--asset-source=${o.assetSource}`];
+  const shrink = [o.python, path.join(ROOT, 'tools', 'shrink-assets.py'), 'all', '--apply',
+    '--output', candidate, '--node', process.execPath];
+  const manifestCode = [
+    "import { createResourceIndex } from './server/resources.js';",
+    "import fs from 'node:fs/promises';",
+    `const root = ${JSON.stringify(candidate)};`,
+    "const result = await createResourceIndex({ dataDir: `${root}/data`, publicDir: `${root}/public` }).get();",
+    "await fs.writeFile(`${root}/data/resource-manifest.json`, JSON.stringify(result.manifest) + '\\n');",
+  ].join('\n');
+  const packs = [o.python, path.join(ROOT, 'tools', 'resource_packs.py'),
+    '--manifest', path.join(candidateData, 'resource-manifest.json'),
+    '--assets-root', candidatePublic,
+    '--output', path.join(candidatePublic, 'resource-packs'),
+    '--index', path.join(candidateData, 'resource-packs.json')];
+
+  console.log(`\n资源准备候选目录：${candidate}`);
+  command(setup);
+  command(shrink);
+  command([process.execPath, '--input-type=module', '-e', manifestCode]);
+  command(packs);
+
+  if (!options.apply) return;
+  // The candidate is complete before touching the live source tree. PNG/raw
+  // originals remain in the candidate and the deployment backup contains the
+  // previous manifests.
+  await fs.cp(path.join(candidatePublic, 'assets'), path.join(ROOT, 'public', 'assets'),
+    { recursive: true, force: true, errorOnExist: false });
+  if (await exists(path.join(candidatePublic, 'fonts'))) {
+    await fs.cp(path.join(candidatePublic, 'fonts'), path.join(ROOT, 'public', 'fonts'),
+      { recursive: true, force: true, errorOnExist: false });
+  }
+  await fs.cp(path.join(candidatePublic, 'resource-packs'), path.join(ROOT, 'public', 'resource-packs'),
+    { recursive: true, force: true, errorOnExist: false });
+  for (const name of ['assets.json', 'local-assets.json', 'asset-hashes.json', 'resource-packs.json']) {
+    if (await exists(path.join(candidateData, name))) {
+      await fs.copyFile(path.join(candidateData, name), path.join(ROOT, 'data', name));
+    }
+  }
+  console.log('素材下载、压缩、哈希和 16MB 分包已应用到当前部署源目录。');
+}
+
 async function main() {
   options = parseArgs(process.argv.slice(2));
   const o = options;
@@ -230,7 +285,16 @@ async function main() {
 
   const old = await oldImage(o);
   const imageRef = composeImageRef(o, old);
-  await backupDeployment(o, old);
+  const backup = await backupDeployment(o, old);
+  if (o.prepareAssets) {
+    if (!o.apply) {
+      console.log(`计划执行：${process.execPath} tools/setup.mjs --yes --no-local --no-scenes --asset-source=${o.assetSource}`);
+      console.log(`计划执行：${o.python} tools/shrink-assets.py all --apply --output <backup>/asset-candidate`);
+      console.log('计划执行：生成 resource-manifest.json、16MB 分类 ZIP 和 resource-packs.json');
+    } else {
+      await prepareAssets(o, backup.dir);
+    }
+  }
 
   if (!o.skipData && o.dataTarget) await copyTree(path.join(ROOT, 'data'), o.dataTarget, 'data');
   if (!o.skipAssets && o.assetsTarget) await copyTree(path.join(ROOT, 'public', 'assets'), o.assetsTarget, 'assets');
