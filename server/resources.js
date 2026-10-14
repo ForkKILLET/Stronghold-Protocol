@@ -320,8 +320,17 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
 
   async function build(epoch) {
     const previous = cache;
-    const sources = await Promise.all(['assets.json', 'local-assets.json', ASSET_HASHES_FILE, RESOURCE_PACK_MANIFEST_FILE].map(sourceFile));
-    const sourceKey = [...sources.map(stamp), cdnBase].join('|');
+    const sources = await Promise.all(['assets.json', 'local-assets.json', ASSET_HASHES_FILE].map(sourceFile));
+    // The optional pack index is probed only when it exists. Keeping it out of
+    // the normal source stat set preserves the cheap three-manifest startup
+    // path for installs that publish packs nowhere.
+    let packSource = null;
+    try {
+      const file = path.join(dataDir, RESOURCE_PACK_MANIFEST_FILE);
+      const stat = await fsp.stat(file);
+      if (stat.isFile()) packSource = { file, mtimeMs: stat.mtimeMs, size: stat.size };
+    } catch { /* optional deployment artifact */ }
+    const sourceKey = [...sources.map(stamp), stamp(packSource), cdnBase].join('|');
     // Cache hits only stat the source files and the already-discovered board companions.
     // Keep missing companions in tileFiles so creation, not just edits/deletion, invalidates the cache.
     if (previous && previous.sourceKey === sourceKey) {
@@ -329,7 +338,8 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
       const key = [sourceKey, ...tiles.map((file) => file?.stamp || '-')].join('|');
       if (previous.key === key) return previous;
     }
-    const [assets, local, hashesDoc, packsDoc] = await Promise.all(sources.map(readJson));
+    const [assets, local, hashesDoc] = await Promise.all(sources.map(readJson));
+    const packsDoc = await readJson(packSource);
     const assetsDoc = assets ? rewrite(assets.doc) : null;
     const localDoc = local ? rewrite(local.doc) : null;
     const collected = collectResourceFiles(assetsDoc, localDoc);
@@ -357,6 +367,11 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
         ...pack,
         url: base && typeof pack.url === 'string' && pack.url.startsWith('/')
           ? `${base}${pack.url}` : pack.url,
+        files: Array.isArray(pack.files) ? pack.files.map((file) => ({
+          ...file,
+          url: base && typeof file.url === 'string' && file.url.startsWith('/')
+            ? `${base}${file.url}` : file.url,
+        })) : pack.files,
       }));
     }
     const body = Buffer.from(JSON.stringify(manifest));
