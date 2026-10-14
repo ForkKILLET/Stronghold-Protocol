@@ -369,7 +369,10 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
           ? `${base}${pack.url}` : pack.url,
         files: Array.isArray(pack.files) ? pack.files.map((file) => ({
           ...file,
-          url: base && typeof file.url === 'string' && file.url.startsWith('/')
+          // The normal resource manifest keeps fonts same-origin; only
+          // /assets/ URLs are rewritten by rewriteAssetPaths. Keep pack file
+          // identities byte-for-byte aligned with that manifest.
+          url: base && typeof file.url === 'string' && file.url.startsWith('/assets/')
             ? `${base}${file.url}` : file.url,
         })) : pack.files,
       }));
