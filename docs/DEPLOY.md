@@ -483,11 +483,16 @@ location = /resource-sw.js {
 
 ### 3.6 全站临时公告
 
-公开 HTTP 接口提供房间状态、跨域延迟探测和公告读取，详见 [CUSTOM_API.md](CUSTOM_API.md)。`/api/announcement` 保持读取滚动公告，`/api/popup-announcement` 独立读取弹窗公告。两者的 `expiresAt` 都是 `startAt + durationSeconds × 1000`。
+公开 HTTP 接口提供房间状态、跨域延迟探测和公告读取，详见 [CUSTOM_API.md](CUSTOM_API.md)。`/api/announcement` 保持读取滚动公告，`/api/popup-announcement` 独立读取弹窗公告。滚动及旧定时弹窗的 `expiresAt` 为 `startAt + durationSeconds × 1000`；长期弹窗为 `null`。
 
 编辑 `config/announcements.json`，服务器每 2 秒读取一次，修改无需重启。条目通过 `type` 分成两种独立类型：`scroll` 为滚动公告，省略时也按此类型处理，兼容已有排期；`popup` 为弹窗公告。滚动公告在首页、大厅、房间和游戏内的上半屏滚动展示，不显示剩余时间，不拦截游戏操作，到期自动消失。开启系统“减少动态效果”时改为静态换行文本。默认配置为空，`config/announcements.example.json` 分别提供两种未启用的示例。
 
-大厅和房间顶部的“公告”按钮只打开当前有效的 `popup` 公告；标题页和设置中也保留入口，无有效弹窗公告时显示“暂无公告”，即使还有滚动公告。弹窗展示标题（省略时为“公告”）、正文及可选详情链接。`autoPopup` 默认 false，只通过按钮打开；设置为 true 时，弹窗公告生效或玩家进入非对局页面后自动打开。对局期间（含开局准备、观战和结果页面）延后自动弹出，回到大厅或其他非对局页面时，仅弹出仍有效且未查看的当前公告；延后期间不记录为已查看。进入对局时会关闭自动打开的公告，手动打开的公告不受影响。同一浏览器最近 100 个已查看版本不会重复自动弹出，刷新、重连、页面切换或同类型高优先级公告结束后恢复旧公告都不会重复打开；修改标题、正文、链接、自动弹出开关或有效时间视为新版本。手动查看不受此限制。关闭、到期或撤回弹窗公告不影响滚动公告，反之亦然；自动打开的弹窗在对应公告到期或撤回后关闭。
+大厅和房间顶部的“公告”按钮只打开当前有效的 `popup` 公告；标题页和设置中也保留入口，无有效弹窗公告时显示“暂无公告”，即使还有滚动公告。弹窗展示标题（省略时为“公告”）、正文及可选详情链接。`autoPopup` 默认 false，只通过按钮打开；设置为 true 时，弹窗公告生效或玩家进入非对局页面后自动打开。对局期间（含开局准备、观战和结果页面）延后自动弹出，回到大厅或其他非对局页面时，仅弹出仍有效且未查看的当前公告；延后期间不记录为已查看。进入对局时会关闭自动打开的公告，手动打开的公告不受影响。同一浏览器最近 100 个已查看版本不会重复自动弹出，刷新、重连、页面切换或同类型高优先级公告结束后恢复旧公告都不会重复打开；修改标题、正文、格式、链接、自动弹出开关或有效时间视为新版本。手动查看不受此限制。关闭、到期或撤回弹窗公告不影响滚动公告，反之亦然；自动打开的弹窗在对应公告到期或撤回后关闭。
+
+**popup 不再强制设置时间。** 省略 `startAt` 即立即生效；省略 `durationSeconds` 和 `endAt` 即一直有效，
+直到设为 `enabled: false`、删除条目或清空公告列表。重新加载配置和重启不会改变公告版本。
+已有显式 `startAt` / `durationSeconds` 仍按原排期生效，但 popup 的持续时间不再限制为一天。
+想将旧定时 popup 改成长期公告，请移除其 `durationSeconds`；若也不需要开始时间，一并移除 `startAt`。
 
 ```json
 {
@@ -505,11 +510,10 @@ location = /resource-sw.js {
       "id": "update-details",
       "type": "popup",
       "title": "更新公告",
-      "text": "本次更新详情请查看链接。",
+      "format": "markdown",
+      "text": "## 本次更新\n\n欢迎使用 **新版本**。\n\n- 多个 [链接](https://github.com/xinhai-ai/Stronghold-Protocol)\n- 支持图片\n\n![截图](https://example.com/news.png)",
       "url": "https://github.com/xinhai-ai/Stronghold-Protocol",
       "autoPopup": false,
-      "startAt": "2026-10-05T21:50:00+08:00",
-      "durationSeconds": 3600,
       "level": "info",
       "enabled": true
     }
@@ -517,18 +521,43 @@ location = /resource-sw.js {
 }
 ```
 
+上例 `example.com/news.png` 是图片地址占位符，请替换为实际图片 URL；也可写站内 `/icons/app-192.png`。
+
 - `id`：唯一标识，1–64 个字母、数字、下划线或短横线。
 - `type`：`scroll`（默认，滚动公告）或 `popup`（弹窗公告）。同一条目只能属于一种类型。
-- `text`：1–500 字纯文本，HTML 不会执行，换行会合并为空格。
+- `text`：滚动公告 1–500 个 Unicode 码点，保持纯文本且换行合并为空格；popup 1–16000 个 Unicode 码点，保留换行和正文缩进。
+- `format`：仅 popup 可选，`plain`（默认、兼容旧正文）或 `markdown`。Markdown 支持六级标题、段落/换行、粗体/斜体/删除线、有序/无序/任务列表、引用、分隔线、代码块、表格、多个链接和图片。不执行原始 HTML、脚本或任意 CSS。图片宽度不超过弹窗，表格/代码块可横向滚动，正文纵向滚动时关闭按钮保持可见。
+- Markdown 链接/图片地址只接受完整 HTTP(S)（无账号密码）或 `/` 开头的站内路径；不接受 `javascript:`、`data:`、`blob:` 或 `//` 协议相对地址。链接新窗口打开；图片懒加载且不发送 Referer。站内图片可放在 `public/` 的独立目录，如 `public/announcements/update.png`，正文写 `/announcements/update.png`；这类公告图片不纳入游戏素材预载 ZIP。外部图片由玩家浏览器直接请求，可能向图片服务商暴露客户端 IP，HTTPS 页面请使用 HTTPS 图片。
+- `textFile`：仅 popup 可选，用本地 `.md` / `.txt` 文件代替 `text`，两者不能同时填写。相对于公告 JSON 所在目录，只允许该目录以内的相对路径（包括子目录），不能引用远程 URL、绝对路径、`..` 或指向目录外的符号链接。`.md` 默认 Markdown，`.txt` 默认纯文本，也可显式设置 `format`。文件正文编辑同样每 2 秒热更新，不需要修改 JSON；缺失、超长或非法正文保留最后一份有效公告。设为 `enabled: false` 时不读取正文文件，因此文件缺失或正在编辑也能撤回。配置示例正文见 [announcement-popup.example.md](../config/announcement-popup.example.md)。
 - `title`：可选，去除首尾空白后 1–80 个 JS 字符单位，不支持控制字符。
 - `url`：仅 `popup` 可选，详情链接，最多 2048 字符，只接受不含用户名、密码或空白的完整 HTTP(S) 地址；不需要链接时省略此字段。
 - `autoPopup`：仅 `popup` 可选布尔值，默认 false；true 自动弹出，false 仅在点击公告按钮时打开。
-- `startAt`：带时区的 ISO 日期，必须明确 `+08:00` 或 `Z` 等时区；立即发布可填当前时间，不能使用 `now`（避免重启后重新计时）。
-- `durationSeconds`：持续秒数，1–86400。例子在 21:50:00 开始，21:51:00 结束；21:50:40 进入的玩家只看剩余 20 秒，界面不显示倒计时。
+- `startAt`：滚动公告必填；popup 可省略或为 `null`，立即生效（内部开始边界为稳定的 0）。填写时为带时区的 ISO 日期，必须明确 `+08:00` 或 `Z` 等时区，不能使用 `now`。
+- `durationSeconds`：滚动公告必填，1–86400；popup 可省略/为 `null` 表示不按时长到期，填写时须为正整数并同时填写 `startAt`，没有一天上限，但结束时间必须仍在可表示的日期范围内。显式旧排期不延长，界面不显示倒计时。
+- `endAt`：仅 popup 可选，直接填写结束时间（带时区 ISO 日期）；不得与非空 `durationSeconds` 同时设置，必须晚于开始边界。不填写两个结束选项就是长期公告。
 - `level`：`info`（普通，默认）、`warning`（提醒）或 `urgent`（紧急）。
 - `enabled`：布尔值，默认 true；设为 false、删除该条目或清空数组可撤回。
 
-配置两种类型合计最多 100 条，总文件最多 128 KiB。每种类型独立选择等级最高的一条，两类可同时有效，互不竞争；同等级先显示触发时间较早的，同一触发时间按文件顺序。等待中的公告仍按原计划到期，不延长有效期。配置格式有误、文件不可读或保存时暂时缺失时，保留上一份有效配置直到它到期；日志和 `/metrics.announcements.configError` 可定位原因，`activeId` 为滚动公告、`popupActiveId` 为弹窗公告。清空时请写入合法的 `{"announcements": []}`，不要用删除文件代替撤回。
+配置两种类型合计最多 100 条，JSON 和各正文文件分别最多 128 KiB，正文文件展开后的完整 JSON 也不得超过 128 KiB。每种类型独立选择等级最高的一条，两类可同时有效，互不竞争；同等级先显示开始边界较早的（无开始时间视为 0），同一开始边界按文件顺序。等待中的定时公告仍按原计划到期，不延长有效期。配置格式有误、文件不可读或保存时暂时缺失时，保留上一份有效配置（长期 popup 保持有效）；日志和 `/metrics.announcements.configError` 可定位原因，`activeId` 为滚动公告、`popupActiveId` 为弹窗公告。清空时请写入合法的 `{"announcements": []}`，不要用删除文件代替撤回。
+
+推荐将 popup 正文单独放在 Markdown 文件，配置只保留少量元信息：
+
+```json
+{
+  "announcements": [{
+    "id": "server-news",
+    "type": "popup",
+    "title": "服务器公告",
+    "textFile": "announcement-popup.example.md",
+    "autoPopup": true,
+    "enabled": true
+  }]
+}
+```
+
+这是完整列表示例，不要直接覆盖正在使用的排期；把条目追加到现有 `announcements` 数组即可。
+Docker 部署时将正文文件与 JSON 一起放进挂载的配置目录，图片另行部署到站点可访问目录。
+首次升级此功能需要安装新增依赖、重新构建并重启本分支服务器；之后改公告正文不必重启。
 
 PowerShell 立即发布一条持续 60 秒的通知（会替换现有列表）：
 
@@ -559,7 +588,7 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
       - ./config:/app/config:ro
 ```
 
-之后修改宿主机 `config/announcements.json` 即可。挂载目录可以识别编辑器通过新文件替换旧文件的保存方式；只挂载单个文件可能看不到这类替换。配置必须在挂载前存在。容器重启读取原来的绝对时间，恢复未到期通知，过期通知不补播。公告由配置文件保存，独立于 Redis；多个实例若使用相同配置，需要保持服务器系统时钟同步。
+之后修改宿主机 `config/announcements.json` 或其引用的本地正文文件即可。挂载目录可以识别编辑器通过新文件替换旧文件的保存方式；只挂载单个文件可能看不到这类替换。配置必须在挂载前存在。容器重启恢复长期 popup；定时公告读取原来的绝对时间，恢复未到期通知，过期通知不补播。公告由配置文件保存，独立于 Redis；多个实例若使用相同配置，需要保持服务器系统时钟同步。
 
 ## 4. macOS / Linux 常驻
 

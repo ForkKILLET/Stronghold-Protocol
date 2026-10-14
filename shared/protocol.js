@@ -493,7 +493,7 @@ export const C2S = {
 // Server → client message types (documentation + client dispatch table keys).
 export const S2C = [
   'welcome', 'ok', 'error', 'pong', 'presence',
-  'site.announcement', // { serverNow, announcement: { id, text, level, startAt, endAt } | null } — global temporary notice
+  'site.announcement', // { serverNow, announcement, popupAnnouncement } — popup endAt may be null, format plain/markdown
   'room.state', 'room.closed', 'match.queue',
   'm.public', 'm.private', 'm.field', 'm.toast', 'm.ticker', 'm.emote', 'm.chat', 'm.result',
   'm.state', // opt-in stateDelta: 1: { kind, seq, full } or { kind, seq, base, patch }

@@ -202,6 +202,20 @@ for a dodge fx whose payload is `num: 'm'` (PRTS 作战机制 「伤害红字（
 digits in that mode. The mark is computed in the sim; the random offset above the model is client-side. The
 simplified board uses the same mark with a fixed slot. The branch retains its existing server-about links and does not add the upstream title-footer repository link.
 
+### Branch popup announcements (2026-10-14)
+
+Popup notices support plain multiline text and opt-in Markdown (headings, lists/tasks, quotes, code, tables,
+links and responsive images). `announcementMarkdown.js` lazily loads a vendored Marked lexer, renders only fixed
+Preact elements, escapes raw HTML and allowlists HTTP(S) / root-relative content URLs. No HTML injection or arbitrary
+CSS; code/table overflow is local and the utility modal retains its scroll body, visible close controls and safe areas.
+The game does not preload announcement images or upload viewing history.
+
+Popup start/expiry is optional: missing start is stable `0`, missing end is JSON `null`, active until withdrawal;
+explicit legacy schedules still work without the scroll notice's one-day limit. Shared message validation and the
+public popup API carry optional `format` and nullable expiry; scrolling notice behavior is unchanged.
+Local `.md` / `.txt` bodies may be referenced with `textFile` inside the configuration directory; server polling
+reloads edits atomically and never reads a remote URL or file outside that directory.
+
 ### Deploy animation replays (§31.8)
 
 PR #416 by @Cromemadnd. A prep piece that lands plays its Start clip again with its landing sound, once per landing

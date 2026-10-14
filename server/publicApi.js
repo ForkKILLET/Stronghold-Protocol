@@ -99,7 +99,8 @@ export function createPublicApi({ lobby, announcements, trustProxy, sendJson, se
       if (active) {
         const content = { title: active.title || (popup ? '公告' : '维护公告'), text: active.text, expiresAt: active.endAt,
           ...(active.url ? { url: active.url } : {}),
-          ...(typeof active.autoPopup === 'boolean' ? { autoPopup: active.autoPopup } : {}) };
+          ...(typeof active.autoPopup === 'boolean' ? { autoPopup: active.autoPopup } : {}),
+          ...(active.format ? { format: active.format } : {}) };
         const id = createHash('sha256').update(JSON.stringify(content)).digest('hex').slice(0, 24);
         announcement = { id, ...content };
       }

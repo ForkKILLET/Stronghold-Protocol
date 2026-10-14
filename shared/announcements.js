@@ -1,6 +1,7 @@
-// Temporary site notices use absolute server times, independent of rooms, rounds and client clocks.
+// Scroll notices keep absolute server schedules; popup notices may stay active until withdrawn.
 export const ANNOUNCEMENT_LEVELS = Object.freeze({ info: 0, warning: 1, urgent: 2 });
 export const ANNOUNCEMENT_MAX_TEXT = 500;
+export const POPUP_MAX_TEXT = 16000;
 export const ANNOUNCEMENT_MAX_COUNT = 100;
 
 const own = (obj, key) => Object.hasOwn(obj, key);
@@ -17,8 +18,10 @@ function displayOptions(row) {
       || /[\u0000-\u001f\u007f]/.test(row.title))) throw new Error(`${row.id}: title must contain 1..80 printable characters`);
   if (own(row, 'url') && !validAnnouncementUrl(row.url)) throw new Error(`${row.id}: url must be an HTTP(S) URL without credentials`);
   if (own(row, 'autoPopup') && typeof row.autoPopup !== 'boolean') throw new Error(`${row.id}: autoPopup must be boolean`);
+  if (own(row, 'format') && !['plain', 'markdown'].includes(row.format)) throw new Error(`${row.id}: format must be plain or markdown`);
   return { ...(own(row, 'title') ? { title: row.title.trim() } : {}),
-    ...(own(row, 'url') ? { url: row.url } : {}), ...(own(row, 'autoPopup') ? { autoPopup: row.autoPopup } : {}) };
+    ...(own(row, 'url') ? { url: row.url } : {}), ...(own(row, 'autoPopup') ? { autoPopup: row.autoPopup } : {}),
+    ...(own(row, 'format') ? { format: row.format } : {}) };
 }
 
 const TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,7})?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -28,6 +31,28 @@ function validTime(value) {
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   return month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1] && hour <= 23 && minute <= 59 && second <= 59;
+}
+
+const validText = (text, max) => typeof text === 'string' && !!text.trim() && [...text].length <= max
+  && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text);
+
+/** Only popup schedules may omit a boundary. Zero is stable across reload/restart, not a new start time. */
+function popupSchedule(row) {
+  const start = row.startAt == null ? 0 : validTime(row.startAt) ? Date.parse(row.startAt) : NaN;
+  if (!Number.isFinite(start)) throw new Error(`${row.id}: startAt requires a valid ISO date with an explicit timezone`);
+  let end = null;
+  if (row.durationSeconds != null) {
+    if (row.endAt != null) throw new Error(`${row.id}: use endAt or durationSeconds, not both`);
+    if (row.startAt == null) throw new Error(`${row.id}: durationSeconds requires startAt (omit both for no expiry)`);
+    if (!Number.isSafeInteger(row.durationSeconds) || row.durationSeconds < 1) throw new Error(`${row.id}: durationSeconds must be a positive integer`);
+    end = start + row.durationSeconds * 1000;
+  } else if (row.endAt != null) {
+    end = validTime(row.endAt) ? Date.parse(row.endAt) : NaN;
+  }
+  if (end !== null && (!Number.isFinite(end) || !Number.isFinite(new Date(end).getTime()) || end <= start)) {
+    throw new Error(`${row.id}: endAt must be a valid time after startAt`);
+  }
+  return { startAt: start, endAt: end };
 }
 
 /** Validate the whole document atomically: a half-written edit never replaces the last valid schedule. */
@@ -40,25 +65,32 @@ export function parseAnnouncements(doc) {
     const { id, text, startAt, durationSeconds, level = 'info', enabled = true, type = 'scroll' } = row;
     if (type !== 'scroll' && type !== 'popup') throw new Error(`${id}: type must be scroll or popup`);
     const options = displayOptions(row);
-    if (type === 'scroll' && (own(row, 'url') || own(row, 'autoPopup'))) {
-      throw new Error(`${id}: url and autoPopup are only supported for popup announcements`);
+    if (type === 'scroll' && (own(row, 'url') || own(row, 'autoPopup') || own(row, 'format') || own(row, 'endAt'))) {
+      throw new Error(`${id}: url, autoPopup, format and endAt are only supported for popup announcements`);
     }
     if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(id) || ids.has(id)) throw new Error('announcement ids must be unique (1..64 letters, numbers, _ or -)');
     ids.add(id);
-    if (typeof text !== 'string' || !text.trim() || [...text].length > ANNOUNCEMENT_MAX_TEXT
-        || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) throw new Error(`${id}: text must contain 1..500 printable characters`);
-    if (!validTime(startAt)) throw new Error(`${id}: startAt requires a valid ISO date with an explicit timezone`);
-    if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 86400) throw new Error(`${id}: durationSeconds must be 1..86400`);
+    const max = type === 'popup' ? POPUP_MAX_TEXT : ANNOUNCEMENT_MAX_TEXT;
+    if (!validText(text, max)) throw new Error(`${id}: text must contain 1..${max} printable characters`);
+    let schedule;
+    if (type === 'popup') schedule = popupSchedule(row);
+    else {
+      if (!validTime(startAt)) throw new Error(`${id}: startAt requires a valid ISO date with an explicit timezone`);
+      if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 86400) throw new Error(`${id}: durationSeconds must be 1..86400`);
+      const at = Date.parse(startAt);
+      schedule = { startAt: at, endAt: at + durationSeconds * 1000 };
+    }
     if (typeof level !== 'string' || !own(ANNOUNCEMENT_LEVELS, level) || typeof enabled !== 'boolean') throw new Error(`${id}: invalid level or enabled flag`);
-    const at = Date.parse(startAt);
     return { id, ...(type === 'popup' ? { type } : {}), ...options,
-      text: text.trim().replace(/\s+/g, ' '), startAt: at, endAt: at + durationSeconds * 1000, level, enabled };
+      text: type === 'popup' ? text.replace(/\r\n?/g, '\n') : text.trim().replace(/\s+/g, ' '),
+      ...schedule, level, enabled };
   });
 }
 
 export function announcementLive(notice, now) {
-  return !!notice && Number.isFinite(now) && Number.isFinite(notice.startAt) && Number.isFinite(notice.endAt)
-    && notice.startAt <= now && now < notice.endAt;
+  return !!notice && Number.isFinite(now) && Number.isFinite(notice.startAt) && notice.startAt <= now
+    && (notice.type === 'popup' && notice.endAt === null
+      || Number.isFinite(notice.endAt) && now < notice.endAt);
 }
 
 /** Higher severity first; earliest start first among equals. Original file order breaks exact ties. */
@@ -77,11 +109,12 @@ export function activeAnnouncement(rows, now, type = 'scroll') {
 /** Incoming public frame: accept only display fields; expiry is checked independently by the UI. */
 export function announcementFromMessage(msg, type = 'scroll') {
   const n = type === 'popup' ? msg?.popupAnnouncement : msg?.announcement;
-  if (!n || typeof n.id !== 'string' || typeof n.text !== 'string' || !n.text || [...n.text].length > ANNOUNCEMENT_MAX_TEXT
-      || typeof n.level !== 'string' || !own(ANNOUNCEMENT_LEVELS, n.level) || !Number.isFinite(n.startAt) || !Number.isFinite(n.endAt)
-      || n.endAt <= n.startAt || (n.type || 'scroll') !== type) return null;
+  if (!n || typeof n.id !== 'string' || !validText(n.text, type === 'popup' ? POPUP_MAX_TEXT : ANNOUNCEMENT_MAX_TEXT)
+      || typeof n.level !== 'string' || !own(ANNOUNCEMENT_LEVELS, n.level) || !Number.isFinite(n.startAt)
+      || !(type === 'popup' && n.endAt === null || Number.isFinite(n.endAt) && n.endAt > n.startAt)
+      || (n.type || 'scroll') !== type) return null;
   try {
-    if (type === 'scroll' && (own(n, 'url') || own(n, 'autoPopup'))) return null;
+    if (type === 'scroll' && (own(n, 'url') || own(n, 'autoPopup') || own(n, 'format'))) return null;
     return { id: n.id, ...(type === 'popup' ? { type } : {}), ...displayOptions(n), text: n.text, level: n.level, startAt: n.startAt, endAt: n.endAt };
   } catch { return null; }
 }
