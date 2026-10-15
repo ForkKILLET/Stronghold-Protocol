@@ -102,7 +102,7 @@
 
 ## HTTP 缓存、Service Worker 与更新检测
 
-- 2026-10-14 资源压缩使用 `tools/shrink-assets.py` 的私人候选流程，默认 dry-run，真实源码目录 apply 需显式 `--in-place`。PNG、原 atlas 与 `.skel/.bin` 原件保留，禁止搬走旧 URL 或 `--drop-raw`；普通颜色图 q95、说明页既有 q90，Spine 页/数据图无损并校验 RGBA，两个表情目录保持 PNG。Spine 新 atlas 使用 `.webp.atlas`，客户端显式 `spineAtlasFile`，不覆盖旧 atlas。预压缩只为资源树选择新鲜 `.br/.gz`，保留协商/ETag/HEAD/Range/identity，哈希和 ZIP 针对原字节；服务端不得只剩压缩副本。脚本错误退出阻止后续清单发布，备份不放 public，音频仅候选显式 opt-in，不属于 all。部署先发布源码及新素材、后切换匹配清单，旧页面保留原件；迁移不清空整个浏览器缓存、不把 PNG 字节登记为 WebP，CDN 重试仍校验不匹配时保留旧缓存报错。详见 `docs/ASSET_SHRINK.md`，验证相关压缩/HTTP/Spine/资源/增量测试；不因此运行全量测试或主动浏览器自动化。
+- 2026-10-15 用户要求主分支移除通用 assets shrink 转换工具及其部署入口、文档和专用测试，shrink 分支引用保持不变。保留现有 WebP/显式 Spine atlas 读取、原 PNG/atlas/二进制 URL、HTTP 预压缩读取及资源 ZIP 分包/增量工具，不删除或转换本机素材。`--prepare-assets` 仅下载/续传、隔离复制、哈希和分包，不进行图片/音频转换；上游棋盘/说明图的 `extract.py --webp` 不在移除范围。新分包说明见 `docs/RESOURCE_PACKS.md`。
 - 预载传输分包使用 `tools/resource_packs.py`，最终 ZIP 严格不超过 16,000,000 bytes，按分类和 tier 分包。包索引保存整包完整 SHA-1 及资源 URL/size/hash；预载时最多并发请求 2 个 ZIP，边接收边解析 stored 条目，展示合计字节进度/速度和导入进度，下一包下载与当前包写缓存重叠。整包 SHA-1 通过且内嵌清单与索引一致后，信任整包字节，不重复校验每个资源的 SHA-1/CRC；仅当前清单中 URL、hash、size 一致的已选资源写缓存，未选择条目参与整包摘要但跳过字节保留。整包不符、损坏或缺失必须回退逐文件下载。此优化仅适用于 TLS 获取且带可信资源包索引的部署传输包；手动导入通用 ZIP 仍遵循下方逐条 CRC/大小/摘要校验。生成的 `data/resource-packs.json` 与 `public/resource-packs/` 不提交，先上传 ZIP 后上传同版本索引。
 
 - 2026-10-13 用户要求合并 v0.2.6 但排除“素材地址带内容哈希”：不引入上游后台素材 SHA-256 索引、`SP_ASSET_INDEX`、动态哈希素材清单、`/assets/~hash/` / `/fonts/~hash/` / `/media/~hash/` 路由或对应一年 immutable 策略。加载、工具、文档和测试同步保持普通素材路径及既有 CDN 改写。现有资源预载/ZIP 的 SHA-1 内容指纹及字节校验保留，Vite 哈希构建分包和原有显式 `?v=` 缓存策略不受影响。保留上游 Brotli、流量统计、教程 WebP 和其他更新；流量分类独立在 `shared/traffic.js`，普通 `/healthz` 继续使用本分支轻量快路径，仅可信本机/内网的显式 `?traffic=1` 附加流量计数。

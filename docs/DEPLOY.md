@@ -171,7 +171,7 @@ node scripts/deploy-compose.mjs \
   --apply
 ```
 
-如果希望部署脚本同时自动补齐素材、执行压缩并生成 16MB 分类资源包：
+如果希望部署脚本同时自动补齐素材并生成 16MB 分类资源包（不转换图片/音频）：
 
 ```bash
 node scripts/deploy-compose.mjs \
@@ -183,11 +183,11 @@ node scripts/deploy-compose.mjs \
 ```
 
 `--prepare-assets` 会先运行 `tools/setup.mjs --yes --no-local --no-scenes` 下载/续传公开
-素材，再在部署备份目录创建隔离候选，执行 `tools/shrink-assets.py all`、重算
+素材，再在部署备份目录创建素材副本作为隔离候选、重算
 `asset-hashes.json`、生成运行时资源清单和不超过 16,000,000 bytes 的分类 ZIP。
-所有步骤成功后才把候选素材、清单和分包复制到当前源码目录及静态 CDN 目录；中途失败
-不会替换当前素材。Python 默认使用 Linux 的 `python3`、Windows 的 `python`，可用
-`--python /path/to/python` 指定带 Pillow 的环境。
+所有步骤成功后才发布候选清单和分包，并同步静态 CDN；素材下载/续传沿用 setup，
+不做图片/音频转换，也不覆盖已有原件为新编码。Python 默认使用 Linux 的 `python3`、
+Windows 的 `python`，分包仅需 Python 标准库，可用 `--python /path/to/python` 指定环境。
 
 脚本执行顺序：
 
@@ -214,7 +214,7 @@ Redis 数据卷。你的 Compose 中 `./public/assets:/app/public/assets:ro` 和
 会覆盖镜像内对应目录，因此必须同步正确的宿主机素材和公告目录；脚本只同步 CDN 静态目录，
 不会擅自修改这些挂载源。
 
-资源压缩发布是独立的离线候选流程，见 [资源压缩与双格式迁移手册](ASSET_SHRINK.md)。
+资源分包发布见 [预载资源传输分包](RESOURCE_PACKS.md)；主分支不再包含通用 assets shrink 转换工具。
 升级前不要移动线上 PNG/atlas 或原二进制；新客户端与新素材先发布，再切换匹配的三个素材
 清单。Node 支持资源同目录的预压缩 `.br/.gz`，但保留原件用于 identity/Range/指纹。
 这不替代实际 Nginx/CDN 配置和验证，也不要求玩家清空所有旧缓存。

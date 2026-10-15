@@ -269,9 +269,9 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
 
 ### 离线分析与制作增量资源 ZIP
 
-For dual-format PNG/WebP compression, retained legacy URLs, static Brotli/gzip siblings and old-cache/ZIP
-migration, see [ASSET_SHRINK.md](ASSET_SHRINK.md). It operates on a private candidate, not live files; generated
-art/hashes never enter source commits. Its default conversion does not include optional audio re-encoding.
+Deployment ZIP transport packs are documented in [RESOURCE_PACKS.md](RESOURCE_PACKS.md).
+Main no longer ships the optional asset shrink/conversion tool; existing WebP/atlas and HTTP precompression
+read compatibility remains. Generated art/hashes never enter source commits.
 
 `tools/resource_delta.py` 使用 Python 3.10+ 标准库，对比两个由资源管理窗口导出的 ZIP，
 无需安装依赖，也不将素材解压到磁盘。例如在仓库根目录运行：
@@ -458,15 +458,11 @@ The `stem` of a Spine model is the upstream file name. Two examples: `char_107_l
 - **Fonts:** OTF/TTF files are converted to WOFF2 by a built-in encoder (`tools/assets/woff2.mjs`: Brotli with null transforms).
   - Its output was verified lossless against Google's reference `woff2` decoder.
   - `fonts.css` lists WOFF2 first and falls back to the original file.
-- The default fetch pipeline still produces PNG. Optional offline compression now uses Pillow in
-  `tools/shrink-assets.py`: ordinary color art quality 95, tutorial art quality 90, Spine/data maps lossless;
-  both emote trees remain PNG. It keeps original files and selects verified WebP/`.webp.atlas` siblings through
-  matching manifests. See [ASSET_SHRINK.md](ASSET_SHRINK.md) for candidate-only conversion and legacy cache/ZIP
-  migration. The local extractor remains a separate upstream pipeline: `extract.py --webp` produces board/guide
-  copies without the client (board color q95, normal/data maps lossless, local guide q90), and keeps PNGs for
-  `tools/crop-board-atlas.mjs`. Scene lightmaps from older extraction may still be lossy until the optional
-  candidate conversion regenerates them from their retained PNGs. Do not infer codec policy merely from a sibling's
-  presence or manually reuse the original PNG fingerprint.
+- The default fetch pipeline still produces PNG. The optional branch-wide shrink converter has been removed
+  from main. Existing WebP/explicit `.webp.atlas` manifests and raw PNG/atlas URLs remain readable for deployed assets.
+  The upstream local extractor is unchanged: `extract.py --webp` produces board/guide copies without the client
+  (board color q95, normal/data maps lossless, local guide q90), and keeps PNGs for `tools/crop-board-atlas.mjs`.
+  Do not manually reuse a PNG fingerprint for different WebP bytes.
 
 ## Manifest schema (`data/assets.json`)
 

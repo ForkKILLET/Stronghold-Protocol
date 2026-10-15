@@ -177,19 +177,17 @@ Community UI and recovery (§29.6): DIY reuses roster stats and skill previews; 
 
 Replacing a field renderer also resets the game screen's entered-view identity. Frames are buffered while the replacement loads; after subscribing, the local runner re-shows full current metadata/snapshot, or the server resends the watched field. Real local and server-streamed battles preserve the same simulation object and clock through recovery, including enemies spawned before the new renderer existed.
 
-### Branch resource compression
+### Branch resource delivery compatibility
 
-Branch resource compression (2026-10-14): offline candidate releases retain PNG/original atlas/raw binary URLs.
-New manifests select WebP and `.webp.atlas`; Pixi loads the explicit atlas through `spineAtlasFile`.
-Spine/data textures are lossless, emoticons stay PNG. Static Brotli/gzip sidecars preserve decoded-byte fingerprints,
-Cache Storage and ZIP identity; code/data paths keep existing policies. PNG-to-WebP is a new resource, not an alias
-of old cached PNG bytes. Partial upgrades retain old caches; CDN retry mismatch must not endorse stale bytes.
-The optional audio step is candidate-only and outside the default conversion. See [ASSET_SHRINK.md](../ASSET_SHRINK.md).
+The offline asset shrink/conversion tool was removed from main on 2026-10-15; the shrink branch is unchanged.
+Deployed WebP/explicit `.webp.atlas` variants and HTTP precompression siblings remain readable. Old PNG/raw URLs
+and cache/ZIP identity are preserved; CDN retry mismatch must not endorse stale bytes.
 
 Preload transport packs (2026-10-14) are optional stored ZIPs capped at 16,000,000 bytes, split by resource
 category and tier. A first fill uses a pack when at least 25% of its selected bytes are missing; small updates
-remain per-file. Pack entries use the current manifest's URL, size and SHA-1, import into the existing cache, share
-the download lock/combat pause and fall back to individual downloads on missing or failed pack publication.
+remain per-file. Packs use a full ZIP SHA-1 plus the current manifest's URL, size and hash identities, import into
+the existing cache, share the download lock/combat pause and fall back to individual downloads on missing or failed
+pack publication. Two requests may overlap streaming unpack with cache import; trusted packs avoid per-file rehashing.
 
 ### Branch resource-management extension: voice preload language
 

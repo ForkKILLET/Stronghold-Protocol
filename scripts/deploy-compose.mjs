@@ -44,7 +44,7 @@ const usage = `用法：
 
 重要选项：
   --apply                 实际执行；不加时只做检查和输出计划
-  --prepare-assets        自动下载素材、压缩、重算哈希并生成 16MB 分包
+  --prepare-assets        自动下载素材、重算哈希并生成 16MB 分包（不转换图片/音频）
   --asset-source <mode>   setup/fetch-assets 源：direct 或 mirror
   --python <command>      Python 命令，默认 python3（Windows 默认 python）
   --pull                  apply 前执行 git pull --ff-only
@@ -248,8 +248,6 @@ async function prepareAssets(o, backupDir) {
   const candidatePublic = path.join(candidate, 'public');
   const setup = [process.execPath, path.join(ROOT, 'tools', 'setup.mjs'), '--yes',
     '--no-local', '--no-scenes', `--asset-source=${o.assetSource}`];
-  const shrink = [o.python, path.join(ROOT, 'tools', 'shrink-assets.py'), 'all', '--apply',
-    '--output', candidate, '--node', process.execPath];
   const manifestCode = [
     "import { createResourceIndex } from './server/resources.js';",
     "import fs from 'node:fs/promises';",
@@ -265,33 +263,28 @@ async function prepareAssets(o, backupDir) {
 
   console.log(`\n资源准备候选目录：${candidate}`);
   command(setup);
-  command(shrink);
+  // Snapshot the downloaded/existing art without image/audio conversion. Keep
+  // installed local art and explicit atlas variants; never remove old URLs.
+  await fs.mkdir(candidatePublic, { recursive: true });
+  await fs.cp(path.join(ROOT, 'data'), candidateData, { recursive: true });
+  for (const name of ['assets', 'fonts']) {
+    const source = path.join(ROOT, 'public', name);
+    if (await exists(source)) await fs.cp(source, path.join(candidatePublic, name), { recursive: true });
+  }
+  command([process.execPath, path.join(ROOT, 'tools', 'asset-hashes.mjs'), '--root', candidate]);
   command([process.execPath, '--input-type=module', '-e', manifestCode]);
   command(packs);
 
   if (!options.apply) return;
-  // The candidate is complete before touching the live source tree. PNG/raw
-  // originals remain in the candidate and the deployment backup contains the
-  // previous manifests.
-  await fs.cp(path.join(candidatePublic, 'assets'), path.join(ROOT, 'public', 'assets'),
-    { recursive: true, force: true, errorOnExist: false });
-  if (await exists(path.join(candidatePublic, 'fonts'))) {
-    await fs.cp(path.join(candidatePublic, 'fonts'), path.join(ROOT, 'public', 'fonts'),
-      { recursive: true, force: true, errorOnExist: false });
-  }
+  // Only publish completed manifests/packs; the candidate did not mutate art.
   await fs.cp(path.join(candidatePublic, 'resource-packs'), path.join(ROOT, 'public', 'resource-packs'),
     { recursive: true, force: true, errorOnExist: false });
-  if (await exists(path.join(candidate, '.cache', 'asset-shrink-state.json'))) {
-    await fs.mkdir(path.join(ROOT, '.cache'), { recursive: true });
-    await fs.copyFile(path.join(candidate, '.cache', 'asset-shrink-state.json'),
-      path.join(ROOT, '.cache', 'asset-shrink-state.json'));
-  }
   for (const name of ['assets.json', 'local-assets.json', 'asset-hashes.json', 'resource-packs.json']) {
     if (await exists(path.join(candidateData, name))) {
       await fs.copyFile(path.join(candidateData, name), path.join(ROOT, 'data', name));
     }
   }
-  console.log('素材下载、压缩、哈希和 16MB 分包已应用到当前部署源目录。');
+  console.log('素材下载、哈希和 16MB 分包已应用到当前部署源目录（未转换素材）。');
 }
 
 async function main() {
@@ -308,7 +301,7 @@ async function main() {
   if (o.prepareAssets) {
     if (!o.apply) {
       console.log(`计划执行：${process.execPath} tools/setup.mjs --yes --no-local --no-scenes --asset-source=${o.assetSource}`);
-      console.log(`计划执行：${o.python} tools/shrink-assets.py all --apply --output <backup>/asset-candidate`);
+      console.log('计划执行：复制现有素材到隔离候选并重算哈希，不转换图片或音频');
       console.log('计划执行：生成 resource-manifest.json、16MB 分类 ZIP 和 resource-packs.json');
     } else {
       await prepareAssets(o, backup.dir);
