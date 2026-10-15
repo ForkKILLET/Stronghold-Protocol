@@ -1,6 +1,12 @@
 import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { artTransport, subscribeArtRecovery } from '../resourceNetwork.js';
 
+/** A missing avatar/icon is a normal fallback, never a recovered image record. */
+export function assetImageSource(source, failed, recovered) {
+  if (typeof source !== 'string' || !source) return null;
+  return recovered && recovered.source === source ? recovered.url : failed === source ? null : source;
+}
+
 /** Keep the existing glyph fallback while a failed DOM image recovers. No updates after unmount/source change. */
 export function useAssetImage(source) {
   const [failed, setFailed] = useState(null);
@@ -25,7 +31,7 @@ export function useAssetImage(source) {
     };
   }, [source, failed, revision]);
   return {
-    src: recovered?.source === source ? recovered.url : failed === source ? null : source,
+    src: assetImageSource(source, failed, recovered),
     onError: () => { setRecovered(null); setFailed(source); },
   };
 }
