@@ -50,6 +50,7 @@ export function sessionDoc(s, now, activeMatchKey = null) {
   return {
     playerId: s.playerId,
     token: s.token,
+    userId:s.userId || null, avatarId:s.avatarId || null,
     name: s.name,
     roomCode: s.roomCode || null,
     loadout: s.loadout || null, ops: s.ops || null, notOwned: s.notOwned || null, diy: s.diy || null, lang: s.lang || 'zh-CN',
@@ -65,7 +66,7 @@ export function sessionDoc(s, now, activeMatchKey = null) {
 /** One seat of a room. */
 function seatDoc(seat) {
   return {
-    seat: seat.seat, playerId: seat.playerId, name: seat.name, isBot: !!seat.isBot,
+    seat: seat.seat, playerId: seat.playerId, name: seat.name, avatarId:seat.avatarId || null, isBot: !!seat.isBot,
     ready: !!seat.ready, left: !!seat.left, connected: !!seat.connected && !seat.left,
     loadout: seat.loadout || null, ops: seat.ops || null, notOwned: seat.notOwned || null, diy: seat.diy || null,
   };
@@ -128,6 +129,7 @@ export function snapshotServer({ registry, lobby, matchDocs = null, now = Date.n
     matches,
     matchDepartures,
     matchBattleSeq,
+    userResultOutbox: [...(lobby.userOutbox?.values() || [])],
     recovery: Object.fromEntries(lobby.recoveryDocs || []),
   };
 }
@@ -156,6 +158,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
     log.warn?.(`[persist] document version ${doc.v}: attempting recovery of compatible records`);
   }
 
+  for(const entry of Array.isArray(doc.userResultOutbox)?doc.userResultOutbox:[])if(entry && typeof entry.id==='string' && Array.isArray(entry.rows))lobby.userOutbox?.set(entry.id,entry);
   const retained = doc.recovery && typeof doc.recovery === 'object' ? doc.recovery : {};
   const matches = new Map(Object.entries(doc.matches && typeof doc.matches === 'object' ? doc.matches : {}));
   for (const [key, entry] of Object.entries(retained)) {
@@ -181,6 +184,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       const session = registry.adopt({
         playerId: s.playerId,
         token: s.token,
+        userId:s.userId, avatarId:s.avatarId,
         name: typeof s.name === 'string' ? s.name : t('博士'),
         disconnectedAt: since,
         resumeWindowMs: windowMs,

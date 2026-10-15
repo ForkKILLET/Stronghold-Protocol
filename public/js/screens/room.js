@@ -1,3 +1,5 @@
+import {bandIconUrl} from '../ui/assetUrls.js';
+import {data as avatarData,useData as useAvatarData} from '../data.js';
 import { CommunicationDock, CommunicationBubble } from '../ui/communication.js';
 import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
 import { prepChoiceMultiplier } from '../ui/prepTime.js';
@@ -145,7 +147,7 @@ function SeatCard({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot,
     </header>
     <div class="seat__art">
       <div class="seat__stripes" aria-hidden="true"></div>
-      <${AvatarFrame} size="xl" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} ready=${state === 'ready'} offline=${offline} />
+      <${AvatarFrame} size="xl" src=${seat.avatarId?bandIconUrl(avatarData.get('assets'),seat.avatarId):null} name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} ready=${state === 'ready'} offline=${offline} />
       <${CommunicationBubble} playerId=${seat.playerId} />
       ${seat.isBot ? html`<span class="seat__bot-label"><${Icon} name="robot" />${t('AI 队友')}</span>` : null}
     </div>
@@ -234,6 +236,7 @@ function AiLastToggle({ option, busy, onToggle }) {
 
 /** Room screen component. */
 export function RoomScreen() {
+  useAvatarData('assets');
   const room = useStore((s) => s.room);
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);

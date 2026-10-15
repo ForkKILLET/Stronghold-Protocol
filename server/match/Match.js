@@ -309,6 +309,7 @@ export class Match {
      * battleId prefix (DESIGN §14): the seed (+ the room's match number) — a b.progress / b.result that crossed into the
      * next match of the room (the same socket, the same field ids) never names a battle of this match.
      */
+    this.userMatchId = opts.userPersistence ? globalThis.crypto.randomUUID() : null;
     this.battlePrefix = `${this.seed.toString(36)}${Number.isInteger(opts.matchNo) && opts.matchNo > 0 ? `-${opts.matchNo.toString(36)}` : ''}`;
     this._progressTimer = null;
     this._bossClock = null;

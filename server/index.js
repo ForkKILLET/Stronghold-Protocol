@@ -21,6 +21,8 @@
 // The server only auto-listens when this file is the process entry point.
 
 import http from 'node:http';
+import {openUserStore} from './users/store.js';
+import {createUserApi} from './users/http.js';
 import { nameModerationFromEnv } from './nameModeration.js';
 import { createNameModerationRoute } from './http/nameModeration.js';
 import path from 'node:path';
@@ -57,6 +59,7 @@ export {
 /**
  * Build and start the HTTP + WebSocket server.
  * @param {{
+ *   userFile?: string,
  *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
  *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string,
@@ -125,6 +128,12 @@ export async function startServer(opts = {}) {
     ? new MatchWorkerPool({ data, lanes: matchWorkers, log, timeoutMs: workerConfig.timeoutMs })
     : opts.matchWorkerPool || null;
   const { registry, lobby, network } = createSessionStack({ ...opts, nameModeration }, { data, log, workerPool, matchWorkerPool });
+  const userFile=opts.userFile ?? process.env.SP_USER_DB;
+  let users=null;
+  try{users=userFile?await openUserStore(userFile,{log}):null;}
+  catch(e){network.close();if(ownsWorkerPool)await workerPool?.close();if(ownsMatchWorkerPool)await matchWorkerPool?.close();nameModeration?.close?.();await store?.close();throw e;}
+  lobby.users=users;
+  network.onProfileName=(id,name)=>{if(users)users.call('rename',{id,name}).catch(()=>log.warn('[users] nickname save failed'));};
   // Resume the last state before listening: every reconnecting client is recognized by its token right away.
   const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs }) : null;
   if (store && opts.resume !== false) {
@@ -160,12 +169,16 @@ export async function startServer(opts = {}) {
   const servePublicApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });
 
   const serveNameReview = createNameModerationRoute({ moderation: nameModeration, trustProxy: network.opts.trustProxy });
-  const serveApi = async (req, res, pathname) => await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
+  const serveUserApi=createUserApi({users,registry,lobby,data,moderation:nameModeration,trustProxy:network.opts.trustProxy,log,network});
+  const serveApi = async (req, res, pathname) => await serveUserApi(req,res,pathname) || await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
 
   // content packs (docs/PACKS.md): scanned now — the start log names them — and again whenever their folders change
   const packs = createPackRegistry({ publicDir, dataDir, packsDir }, { log });
   packs.refresh(true);
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, packsDir, packs, log, cdnBase: assetsCdn, dataCdnBase: dataCdn, clientBuild });
+  lobby.onUserResultStaged=()=>{persister?.flush('user-result').catch(()=>{});};
+  lobby.flushUserResults();
+  const userRetry=users?setInterval(()=>lobby.flushUserResults(),30000):null;userRetry?.unref();
   const startedAt = Date.now();
   // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
   resetBuildTag();
@@ -174,7 +187,7 @@ export async function startServer(opts = {}) {
   const server = http.createServer(createRequestHandler({ serveStatic, health: { startedAt, network, registry, lobby }, serveApi,
     diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log }));
   server.on('clientError', answerClientError);
-  const wss = attachWebSocket(server, { network, log, wsCompression, announcements });
+  const wss = attachWebSocket(server, { network, log, wsCompression, announcements, users });
 
   // The address actually bound. The default may fall back to IPv4; the returned host and url follow that.
   let boundHost;
@@ -206,6 +219,9 @@ export async function startServer(opts = {}) {
     if (bound === null) throw lastError;
     boundHost = bound;
   } catch (e) {
+    clearInterval(userRetry);
+    await users?.close();
+    await store?.close();
     await announcements.stop();
     nameModeration?.close?.();
     network.close(); // stop heartbeat/sweep timers of the half-built server
@@ -227,6 +243,7 @@ export async function startServer(opts = {}) {
   async function close() {
     if (closing) return closing;
     closing = (async () => {
+      clearInterval(userRetry);
       network.beginShutdown();
       nameModeration?.close?.();
       lobby.stopMatchmaking();
@@ -247,13 +264,15 @@ export async function startServer(opts = {}) {
         setTimeout(() => { server.closeAllConnections?.(); }, 500).unref();
       });
       try { wss.close(); } catch { /* ignore */ }
+      await Promise.allSettled([...(lobby.userWrites || [])]);
+      await users?.close();
       try { await store?.close(); } catch { /* ignore */ }
     })();
     return closing;
   }
 
   return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, store: store || null, persister,
-    workerPool, matchWorkerPool, announcements, close };
+    workerPool, matchWorkerPool, announcements, users, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).

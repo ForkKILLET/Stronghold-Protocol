@@ -291,3 +291,10 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 - 等待室和 BAND_DRAFT 复用 `ui/communication.js` 与战斗 `EmoteWheel`／`EmoteBubble`，保留 20 字、1 秒冷却、输入法、纯文本和本地历史语义。等待室 `room.chat`／`room.emote` 只发给本房间，观战只读；审核结果绑定原会话、连接及房间，开局／离开／换房后不转发。换房／新局清空客户端历史。
 - `g.bandFocus` 实际变化时发布 `draft.focus`；未确认的队友显示预选名称／半透明图标，不提前占用策略。非计时多人也报告预选，确认／清除后移除；不修改既有超时兜底规则。策略页交流放在左栏，最新气泡不能遮盖预选和选卡，桌面／窄屏截图验证。回归 `test/room-communication.test.js` 与聊天／策略用例。
+
+## 匿名用户档案
+
+- `SP_USER_DB` 启用独立 SQLite 用户存储（`server/users/`），不替代 Redis 对局恢复。用户 ID 独立于会话／重连令牌；Cookie 只存随机凭证，数据库存哈希。头像／昵称／结算为长期数据，设备设置仍在本机。Cookie 关联不允许跨档案复用游戏令牌。
+- 同源 HTTP 写操作须限制 JSON 大小、校验昵称和预设头像、保留恢复码限流和一次性事务语义；不得记录 Cookie／恢复码原文。自动重连不能覆盖服务器昵称。恢复到另一档案不合并数据，当前用户有对局时不能切换。
+- SQLite 只在独立 Worker 中读写，schema 有版本，WAL／备份目录随数据卷保留。每局 UUID、玩家内部 userId 随检查点和完整 Match Worker 保存，公开视图不得暴露 userId；结算按对局／用户唯一键去重，正常关停等待写入。
+- 本机旧统计不自动上报；服务器个人战绩不冒充防作弊榜。验证 `test/users/persistence.test.js`、原有会话／Redis／Worker／匹配回归，部署要求见 `docs/USERS.md`。

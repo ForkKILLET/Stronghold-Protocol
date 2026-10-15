@@ -50,3 +50,6 @@ desktop.ini
 .idea/
 .vscode/
 .claude/
+
+# Long-lived personal data (SQLite, WAL and backups)
+.state/

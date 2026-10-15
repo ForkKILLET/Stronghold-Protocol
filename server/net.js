@@ -98,6 +98,10 @@ export class Session {
     this.token = token;
     /** @type {string} sanitized nickname */
     this.name = name;
+    /** @type {string|null} */
+    this.userId = null;
+    /** @type {string|null} */
+    this.avatarId = null;
     /** @type {import('ws').WebSocket | null} currently bound socket */
     this.ws = null;
     /** @type {boolean} */
@@ -201,6 +205,8 @@ export class SessionRegistry {
     if (this.byPlayerId.size >= this.maxSessions && !allowOverCapacity) return null;
     const now = this.now();
     const s = new Session({ playerId: doc.playerId, token: doc.token, name: doc.name, now });
+    s.userId = typeof doc.userId==='string'?doc.userId:null;
+    s.avatarId = typeof doc.avatarId==='string'?doc.avatarId:null;
     s.connected = false;
     s.ws = null;
     const since = Number(doc.disconnectedAt);
@@ -744,6 +750,7 @@ export class Network {
   handleConnection(ws, req) {
     if (this.closed) { try { ws.close(CLOSE.SHUTDOWN, 'server shutdown'); } catch { /* ignore */ } return; }
     const conn = new Connection(ws, clientAddress(req, this.opts.trustProxy), this.now(), this.opts);
+    conn.userProfile=req.userProfile || null;
     this.conns.set(ws, conn);
     socketDiagnostics.set(ws, this.diagnostics);
     if (conn.key) this.connsPerKey.set(conn.key, (this.connsPerKey.get(conn.key) || 0) + 1);
@@ -855,7 +862,7 @@ export class Network {
       this.reply(conn, errorMsg(ERR.BAD_MSG, rid, `version mismatch: server ${PROTOCOL_VERSION}`));
       return;
     }
-    const name = sanitizeName(msg.name);
+    const name = sanitizeName(conn.userProfile?.name || msg.name);
     if (!name) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'bad field name')); return; }
     if (this.nameModeration) {
       const generation = ++conn.helloReview;
@@ -895,6 +902,7 @@ export class Network {
     const repeat = !!session;
     if (!session) {
       session = msg.token ? this.registry.byToken(msg.token) : null;
+      if (session?.userId && session.userId !== conn.userProfile?.id) session=null;
       if (session) {
         if (session.connected && session.ws && session.ws !== conn.ws
           && (msg.noReplace || (Number.isFinite(msg.claimAt) && session.claimAt != null && msg.claimAt > session.claimAt))) {
@@ -913,6 +921,7 @@ export class Network {
       session.claimAt = Number.isFinite(msg.claimAt) ? msg.claimAt : null;
       session.disconnectedAt = null;
     }
+    if(conn.userProfile){session.userId=conn.userProfile.id;session.avatarId=conn.userProfile.avatarId;if(!conn.userProfile.name){conn.userProfile.name=name;this.onProfileName?.(session.userId,name);}}
     session.name = name;
     session.lastSeen = now;
     session.addr = conn.ip;

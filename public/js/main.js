@@ -1,3 +1,4 @@
+import {initProfile,ProfileHost} from './ui/profile.js';
 // Client entry: boot (fonts, identity, socket), net → store wiring, router, global overlays.
 //
 // Router (derived from the store, no URL routes):
@@ -351,6 +352,7 @@ function App() {
     <${LoadoutHost} />
     <${ResourceManagerHost} />
     <${StatsHost} />
+    <${ProfileHost} />
   </div>`;
 }
 
@@ -394,6 +396,7 @@ async function boot() {
   window.addEventListener('pageshow', (ev) => { if (ev.persisted) location.reload(); });
   // Pick this tab's reconnect token (asks other live tabs; ≤150 ms) while fonts load.
   const identityReady = identity.init();
+  await initProfile();
 
   const pendingJoin = parseRoomParam(location.search);
   const savedName = sanitizeName(identity.loadName());

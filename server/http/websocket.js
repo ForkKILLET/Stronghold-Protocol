@@ -6,6 +6,7 @@
 //     upgrade: any other path 404; per-network socket limit for internet clients (maxConnectionsPerAddr, see net.js
 //     clientAddress; local/LAN peers are exempt) 429; server full (maxConnections) or shutting down 503.
 
+import {userToken,sameOrigin} from '../users/http.js';
 import { WebSocketServer } from 'ws';
 import { Network, SessionRegistry, NET_DEFAULTS, send } from '../net.js';
 import { Lobby, LOBBY_DEFAULTS } from '../lobby.js';
@@ -57,12 +58,12 @@ export function createSessionStack(opts, { data, log, workerPool, matchWorkerPoo
  * @param {{ network: Network, log: object }} deps
  * @returns {WebSocketServer}
  */
-export function attachWebSocket(server, { network, log, wsCompression = parseWsCompression(process.env.SP_WS_COMPRESSION), announcements = null }) {
+export function attachWebSocket(server, { network, log, wsCompression = parseWsCompression(process.env.SP_WS_COMPRESSION), announcements = null, users = null }) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD, perMessageDeflate: wsCompression ? { threshold: WS_DEFLATE_THRESHOLD, serverNoContextTakeover: true, clientNoContextTakeover: true } : false, clientTracking: false });
   wss.on('connection', (ws, req) => { network.handleConnection(ws, req); if (announcements) { announcements.refresh(); send(ws, announcements.message()); send(ws, announcements.message('popup')); } });
   wss.on('error', (e) => log.error('[ws] server error', e));
 
-  server.on('upgrade', (req, socket, head) => {
+  server.on('upgrade', async (req, socket, head) => {
     socket.on('error', () => {});
     const parts = splitUrl(req.url || '/');
     const reject = (status, text) => {
@@ -72,6 +73,12 @@ export function attachWebSocket(server, { network, log, wsCompression = parseWsC
     const refused = network.admission(req);
     if (refused === 'per-address') { reject(429, 'Too Many Requests'); return; }
     if (refused) { reject(503, 'Service Unavailable'); return; }
+    if(users){
+      if(!sameOrigin(req)){reject(403,'Forbidden');return;}
+      try{const token=userToken(req);req.userProfile=token?await users.call('authenticate',{token}):null;}
+      catch{reject(503,'Service Unavailable');return;}
+      if(socket.destroyed)return;
+    }
     try {
       wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
     } catch (e) {

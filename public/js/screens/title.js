@@ -1,3 +1,4 @@
+import {persistProfileName} from '../ui/profile.js';
 // Title screen: season-style backdrop, big title 卫戍协议：盟约, remembered nickname, 开始, the language menu
 // (中文 | English | every pack in public/i18n/, ui/lang.js; a title in an alphabetic script — English — is the big one and
 // the small wordmark above it hides).
@@ -223,9 +224,18 @@ export function TitleScreen() {
   const cssRidges = assetsSettled && (!ridges || ridgesFailed);
 
   const valid = isValidName(name);
-  const start = () => {
+  const [starting, setStarting] = useState(false);
+  const start = async () => {
+    if (starting) return;
     if (!valid) { toast(t('请输入博士代号'), 'warn'); return; }
-    enterSession(name);
+    setStarting(true);
+    try {
+      const canonicalName = sanitizeName(name);
+      await persistProfileName(canonicalName);
+      enterSession(canonicalName);
+    } catch (e) {
+      toast(e.userCode === 'NAME_REJECTED' ? t('该名称不可用') : t('操作失败，请稍后重试'), 'warn');
+    } finally { setStarting(false); }
   };
 
   const online = conn.status === 'online' || conn.status === 'connected';
@@ -286,7 +296,7 @@ export function TitleScreen() {
         <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
-        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>${t('开始')}<//>
+        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid || starting} onClick=${start}>${t('开始')}<//>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
           <span>${STATUS_TEXT[conn.status] ? t(STATUS_TEXT[conn.status]) : conn.status}</span>

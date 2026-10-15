@@ -135,6 +135,7 @@ export function buildResult(m, outcome) {
   });
   return {
     t: 'm.result',
+    ...(m.userMatchId?{matchId:m.userMatchId}:{}),
     victory,
     roundsPassed: teamRounds,
     hiddenReached,

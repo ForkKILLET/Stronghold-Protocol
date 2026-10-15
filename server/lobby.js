@@ -255,7 +255,7 @@ export class Room {
       prepMultiplier: this.prepMultiplier,
       battleSpeed: this.battleSpeed,
       seats: this.seats.map((s) => (s
-        ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
+        ? { seat: s.seat, playerId: s.playerId, name: s.name, ...(s.avatarId?{avatarId:s.avatarId}:{}), isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
         : null)),
       spectators: this.spectators.map((s) => ({ playerId: s.playerId, name: s.name, connected: s.connected })),
     };
@@ -294,6 +294,9 @@ export class Lobby {
     this.opts = { ...LOBBY_DEFAULTS, ...options };
     /** @type {Map<string, Room>} */
     this.rooms = new Map();
+    this.userOutbox = new Map();
+    this.userPendingIds = new Set();
+    this.userWrites = new Set();
     /** @type {Map<string, NodeJS.Timeout>} lobby grace timers by playerId */
     this.graceTimers = new Map();
     /** @type {Map<string, NodeJS.Timeout>} deferred (coalesced) resyncs by playerId */
@@ -413,6 +416,7 @@ export class Lobby {
     // Only a visible change (reconnect, rename, new host) is broadcast; a plain resync (repeated hello on a
     // live socket) answers the requester alone, so hello spam cannot amplify into room-wide traffic.
     let changed = !seat.connected;
+    if(seat.avatarId !== session.avatarId){seat.avatarId=session.avatarId;changed=true;}
     seat.connected = true;
     if (!room.match && seat.name !== session.name) { seat.name = session.name; changed = true; }
     if (!room.hostId) { this.migrateHost(room); changed = true; }
@@ -686,13 +690,13 @@ export class Lobby {
       loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
     }));
     const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, room,
-      members: seats, lastPublic: null, sharedResult: null, results: new Map() };
+      members: seats, lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     const roomCode = typeof checkpoint.roomCode === 'string' && checkpoint.roomCode ? checkpoint.roomCode : `M${randomBytes(3).toString('hex').toUpperCase()}`;
     const mode = checkpoint.mode === 'solo' ? 'solo' : 'coop';
     const difficulty = typeof checkpoint.difficulty === 'string' && checkpoint.difficulty ? checkpoint.difficulty : 'NORMAL';
     try {
       const match = new this.MatchClass({
-        roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats,
+        userPersistence:!!this.users, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats,
         consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast, seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
         data: this.safeData(), workerPool: this.workerPoolFor(room?.code || roomCode), log: this.log, now: this.now,
         send: (playerId, msg, encoded) => (ctx.live ? this.queueMatchSend(ctx, playerId, msg, encoded) : false),
@@ -741,10 +745,10 @@ export class Lobby {
     const mode = checkpoint.mode === 'solo' ? 'solo' : 'coop';
     const difficulty = typeof checkpoint.difficulty === 'string' && checkpoint.difficulty ? checkpoint.difficulty : 'NORMAL';
     const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, workerKey: roomCode, room,
-      members: seats, lastPublic: null, sharedResult: null, results: new Map() };
+      members: seats, lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     try {
       const match = await this.matchWorkerPool.create(roomCode, {
-        roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
+        userPersistence:!!this.users, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
         seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
       }, {
         created: (match) => this.attachQueuedWorker(ctx, room, match),
@@ -1459,22 +1463,22 @@ export class Lobby {
     if (host && !checkpoint) host.ready = true;
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
-        seat: p.seat, playerId: p.playerId, name: p.name, isBot: !!p.isBot, connected: false,
+        seat: p.seat, playerId: p.playerId, name: p.name, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || null, isBot: !!p.isBot, connected: false,
         loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
-        seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
+        seat: s.seat, playerId: s.playerId, name: s.name, userId:this.registry.byId(s.playerId)?.userId || null, avatarId:s.avatarId || null, isBot: s.isBot, connected: s.connected,
         loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
     const ctx = { live: false, ended: false, disposed: false, match: null, workerKey: room.code,
-      lastPublic: null, sharedResult: null, results: new Map() };
+      lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     if (checkpoint && Number.isInteger(checkpoint.seed)) seed = checkpoint.seed >>> 0;
     const matchNo = checkpoint ? Math.max(1, room.matchCount) : room.matchCount + 1;
     try {
       const match = await this.matchWorkerPool.create(room.code, {
-        roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: modeIdFor(room.mode, room.difficulty),
+        userPersistence:!!this.users, roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: modeIdFor(room.mode, room.difficulty),
         seats, spectators: room.spectators.map((s) => s.playerId), consoleEnabled: !!room.consoleEnabled,
         seed, matchNo, aiPicksLast: !!room.aiPicksLast,
         prepSeconds: room.prepSeconds, prepMultiplier: room.prepMultiplier, combatSpeed: room.battleSpeed,
@@ -1523,24 +1527,24 @@ export class Lobby {
     if (host && !checkpoint) host.ready = true;
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
-        seat: p.seat, playerId: p.playerId, name: p.name, isBot: !!p.isBot, connected: false,
+        seat: p.seat, playerId: p.playerId, name: p.name, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || null, isBot: !!p.isBot, connected: false,
         loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
-        seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, connected: s.connected,
+        seat: s.seat, playerId: s.playerId, name: s.name, userId:this.registry.byId(s.playerId)?.userId || null, avatarId:s.avatarId || null, isBot: s.isBot, connected: s.connected,
         // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
         loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
     // lastPublic / results: the latest m.public broadcast and the m.result frames (encoded), kept for the replay.
     const ctx = { live: !checkpoint, ended: false, disposed: false, match: null, workerKey: room.code,
-      lastPublic: null, sharedResult: null, results: new Map() };
+      lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     const matchNo = checkpoint ? Math.max(1, room.matchCount) : room.matchCount + 1;
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     if (checkpoint && Number.isInteger(checkpoint.seed)) seed = checkpoint.seed >>> 0;
     try {
       const match = new this.MatchClass({
-        roomCode: room.code,
+        userPersistence:!!this.users, roomCode: room.code,
         mode: room.mode,
         difficulty: room.difficulty,
         modeId: modeIdFor(room.mode, room.difficulty),
@@ -1631,17 +1635,17 @@ export class Lobby {
       let seat = Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS && !used.has(p.seat) ? p.seat : -1;
       if (seat < 0) { for (let j = 0; j < MAX_SEATS; j++) if (!used.has(j)) { seat = j; break; } }
       used.add(seat);
-      return { ...p, seat, connected: p.isBot ? true : p.connected !== false };
+      return { ...p, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || this.registry.byId(p.playerId)?.avatarId || null, seat, connected: p.isBot ? true : p.connected !== false };
     }).sort((a, b) => a.seat - b.seat);
     const allHumanIds = seats.filter((p) => !p.isBot).map((p) => p.playerId);
     const matchCode = room?.code || `M${randomBytes(3).toString('hex').toUpperCase()}`;
     const ctx = { live: false, ended: false, disposed: false, queue: true, match: null, workerKey: matchCode, room,
-      members: seats, lastPublic: null, sharedResult: null, results: new Map() };
+      members: seats, lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     try {
       const match = await this.matchWorkerPool.create(matchCode, {
-        roomCode: matchCode, mode: owner.mode, difficulty: owner.difficulty, modeId: modeIdFor(owner.mode, owner.difficulty),
+        userPersistence:!!this.users, roomCode: matchCode, mode: owner.mode, difficulty: owner.difficulty, modeId: modeIdFor(owner.mode, owner.difficulty),
         seats, consoleEnabled: !!room?.consoleEnabled, aiPicksLast: !!room?.aiPicksLast, seed, matchNo: room ? room.matchCount + 1 : 1,
       }, {
         created: (match) => {
@@ -1691,18 +1695,18 @@ export class Lobby {
       let seat = Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS && !used.has(p.seat) ? p.seat : -1;
       if (seat < 0) { for (let j = 0; j < MAX_SEATS; j++) if (!used.has(j)) { seat = j; break; } }
       used.add(seat);
-      return { ...p, seat, connected: p.isBot ? true : p.connected !== false };
+      return { ...p, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || this.registry.byId(p.playerId)?.avatarId || null, seat, connected: p.isBot ? true : p.connected !== false };
     }).sort((a, b) => a.seat - b.seat);
     const allHumanIds = seats.filter((p) => !p.isBot).map((p) => p.playerId);
     const ctx = { live: true, ended: false, disposed: false, queue: true, match: null, workerKey: null, room, members: seats,
-      lastPublic: null, sharedResult: null, results: new Map() };
+      lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     let seed = 0;
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     const matchCode = room?.code || `M${randomBytes(3).toString('hex').toUpperCase()}`;
     ctx.workerKey = matchCode;
     try {
       const match = new this.MatchClass({
-        roomCode: matchCode,
+        userPersistence:!!this.users, roomCode: matchCode,
         mode: owner.mode,
         difficulty: owner.difficulty,
         modeId: modeIdFor(owner.mode, owner.difficulty),
@@ -1747,6 +1751,34 @@ export class Lobby {
     return OK;
   }
 
+  recordUserResult(ctx,summary){
+    if(!this.users || !summary?.matchId || !Array.isArray(summary.players))return;
+    const rows=summary.players.filter(p=>!p.isBot).map(p=>({userId:ctx.profileUsers?.[p.playerId] || this.registry.byId(p.playerId)?.userId,
+      playerId:p.playerId,victory:!!p.victory,rounds:Number(p.roundsPassed)||0,payload:p})).filter(p=>p.userId);
+    if(!rows.length)return;
+    if(!this.userOutbox.has(summary.matchId)){
+      this.userOutbox.set(summary.matchId,{id:summary.matchId,endedAt:Date.now(),mode:summary.modeId || '',difficulty:summary.difficulty || '',source:'server',rows});
+      this.onUserResultStaged?.();
+    }
+    this.flushUserResults();
+  }
+
+  flushUserResults(){
+    if(!this.users)return;
+    for(const [id,args] of this.userOutbox){
+      if(this.userPendingIds.has(id))continue;
+      this.userPendingIds.add(id);
+      const task=(async()=>{
+        for(let attempt=0;attempt<3;attempt++){
+          try{await this.users.call('record',args);this.userOutbox.delete(id);return;}
+          catch{if(attempt<2)await new Promise(r=>setTimeout(r,250));}
+        }
+        this.log.warn('[users] result save deferred; retained for retry');
+      })();
+      this.userWrites.add(task);task.finally(()=>{this.userWrites.delete(task);this.userPendingIds.delete(id);});
+    }
+  }
+
   notifyMatchStarted(key, match) {
     try { this.onMatchStarted?.({ key, match }); }
     catch (e) { this.log.warn(`[persist] ${key}: initial checkpoint notification failed (${e.message})`); }
@@ -1778,6 +1810,7 @@ export class Lobby {
 
   onQueuedMatchEnd(ctx, summary) {
     if (!ctx || ctx.ended || !ctx.live) return;
+    this.recordUserResult(ctx,summary);
     const room = ctx.room;
     for (const p of ctx.members) if (!p.isBot) {
       const session = this.registry.byId(p.playerId);
@@ -1805,6 +1838,7 @@ export class Lobby {
   /** onEnd callback: return the room to LOBBY and dispose the match on the next macrotask. */
   onMatchEnd(room, ctx, summary) {
     if (ctx.ended || !ctx.live || room.matchCtx !== ctx || room.disposed) return;
+    this.recordUserResult(ctx,summary);
     ctx.ended = true;
     room.lastSummary = summary ?? null;
     room.match = null;
@@ -2118,7 +2152,7 @@ export class Lobby {
   /** @returns {Seat} */
   humanSeat(idx, session) {
     return {
-      seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
+      seat: idx, playerId: session.playerId, name: session.name, avatarId:session.avatarId || null, isBot: false, ready: false, connected: session.connected, left: false,
       loadout: session.loadout || null,
       ops: session.ops || null,
       notOwned: session.notOwned || null,
