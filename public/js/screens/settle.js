@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, DifficultyTag } from '../ui/components.js';
 import { useGameData, Img, Sprite, BondGlyph, BandIcon } from '../ui/gameComponents.js';
-import { ResultAvatar } from '../ui/resultAvatar.js';
+import { ResultAvatar, ResultPortrait } from '../ui/resultAvatar.js';
 import { normalizeResult, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
 import { data } from '../data.js';
 import { chessPortraitUrl, chessAvatarUrl, itemIconUrl, enemyIconUrl, titleIconUrl } from '../ui/assetUrls.js';
@@ -359,7 +359,8 @@ function TeamCard({ p, i, gd, self, victory, raw }) {
   return html`<article class=${cx('tcard', self && 'is-self', p.alive === false && 'is-dead', p.left && 'is-left', cleared ? 'is-clear' : 'is-fail')} style=${`--i:${i}`}>
     <header class="tcard__head" aria-hidden="true"><i class="tcard__pin"></i><span class="tcard__code"><i></i><i></i><i></i>STRONGHOLD PROTOCOL</span><span class="tcard__seat num">${pad2(p.seat + 1)}</span></header>
     <div class="tcard__art">
-      <${Img} src=${v?.art || v?.avatar} class=${cx('tcard__img', v?.art ? 'is-portrait' : 'is-avatar')} fallback=${html`<span class="tcard__glyph">${[...(p.name || '?')][0]}</span>`} />
+      <${ResultPortrait} player=${p} self=${self} fallbackSrc=${v?.art || v?.avatar} class="tcard__img"
+        fallbackClass=${v?.art ? 'is-portrait' : 'is-avatar'} fallback=${html`<span class="tcard__glyph">${[...(p.name || '?')][0]}</span>`} />
       ${p.left ? html`<span class="tcard__cut">${t('中断连接')}</span>` : null}
       ${title ? html`<div class="tcard__title" title=${title.text}>
         <${Img} src=${title.icon} class="tcard__ticon" fallback=${html`<${Icon} name="crown" class="tcard__ticon" />`} /><b>${title.name}</b></div>` : null}

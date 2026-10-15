@@ -1,4 +1,5 @@
 import { chessPortraitUrl } from './assetUrls.js';
+import { cardAvatarOperatorId } from '../../../shared/playerCard.js';
 
 /** FNV-1a of a string (the portrait pick: the same operator for a player on every client). */
 function hash32(s) {
@@ -31,8 +32,19 @@ export function seatPortrait(seat, { pool, m }) {
   return chessPortraitUrl(m, pool[hash32(seat.playerId) % pool.length]);
 }
 
-/** Avatars always use the base official icon; an elite portrait choice cannot change another player's avatar. */
-export function cardAvatarUrl(charId, m) {
-  if (!charId || typeof charId !== 'string') return null;
-  return m?.chars?.[charId]?.avatar || null;
+/** Resolve only manifest-listed avatars; a missing skin falls back to its operator's base icon. */
+export function cardAvatarUrl(avatar, m) {
+  const charId = cardAvatarOperatorId(avatar);
+  if (!charId) return null;
+  const rec = m?.chars?.[charId];
+  return (avatar !== charId ? rec?.skins?.[avatar]?.avatar : null) || rec?.avatar || null;
+}
+
+/** Avatar files alone suffice: choosing a profile image never downloads or enables a battle skin model. */
+export function cardAvatarSkins(charId, m, catalogue) {
+  const list = catalogue?.chars?.[charId];
+  if (!Array.isArray(list)) return [];
+  return list.filter((skin) => cardAvatarOperatorId(skin?.id) === charId && skin.id !== charId
+    && typeof m?.chars?.[charId]?.skins?.[skin.id]?.avatar === 'string' && m.chars[charId].skins[skin.id].avatar)
+    .map((skin) => ({ id: skin.id, name: skin.name, group: skin.group || '' }));
 }

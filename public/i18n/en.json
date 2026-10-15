@@ -1705,5 +1705,10 @@
   "正在载入皮肤目录…": "Loading the skin catalogue…",
   "皮肤数据加载失败，请重试。": "Skin data could not be loaded. Please retry.",
   "本服务器尚未部署该干员的皮肤，当前使用默认外观。": "This server has not deployed outfits for this operator. The default appearance is used.",
-  "该干员暂无可用皮肤，当前使用默认外观。": "No outfits are available for this operator. The default appearance is used."
+  "该干员暂无可用皮肤，当前使用默认外观。": "No outfits are available for this operator. The default appearance is used.",
+  "返回干员列表": "Back to operators",
+  "选择头像": "Choose an avatar",
+  "默认头像": "Default avatar",
+  "暂无可用的皮肤头像": "No outfit avatars are available",
+  "已选头像暂不可用，当前显示默认头像。": "The selected avatar is unavailable. Showing the default avatar."
 }
