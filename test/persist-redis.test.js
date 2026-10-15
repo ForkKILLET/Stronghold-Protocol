@@ -385,12 +385,12 @@ test('complete Worker matches preserve tokens and checkpoint state through three
     }
   });
 
-test('0.2.4 signed shared/private stock and passive gift provenance survive two Worker restarts through real Redis',
+test('0.2.4 signed shared/private stock and passive/console gift provenance survive two Worker restarts through real Redis',
   { skip: !available && `no Redis at ${REDIS_URL}`, timeout: 30000 }, async (t) => {
     const slot = 'chess_char_6_diy1_a', item = 'chess_item_5_07_e_a';
     const seats = [{ seat: 0, playerId: 'p_0', name: 'Stock', isBot: false, connected: true,
       diy: { [slot]: { charId: 'char_112_siege', skillIndex: 1, uniEquipId: null } } }];
-    const h = makeMatch({ mode: 'solo', seats, seed: 11, fake: true }).start();
+    const h = makeMatch({ mode: 'solo', seats, seed: 11, fake: true, consoleEnabled: true }).start();
     const ps = h.ps('p_0'), id = [...h.m.pool.entries.keys()].find(id => h.m.gd.tierOf(id) === 6);
     for (const base of [id, slot]) {
       const stock = ps.poolOf(base);
@@ -402,6 +402,8 @@ test('0.2.4 signed shared/private stock and passive gift provenance survive two 
     assert.ok(passive.grantItem('chess_item_6_09_e_a'));
     assert.ok(ps.acquireItem('chess_item_5_02_e_a'));
     assert.ok(passive.grantItem('chess_item_5_02_e_a'));
+    assert.deepEqual(h.m.handle('p_0', { t: 'g.console', kind: 'item', id: 'chess_item_5_02_e_b' }), { ok: true });
+    assert.ok(ps.hand.some(p => p?.id === 'chess_item_5_02_e_b' && p.itemPoolCopies === 0));
     assert.equal(h.m.itemPool.held('chess_item_6_09_e_a'), 0);
     assert.equal(h.m.itemPool.held('chess_item_5_02_e_a'), 1);
     const before = snapshotMatch(h.m);

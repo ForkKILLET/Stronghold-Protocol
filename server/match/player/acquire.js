@@ -199,7 +199,7 @@ export class PlayerAcquire {
   }
 
   /** Normal item → golden version in place (整备). Stock-backed items need a second real copy;
-   * passive gifts stay exempt. The caller keeps its charge when a real second copy is unavailable. */
+   * passive and console grants stay exempt. The caller keeps its charge when a real second copy is unavailable. */
   upgradeItem(piece) {
     const rec = this.gd.item(piece.id);
     if (!rec || rec.isGolden) return false;
@@ -291,7 +291,7 @@ export class PlayerAcquire {
    * call, even when an identical normal copy is already owned. The next prep's start runs checkItemMerges. Nothing
    * already equipped is taken off for the fight about to start. Hand and temp both full keeps the 「整备区已满，获得的装备已销毁」
    * outcome. [ASSUMED] every item granted at 休整期结束, not only 维多利亚's 战栗维式重锤 (owner's decision 2026-10-04).
-   * `fromPool: false` is only issued by server-side operator passive effects; bypasses shared stock and holds zero.
+   * `fromPool: false` is issued by server-side operator passives and console grants; bypasses shared stock and holds zero.
    */
   acquireItem(itemId, { source = 'grant', toTemp = false, silent = false, deferMerge = false, fromPool = true } = {}) {
     const rec = this.gd.item(itemId);

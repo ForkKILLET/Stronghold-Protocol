@@ -177,9 +177,8 @@ export class MatchIntents {
     } else if (kind === 'item') {
       const rec = this.gd.item(id);
       if (!rec || rec.isDiy || rec.isHidden) return fail(ERR.BAD_TARGET, 'unknown equipment');
-      if (!this.itemPool.canGain(id)) return fail(ERR.SOLD_OUT, 'equipment stock exhausted');
       grantedName = rec.name || id;
-      piece = ps.acquireItem(id, { source: 'console' });
+      piece = ps.acquireItem(id, { source: 'console', fromPool: false });
       granted = !!piece;
     } else return fail(ERR.BAD_MSG);
     if (!granted) return fail(ERR.HAND_FULL, 'console grant could not fit in the preparation area');

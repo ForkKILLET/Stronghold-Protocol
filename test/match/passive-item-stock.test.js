@@ -97,7 +97,7 @@ test('gift equipment stays exempt in hand/temp/equipped, through owner merge/sal
   } finally { h.m.dispose(); }
 });
 
-test('random passive item rolls ignore exhaustion; ordinary effect, choice and console-style rolls do not', () => {
+test('random passive item rolls ignore exhaustion; ordinary effect and choice rolls do not', () => {
   const data = structuredClone(DATA);
   data.choices.pools.testPassiveItems = { kind: 'equip', items: [ICE] };
   data.choices.pools.testWeightedPassive = { kind: 'equip', weighted: [[ICE, 1]] };

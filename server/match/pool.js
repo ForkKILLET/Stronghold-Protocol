@@ -184,7 +184,7 @@ export class SharedPool {
   }
 }
 
-/** Shared equipment stock, derived from stock-backed ownership. Operator passive gifts occupy zero copies.
+/** Shared equipment stock, derived from stock-backed ownership. Operator passive gifts and console grants occupy zero copies.
  * Merges preserve the sum of real reservations (a mixed gift/purchase elite holds one, not two).
  * Merges, equips and returns cannot lose a reservation:
  * normal equipment occupies one, upgraded equipment two. Shop/choice displays reserve nothing. Source: the original
