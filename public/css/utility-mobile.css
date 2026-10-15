@@ -5,8 +5,8 @@
 
 @media (max-width: 1000px), (max-height: 600px) {
   .lo-skins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 6px; }
-  .lo-skin { min-width: 0; max-width: none; min-height: 44px; padding: 6px; gap: 6px; }
-  .lo-skin__art { width: 36px; height: 36px; }
+  .lo-skin { min-width: 0; max-width: none; min-height: 44px; padding: 4px; gap: 6px; }
+  .lo-skin__art { width: 32px; height: 32px; }
   .lo-skin__name { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
   .lo-skin__group { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
   .resource-skin-hint { font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
@@ -555,6 +555,13 @@
   .ach__box { max-width: calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - 12px); max-height: calc(var(--sp-vh, 1vh) * 100 - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px); }
   .ach__close { min-width: 32px; min-height: 32px; }
   .ach__foot { max-width: 100%; font-size: max(calc(.2 * var(--t)), 10px); }
+  /* The reference achievement rows are compact cards: keep two columns on phones so the seven groups
+     do not become an unnecessarily long single-column page. */
+  .ach-marks--list { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: .2rem; gap: .12rem .16rem; }
+  .ach-mark--row { min-width: 0; gap: .1rem; }
+  .ach-mark--row .ach-mark__frame { width: .78rem; height: .78rem; }
+  .ach-mark--row .ach-mark__frame > .icon { width: .38rem; height: .38rem; }
+  .ach-mark__text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 @media (max-width: 1000px), (max-height: 600px) {

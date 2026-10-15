@@ -229,10 +229,10 @@ function MatchQueuePanel({ queue, onCancel }) {
   </section>`;
 }
 
-function HubEntry({ group, name, en, icon, badge, tone = 'mint', onClick, disabled = false }) {
+function HubEntry({ group, name, en, icon, badge, tone = 'mint', onClick, disabled = false, entryRef }) {
   return html`<div class="hub-entry-wrap">
     ${group ? html`<span class="hub-entry__group"><${Icon} name=${group.icon} />${group.label}</span>` : html`<span class="hub-entry__group hub-entry__group--blank"></span>`}
-    <button type="button" class=${`hub-entry hub-entry--${tone}`} onClick=${onClick} disabled=${disabled}>
+    <button ref=${entryRef} type="button" class=${`hub-entry hub-entry--${tone}`} onClick=${onClick} disabled=${disabled}>
       <span class="hub-entry__icon"><${Icon} name=${icon} /></span>
       <span class="hub-entry__en">${en}</span>
       <span class="hub-entry__name">${name}${badge ? html`<span class="mode-beta">${badge}</span>` : null}</span>
@@ -291,10 +291,36 @@ export function ProtoCard({ roomMode, difficulty, selected, onSelect }) {
   </button>`;
 }
 
-/** Difficulty selection with the fork's visual treatment and this branch's protocol. */
-export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel }) {
+/** Decide Escape ownership before a higher layer can close on the same event. No Tab/focus trap. */
+export function protocolEscapeAction(ev, layerOpen = false) {
+  return ev.key === 'Escape' && !ev.defaultPrevented && !ev.isComposing && !layerOpen;
+}
+
+/** The page owns navigation only; creation, matchmaking and cancellation remain in LobbyScreen. */
+function ProtocolPage(props) {
+  const pageRef = useRef(null);
+  const closeRef = useRef(props.onClose);
+  closeRef.current = props.onClose;
+  useLayoutEffect(() => {
+    if (!document.querySelector('.modal, .guide, .lo, .st, [aria-modal="true"]')) pageRef.current?.querySelector('.proto-back')?.focus();
+  }, []);
+  useEffect(() => {
+    const onKey = (ev) => {
+      if (!protocolEscapeAction(ev, !!document.querySelector('.modal, .guide, .lo, .st, [aria-modal="true"]'))) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      closeRef.current();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+  return html`<${ProtocolSelect} ...${props} pageRef=${pageRef} />`;
+}
+
+/** Full secondary page with the fork's visual treatment and this branch's protocol. */
+export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef }) {
   const info = difficultyInfo(roomMode, difficulty);
-  return html`<${Modal} open=${true} utility=${true} class="protocol-modal" title=${t('选择模拟协议')} onClose=${onClose}>
+  return html`<main ref=${pageRef} class="screen protocol-screen" aria-label=${`${t(card.name)} · ${t('选择模拟协议')}`}>
     <div class="proto" style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}>
       <div class="proto__bg" aria-hidden="true"></div>
       <header class="proto-top">
@@ -323,7 +349,7 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
         </section>
       </div>
     </div>
-  <//>`;
+  </main>`;
 }
 
 /** Lobby screen component. */
@@ -347,9 +373,17 @@ export function LobbyScreen() {
   const bg = useHubBackdrop();
   const [bgOpen, setBgOpen] = useState(false);
   const sweepEntry = useRef(null);
+  const modeEntries = useRef({});
+  const lobbyRef = useRef(null);
   const previousPanel = useRef(null);
   useLayoutEffect(() => {
     if (previousPanel.current === 'sweep' && panel !== 'sweep') sweepEntry.current?.focus();
+    if (previousPanel.current === 'protocol' && panel !== 'protocol') {
+      const entry = modeEntries.current[roomMode];
+      // A queued player's mode entries are disabled; focus the still-available cancel action instead.
+      if (entry && !entry.disabled) entry.focus();
+      else lobbyRef.current?.querySelector('.match-queue button')?.focus();
+    }
     previousPanel.current = panel;
   }, [panel]);
   const [sweepModule, setSweepModule] = useState(null);
@@ -423,7 +457,10 @@ export function LobbyScreen() {
   // Replace the lobby instead of covering an interactive lobby with a dialog/backdrop.
   if (panel === 'sweep') return sweepModule ? html`<${sweepModule.SweepReport} onClose=${() => setPanel(null)} />`
     : html`<${SweepLoadingPage} onClose=${() => setPanel(null)} />`;
-  return html`<div class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
+  if (panel === 'protocol') return html`<${ProtocolPage} card=${card} roomMode=${roomMode} difficulty=${difficulty} onDifficulty=${pickDifficulty}
+    online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
+    queue=${matchQueue} onCancel=${cancelMatchmaking} />`;
+  return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
     <${HubBackdrop} bg=${bg} />
     <header class="topbar hub-topbar">
       <div class="topbar__left">
@@ -475,6 +512,7 @@ export function LobbyScreen() {
         ${matchQueue ? html`<${MatchQueuePanel} queue=${matchQueue} onCancel=${cancelMatchmaking} />` : null}
         <div class="hub-entries__row">
           ${MODE_CARDS.map((c) => html`<${HubEntry} key=${c.id} name=${t(c.name)} en=${c.en} icon=${c.icon}
+            entryRef=${(el) => { modeEntries.current[c.id] = el; }}
             tone=${c.id === 'match' ? 'amber' : 'mint'} disabled=${!!matchQueue} onClick=${() => openMode(c.id)} />`)}
         </div>
       </section>
@@ -483,9 +521,6 @@ export function LobbyScreen() {
     <${Modal} open=${bgOpen} utility=${true} class="hub-backdrop-panel" title=${t('大厅背景')} micro="LOBBY BACKDROP" onClose=${() => setBgOpen(false)}>
       <${BackdropSettings} bg=${bg} />
     <//>
-    ${panel === 'protocol' ? html`<${ProtocolSelect} card=${card} roomMode=${roomMode} difficulty=${difficulty} onDifficulty=${pickDifficulty}
-      online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
-      queue=${matchQueue} onCancel=${cancelMatchmaking} />` : null}
     <${Modal} open=${panel === 'join'} utility=${true} class="hub-dialog" title=${t('加入同盟')} micro="ALLIANCE KEY" onClose=${() => setPanel(null)}>
       <div class="join-panel">
         <div class="join-row">

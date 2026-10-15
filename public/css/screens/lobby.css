@@ -256,16 +256,15 @@
 .create-box__hint { display: flex; align-items: center; justify-content: center; min-height: .3rem; font-size: calc(.14 * var(--utility-text, var(--t))); color: var(--text-lo); }
 
 /* UI b2bd17af: existing lobby/room presentation only; no fork-only service styles. */
-.utility-modal.protocol-modal {
-  width: 100vw; max-width: 100vw; height: 100vh; height: 100dvh;
-  max-height: 100vh; max-height: 100dvh; margin: 0; border: 0; padding: 0;
+/* Mode selection replaces the lobby; it is not a modal or a high-z-index overlay. */
+.screen.protocol-screen {
+  position: fixed; inset: 0; min-width: 0; min-height: 0; padding: 0;
+  height: calc(var(--sp-vh, 1vh) * 100);
 }
-.utility-modal.protocol-modal > .modal__head,
-.utility-modal.protocol-modal > .modal__stripe { display: none; }
-.utility-modal.protocol-modal > .modal__body {
-  display: flex; flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden;
+@supports (height: 100dvh) {
+  .screen.protocol-screen { height: min(100dvh, calc(var(--sp-vh, 1dvh) * 100)); }
 }
-.protocol-modal .proto { position: relative; inset: auto; width: 100%; min-height: 0; }
+.protocol-screen :is(button, input):focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
 .lobby-hub { --hub-entry-w: 2.4rem; --hub-gap: .16rem; }
 .lobby-hub > .hub-topbar { grid-template-columns: minmax(0, 1fr) auto; }
 .lobby-hub > .hub-topbar > .topbar__right { grid-column: 2; }
@@ -445,7 +444,7 @@
 :is(.sp-touch, .sp-coarse) .hub-side .tips { display: none; }
 @keyframes sw-in { from { opacity: 0; } }
 .proto {
-  position: fixed; inset: 0; z-index: 54; display: flex; flex-direction: column;
+  position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; box-sizing: border-box;
   padding: var(--sa-t, 0px) var(--sa-r, 0px) var(--sa-b, 0px) var(--sa-l, 0px);
   color: #eef0ef; background: #0b0c0c; overscroll-behavior: contain; animation: sw-in 200ms var(--ease-out) backwards;
 }

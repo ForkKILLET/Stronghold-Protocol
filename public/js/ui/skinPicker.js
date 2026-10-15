@@ -70,7 +70,7 @@ function EnabledSkinSection({ chess }) {
         ? t('本服务器尚未部署该干员的皮肤，当前使用默认外观。') : t('该干员暂无可用皮肤，当前使用默认外观。')}</p>` : null}
     <div class="lo-skins" role="radiogroup" aria-label=${t('选择皮肤')}>
       <button type="button" role="radio" aria-checked=${chosen ? 'false' : 'true'} data-skin=""
-        class=${cx('lo-skin', 'lo-skin--default', !chosen && 'is-on')} onClick=${() => clearSkin(chessId)}>
+        class=${cx('lo-skin', 'lo-skin--default', !chosen && 'is-on')} title=${t('默认')} onClick=${() => clearSkin(chessId)}>
         <span class="lo-skin__art"><span class="lo-skin__art--none"></span></span>
         <span class="lo-skin__text"><b class="lo-skin__name">${t('默认')}</b><span class="lo-skin__group">DEFAULT</span></span>
       </button>
@@ -78,6 +78,7 @@ function EnabledSkinSection({ chess }) {
         const art = skinAvatar(charId, x.id);
         return html`<button key=${x.id} type="button" role="radio" aria-checked=${chosen === x.id ? 'true' : 'false'}
             data-skin=${x.id} class=${cx('lo-skin', chosen === x.id && 'is-on')}
+            title=${[x.name, x.group].filter(Boolean).join(' · ')}
             onClick=${() => setSkin(chessId, x.id)}>
           <span class="lo-skin__art">
             ${art ? html`<img src=${art} alt="" loading="lazy" referrerpolicy="no-referrer" />` : html`<span class="lo-skin__art--none"></span>`}

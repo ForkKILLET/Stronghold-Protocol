@@ -273,6 +273,9 @@ test('the achievement entry remains local-only and the original design keeps sha
   const sheet = read('public/css/screens/lobby.css');
   assert.match(sheet, /\.ach-top-area \{ grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(sheet, /\.ach-marks--list \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(4\.6rem, 1fr\)\)/);
+  const mobile = read('public/css/utility-mobile.css');
+  assert.match(mobile, /\.ach-marks--list \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(mobile, /\.ach-mark--row \{ min-width: 0; gap: \.1rem/);
   assert.match(sheet, /\.ach__box \{[^}]*width: min\(17\.4rem, calc\(100vw - 1\.1rem\)\)/);
   assert.match(css, /\.ach__box \{[^}]*--sa-l[^}]*--sp-vh/);
   const pending = AchievementView({ ready: false, s: achievementStats([]), local: {}, gd: {}, onClose() {} });

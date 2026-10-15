@@ -33,7 +33,8 @@ test('protocol selection keeps four real difficulties, round/stage descriptions 
     roomMode: 'match', difficulty: 'FUNNY', online: true, busy: null, onClose() {},
     onStart: () => started++, onDifficulty: (d) => { picked = d; } };
   const tree = ProtocolSelect(props);
-  assert.equal(tree.props.utility, true, 'existing modal owns focus trap, Escape and restoration');
+  assert.equal(tree.type, 'main', 'mode selection is a secondary page, not a modal');
+  assert.equal(tree.props.class, 'screen protocol-screen');
   const cards = [...walk(tree)].filter((v) => v.type === ProtoCard);
   assert.deepEqual(cards.map((v) => v.props.difficulty), ['FUNNY', 'NORMAL', 'HARD', 'ABYSS']);
   assert.equal(cards.every((v) => v.props.roomMode === 'match'), true);
@@ -156,7 +157,7 @@ test('battle/settlement decoration reads authoritative facts and does not invent
   assert.doesNotMatch(read('public/js/screens/settle.js'), /LevelStrip|levelProgress|accountApi|fetch\(|net\.request/);
 });
 
-test('new layout stays on existing grids, modal focus management and text scale; no hidden game controls', () => {
+test('new layout stays on existing grids and text scale; mode selection uses page layout, not modal styling', () => {
   for (const file of ['lobby', 'room', 'loadout', 'game', 'game-panels', 'result']) {
     const sheet = postcss.parse(read(`public/css/screens/${file}.css`));
     sheet.walkDecls('--t', () => assert.fail(`${file} must not redefine the text root`));
@@ -165,6 +166,7 @@ test('new layout stays on existing grids, modal focus management and text scale;
     });
   }
   assert.match(read('public/css/screens/room.css'), /\.room-screen \.rseat \{[^}]*width: 100%[^}]*min-height: 3\.5rem/);
-  assert.match(read('public/css/screens/lobby.css'), /\.utility-modal\.protocol-modal > \.modal__body/);
+  assert.match(read('public/css/screens/lobby.css'), /\.screen\.protocol-screen \{[^}]*height: calc\(var\(--sp-vh/);
+  assert.doesNotMatch(read('public/css/screens/lobby.css'), /protocol-modal/);
   assert.match(read('public/css/utility-mobile.css'), /\.lo--deck \.lo-top--deck \{[^}]*height: auto/);
 });
