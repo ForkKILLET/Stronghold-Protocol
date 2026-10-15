@@ -15,6 +15,7 @@
 
 import { resolveUvTable } from './atlas.js';
 import { parseObj } from './obj.js';
+import { artTransport } from '../../resourceNetwork.js';
 
 export const THREE_URL = '/vendor/three.module.js';
 
@@ -99,10 +100,10 @@ export async function boardArtListed(assets) {
 }
 
 async function fetchText(url) {
-  try { const r = await fetch(url, { cache: 'no-cache' }); return r.ok ? await r.text() : null; } catch { return null; }
+  try { return await (await artTransport.blob(url)).text(); } catch { return null; }
 }
 async function fetchJson(url) {
-  try { const r = await fetch(url, { cache: 'no-cache' }); return r.ok ? await r.json() : null; } catch { return null; }
+  try { return JSON.parse(await (await artTransport.blob(url)).text()); } catch { return null; }
 }
 
 /**
@@ -278,7 +279,7 @@ export function sceneGroupRects(chunks) {
 }
 
 async function fetchBuffer(url) {
-  try { const r = await fetch(url, { cache: 'no-cache' }); return r.ok ? await r.arrayBuffer() : null; } catch { return null; }
+  try { return await (await artTransport.blob(url)).arrayBuffer(); } catch { return null; }
 }
 
 const sceneCache = new Map();

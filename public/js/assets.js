@@ -48,6 +48,7 @@
 
 import { ASSETS_CDN, DATA_CDN } from './asset-cdn.js';
 import { rewriteAssetPaths, dataUrl } from '../../shared/cdn.js';
+import { ART_REQUEST_MS, installArtParsers, loadRuntimeImage, subscribeArtRecovery } from './resourceNetwork.js';
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const str = (v) => (typeof v === 'string' && v ? v : null);
@@ -589,6 +590,9 @@ export function localAssetUrl(m, group, name) {
 
 /** Default browser image loader. */
 export function loadImageElement(url) {
+  if (typeof Image !== 'undefined' && typeof fetch === 'function' && typeof URL.createObjectURL === 'function') {
+    return loadRuntimeImage(url);
+  }
   return new Promise((resolve, reject) => {
     if (typeof Image === 'undefined') { reject(new Error('no Image in this environment')); return; }
     const img = new Image();
@@ -600,19 +604,31 @@ export function loadImageElement(url) {
   });
 }
 
+const pendingSpines = new Map();
 /** Default Spine loader: PIXI.Assets.load(skel) → spineData (needs globalThis.PIXI + PIXI.spine). */
 export async function loadSpineData(entry, opts) {
   const PIXI = globalThis.PIXI;
   if (!PIXI || !PIXI.Assets || !PIXI.spine) throw new Error('PIXI / pixi-spine not loaded');
-  if (opts && opts.fresh) forgetPendingSpine(entry, opts.keep);
-  // A dual-format release retains the original .atlas/.png for old tabs. The
-  // skeleton bytes stay unchanged, while new manifests select a .webp.atlas.
-  const inferredAtlas = entry.skel.replace(/\.skel$/, '.atlas');
-  const res = await PIXI.Assets.load(entry.atlas && entry.atlas !== inferredAtlas
-    ? { src: entry.skel, data: { spineAtlasFile: entry.atlas } } : entry.skel);
-  const data = res && (res.spineData || res);
-  if (!data || !Array.isArray(data.animations)) throw new Error(`bad spine data: ${entry.skel}`);
-  return data;
+  // A resumed view must not abandon a healthy slow transfer and duplicate all
+  // of its skeleton/atlas/page requests.
+  if (pendingSpines.has(entry.skel)) return pendingSpines.get(entry.skel);
+  const pending = load().finally(() => {
+    if (pendingSpines.get(entry.skel) === pending) pendingSpines.delete(entry.skel);
+  });
+  pendingSpines.set(entry.skel, pending);
+  return pending;
+  async function load() {
+    installArtParsers(PIXI);
+    if (opts && opts.fresh) forgetPendingSpine(entry, opts.keep);
+    // A dual-format release retains the original .atlas/.png for old tabs. The
+    // skeleton bytes stay unchanged, while new manifests select a .webp.atlas.
+    const inferredAtlas = entry.skel.replace(/\.skel$/, '.atlas');
+    const res = await PIXI.Assets.load(entry.atlas && entry.atlas !== inferredAtlas
+      ? { src: entry.skel, data: { spineAtlasFile: entry.atlas } } : entry.skel);
+    const data = res && (res.spineData || res);
+    if (!data || !Array.isArray(data.animations)) throw new Error(`bad spine data: ${entry.skel}`);
+    return data;
+  }
 }
 
 /**
@@ -772,6 +788,7 @@ export function createAssets(options) {
   const localUrl = opts.localUrl || '/data/local-assets.json';
   let localPromise = isObj(opts.localManifest) ? Promise.resolve(opts.localManifest) : null;
   let localManifest = isObj(opts.localManifest) ? opts.localManifest : null;
+  let localLoading = false;
   const doFetch = opts.fetch || ((...a) => globalThis.fetch(...a));
   let manifest = isObj(opts.manifest) ? opts.manifest : null;
   let readyPromise = manifest ? Promise.resolve(manifest) : null;
@@ -785,6 +802,7 @@ export function createAssets(options) {
     clear: (t) => clearTimeout(t),
   };
   const listeners = new Set();
+  let offRecovery = null;
   let warned = false;
   let backoffN = 0;          // background tries used since the last success
   let backoffTimer = null;
@@ -868,8 +886,10 @@ export function createAssets(options) {
       return (opts.unloadSpine || unloadSpineData)(e, value, keep);
     },
     max: opts.spineMax ?? 60,
-    timeout: opts.spineTimeout ?? 20000,
-    concurrency: opts.spineConcurrency ?? 6,
+    // The real loader now owns per-request idle/absolute deadlines. Do not
+    // detach its Promise at 20 s while useful bytes are still arriving.
+    timeout: opts.spineTimeout ?? (opts.loadSpine ? ART_REQUEST_MS : 0),
+    concurrency: opts.spineConcurrency ?? 4,
     // memory budget (a parsed skeleton holds ~0.1–12 MB): idle skeletons beyond SPINE_IDLE_BYTES go, and all of
     // them once no scene has referenced or held any for SPINE_QUIET_DELAY_MS (lobby / room / result; a field view in
     // battle mode holds the cache — see the header), each after a grace that covers a prep ⇄ battle switch; evictions
@@ -889,21 +909,35 @@ export function createAssets(options) {
     const s = str(u);
     if (!s) return Promise.resolve(null);
     let e = images.get(s);
-    if (retry && e?.done && !e.value) { images.delete(s); e = null; }
+    if (e?.done && !e.value && (retry || Date.now() - e.failedAt >= 60000)) { images.delete(s); e = null; }
     if (!e) {
-      e = { value: null, done: false, promise: null };
+      e = { value: null, done: false, promise: null, failedAt: 0 };
       e.promise = Promise.resolve().then(() => loadImage(s)).then(
         (img) => { e.value = img; e.done = true; return img; },
-        () => { e.done = true; return null; },
+        () => { e.done = true; e.failedAt = Date.now(); return null; },
       );
       images.set(s, e);
     }
     return e.promise;
   }
 
+  let lastRecovery = -Infinity;
+  const recover = () => {
+    if (globalThis.document?.hidden || Date.now() - lastRecovery < 1000) return;
+    lastRecovery = Date.now();
+    for (const [url, entry] of images) {
+      if (!entry.done || entry.value) continue;
+      image(url, { retry: true }).then((value) => { if (value && listeners.size) notify('image'); });
+    }
+    if (!manifest) void ready();
+    if (!localManifest && !localLoading) { localPromise = null; void local(); }
+    notify('recover');
+  };
+
   /** Optional local-client art manifest (null when absent: every consumer falls back). Fetched once (or seeded). */
   function local() {
     if (!localPromise) {
+      localLoading = true;
       localPromise = (async () => {
         try {
           const res = await doFetch(localUrl, { cache: 'no-cache' });
@@ -912,7 +946,7 @@ export function createAssets(options) {
           if (!localManifest && isObj(json) && isObj(json.groups)) { localManifest = json; notify('local'); }
         } catch { /* optional art: absent */ }
         return localManifest;
-      })();
+      })().finally(() => { localLoading = false; });
     }
     return localPromise;
   }
@@ -938,7 +972,14 @@ export function createAssets(options) {
     onChange(fn) {
       if (typeof fn !== 'function') return () => {};
       listeners.add(fn);
-      return () => listeners.delete(fn);
+      if (listeners.size === 1) offRecovery = subscribeArtRecovery(recover);
+      return () => {
+        listeners.delete(fn);
+        if (!listeners.size) {
+          offRecovery?.();
+          offRecovery = null;
+        }
+      };
     },
     localUrl: (group, name) => localAssetUrl(localManifest, group, name),
     get manifest() { return manifest; },
@@ -986,7 +1027,8 @@ export function createAssets(options) {
      */
     spine: {
       acquire: (entry, o) => (validSpine(entry) ? spine.acquire(entry.skel, entry, o) : Promise.reject(new Error('no spine entry'))),
-      restart: (entry) => (validSpine(entry) ? spine.restart(entry.skel, entry) : false),
+      restart: (entry) => (validSpine(entry) && (opts.loadSpine || !pendingSpines.has(entry.skel))
+        ? spine.restart(entry.skel, entry) : false),
       release: (entry) => { if (entry && entry.skel) spine.release(entry.skel); },
       peek: (entry) => (entry && entry.skel ? spine.peek(entry.skel) : null),
       hold: () => spine.hold(),

@@ -150,7 +150,7 @@ const ICE_FRAME = 0x9fe6ff;
 /** How long a view waits for its avatar before showing the image-less placeholder diamond. */
 const PIC_WAIT_MS = 400;
 /**
- * Waits (ms, real time) before a view loads its Spine model again after the load failed or timed out (assets.js, 20 s)
+ * Waits (ms, real time) before a view loads its Spine model again after the load failed (assets.js owns network deadlines)
  * — bounded: after the last one the view keeps its diamond until `retryAssets` (a manifest that arrived late, the tab
  * shown again). Counted from the failure; a hidden tab runs no frames, so nothing is retried while hidden.
  */
@@ -697,7 +697,7 @@ export class UnitView {
   // the first frame it is actually visible: never for a unit whose Spine model is ready before that, and never as
   // an image-less placeholder that the avatar replaces a moment later (the placeholder only shows when the avatar
   // is missing or still loading after PIC_WAIT_MS).
-  _loadPicture() {
+  _loadPicture(retry = false) {
     const a = this.ctx.assets;
     // (an ICE_TOKENS unit takes no picture: the token fallback would be its owner's face — assets.js tokenAvatarUrl)
     // 皮肤 (docs/SKINS.md): an installed skin may ship its own avatar, so the fallback diamond asks for it too;
@@ -710,7 +710,7 @@ export class UnitView {
     if (cached) { this._pic.img = cached; this._pic.state = 'img'; return; }
     this._pic.state = 'wait';
     const pic = this._pic;
-    Promise.resolve().then(() => this.destroyed || this._pic !== pic ? null : a.image(url)).then((img) => {
+    Promise.resolve().then(() => this.destroyed || this._pic !== pic ? null : a.image(url, { retry })).then((img) => {
       if (img) { pic.img = img; pic.state = 'img'; } else pic.state = 'none';
     }, () => { pic.state = 'none'; });
   }
@@ -751,7 +751,7 @@ export class UnitView {
    */
   retryAssets() {
     if (this.destroyed) return;
-    if (!this._pic || this._pic.state === 'none') this._loadPicture();
+    if (!this._pic || this._pic.state === 'none') this._loadPicture(true);
     if (this.actor) return;
     if (!this._spineBusy) { this._retryAt = 0; this._loadSpine(true); return; }
     if (this._spineHidden && !this._stuckAt && !globalThis.document?.hidden) this._stuckAt = nowMs() + SPINE_STUCK_MS;

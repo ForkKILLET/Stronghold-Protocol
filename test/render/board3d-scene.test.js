@@ -273,7 +273,7 @@ describe('scene chunks (load.js)', () => {
     const store = { local: async () => ({ groups: {} }), localUrl: (g, n) => urls[`${g}|${n}`] || null, image: async (u) => { seen.push(u); return { width: 8, height: 8 }; } };
     const original = globalThis.fetch;
     let json = doc;
-    globalThis.fetch = async (u) => (u === '/s/scene.json' ? { ok: true, json: async () => json } : u === '/s/scene.bin' ? { ok: true, arrayBuffer: async () => bin } : { ok: false });
+    globalThis.fetch = async (u) => (u === '/s/scene.json' ? Response.json(json) : u === '/s/scene.bin' ? new Response(bin) : new Response(null, { status: 404 }));
     try {
       assert.equal(await sceneListed(store, 'act2autochess_m02'), true);
       assert.equal(await sceneListed(store, 'act2autochess_m01'), false);

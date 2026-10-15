@@ -370,8 +370,8 @@ describe('asset pack loader (fake store)', () => {
     const realFetch = globalThis.fetch;
     globalThis.fetch = async (u) => {
       const s = String(u);
-      if (s.endsWith('.obj')) return { ok: true, text: async () => 'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3' };
-      if (s.endsWith('prefab.json')) return { ok: true, json: async () => [{ name: 'Start_up', parent: 'Start', mesh: 'Start_up', materials: ['[opt]start_end_add'] }] };
+      if (s.endsWith('.obj')) return new Response('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3');
+      if (s.endsWith('prefab.json')) return Response.json([{ name: 'Start_up', parent: 'Start', mesh: 'Start_up', materials: ['[opt]start_end_add'] }]);
       return { ok: false, json: async () => null, text: async () => '' };
     };
     try {

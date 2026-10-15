@@ -154,6 +154,15 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   are consumed for the whole-package digest but not retained. This exception is only for server-indexed deployment packs.
   Manually imported/general ZIP files still receive the normal per-entry CRC, size and content-digest checks. Missing,
   invalid or mismatched transport packs fall back to the ordinary per-file fetch path.
+- **Weak-network runtime art recovery.** Battle-time images, Spine files and official board sidecars use a shared
+  request transport (`public/js/resourceNetwork.js`): identical URLs are coalesced, visible critical art is prioritized,
+  runtime transfers are limited to four (two on `2g`/`3g`), transient HTTP failures retry with 1/3/8/20-second
+  jittered backoff, and permanent 404s are not retried. A transfer must receive bytes within 30 seconds and finish
+  within 180 seconds; receiving bytes resets only the idle deadline. The response stream is consumed once and is then
+  decoded by the existing image/Pixi pipeline. A timeout aborts the old request before retrying, so it cannot duplicate
+  a still-hung download. Failed art remains a placeholder rather than blocking the battle; `online`/visible recovery
+  retries failed images and board packs, while a healthy pending Spine request remains shared. Preload and manual ZIP
+  integrity paths are not routed through this transport.
   Runtime writes record a URL only after Cache.put succeeds; their separate index cannot overwrite the preload/ZIP
   hash index. Shared runtime resource locks and exclusive download/clear/repair locks prevent cleanup races; runtime
   index updates are serialized separately. Runtime registrations are deduplicated and coalesced: each batch flushes

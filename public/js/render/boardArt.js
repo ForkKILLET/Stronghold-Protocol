@@ -10,6 +10,7 @@
 
 import { ASSETS_CDN } from '../asset-cdn.js';
 import { rewriteAssetPaths } from '../../../shared/cdn.js';
+import { artTransport } from '../resourceNetwork.js';
 
 let cached = null;
 
@@ -31,7 +32,7 @@ export function sourceUrl(assets, path) {
  */
 export function loadBoardArt(assets, { assetsCdn = ASSETS_CDN } = {}) {
   if (cached) return cached;
-  cached = (async () => {
+  const pending = cached = (async () => {
     if (!assets || typeof assets.local !== 'function' || typeof assets.image !== 'function') return null;
     const manifest = await assets.local().catch(() => null);
     if (!manifest) return null;
@@ -40,8 +41,7 @@ export function loadBoardArt(assets, { assetsCdn = ASSETS_CDN } = {}) {
     const dir = atlasUrl.replace(/\/[^/]*$/, '');
     let tiles = null;
     try {
-      const res = await fetch(`${dir}/tiles.json`, { cache: 'no-cache' });
-      tiles = res.ok ? await res.json() : null;
+      tiles = JSON.parse(await (await artTransport.blob(`${dir}/tiles.json`)).text());
     } catch { tiles = null; }
     if (!isObj(tiles) || !isObj(tiles.materials) || !isObj(tiles.source)) return null;
     // Share the 3D renderer's manifest-selected WebP instead of also downloading the crop table's PNG.
@@ -54,12 +54,15 @@ export function loadBoardArt(assets, { assetsCdn = ASSETS_CDN } = {}) {
     await Promise.all(Object.entries(tiles.source).map(async ([k, s]) => {
       const url = isObj(s) && typeof s.path === 'string' ? s.path : null;
       if (!url) return;
-      const img = await assets.image(url).catch(() => null);
+      const img = await assets.image(url, { retry: true }).catch(() => null);
       if (img && img.width > 0) images[k] = img;
     }));
     if (!images.D) return null;
     return { key: `${atlasUrl}#${tiles.version || 0}`, tiles, images };
-  })().catch(() => null);
+  })().catch(() => null).then((art) => {
+    if (!art && cached === pending) cached = null;
+    return art;
+  });
   return cached;
 }
 

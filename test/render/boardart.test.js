@@ -316,8 +316,8 @@ describe('board art CDN loading', () => {
       globalThis.fetch = async (url, options) => {
         requests.push(url);
         assert.equal(options.cache, 'no-cache');
-        return { ok: true, json: async () => ({ version: 1, materials: {},
-          source: Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, { path }])) }) };
+        return Response.json({ version: 1, materials: {},
+          source: Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, { path }])) });
       };
       const assets = createAssets({ assetsCdn, manifest: {},
         fetch: async () => ({ ok: true, json: async () => ({ groups: {
@@ -346,8 +346,8 @@ describe('board art CDN loading', () => {
       const images = [];
       globalThis.fetch = async url => {
         assert.equal(url, assetsCdn + dir + '/tiles.json');
-        return { ok: true, json: async () => ({ version: 2, materials: {},
-          source: Object.fromEntries(['D', 'common', 'BG'].map((key, i) => [key, { path: `${dir}/${names[i]}.png` }])) }) };
+        return Response.json({ version: 2, materials: {},
+          source: Object.fromEntries(['D', 'common', 'BG'].map((key, i) => [key, { path: `${dir}/${names[i]}.png` }])) });
       };
       const assets = createAssets({ assetsCdn, manifest: {},
         fetch: async () => ({ ok: true, json: async () => ({ groups: { 'map/autochess':
