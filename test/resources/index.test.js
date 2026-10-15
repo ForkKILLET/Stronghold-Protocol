@@ -48,18 +48,19 @@ test('all selected pack requests precede slow essential per-file fallback, inclu
     ...file, hash: createHash('sha1').update('b'.repeat(file.size)).digest('hex').slice(0, 12),
   }));
   const pack = { id: 'skins-1', tier: 2, size: 100, sha1: 'a'.repeat(40),
-    url: '/resource-packs/skins-1.zip', files: [files[1]] };
+    url: '/resource-packs/skins-1.zip', urls: ['https://mirror.example/data/skins-1.zip'], files: [files[1]] };
   const env = stubEnv({ manifest: { ...SKIN_MANIFEST, files, packs: [pack] } });
   t.after(env.restore);
   const fetcher = globalThis.fetch;
   const order = [];
   globalThis.fetch = async (url, options) => {
     order.push(url);
-    if (url === pack.url) return new Response(null, { status: 404 });
+    if (url === pack.url || url === pack.urls[0]) return new Response(null, { status: 404 });
     return fetcher(url, options);
   };
   const mod = await import('../../public/js/resources/index.js?packs-before-gaps');
   await mod.syncResources(true, false, 'cn', true);
+  assert.ok(order.indexOf(pack.urls[0]) < order.indexOf(pack.url));
   assert.ok(order.indexOf(pack.url) < order.indexOf(ORIGIN + files[0].url));
   assert.equal(mod.resourceState().selectionComplete, true);
   await mod.syncResources(false);

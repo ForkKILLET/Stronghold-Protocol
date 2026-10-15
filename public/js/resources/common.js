@@ -1,5 +1,6 @@
 import { N_ } from '../../../shared/i18n.js';
 import { canonicalResourceUrl, isBoardResourceJson } from '../../../shared/resourcePaths.js';
+import { isResourcePackUrl } from '../../../shared/resourcePackRoutes.js';
 // public/js/resources/common.js — shared pieces of the optional asset preload (docs/ASSETS.md「Preload」).
 //
 // No DOM and no Preact: the page (store.js / index.js), the Service Worker (service.js) and the Node tests all import
@@ -237,8 +238,8 @@ export function validateResourcePacks(doc) {
     if (!pack || typeof pack.id !== 'string' || typeof pack.url !== 'string') return false;
     let parsed;
     try { parsed = new URL(pack.url, globalThis.location?.origin || 'https://resources.invalid'); } catch { return false; }
-    if (!['http:', 'https:'].includes(parsed.protocol)
-      || !/^\/resource-packs\/[A-Za-z0-9._-]+\.zip$/.test(parsed.pathname)
+    if (!isResourcePackUrl(pack.url)
+      || !/\/resource-packs\/[A-Za-z0-9._-]+\.zip$/.test(parsed.pathname)
       || parsed.username || parsed.password || parsed.search || parsed.hash
       || !Number.isSafeInteger(pack.size) || pack.size <= 0 || pack.size > RESOURCE_PACK_MAX_BYTES
       || !Array.isArray(pack.files) || pack.files.length === 0) return false;

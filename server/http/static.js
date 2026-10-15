@@ -23,6 +23,7 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { rewriteAssetPaths } from '../../shared/cdn.js';
 import { createResourceIndex, RESOURCE_MANIFEST_FILE, RESOURCE_PACK_MANIFEST_FILE } from '../resources.js';
+import { routeResourcePacks } from '../../shared/resourcePackRoutes.js';
 import path from 'node:path';
 import { MEDIA_PREFIX } from '../../shared/media.js';
 import { ROOT, noopLog } from './config.js';
@@ -58,13 +59,13 @@ const EMPTY_LOCAL_ART = Buffer.from(JSON.stringify({ version: 1, source: 'none',
  *   packs: the server pack registry; runtime CDN and Vite behavior remain branch-owned.
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, rawPath: string, query: string) => Promise<void>}
  */
-export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), packs = null, log = noopLog, cdnBase = '', dataCdnBase = '', clientBuild = true }) {
+export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), packs = null, log = noopLog, cdnBase = '', dataCdnBase = '', resourcePackRoutes = [], clientBuild = true }) {
   const registry = packs || createPackRegistry({ publicDir, dataDir, packsDir }, { log: /** @type {any} */ (log) });
   const cdn = typeof cdnBase === 'string' ? cdnBase : '';
   const builtIndex = path.join(publicDir, 'build', 'index.html');
   const useBuiltClient = clientBuild && fs.existsSync(builtIndex);
   // the preload manifest (docs/ASSETS.md「Preload」): built on first request, cached until the manifests change
-  const resources = createResourceIndex({ dataDir, publicDir, cdnBase: cdn, rewrite: (v) => (cdn ? rewriteAssetPaths(v, cdn) : v), log });
+  const resources = createResourceIndex({ dataDir, publicDir, cdnBase: cdn, resourcePackRoutes, rewrite: (v) => (cdn ? rewriteAssetPaths(v, cdn) : v), log });
   /** @type {Map<string, { mtimeMs: number, size: number, body: Buffer }>} rewritten manifests (per file path) */
   const cdnCache = new Map();
   const mounts = [
@@ -133,7 +134,11 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
     if (decoded.toLowerCase() === `/data/${RESOURCE_PACK_MANIFEST_FILE}`) {
       const file = path.join(dataDir, RESOURCE_PACK_MANIFEST_FILE);
       try {
-        const body = await fsp.readFile(file);
+        const doc = JSON.parse(await fsp.readFile(file, 'utf8'));
+        if (doc.format === 'stronghold-resource-pack-index' && doc.version === 1) {
+          doc.packs = routeResourcePacks(doc.packs, cdn, resourcePackRoutes);
+        }
+        const body = Buffer.from(JSON.stringify(doc));
         const st = await fsp.stat(file);
         const etag = `"resource-packs-${createHash('sha256').update(body).digest('hex')}"`;
         const headers = { 'Content-Type': MIME['.json'], 'Cache-Control': 'no-cache', ETag: etag,

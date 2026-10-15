@@ -21,6 +21,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { canonicalResourceUrl, isBoardResourceJson } from '../shared/resourcePaths.js';
+import { routeResourcePacks } from '../shared/resourcePackRoutes.js';
 
 export const RESOURCE_MANIFEST_FILE = 'resource-manifest.json';
 export const RESOURCE_PACK_MANIFEST_FILE = 'resource-packs.json';
@@ -255,11 +256,11 @@ export function localPathFor(url, publicDir, cdnBase = '') {
 
 /**
  * The served resource manifest, built from the data directory and cached until one of its sources changes.
- * @param {{ dataDir: string, publicDir: string, cdnBase?: string, rewrite?: (v: any) => any,
+ * @param {{ dataDir: string, publicDir: string, cdnBase?: string, resourcePackRoutes?: string[], rewrite?: (v: any) => any,
  *           statFile?: (p: string) => Promise<{ isFile(): boolean, size: number, mtimeMs: number }>,
  *           readFile?: typeof fsp.readFile, log?: any }} opts
  */
-export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite = (v) => v,
+export function createResourceIndex({ dataDir, publicDir, cdnBase = '', resourcePackRoutes = [], rewrite = (v) => v,
   statFile = (p) => fsp.stat(p), readFile = fsp.readFile, log = null } = {}) {
   /** @type {{ key: string, sourceKey: string, tileFiles: { url: string }[], body: Buffer, gzip: Buffer,
    *   etag: string, mtimeMs: number, manifest: any } | null} */
@@ -362,20 +363,7 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', rewrite 
     const manifest = buildResourceManifest({ files, sizes: await measure(files), version, hashes: fileHashes });
     const packs = packsDoc?.doc;
     if (packs && packs.format === 'stronghold-resource-pack-index' && packs.version === 1) {
-      const base = String(cdnBase || '').replace(/\/+$/, '');
-      manifest.packs = (packs.packs || []).map((pack) => ({
-        ...pack,
-        url: base && typeof pack.url === 'string' && pack.url.startsWith('/')
-          ? `${base}${pack.url}` : pack.url,
-        files: Array.isArray(pack.files) ? pack.files.map((file) => ({
-          ...file,
-          // The normal resource manifest keeps fonts same-origin; only
-          // /assets/ URLs are rewritten by rewriteAssetPaths. Keep pack file
-          // identities byte-for-byte aligned with that manifest.
-          url: base && typeof file.url === 'string' && file.url.startsWith('/assets/')
-            ? `${base}${file.url}` : file.url,
-        })) : pack.files,
-      }));
+      manifest.packs = routeResourcePacks(packs.packs, cdnBase, resourcePackRoutes);
     }
     const body = Buffer.from(JSON.stringify(manifest));
     // Hash the complete response (including tiers and sizes), so unchanged rebuilds/restarts keep their validator.

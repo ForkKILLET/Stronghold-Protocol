@@ -396,6 +396,7 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
 - 素材带内容指纹，可以放心设长缓存（`Cache-Control: public, max-age=31536000, immutable`）；`/fonts/` 与 `public/vendor/` 仍由游戏服务器自己提供。
 - 没设置该变量时行为完全不变（服务器照旧自己提供 `/assets/…`），设置后本地 `/assets/` 仍然可用，可随时回退。
 - 只想换目录名 / 走同源反代前缀也行：`SP_ASSETS_CDN=/cdn`。
+- ZIP 资源包可独立配置 `SP_RESOURCE_PACK_ROUTES`（有序 URL/目录模板 JSON 数组），自动逐条故障切换，当前素材 CDN 始终作为最后一条 ZIP 线路；配置、路径重写与 CORS 示例见 [RESOURCE_PACKS.md](RESOURCE_PACKS.md#zip-下载多线路与路径重写)。
 
 验证：`GET /metrics` 里 `assetsCdn` 会显示当前地址；浏览器网络面板里素材请求应指向 CDN。
 

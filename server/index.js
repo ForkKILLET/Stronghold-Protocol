@@ -43,6 +43,7 @@ import { getData, loadData } from './data.js';
 import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustProxy } from './http/config.js';
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
 import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
+import { parseResourcePackRoutes } from '../shared/resourcePackRoutes.js';
 import { createPackRegistry } from './packs.js';
 import { MIME, COMPRESSIBLE, acceptsGzip, pickEncoding, parseRange } from './http/files.js';
 import { BUILD_INPUTS, computeBuildTag, buildTag, resetBuildTag } from './http/buildTag.js';
@@ -68,7 +69,7 @@ export {
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
- *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string,
+ *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
  *   announcementsFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
  * }} [opts]
@@ -84,6 +85,7 @@ export async function startServer(opts = {}) {
   const { publicDir, dataDir, sharedDir, packsDir } = serveDirs(opts);
 
   const clientBuild = opts.clientBuild ?? !process.argv.includes('--source-client');
+  const resourcePackRoutes = parseResourcePackRoutes(opts.resourcePackRoutes ?? process.env.SP_RESOURCE_PACK_ROUTES);
   // assets CDN: a serving-time rewrite of the two manifests (docs/DEPLOY.md §3.2)
   const rawCdn = opts.assetsCdn != null ? opts.assetsCdn : (process.env.SP_ASSETS_CDN ?? process.env.ASSETS_CDN);
   const assetsCdn = parseAssetCdn(rawCdn);
@@ -168,7 +170,7 @@ export async function startServer(opts = {}) {
   // content packs (docs/PACKS.md): scanned now — the start log names them — and again whenever their folders change
   const packs = createPackRegistry({ publicDir, dataDir, packsDir }, { log });
   packs.refresh(true);
-  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, packsDir, packs, log, cdnBase: assetsCdn, dataCdnBase: dataCdn, clientBuild });
+  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, packsDir, packs, log, cdnBase: assetsCdn, dataCdnBase: dataCdn, resourcePackRoutes, clientBuild });
   const startedAt = Date.now();
   // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
   resetBuildTag();

@@ -8,6 +8,7 @@ import { validateResourcePacks, RESOURCE_PACK_MAX_BYTES, resourcePackPercent } f
 import { readTransportPack } from '../../public/js/resources/archive.js';
 import { Sha1Stream } from '../../public/js/resources/sha1Stream.js';
 import { CACHE_NAME, MANIFEST_URL } from '../../public/js/resources/common.js';
+import { fetchTransportPack } from '../../public/js/resources/transport.js';
 
 test('resource pack index validation accepts only 16 MB same-origin ZIP metadata', () => {
   const good = { format: 'stronghold-resource-pack-index', version: 1, maxBytes: RESOURCE_PACK_MAX_BYTES,
@@ -87,6 +88,34 @@ test('Python pack builder keeps every pack below 16 MB and records verified reso
   corrupted[corrupted.length - 1] ^= 1;
   await assert.rejects(() => readTransportPack(new Response(corrupted), index.packs[0]), /整包校验失败/);
 
+  await t.test('mirrors retry HTTP, network, stream and digest errors in order before CDN', async () => {
+    const pack = { ...index.packs[0], url: 'https://cdn.example/game/resource-packs/ui.zip',
+      urls: ['https://one.example/data/renamed.zip', 'https://two.example/data/ui.zip',
+        'https://three.example/data/ui.zip', 'https://four.example/data/ui.zip'] };
+    const calls = [];
+    const payload = await fetchTransportPack(pack, {
+      fetcher: async (url) => {
+        calls.push(url);
+        if (calls.length === 1) return new Response(null, { status: 503 });
+        if (calls.length === 2) throw new TypeError('network failed');
+        if (calls.length === 3) return new Response(new ReadableStream({ start(c) { c.error(new Error('stream failed')); } }));
+        return new Response(calls.length === 4 ? corrupted : zipBytes);
+      },
+    });
+    assert.deepEqual(calls, [...pack.urls, pack.url]);
+    assert.equal(payload.length, 2);
+    assert.deepEqual(Buffer.from(payload[0].bytes), body);
+  });
+
+  await t.test('successful first route skips later routes and keeps selected resource identities', async () => {
+    const calls = [];
+    const pack = { ...index.packs[0], urls: ['https://mirror.example/data/renamed.zip', 'https://other.example/a.zip'] };
+    const payload = await fetchTransportPack(pack, { selectedPaths: new Set(['/assets/ui/b.png']),
+      fetcher: async (url) => { calls.push(url); return new Response(zipBytes); } });
+    assert.deepEqual(calls, [pack.urls[0]]);
+    assert.deepEqual(payload.map(({ row }) => row.url), ['/assets/ui/b.png']);
+  });
+
   await t.test('controller overlaps two ZIP requests and continues downloading during cache writes', async (t) => {
     const saved = new Map(['fetch', 'caches', 'navigator', 'location', 'isSecureContext']
       .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
@@ -116,13 +145,19 @@ test('Python pack builder keeps every pack below 16 MB and records verified reso
         entries.set(typeof key === 'string' ? key : key.url, value.clone());
       },
     };
-    const packs = [1, 2, 3].map((n) => ({ ...index.packs[0], id: `ui-${n}`, url: `/resource-packs/ui-${n}.zip` }));
+    const mirrorRequests = [];
+    const packs = [1, 2, 3].map((n) => ({ ...index.packs[0], id: `ui-${n}`, url: `/resource-packs/ui-${n}.zip`,
+      urls: [`https://mirror.example/data/ui-${n}.zip`] }));
     for (const [key, value] of Object.entries({
       isSecureContext: true, location: { origin },
       caches: { open: async () => cache, keys: async () => [CACHE_NAME], delete: async () => true },
       navigator: { serviceWorker: { register: async () => ({}), getRegistrations: async () => [] } },
       fetch: async (url) => {
         if (url === MANIFEST_URL) return Response.json({ format: 1, version: 'packs', files: manifest.files, packs });
+        if (url.startsWith('https://mirror.example/')) {
+          mirrorRequests.push(url);
+          return new Response(null, { status: 503 });
+        }
         assert.match(url, /^\/resource-packs\//, 'no per-file fallback on a valid transport pack');
         if (++requests === 1) await secondRequest.promise;
         else if (requests === 2) secondRequest.resolve();
@@ -142,6 +177,7 @@ test('Python pack builder keeps every pack below 16 MB and records verified reso
     try {
       await controller.syncResources(true, false);
       assert.equal(requests, 3);
+      assert.equal(mirrorRequests.length, 3);
       assert.equal(controller.resourceState().selectionComplete, true);
       assert.ok(progress.some((p) => p.activeDownloads === 2));
       assert.ok(progress.some((p) => p.importing && p.activeDownloads > 0));

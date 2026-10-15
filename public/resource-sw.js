@@ -5,6 +5,7 @@
 // (`/assets/**`, `/fonts/**`, and the extension-less `/media/**` audio route the game asks audio through — site paths or
 // CDN URLs): code, game data, API calls and WebSocket upgrades pass straight through to the network, so a stale worker
 // can never serve a stale game.
+// ZIP mirror routing updates common.js validation; deploy this worker with the matching client modules.
 
 import { isResourcePath } from './js/resources/common.js';
 import { handleResourceRequest } from './js/resources/service.js';

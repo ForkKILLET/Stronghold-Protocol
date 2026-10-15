@@ -468,7 +468,7 @@ async function preloadTransportPacks(store, packs, tiers, signal, onProgress, in
   }
   if (!plans.length) return;
 
-  const { readTransportPack, resourcePath } = await import('./archive.js');
+  const [{ fetchTransportPack }, { resourcePath }] = await Promise.all([import('./transport.js'), import('./archive.js')]);
   const controller = new AbortController();
   const abort = () => controller.abort(signal.reason);
   if (signal.aborted) abort();
@@ -479,15 +479,16 @@ async function preloadTransportPacks(store, packs, tiers, signal, onProgress, in
   let importing = null;
   let lastSpeedAt = performance.now();
   let lastSpeedBytes = 0;
+  let transferredBytes = 0;
   let speedBytesPerSecond = 0;
   const publish = (status = null) => {
     const loaded = [...loadedByPack.values()].reduce((sum, value) => sum + value, 0);
     const now = performance.now();
     const elapsed = now - lastSpeedAt;
     if (elapsed >= 250) {
-      speedBytesPerSecond = Math.max(0, (loaded - lastSpeedBytes) * 1000 / elapsed);
+      speedBytesPerSecond = Math.max(0, (transferredBytes - lastSpeedBytes) * 1000 / elapsed);
       lastSpeedAt = now;
-      lastSpeedBytes = loaded;
+      lastSpeedBytes = transferredBytes;
     }
     onProgress?.({ phase: 'transport', status, progress: { downloadedBytes: loaded, totalBytes,
       speedBytesPerSecond, activeDownloads, importing } });
@@ -533,12 +534,13 @@ async function preloadTransportPacks(store, packs, tiers, signal, onProgress, in
       activeDownloads++;
       publish();
       try {
-        const response = await fetch(pack.url, { cache: 'no-store', signal: controller.signal });
-        if (!response.ok) throw new Error(`资源分包 HTTP ${response.status}`);
         const selectedPaths = new Set(candidates.map((file) => resourcePath(file.url)));
-        const payload = await readTransportPack(response, pack, { signal: controller.signal,
+        let previousLoaded = 0;
+        const payload = await fetchTransportPack(pack, { signal: controller.signal,
           selectedPaths,
           onProgress: (loaded) => {
+            transferredBytes += Math.max(0, loaded - previousLoaded);
+            previousLoaded = loaded;
             loadedByPack.set(pack.id, loaded);
             publish();
           } });
