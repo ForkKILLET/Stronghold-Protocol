@@ -242,9 +242,24 @@ export function validateResourcePacks(doc) {
       || parsed.username || parsed.password || parsed.search || parsed.hash
       || !Number.isSafeInteger(pack.size) || pack.size <= 0 || pack.size > RESOURCE_PACK_MAX_BYTES
       || !Array.isArray(pack.files) || pack.files.length === 0) return false;
-    return pack.files.every((file) => file && typeof file.url === 'string' && CONTENT_HASH_RE.test(file.hash)
-      && Number.isSafeInteger(file.size) && file.size >= 0);
+    return /^[0-9a-f]{40}$/.test(pack.sha1 || '')
+      && pack.files.every((file) => file && typeof file.url === 'string' && CONTENT_HASH_RE.test(file.hash)
+        && Number.isSafeInteger(file.size) && file.size >= 0);
   });
+}
+
+/** Progress of the active transport-pack download or its per-file import. */
+export function resourcePackPercent(progress) {
+  if (!progress) return 0;
+  if (Number.isFinite(progress.downloadedBytes) && Number.isFinite(progress.totalBytes)) {
+    if (progress.totalBytes <= 0) return 0;
+    return Math.max(0, Math.min(100, Math.floor(progress.downloadedBytes * 100 / progress.totalBytes)));
+  }
+  const downloading = progress.phase === 'download';
+  const value = downloading ? progress.loaded : progress.done;
+  const total = downloading ? progress.totalBytes : progress.totalFiles;
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.floor(value * 100 / total)));
 }
 
 /** Whether an error means "the browser is out of storage" (a quota failure must stop the run, not retry 4 000 times). */

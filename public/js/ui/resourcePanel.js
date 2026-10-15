@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Button, MicroLabel, Modal, ProgressBar } from './components.js';
 import { createStore, useStore } from '../store.js';
-import { formatBytes, PRELOAD_VOICE_LANGS } from '../resources/common.js';
+import { formatBytes, PRELOAD_VOICE_LANGS, resourcePackPercent } from '../resources/common.js';
 import { clearResources, exportResources, importResources, inspectResources, pauseResources,
   resourceState, startResources, subscribeResources } from '../resources/index.js';
 import { t, N_ } from '../../../shared/i18n.js';
@@ -86,7 +86,7 @@ export function ResourceLauncher({ enabled }) {
   </div>`;
 }
 
-function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, skins, onSkins, disabled }) {
+function ResourceTier({ st, tier, optional, onOptional, disabled }) {
   const groups = st.groups.filter((g) => g.tier === tier);
   const chosen = groups.filter((g) => g.selected !== false);
   const total = chosen.reduce((n, g) => n + g.wanted, 0);
@@ -101,19 +101,6 @@ function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, 
       ${tier === 2 ? html`<label class="resource-choice"><input type="checkbox" checked=${optional} disabled=${disabled}
         onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : html`<${MicroLabel}>REQUIRED<//>`}
     </header>
-    ${tier === 2 ? html`<fieldset class="resource-voice-choice" disabled=${disabled}>
-      <legend>${t('预载语音语言')}</legend>
-      <div class="resource-voice-choice__options" role="radiogroup" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
-        ${PRELOAD_VOICE_LANGS.map((lang) => html`<label class="resource-choice" key=${lang}>
-          <input type="radio" name="preload-voice-lang" value=${lang} checked=${voiceLang === lang}
-            onChange=${() => onVoiceLang(lang)} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
-      </div>
-      <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
-      ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
-    </fieldset>` : null}
-    ${tier === 2 ? html`<label class="resource-choice resource-skin-choice"><input type="checkbox" checked=${skins} disabled=${disabled}
-      onChange=${(e) => onSkins(e.currentTarget.checked)} />${t('预载皮肤')}</label>
-      <p class="resource-skin-hint">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p>` : null}
     <div class="resource-tier__summary"><span class="num">${t('{done} / {total} 个文件', { done, total })}</span>
       <span class="num">${unknown ? t('部分大小未知') : `${formatBytes(bytes)} / ${formatBytes(totalBytes)}`}</span></div>
     <${ProgressBar} value=${done} max=${Math.max(1, total)} size="sm" tone=${tier === 1 ? 'mint' : 'amber'} />
@@ -126,6 +113,24 @@ function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, 
         <span class="num">${group.unknownSize ? t('大小待确认') : formatBytes(group.totalBytes)}</span></li>`)}
     </ul>
   </section>`;
+}
+
+function ResourceOptions({ optional, voiceLang, onVoiceLang, skins, onSkins, disabled }) {
+  return html`<div class="resource-manager__options">
+    <fieldset class="resource-voice-choice" disabled=${disabled}>
+      <legend>${t('预载语音语言')}</legend>
+      <div class="resource-voice-choice__options" role="radiogroup" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
+        ${PRELOAD_VOICE_LANGS.map((lang) => html`<label class="resource-choice" key=${lang}>
+          <input type="radio" name="preload-voice-lang" value=${lang} checked=${voiceLang === lang}
+            onChange=${() => onVoiceLang(lang)} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
+      </div>
+      <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
+      ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
+    </fieldset>
+    <div class="resource-skin-options"><label class="resource-choice resource-skin-choice"><input type="checkbox" checked=${skins} disabled=${disabled}
+      onChange=${(e) => onSkins(e.currentTarget.checked)} />${t('预载皮肤')}</label>
+      <p class="resource-skin-hint">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p></div>
+  </div>`;
 }
 
 /** Mounted once in main.js, above all screens including the settings modal. */
@@ -164,12 +169,27 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
       <${Button} variant="secondary" onClick=${closeResources}>${t('关闭')}<//>`}>
     <div class="resource-manager">
       <p class="resource-manager__intro">${t('先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。')}</p>
+      <${ResourceOptions} optional=${optional} voiceLang=${voiceLang} onVoiceLang=${onVoiceLang} skins=${skins} onSkins=${onSkins} disabled=${archiveBusy} />
       <div class="resource-manager__tiers">
         <${ResourceTier} st=${st} tier=${1} />
-        <${ResourceTier} st=${st} tier=${2} optional=${optional} onOptional=${onOptional} voiceLang=${voiceLang} onVoiceLang=${onVoiceLang} skins=${skins} onSkins=${onSkins} disabled=${archiveBusy} />
+        <${ResourceTier} st=${st} tier=${2} optional=${optional} onOptional=${onOptional} disabled=${archiveBusy} />
       </div>
       <p class=${`resource-manager__status${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
         ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
+      ${st.packProgress ? html`<div class="resource-manager__pack-progress">
+        <${ProgressBar}
+          value=${resourcePackPercent(st.packProgress)} max=${100} size="sm" tone="mint"
+          label=${t('{0}资源包：{percent}%', { 0: t('正在下载'),
+            percent: resourcePackPercent(st.packProgress) })} />
+        <small>${t('下载速度：{0}/秒', { 0: formatBytes(st.packProgress.speedBytesPerSecond || 0) })}
+          ${st.packProgress.activeDownloads > 1 ? ` · ×${st.packProgress.activeDownloads}` : ''}</small>
+      </div>` : null}
+      ${st.packProgress?.importing ? html`<${ProgressBar}
+        value=${st.packProgress.importing.done} max=${Math.max(1, st.packProgress.importing.totalFiles)}
+        size="sm" tone="amber" label=${t('{0}资源包：{percent}%', {
+          0: t('正在导入'),
+          percent: st.packProgress.importing.totalFiles
+            ? Math.floor(st.packProgress.importing.done * 100 / st.packProgress.importing.totalFiles) : 0 })} />` : null}
       ${st.worker ? html`<p class="resource-manager__warn">${st.worker}</p>` : null}
       ${st.failed ? html`<p class="resource-manager__warn">${t('{failed} 个文件下载失败，继续下载时重试。', { failed: st.failed })}</p>` : null}
       ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}

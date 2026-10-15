@@ -40,6 +40,7 @@ const state = {
   archivePhase: '',
   archivePercent: 0,
   archiveGroup: '',
+  packProgress: null,
   optional: false,
   voiceLang: 'cn',
   skins: false,
@@ -332,7 +333,7 @@ function start(options = {}) {
 }
 
 async function startDownload(signal, { verifyCache = false, background = false } = {}) {
-  if (!background) set({ phase: 'checking', message: t('正在检查已保存的资源…'), error: false });
+  if (!background) set({ phase: 'checking', message: t('正在检查已保存的资源…'), error: false, packProgress: null });
   const checkStart = performance.now();
   const ctx = await resourceContext();
   const manifestReady = performance.now();
@@ -381,6 +382,15 @@ async function startDownload(signal, { verifyCache = false, background = false }
   // Downloads already obtain an authoritative missing set; don't add a second
   // full scan here on top of ResourceStore.download().
   const onProgress = (p) => {
+    if (p.phase === 'transport') {
+      set({ ...(p.status ? counters(p.status) : {}), packProgress: p.progress });
+      return;
+    }
+    if (p.phase === 'transport-done') {
+      set({ packProgress: null });
+      return;
+    }
+    set({ packProgress: null });
     // "整理" instead of "下载" when the files came out of an older cache: nothing is being fetched (store.js 的迁移).
     const message = p.adopted > 0 && p.downloaded === 0 ? t('正在整理已保存的资源（无需重新下载）…') : '';
     set({ ...counters(p), phase: 'download', failed: p.failed, error: false, message });
@@ -429,29 +439,169 @@ async function startDownload(signal, { verifyCache = false, background = false }
 /** Prefer a category pack for a first fill; small updates remain per-file incremental. */
 async function preloadTransportPacks(store, packs, tiers, signal, onProgress, includeFile = () => true) {
   if (!Array.isArray(packs) || !packs.length) return;
-  let status = await store.status({ verifyCache: false });
+  const status = await store.status({ verifyCache: false });
   const current = new Map(store.files.map((file) => [store.keyOf(file.url), file]));
+  const plans = [];
   for (const pack of packs) {
     checkAbort(signal);
     if (!tiers.includes(pack.tier)) continue;
-    const candidates = pack.files.map((entry) => current.get(store.keyOf(entry.url)))
-      .filter((file) => file && file.tier === pack.tier && includeFile(file));
+    const candidates = pack.files.map((entry) => ({ entry, file: current.get(store.keyOf(entry.url)) }))
+      .filter(({ entry, file }) => file && file.hash === entry.hash
+        && (file.size == null || file.size === entry.size) && file.tier === pack.tier && includeFile(file))
+      .map(({ file }) => file);
     const selectedBytes = candidates.reduce((sum, file) => sum + (file.size || 0), 0);
     const missingBytes = candidates.reduce((sum, file) => status.present.has(store.keyOf(file.url)) ? sum : sum + (file.size || 0), 0);
     if (!selectedBytes || missingBytes < selectedBytes * 0.25) continue;
-    try {
-      const response = await fetch(pack.url, { cache: 'no-store', signal });
-      if (!response.ok) throw new Error(`资源分包 HTTP ${response.status}`);
-      const { importResourceZip } = await import('./archive.js');
-      const outcome = await importResourceZip(store, await response.blob(), { signal,
-        onProgress: (progress) => onProgress?.({ ...progress, phase: 'pack', current: pack.id }) });
-      status = await store.status({ verifyCache: false });
-      if (outcome.imported) console.info('[resources] transport pack imported', { id: pack.id, imported: outcome.imported });
-    } catch (error) {
-      if (error?.name === 'AbortError') throw error;
-      console.warn('[resources] transport pack unavailable; falling back to file downloads', pack.id, error);
-    }
+    plans.push({ pack, candidates });
   }
+  if (!plans.length) return;
+
+  const { readTransportPack, resourcePath } = await import('./archive.js');
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal.reason);
+  if (signal.aborted) abort();
+  else signal.addEventListener('abort', abort, { once: true });
+  const loadedByPack = new Map(plans.map(({ pack }) => [pack.id, 0]));
+  const totalBytes = plans.reduce((sum, { pack }) => sum + pack.size, 0);
+  let activeDownloads = 0;
+  let importing = null;
+  let lastSpeedAt = performance.now();
+  let lastSpeedBytes = 0;
+  let speedBytesPerSecond = 0;
+  const publish = (status = null) => {
+    const loaded = [...loadedByPack.values()].reduce((sum, value) => sum + value, 0);
+    const now = performance.now();
+    const elapsed = now - lastSpeedAt;
+    if (elapsed >= 250) {
+      speedBytesPerSecond = Math.max(0, (loaded - lastSpeedBytes) * 1000 / elapsed);
+      lastSpeedAt = now;
+      lastSpeedBytes = loaded;
+    }
+    onProgress?.({ phase: 'transport', status, progress: { downloadedBytes: loaded, totalBytes,
+      speedBytesPerSecond, activeDownloads, importing } });
+  };
+  publish();
+
+  // A one-package handoff keeps extracted payload memory bounded while allowing
+  // the next ZIP request/parser to run alongside the current cache import.
+  const ready = new AsyncQueue(0);
+  const consumer = (async () => {
+    for await (const result of ready) {
+      checkAbort(controller.signal);
+      const total = result.entries.length;
+      let done = 0;
+      importing = { id: result.pack.id, done, totalFiles: total };
+      publish();
+      const outcome = await store.importTransportPack(result.entries, { signal: controller.signal,
+        onProgress: (progress) => {
+          done = progress.done;
+          importing = { id: result.pack.id, done, totalFiles: total };
+          publish();
+        } });
+      if (outcome.imported) console.info('[resources] transport pack imported', { id: result.pack.id, imported: outcome.imported });
+      importing = null;
+      publish(await store.status({ verifyCache: false }));
+    }
+  })().catch((error) => {
+    controller.abort(error);
+    ready.close(error);
+    throw error;
+  });
+  // Attach a rejection handler immediately: a quota failure may precede the
+  // producer Promise.all settling while fetches are still being aborted.
+  void consumer.catch(() => {});
+
+  let nextPlan = 0;
+  const worker = async () => {
+    while (true) {
+      checkAbort(controller.signal);
+      const plan = plans[nextPlan++];
+      if (!plan) return;
+      const { pack, candidates } = plan;
+      activeDownloads++;
+      publish();
+      try {
+        const response = await fetch(pack.url, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error(`资源分包 HTTP ${response.status}`);
+        const selectedPaths = new Set(candidates.map((file) => resourcePath(file.url)));
+        const payload = await readTransportPack(response, pack, { signal: controller.signal,
+          selectedPaths,
+          onProgress: (loaded) => {
+            loadedByPack.set(pack.id, loaded);
+            publish();
+          } });
+        const selected = new Map(candidates.map((file) => [store.keyOf(file.url), file]));
+        const entries = payload.map(({ row, bytes }) => ({ file: selected.get(store.keyOf(row.url)), bytes }))
+          .filter((entry) => entry.file);
+        await ready.push({ pack, entries });
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        console.warn('[resources] transport pack unavailable; falling back to file downloads', pack.id, error);
+      } finally {
+        activeDownloads--;
+        publish();
+      }
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(2, plans.length) }, () => worker());
+  try {
+    await Promise.all(workers);
+    ready.close();
+    await consumer;
+  } catch (error) {
+    controller.abort(error);
+    ready.close(error);
+    await Promise.allSettled(workers);
+    await consumer.catch(() => {});
+    throw error;
+  } finally {
+    signal.removeEventListener('abort', abort);
+    onProgress?.({ phase: 'transport-done' });
+  }
+}
+
+class AsyncQueue {
+  constructor(capacity = 1) {
+    this.capacity = capacity;
+    this.items = [];
+    this.readers = [];
+    this.writers = [];
+    this.closed = false;
+    this.error = null;
+  }
+  push(value) {
+    if (this.closed) return Promise.reject(this.error || new Error('资源分包导入队列已关闭'));
+    if (this.readers.length) { this.readers.shift()({ value, done: false }); return Promise.resolve(); }
+    if (this.items.length < this.capacity) { this.items.push(value); return Promise.resolve(); }
+    return new Promise((resolve, reject) => this.writers.push({ value, resolve, reject }));
+  }
+  next() {
+    if (this.items.length) {
+      const value = this.items.shift();
+      const writer = this.writers.shift();
+      if (writer) { this.items.push(writer.value); writer.resolve(); }
+      return Promise.resolve({ value, done: false });
+    }
+    if (this.writers.length) {
+      const writer = this.writers.shift();
+      writer.resolve();
+      return Promise.resolve({ value: writer.value, done: false });
+    }
+    if (this.error) return Promise.reject(this.error);
+    if (this.closed) return Promise.resolve({ value: undefined, done: true });
+    return new Promise((resolve) => this.readers.push(resolve));
+  }
+  close(error = null) {
+    if (this.closed) return;
+    this.closed = true;
+    this.error = error;
+    for (const writer of this.writers.splice(0)) writer.reject(error || new Error('资源分包导入队列已关闭'));
+    for (const reader of this.readers.splice(0)) error
+      ? reader(Promise.reject(error))
+      : reader({ value: undefined, done: true });
+  }
+  [Symbol.asyncIterator]() { return this; }
 }
 
 /** Stop downloading (keeps what is cached). */

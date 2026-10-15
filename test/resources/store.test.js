@@ -580,6 +580,22 @@ describe('ResourceStore', () => {
     assert.equal(calls.length, 1);
     assert.equal(res.count, 1);
   });
+
+  test('a transport pack imports package-authenticated bytes and commits the manifest index without per-file hashing', async () => {
+    const bytes = new TextEncoder().encode('package authenticated image');
+    const f = { url: '/assets/pack/a.png', tier: 1, size: bytes.byteLength, hash: await digest('package authenticated image') };
+    const caches = new MemoryCaches();
+    const s = store(manifest([f]), { caches });
+    const progress = [];
+    const result = await s.importTransportPack([{ file: s.files[0], bytes }], { onProgress: (p) => progress.push(p) });
+    assert.equal(result.imported, 1);
+    assert.deepEqual(progress.map((p) => [p.done, p.total]), [[0, 1], [1, 1]]);
+    const cache = await caches.open(CACHE_NAME);
+    assert.equal(await (await cache.match(`${ORIGIN}${f.url}`)).text(), 'package authenticated image');
+    const index = await (await cache.match(indexUrl(ORIGIN))).json();
+    assert.equal(index.files[`${ORIGIN}${f.url}`], f.hash);
+    assert.equal((await s.importTransportPack([{ file: s.files[0], bytes }])).imported, 0);
+  });
 });
 
 describe('the Service Worker handler', () => {

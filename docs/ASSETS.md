@@ -145,6 +145,15 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   to the download's real-cache inspection rather than assuming completeness. No startup/check path hashes or reads
   asset bodies. Full scans read cache keys and both metadata indexes in parallel; only in-flight checks of the same
   mode are coalesced, with independent status snapshots. Active runs publish their counters to the manager.
+- Deployment-generated transport packs (`data/resource-packs.json` plus `public/resource-packs/`) are an optional first-fill
+  optimization. At most two ZIP requests run concurrently. The browser parses stored entries from each response stream as
+  bytes arrive, shows aggregate download progress/speed plus cache-import progress, and lets the next package download
+  overlap the preceding package's cache import. It authenticates the complete ZIP once against the pack index's full
+  SHA-1, then checks the embedded manifest and each selected entry's URL, size and hash metadata against the index/current
+  resource manifest. Trusted transport-pack payloads are not rehashed or CRC-checked per file; unselected payload bytes
+  are consumed for the whole-package digest but not retained. This exception is only for server-indexed deployment packs.
+  Manually imported/general ZIP files still receive the normal per-entry CRC, size and content-digest checks. Missing,
+  invalid or mismatched transport packs fall back to the ordinary per-file fetch path.
   Runtime writes record a URL only after Cache.put succeeds; their separate index cannot overwrite the preload/ZIP
   hash index. Shared runtime resource locks and exclusive download/clear/repair locks prevent cleanup races; runtime
   index updates are serialized separately. Runtime registrations are deduplicated and coalesced: each batch flushes

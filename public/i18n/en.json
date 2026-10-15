@@ -1129,6 +1129,8 @@
   "正在暂停…": "Pausing…",
   "正在准备校验资源包…": "Preparing to validate the resource package…",
   "正在准备导出资源包…": "Preparing to export the resource package…",
+  "正在下载": "Downloading",
+  "下载速度：{0}/秒": "Download speed: {0}/s",
   "{0}资源包：{percent}%": "{0} resource package: {percent}%",
   "正在导出": "Exporting",
   "正在校验": "Validating",

@@ -14,7 +14,7 @@
 
 .modal__titles { display: flex; flex-direction: column; gap: .04rem; min-width: 0; }
 .utility-modal { width: var(--utility-width, min(6.4rem, 94vw)); max-width: 100%; min-height: 0; }
-.utility-modal.resource-modal { width: min(10.4rem, calc(100vw - .4rem)); }
+.utility-modal.resource-modal { width: min(9.6rem, calc(100vw - .4rem)); }
 .utility-modal .modal__head { flex: none; flex-direction: row; align-items: center; justify-content: space-between; }
 .utility-modal .modal__title { overflow-wrap: anywhere; }
 .utility-modal .modal__body {
@@ -55,7 +55,7 @@
     max-height: calc(min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px);
     font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px);
   }
-  .modal--utility .resource-modal { width: min(17rem, 100%); }
+  .modal--utility .resource-modal { width: min(9.6rem, 100%); }
   .modal--utility .settings-modal { width: min(14rem, 100%); }
   .modal--utility .minfo-dlg { width: min(17rem, 100%); }
   .modal--utility .console-modal { width: min(14rem, 100%); }
@@ -81,11 +81,11 @@
 
   /* Resources: both tiers fit side by side on landscape phones; real narrow widths stack.
      Category names, counts, archive checks and the current import group stay visible. */
-  .resource-manager { gap: 8px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .resource-manager { gap: 6px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
   .resource-manager p { line-height: 1.45; }
   .resource-manager__intro, .resource-manager__maintenance { color: var(--text-lo); }
   .resource-manager__tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
-  .resource-tier, .resource-archive { padding: 8px; min-width: 0; }
+  .resource-tier, .resource-archive { padding: 6px; min-width: 0; }
   .resource-tier h3, .resource-archive h3 { font-size: max(calc(.19 * var(--utility-text, var(--t))), 13px); }
   .resource-tier__head { gap: 6px; flex-wrap: wrap; }
   .resource-tier__head p, .resource-archive p, .resource-voice-choice p,
@@ -104,6 +104,8 @@
   .resource-tier__list .num { white-space: nowrap; }
   .resource-tier__list small { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
   .resource-manager__status { padding: 6px; }
+  .resource-manager__pack-progress { gap: 5px; }
+  .resource-manager__pack-progress small { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
   .resource-archive .res-actions, .resource-archive .pbar { margin-top: 6px; }
   .resource-modal .res-link { min-height: 28px; font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
   .resource-modal .pbar__meta { flex-wrap: wrap; gap: 2px 6px; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
@@ -182,9 +184,9 @@
     width: .75rem; height: .75rem; min-width: .75rem; min-height: .75rem; padding: 0;
   }
 
-  .resource-manager { gap: .2rem; font-size: calc(.16 * var(--t)); }
-  .resource-manager__tiers { gap: .2rem; }
-  .resource-tier, .resource-archive { padding: .2rem; }
+  .resource-manager { gap: .12rem; font-size: calc(.16 * var(--t)); }
+  .resource-manager__tiers { gap: .12rem; }
+  .resource-tier, .resource-archive { padding: .14rem; }
   .resource-tier h3, .resource-archive h3 { font-size: calc(.19 * var(--t)); }
   .resource-tier__head { gap: .15rem; }
   .resource-tier__head p, .resource-archive p, .resource-voice-choice p,
@@ -197,9 +199,9 @@
   .resource-choice input { width: .35rem; height: .35rem; }
   .resource-voice-choice { margin-top: .15rem; padding: .1rem .15rem; }
   .resource-voice-choice__options { gap: .05rem .15rem; }
-  .resource-tier__summary { margin: .15rem 0 .1rem; gap: .075rem; }
-  .resource-tier__list { margin-top: .1rem; }
-  .resource-tier__list li { gap: .125rem; padding: .1rem 0; }
+  .resource-tier__summary { margin: .1rem 0 .06rem; gap: .05rem; }
+  .resource-tier__list { margin-top: .075rem; }
+  .resource-tier__list li { gap: .08rem; padding: .07rem 0; }
   .resource-tier__list small { font-size: calc(.12 * var(--t)); }
   .resource-manager__status { padding: .15rem; }
   .resource-archive .res-actions, .resource-archive .pbar { margin-top: .15rem; }
@@ -487,6 +489,7 @@
 }
 
 @media (max-width: 560px) {
+  .resource-manager__options { grid-template-columns: minmax(0, 1fr); }
   .resource-manager__tiers { grid-template-columns: minmax(0, 1fr); }
   .lobby-screen .lobby-body { grid-template-columns: minmax(0, 1fr); }
   .room-screen .seats { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-y: auto; align-content: start; }

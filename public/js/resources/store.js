@@ -232,6 +232,54 @@ export class ResourceStore {
     return { ...await this.status(), imported, timings: report };
   }
 
+  /** Commit files from a transport ZIP after its trusted, whole-package SHA-1 has passed. */
+  async importTransportPack(entries, { signal, onProgress } = {}) {
+    checkAbort(signal);
+    if (!Array.isArray(entries)) throw new Error('资源分包条目无效');
+    const allowed = new Set(this.files);
+    const cache = await this.caches.open(this.cacheName);
+    const index = await this.#readIndex(cache);
+    let imported = 0;
+    let processed = 0;
+    let changed = false;
+    const total = entries.length;
+    onProgress?.({ done: 0, total });
+    let failure;
+    try {
+      for (const { file, bytes } of entries) {
+        checkAbort(signal);
+        if (!allowed.has(file) || !this.eligible(file) || !CONTENT_HASH_RE.test(file.hash || '')
+          || !(bytes instanceof Uint8Array) || bytes.byteLength > MAX_FILE_BYTES
+          || (file.size != null && bytes.byteLength !== file.size)) {
+          throw new Error(`资源分包目标或大小无效：${file?.url || ''}`);
+        }
+        const key = this.keyOf(file.url);
+        // An exact, previously verified manifest fingerprint is sufficient; runtime-only
+        // cache entries are replaced because their bytes have not passed this package proof.
+        const cached = index.files[key] === file.hash ? await cache.match(key) : null;
+        if (!cached) {
+          const response = new Response(bytes, { headers: {
+            'Content-Type': resourceType(file.url), 'Content-Length': String(bytes.byteLength),
+          } });
+          await cache.put(key, this.storable(response));
+          index.files[key] = file.hash;
+          imported++;
+          changed = true;
+        }
+        onProgress?.({ done: ++processed, total });
+      }
+    } catch (error) { failure = error; }
+    // Even on quota failure or cancellation, index every Cache.put which has
+    // already succeeded before releasing the shared resource download lock.
+    if (changed || index.manifest !== this.manifest.version) {
+      try { await this.#writeIndex(cache, index.files, this.manifest.version); }
+      catch (error) { failure ||= error; }
+    }
+    this.statusPromise = null;
+    if (failure) throw failure;
+    return { ...await this.status({ verifyCache: false }), imported };
+  }
+
   /**
    * The hashes of what this cache holds: `<absolute url>` → hash. A missing or unreadable index means "nothing is
    * verified", i.e. every entry is fetched again — what the first run of this version and a cleared cache need.

@@ -103,8 +103,12 @@ test('compact utility controls have real hit boxes instead of overlapping 44px p
 test('resource tiers stay in two columns on landscape phones and stack only at genuinely narrow widths', () => {
   assert.equal(declaration('.resource-manager__tiers', 'grid-template-columns', MOBILE), 'repeat(2, minmax(0, 1fr))');
   assert.equal(declaration('.resource-manager__tiers', 'grid-template-columns', '(max-width: 560px)'), 'minmax(0, 1fr)');
-  assert.equal(declaration('.resource-tier__list li', 'padding', MOBILE), '.1rem 0');
+  assert.equal(declaration('.resource-tier__list li', 'padding', MOBILE), '.07rem 0');
+  assert.equal(declaration('.utility-modal.resource-modal', 'width'), 'min(9.6rem, calc(100vw - .4rem))');
+  assert.equal(declaration('.resource-manager', 'gap', MOBILE), '.12rem');
+  assert.match(read('public/css/components.css'), /\.resource-tier__summary \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto/);
   assert.match(read('public/js/ui/resourcePanel.js'), /group\.present.*group\.wanted/s, 'category progress/counts retained');
+  assert.match(read('public/js/ui/resourcePanel.js'), /packProgress\.speedBytesPerSecond/, 'ZIP transport speed is visible');
   assert.match(read('public/js/ui/resourcePanel.js'), /archiveGroup === group\.id/, 'current import category retained');
 });
 
