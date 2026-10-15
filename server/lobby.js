@@ -1,4 +1,5 @@
 import { freezeSkins } from '../shared/skins.js';
+import { cleanPlayerCard, isCardOperatorId } from '../shared/playerCard.js';
 // server/lobby.js — rooms, seats, host, AI seats, ready/start, reconnect, and room → Match wiring
 // (DESIGN §2, §6.1 LOBBY, §8.1). Implements the handler interface consumed by server/net.js.
 //
@@ -143,6 +144,7 @@ const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 /**
  * @typedef {{ seat: number, playerId: string, name: string, isBot: boolean, ready: boolean,
  *             connected: boolean, left: boolean, loadout?: Record<string, { skill: number, module: string|null }> | null,
+ *             card?: { charId: string, avatar: string } | null,
  *             ops?: Readonly<Record<string, { potential: number, cultivate: number }>> | null,
  *             notOwned?: readonly string[] | null, diy?: Readonly<Record<string, DiyLoadout>> | null }} Seat
  * @typedef {{ charId: string, skillIndex: number, uniEquipId: string|null }} DiyLoadout
@@ -248,7 +250,8 @@ export class Room {
       matching: this.matching ? { ...this.matching } : null,
       consoleEnabled: !!this.consoleEnabled,
       seats: this.seats.map((s) => (s
-        ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left }
+        ? { seat: s.seat, playerId: s.playerId, name: s.name, isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
+          ...(!s.isBot && s.card ? { card: s.card } : {}) }
         : null)),
       spectators: this.spectators.map((s) => ({ playerId: s.playerId, name: s.name, connected: s.connected })),
     };
@@ -441,6 +444,7 @@ export class Lobby {
       case 'room.cancelReroll': return this.rerollSetup(session, msg, true);
       case 'room.loadout': return this.loadout(session, msg);
       case 'room.skins': return this.skins(session, msg);
+      case 'room.card': return this.card(session, msg);
       case 'match.join': return this.matchJoin(session, msg);
       case 'match.leave': return this.matchLeave(session);
       case 'room.ownership': return this.ownership(session, msg);
@@ -554,6 +558,7 @@ export class Lobby {
           connected: false,
           left,
           skins: isBot ? null : (session?.skins || s.skins || null),
+          card: isBot || !(session?.card ?? s.card) ? null : cleanPlayerCard(session?.card ?? s.card, (id) => opsCharIds(this.safeData()).has(id)),
           loadout: isBot ? null : (session?.loadout || (s.loadout && typeof s.loadout === 'object' ? s.loadout : null)),
           ops: isBot ? null : session?.ops || s.ops || null,
           notOwned: isBot ? null : session?.notOwned || s.notOwned || null,
@@ -1304,6 +1309,23 @@ export class Lobby {
       this.log.error('[lobby] match.setSkins failed', e);
       return fail(ERR.INTERNAL);
     }
+  }
+
+  /** Authenticated player's public room display, independent of Match/Worker gameplay state. */
+  card(session, msg) {
+    if (!isCardOperatorId(msg?.charId) || !isCardOperatorId(msg?.avatar)) return fail(ERR.BAD_MSG);
+    const ids = opsCharIds(this.safeData());
+    if ((msg.charId && !ids.has(msg.charId)) || (msg.avatar && !ids.has(msg.avatar))) return fail(ERR.BAD_TARGET);
+    const clean = cleanPlayerCard(msg, (id) => ids.has(id));
+    const previous = session.card;
+    session.card = clean;
+    const room = this.roomOf(session);
+    const seat = room?.seatOf(session.playerId);
+    if (seat) seat.card = clean;
+    const queuedSeat = this.queueByPlayer.get(session.playerId)?.players.find((p) => p.playerId === session.playerId);
+    if (queuedSeat) queuedSeat.card = clean;
+    if (seat && (previous?.charId !== clean.charId || previous?.avatar !== clean.avatar)) this.broadcastState(room);
+    return OK;
   }
 
   /**
@@ -2073,6 +2095,7 @@ export class Lobby {
     return {
       seat: idx, playerId: session.playerId, name: session.name, isBot: false, ready: false, connected: session.connected, left: false,
       skins: session.skins || null,
+      card: session.card || null,
       loadout: session.loadout || null,
       ops: session.ops || null,
       notOwned: session.notOwned || null,

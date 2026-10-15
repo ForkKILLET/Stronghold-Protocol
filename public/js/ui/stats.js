@@ -51,6 +51,25 @@ export const IMPORT_MAX_CHARS = 8_000_000;
 
 const FULL_KEY = `sp.pref.${STATS_PREF_KEY}`;
 const DAMAGED_KEY = `${FULL_KEY}.damaged`;
+const statsListeners = new Set();
+let notificationPending = false;
+
+/** Same-page successful writes (including import/clear); storage events cover other tabs in the view. */
+export function subscribeStats(listener) {
+  statsListeners.add(listener);
+  return () => statsListeners.delete(listener);
+}
+
+function notifyStats() {
+  if (notificationPending) return;
+  notificationPending = true;
+  queueMicrotask(() => {
+    notificationPending = false;
+    for (const listener of [...statsListeners]) {
+      try { listener(); } catch { /* one view must not interrupt recording or other views */ }
+    }
+  });
+}
 
 /** @returns {{ v: number, records: Array }} a fresh empty envelope */
 export const emptyStats = () => ({ v: STATS_VERSION, records: [] });
@@ -297,7 +316,9 @@ export function compactRecord(rec) {
   out.compact = true;
   out.players = self ? [{
     playerId: self.playerId, seat: self.seat, alive: self.alive, victory: self.victory, roundsPassed: self.roundsPassed,
-    eliminatedRound: self.eliminatedRound, bandId: self.bandId, title: self.title, left: self.left, stats: self.stats,
+    ...(Number.isFinite(self.eliminatedRound) ? { eliminatedRound: self.eliminatedRound } : {}),
+    bandId: self.bandId, title: self.title, left: self.left, stats: self.stats,
+    trophies: self.trophies,
   }] : [];
   return out;
 }
@@ -336,6 +357,7 @@ export function saveStats(stats) {
       const ls = globalThis.localStorage;
       if (!ls) return false; // no storage at all (disabled by the browser)
       ls.setItem(FULL_KEY, JSON.stringify({ v: STATS_VERSION, records: recs }));
+      notifyStats();
       return true;
     } catch { /* quota or storage disabled — fall through to shrinking */ }
     if (recs.length <= 8) return false; // a small history that still does not fit is foreign quota pressure

@@ -190,4 +190,11 @@
   .st-split { margin: .06rem 0 .08rem; }
 }
 .sp-coarse .st-tab, .sp-coarse .st-table tr.is-clickable td { min-height: 30px; }
+/* Desktop records use a smaller centred window; phones and archived result replay keep their existing layout. */
+@media (min-width: 1001px) and (min-height: 601px) {
+  .st:not(.st--replay) {
+    margin: auto; width: min(12rem, 1120px, 90vw); height: min(8rem, 780px, 86vh); height: min(8rem, 780px, 86dvh);
+    box-sizing: border-box; border: 1px solid var(--line-2); box-shadow: 0 0 .5rem rgba(0, 0, 0, .65);
+  }
+}
 @media (prefers-reduced-motion: reduce) { .st { animation: none; } }

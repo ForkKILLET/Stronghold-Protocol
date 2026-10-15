@@ -163,7 +163,7 @@ export const closeLoadout = () => loadoutStore.set({ open: false });
  * is the message body), `prepare()` → the payload to send (may await data; null = the data is missing: nothing is sent,
  * state 'error'), `lockedText` = what a refused edit tells the player.
  */
-function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, field, prepare, lockedText, tag }) {
+export function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, field, prepare, lockedText, tag }) {
   const T = timers || { setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: (id) => globalThis.clearTimeout(id) };
   // (`lockedText` is a msgid: the toast is translated when it shows — docs/I18N.md)
   const tell = notify || ((text) => toast(t(text), 'warn'));

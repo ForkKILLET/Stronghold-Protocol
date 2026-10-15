@@ -16,6 +16,12 @@
 .room-match-actions > .tt-anchor, .room-match-actions > .tt-anchor .btn { width: 100%; }
 .room-ping { display: flex; flex-direction: column; align-items: flex-start; gap: .04rem; }
 
+/* Fork seat artwork inside our existing responsive grid, not its fixed-width room layout. */
+.room-screen .rseat { width: 100%; min-width: 0; min-height: 3.5rem; }
+.room-screen .rseat__art { min-height: 2.2rem; }
+.room-screen .rseat__actions { display: flex; justify-content: center; min-height: .54rem; }
+.room-screen .rseat__plate { flex: none; }
+
 /* ---- invite key ---------------------------------------------------------------------------------------- */
 .invite {
   --bk-c: var(--mint-500);

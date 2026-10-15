@@ -20,6 +20,7 @@ import { serverNow } from '../store.js';
 import { data, useData, localAsset } from '../data.js';
 import { uiUrl } from './assetUrls.js';
 import { useAssetImage } from './useAssetImage.js';
+import { PixBot } from './pixbots.js';
 
 /**
  * h() for htm with its static-subtree cache switched off. htm keeps the vnode it built for a fully static subtree in
@@ -395,13 +396,8 @@ export function Countdown({ deadline, seconds, total, warnAt = 10, label = 'COUN
 
 const modalStack = []; // open modals, topmost last: only the topmost handles keyboard focus / Escape
 
-/**
- * Modal dialog (declarative). Esc / backdrop click call onClose.
- * @param {{ open: boolean, title?: any, micro?: string, tone?: string, onClose?: Function, actions?: any,
- *   width?: string, closeOnBackdrop?: boolean, utility?: boolean, class?: string, children?: any }} props
- */
-export function Modal({ open, title, micro, tone = 'mint', onClose, actions, width, closeOnBackdrop = true, utility = false, class: cls, children }) {
-  const boxRef = useRef(null);
+// Shared focus/stack lifecycle also serves custom-designed dialogs without imposing Modal's visual wrappers.
+export function useModalFocus(open, onClose, boxRef) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useLayoutEffect(() => {
@@ -449,6 +445,16 @@ export function Modal({ open, title, micro, tone = 'mint', onClose, actions, wid
       prevFocus?.focus?.();
     };
   }, [open]);
+}
+
+/**
+ * Modal dialog (declarative). Esc / backdrop click call onClose.
+ * @param {{ open: boolean, title?: any, micro?: string, tone?: string, onClose?: Function, actions?: any,
+ *   width?: string, closeOnBackdrop?: boolean, utility?: boolean, class?: string, children?: any }} props
+ */
+export function Modal({ open, title, micro, tone = 'mint', onClose, actions, width, closeOnBackdrop = true, utility = false, class: cls, children }) {
+  const boxRef = useRef(null);
+  useModalFocus(open, onClose, boxRef);
   if (!open) return null;
   return html`<div class=${cx('modal', utility && 'modal--utility')} role="presentation"
       onMouseDown=${(e) => { if (closeOnBackdrop && e.target === e.currentTarget && onClose) onClose(); }}>
@@ -789,9 +795,11 @@ export function PhaseBanner({ title, sub, micro, tone = 'mint', mode = 'inline',
 
 /**
  * The round's result box (the official round result dialog, shown at settlement; GitHub #235, PR #112 by @Convey123):
- * a centred framed plate — tone-coloured frame and corner ticks, chevrons either side of the title — that opens, holds
- * `duration` ms and closes by itself. Purely presentational: ui/gameLogic/phases.js (roundResultBox / uniteResultBox /
- * battleResultBox) picks the words, screens/game.js the moment (SETTLE). `pointer-events: none`: it never takes a click.
+ * a centred plate in the look of the event's in-match popups (2026-10-13, video 8:44): a glowing tone-coloured frame,
+ * the robot in brackets with corner crosses on the left (ui/pixbots.js; worried when LP was lost), the title large with
+ * the line under it, chevrons as trim — it opens, holds `duration` ms and closes by itself. Purely presentational:
+ * ui/gameLogic/phases.js (roundResultBox / uniteResultBox / battleResultBox) picks the words, screens/game.js the moment
+ * (SETTLE). `pointer-events: none`: it never takes a click.
  * @param {{ title: any, sub?: any, micro?: string, tone?: 'mint'|'orange'|'red', duration?: number, onDone?: Function }} props
  *   duration (ms) > 0 auto-hides then calls onDone. Re-key to replay.
  */
@@ -807,15 +815,21 @@ export function ResultDialog({ title, sub, micro, tone = 'mint', duration = 2800
   if (gone) return null;
   return html`<div class=${cx('rdialog', `rdialog--${tone}`, leaving && 'is-leaving')} role="status" aria-live="polite">
     <div class="rdialog__box">
-      <span class="rdialog__tick rdialog__tick--tl"></span><span class="rdialog__tick rdialog__tick--tr"></span>
-      <span class="rdialog__tick rdialog__tick--bl"></span><span class="rdialog__tick rdialog__tick--br"></span>
-      ${micro ? html`<span class="rdialog__micro">${micro}</span>` : null}
-      <div class="rdialog__row">
-        <${Chevrons} count=${3} tone=${tone} class="rdialog__chev" />
-        <span class="rdialog__title">${title}</span>
-        <${Chevrons} count=${3} tone=${tone} dir="left" class="rdialog__chev" />
+      <div class="rdialog__art" aria-hidden="true">
+        <span class="rdialog__tick rdialog__tick--tl"></span><span class="rdialog__tick rdialog__tick--tr"></span>
+        <span class="rdialog__tick rdialog__tick--bl"></span><span class="rdialog__tick rdialog__tick--br"></span>
+        <i class="rdialog__brk rdialog__brk--l"></i><i class="rdialog__brk rdialog__brk--r"></i>
+        <${PixBot} kind=${tone === 'mint' ? 'cheer' : 'blade'} class="rdialog__bot" />
       </div>
-      ${sub ? html`<span class="rdialog__sub">${sub}</span>` : null}
+      <div class="rdialog__text">
+        ${micro ? html`<span class="rdialog__micro">${micro}</span>` : null}
+        <div class="rdialog__row">
+          <span class="rdialog__title">${title}</span>
+          <${Chevrons} count=${3} tone=${tone} class="rdialog__chev" />
+        </div>
+        ${sub ? html`<span class="rdialog__sub">${sub}</span>` : null}
+      </div>
+      <${Chevrons} count=${3} tone=${tone} dir="left" class="rdialog__chev rdialog__chev--trim" />
     </div>
   </div>`;
 }
