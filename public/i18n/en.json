@@ -1710,5 +1710,9 @@
   "选择头像": "Choose an avatar",
   "默认头像": "Default avatar",
   "暂无可用的皮肤头像": "No outfit avatars are available",
-  "已选头像暂不可用，当前显示默认头像。": "The selected avatar is unavailable. Showing the default avatar."
+  "已选头像暂不可用，当前显示默认头像。": "The selected avatar is unavailable. Showing the default avatar.",
+  "默认立绘": "Default portrait",
+  "选择立绘": "Choose a portrait",
+  "暂无可用的皮肤立绘": "No outfit portraits are available",
+  "已选立绘暂不可用，当前显示默认立绘。": "The selected portrait is unavailable. Showing the default portrait."
 }

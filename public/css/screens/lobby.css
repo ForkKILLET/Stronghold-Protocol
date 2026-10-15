@@ -1411,3 +1411,7 @@ button.sw-eth:hover { border-color: #fff; }
 .bgset__check { display: flex; align-items: center; gap: .08rem; font-size: calc(.14 * var(--utility-text, var(--t))); color: rgba(223, 230, 226, .85); cursor: pointer; }
 .bgset__check input { width: .16rem; height: .16rem; accent-color: var(--mint-500); }
 .bgset__note { margin: 0; font-size: calc(.12 * var(--utility-text, var(--t))); color: var(--text-dim); }
+
+/* Skin portraits keep the same tall framing as operator art. */
+.cardpick__variants--portrait .cardpick__img { aspect-ratio: 1 / 2; }
+.cardpick__variants--portrait .cardpick__img img { object-fit: contain; }

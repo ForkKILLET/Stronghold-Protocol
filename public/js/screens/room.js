@@ -29,7 +29,7 @@ import { difficultyInfo } from './lobby.js';
 import { data, useData } from '../data.js';
 import { cardOperators, seatPortrait, cardAvatarUrl } from '../ui/seatArt.js';
 import { useMyCard, setCardOperator, setCardAvatar } from '../ui/playerCard.js';
-import { OperatorPicker, AvatarPicker } from '../ui/opPicker.js';
+import { PortraitPicker, AvatarPicker } from '../ui/opPicker.js';
 import { useRise } from '../ui/transitions.js';
 import { t, tc } from '../../../shared/i18n.js';
 
@@ -116,11 +116,13 @@ export function inviteLink(code) {
 export { copyText };
 
 function SeatCard({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot, onKick, searching, portraits, onPickCard, onPickAvatar }) {
-  const [bad, setBad] = useState(null);
+  const [bad, setBad] = useState([]);
+  // A new choice (or refreshed manifest) gets a fresh request, even if that art failed before deployment.
+  useEffect(() => setBad([]), [seat?.card?.charId, portraits?.m]);
   const flash = useRise(!!seat && (seat.ready || seat.isBot || seat.playerId === room.hostId));
   return html`<${SeatCardView} seat=${seat} index=${index} room=${room} facts=${facts} myId=${myId} busy=${busy}
     onAddBot=${onAddBot} onRemoveBot=${onRemoveBot} onKick=${onKick} searching=${searching} portraits=${portraits}
-    bad=${bad} onBad=${setBad} flash=${flash} onPickCard=${onPickCard} onPickAvatar=${onPickAvatar} />`;
+    bad=${bad} onBad=${(src) => setBad((prev) => prev.includes(src) ? prev : [...prev, src])} flash=${flash} onPickCard=${onPickCard} onPickAvatar=${onPickAvatar} />`;
 }
 
 /** Hook-free seat presentation: the existing room handlers remain the only source of actions. */
@@ -148,7 +150,10 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
   const isHostSeat = seat.playerId === room.hostId;
   const offline = seat.connected === false && !seat.isBot;
   const ready = seat.ready || seat.isBot || isHostSeat;
-  const src = seat.isBot ? null : seatPortrait(seat, portraits);
+  const preferred = seat.isBot ? null : seatPortrait(seat, portraits);
+  const base = seat.isBot ? null : seatPortrait({ ...seat, card: { ...seat.card, charId: seat.card?.charId?.split('@')[0] } }, portraits);
+  const failed = (src) => Array.isArray(bad) ? bad.includes(src) : bad === src;
+  const src = failed(preferred) ? base : preferred;
   const canPick = isMe && !seat.isBot && !facts.spectating && !room.inMatch;
   const avatar = seat.isBot ? null : cardAvatarUrl(seat.card?.avatar, portraits?.m);
   return html`<article class=${`rseat${ready ? ' is-ready' : ''}${flash ? ' is-flash' : ''}${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${offline ? ' is-offline' : ''}${seat.isBot ? ' is-bot' : ''}`}
@@ -156,7 +161,7 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
     <span class="rseat__clip" aria-hidden="true"></span>
     <header class="rseat__strip"><i></i><span class="num">P${index + 1}</span></header>
     <div class=${`rseat__art${canPick && onPickCard ? ' is-pickable' : ''}`}>
-      ${src && bad !== src ? html`<img src=${src} alt="" draggable=${false} loading="lazy" onError=${() => onBad(src)} />`
+      ${src && !failed(src) ? html`<img key=${src} src=${src} alt="" draggable=${false} loading="lazy" onError=${() => onBad(src)} />`
         : html`<span class="rseat__glyph">${seat.isBot ? html`<${Icon} name="robot" />` : [...(seat.name || '?')][0]}</span>`}
       ${canPick && onPickCard ? html`<button type="button" class="rseat__pick" onClick=${onPickCard}
         title=${t('更换立绘')} aria-label=${t('更换立绘')}><${Icon} name="edit" /><span>${t('更换立绘')}</span></button>` : null}
@@ -461,9 +466,8 @@ export function RoomScreen() {
     </footer>
     <${ConsoleWarning} open=${consoleOpen} remaining=${Math.max(0, Math.ceil((consoleReadyAt - consoleNow) / 1000))}
       busy=${busy === 'console'} onCancel=${cancelConsole} onConfirm=${confirmConsole} />
-    ${picking === 'op' && facts.mine && !facts.spectating && !room.inMatch ? html`<${OperatorPicker} title=${t('名片干员')} micro="SEAT CARD"
-      current=${myCard.charId} list=${portraits.pool} m=${portraits.m} autoLabel=${t('默认')} autoTitle=${t('按博士编号自动分配')}
-      note=${t('选择后，同盟里的博士都会看到这张立绘')}
+    ${picking === 'op' && facts.mine && !facts.spectating && !room.inMatch ? html`<${PortraitPicker}
+      current=${myCard.charId} list=${portraits.pool} m=${portraits.m}
       onPick=${(id) => { setCardOperator(id); setPicking(null); }} onClose=${() => setPicking(null)} />` : null}
     ${picking === 'avatar' && facts.mine && !facts.spectating && !room.inMatch ? html`<${AvatarPicker} current=${myCard.avatar} list=${portraits.pool} m=${portraits.m}
       onPick=${(id) => { setCardAvatar(id); setPicking(null); }} onClose=${() => setPicking(null)} />` : null}

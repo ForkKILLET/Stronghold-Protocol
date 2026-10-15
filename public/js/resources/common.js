@@ -47,7 +47,7 @@ export function resourceGroup(file) {
   const path = new URL(file.url, 'https://resources.invalid').pathname;
   if (file.tier === TIER_REST) {
     // Skin model stems contain an outfit directory; handle a CDN prefix too.
-    if (/\/char\/avatar\/skin\//.test(path) || /\/spine\/op\/[^/]+\/[^/]+\/(?:front|back)\//.test(path)) return 'skins';
+    if (/\/char\/(?:avatar|portrait)\/skin\//.test(path) || /\/spine\/op\/[^/]+\/[^/]+\/(?:front|back)\//.test(path)) return 'skins';
     if (/\/voice\/cn\//.test(path)) return 'voice_cn';
     if (/\/voice\/jp\//.test(path)) return 'voice_jp';
     if (/\/voice\//.test(path)) return 'voice';

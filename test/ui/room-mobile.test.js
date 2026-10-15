@@ -8,7 +8,7 @@ import { SettingsButton } from '../../public/js/ui/settings.js';
 import { GuideButton } from '../../public/js/ui/guide.js';
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
-const layers = ['public/css/components.css', 'public/css/screens/room.css', 'public/css/utility-mobile.css']
+const layers = ['public/css/components.css', 'public/css/screens/lobby.css', 'public/css/screens/room.css', 'public/css/utility-mobile.css']
   .map((file) => postcss.parse(read(file)));
 
 function mediaMatches(params, width, height) {
@@ -33,6 +33,27 @@ function property(selectors, name, width, height) {
   assert.notEqual(chosen, undefined, `${selectors.join(' / ')} ${name}`);
   return chosen;
 }
+
+test('room artwork frames grow to 1:2 and images fill them without side gutters across desktop and mobile CSS layers', () => {
+  const selectors = ['.rseat__art img', '.room-screen .rseat__art img'];
+  for (const [width, height] of [[1920, 1080], [844, 390], [560, 320], [390, 844]]) {
+    const frame = ['.rseat__art', '.room-screen .rseat__art'];
+    assert.equal(property(frame, 'aspect-ratio', width, height), '1 / 2');
+    assert.equal(property(frame, 'flex', width, height), 'none', 'row space cannot flatten or stretch the portrait frame');
+    assert.equal(property(frame, 'min-height', width, height), '0');
+    assert.equal(property(frame, 'box-sizing', width, height), 'content-box', 'the image area keeps 1:2 inside its border');
+    assert.equal(property(selectors, 'aspect-ratio', width, height), '1 / 2');
+    assert.equal(property(selectors, 'width', width, height), '100%');
+    assert.equal(property(selectors, 'height', width, height), '100%');
+    assert.equal(property(selectors, 'max-width', width, height), '100%');
+    assert.equal(property(selectors, 'object-fit', width, height), 'contain');
+    assert.equal(property(selectors, 'object-position', width, height), 'center');
+    assert.equal(property(selectors, 'inset', width, height), '0');
+    assert.equal(property(selectors, 'transform', width, height), 'none');
+    if (width > 560) assert.equal(property(['.seats', '.room-screen .seats'], 'grid-template-rows', width, height), 'auto', 'the row grows with the taller artwork and nameplate');
+    assert.equal(property(['.seats', '.room-screen .seats'], 'overflow-y', width, height), 'auto');
+  }
+});
 
 test('co-op utilities use three real icon-only square buttons and preserve action/accessible names', () => {
   const tools = RoomTools({ coop: true });

@@ -397,7 +397,7 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
     if (front) c.spine.front = front; else notes.push(`${id}: no Front battle Spine in research data`);
     const back = fexliModel(`op:${id}:back`, 'op', `spine/op/${id}/back/`, o.battleSpine?.back, idx);
     if (back) c.spine.back = back;
-    // 干员皮肤 (docs/SKINS.md): per operator, keyed by the official skinId — an avatar plus a Front/Back Spine pair.
+    // 干员皮肤 (docs/SKINS.md): per operator, keyed by official skinId — avatar, portrait and Front/Back Spine pair.
     // Every skin model is registered in `models` on purpose: tools/assets/spine.mjs resolves its animation roles
     // offline there (resolveRoles) and the client's validSpine() requires `anims`. A skin model that skipped that
     // step would fail to load and silently leave the unit on its placeholder avatar — a failure invisible until
@@ -416,9 +416,10 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
         entry.spine = { front: sfront };
         const sback = fexliModel(`skin:${sk.stem}:back`, 'op', `${dir}back/`, sk.battleSpine?.back, idx);
         if (sback) entry.spine.back = sback;
-        // 180×180 avatar rather than the full skin art: that one is ~2.5 MB each (435 MB for the whole set).
+        // Small avatar and half-body portrait; full-resolution skin art is not needed by the existing UI.
         // `stem` is already filename-safe (skinId with @ and # turned into _), so it needs no sanitizing.
         if (sk.avatar?.url) entry.avatar = leaf(alt(`char/avatar/skin/${sk.stem}.png`, sk.avatar.url, sk.avatar.bytes));
+        if (sk.portrait?.url) entry.portrait = leaf(alt(`char/portrait/skin/${sk.stem}.png`, sk.portrait.url, sk.portrait.bytes));
         entry.name = sk.name;
         entry.group = sk.group;
         skins[sk.skinId] = entry;

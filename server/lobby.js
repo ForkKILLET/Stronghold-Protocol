@@ -1,5 +1,5 @@
 import { freezeSkins } from '../shared/skins.js';
-import { cleanPlayerCard, isCardOperatorId, isCardAvatarId, cardAvatarOperatorId } from '../shared/playerCard.js';
+import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatarId, cardAvatarOperatorId } from '../shared/playerCard.js';
 // server/lobby.js — rooms, seats, host, AI seats, ready/start, reconnect, and room → Match wiring
 // (DESIGN §2, §6.1 LOBBY, §8.1). Implements the handler interface consumed by server/net.js.
 //
@@ -1313,9 +1313,9 @@ export class Lobby {
 
   /** Authenticated player's public room display, independent of Match/Worker gameplay state. */
   card(session, msg) {
-    if (!isCardOperatorId(msg?.charId) || !isCardAvatarId(msg?.avatar)) return fail(ERR.BAD_MSG);
+    if (!isCardPortraitId(msg?.charId) || !isCardAvatarId(msg?.avatar)) return fail(ERR.BAD_MSG);
     const ids = opsCharIds(this.safeData());
-    if ((msg.charId && !ids.has(msg.charId)) || (msg.avatar && !ids.has(cardAvatarOperatorId(msg.avatar)))) return fail(ERR.BAD_TARGET);
+    if ((msg.charId && !ids.has(cardPortraitOperatorId(msg.charId))) || (msg.avatar && !ids.has(cardAvatarOperatorId(msg.avatar)))) return fail(ERR.BAD_TARGET);
     const clean = cleanPlayerCard(msg, (id) => ids.has(id));
     const previous = session.card;
     session.card = clean;

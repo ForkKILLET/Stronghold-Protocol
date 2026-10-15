@@ -6,6 +6,7 @@ import { ResultAvatar, ResultPortrait } from '../ui/resultAvatar.js';
 import { normalizeResult, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
 import { data } from '../data.js';
 import { chessPortraitUrl, chessAvatarUrl, itemIconUrl, enemyIconUrl, titleIconUrl } from '../ui/assetUrls.js';
+import { OperatorPortrait } from '../ui/operatorPortrait.js';
 import { store, useStore, emptyMatch } from '../store.js';
 import { audio } from '../audio.js';
 import { sentText } from '../ui/lang.js';
@@ -221,6 +222,7 @@ function unitView(u, gd) {
   const tier = Math.max(0, Math.min(6, Number(u.tier) || Number(rec?.tier) || 0));
   return {
     si,
+    record: rec,
     tier,
     golden: !!(u.golden ?? rec?.isGolden),
     name: rec?.name || '',
@@ -236,7 +238,7 @@ function NoInfo() {
 }
 
 /** One lineup slot as a tall card; `u` null = an empty slot. */
-export function OpCard({ u, gd, i }) {
+export function OpCard({ u, gd, i, player }) {
   if (!u) {
     return html`<div class="sop is-empty" style=${`--i:${i}`}>
       <span class="sop__art"><small>NO INFO</small></span>
@@ -244,9 +246,10 @@ export function OpCard({ u, gd, i }) {
     </div>`;
   }
   const v = unitView(u, gd);
-  const src = v.art || v.avatar;
   return html`<div class=${cx('sop', v.tier && `sop--t${v.tier}`, v.golden && 'is-golden')} style=${`--i:${i}`} title=${v.title}>
-    <span class="sop__art"><${Img} src=${src} class=${v.art ? 'is-portrait' : 'is-avatar'} fallback=${html`<span class="sop__glyph">${[...(v.name || '?')][0]}</span>`} /></span>
+    <span class="sop__art"><${OperatorPortrait} m=${gd.m} chess=${v.record} ownerId=${player?.playerId}
+      skin=${v.si || u.diy || player?.isBot ? null : u.skin} class=${v.art ? 'is-portrait' : 'is-avatar'}
+      fallback=${html`<${Img} src=${v.avatar} class="is-avatar" fallback=${html`<span class="sop__glyph">${[...(v.name || '?')][0]}</span>`} />`} /></span>
     ${v.tier ? html`<b class="sop__tier">${ROMAN[v.tier]}</b>` : null}
     ${v.si ? html`<span class="sop__si" data-standin=${v.si.charId}>${t('替补')}</span>` : null}
     <span class="sop__slots">${[0, 1].map((k) => {
@@ -321,8 +324,8 @@ function SelfPage({ r, raw, self, gd, seed, onNext }) {
         </div>
       </div>
       <div class="sops">
-        <div class="sops__row sops__row--1">${slots.slice(0, 5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i} />`)}</div>
-        <div class="sops__row sops__row--2">${slots.slice(5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i + 5} />`)}</div>
+        <div class="sops__row sops__row--1">${slots.slice(0, 5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i} player=${self} />`)}</div>
+        <div class="sops__row sops__row--2">${slots.slice(5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i + 5} player=${self} />`)}</div>
       </div>
       <${BondBar} bonds=${self.bonds} gd=${gd} />
       <div class="settle__barbg" aria-hidden="true"></div>
@@ -360,6 +363,7 @@ function TeamCard({ p, i, gd, self, victory, raw }) {
     <header class="tcard__head" aria-hidden="true"><i class="tcard__pin"></i><span class="tcard__code"><i></i><i></i><i></i>STRONGHOLD PROTOCOL</span><span class="tcard__seat num">${pad2(p.seat + 1)}</span></header>
     <div class="tcard__art">
       <${ResultPortrait} player=${p} self=${self} fallbackSrc=${v?.art || v?.avatar} class="tcard__img"
+        fallbackChess=${v?.record}
         fallbackClass=${v?.art ? 'is-portrait' : 'is-avatar'} fallback=${html`<span class="tcard__glyph">${[...(p.name || '?')][0]}</span>`} />
       ${p.left ? html`<span class="tcard__cut">${t('中断连接')}</span>` : null}
       ${title ? html`<div class="tcard__title" title=${title.text}>

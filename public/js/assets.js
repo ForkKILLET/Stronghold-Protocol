@@ -99,7 +99,7 @@ export function portraitUrl(m, id, opts) {
     if (rec && /_2$/.test(s)) e2 = true;
   }
   if (!rec) return null;
-  return str(e2 && rec.portraitE2) || str(rec.portrait) || null;
+  return str(opts?.skin && rec.skins?.[opts.skin]?.portrait) || str(e2 && rec.portraitE2) || str(rec.portrait) || null;
 }
 
 export function enemyIconUrl(m, enemyId) {

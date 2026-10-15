@@ -12,6 +12,9 @@ export function cardAvatarOperatorId(v) {
   return at > 0 && at < v.length - 1 && v.indexOf('@', at + 1) < 0 && isCardOperatorId(owner) ? owner : '';
 }
 export const isCardAvatarId = (v) => v === '' || !!cardAvatarOperatorId(v);
+// Portraits preserve the old charId field; it can now also carry an operator-owned skin id.
+export const cardPortraitOperatorId = cardAvatarOperatorId;
+export const isCardPortraitId = isCardAvatarId;
 
 /**
  * Old or damaged saves degrade to defaults; unknown fields are not forwarded.
@@ -19,7 +22,7 @@ export const isCardAvatarId = (v) => v === '' || !!cardAvatarOperatorId(v);
  * @param {(id: string) => boolean} [isOperator]
  */
 export function cleanPlayerCard(v, isOperator = () => true) {
-  const id = (s) => isCardOperatorId(s) && s && isOperator(s) ? s : '';
+  const id = (s) => isCardPortraitId(s) && s && isOperator(cardPortraitOperatorId(s)) ? s : '';
   const avatar = isCardAvatarId(v?.avatar) && isOperator(cardAvatarOperatorId(v.avatar)) ? v.avatar : '';
   return Object.freeze({ charId: id(v?.charId), avatar });
 }

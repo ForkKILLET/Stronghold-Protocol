@@ -1,5 +1,5 @@
 import { chessPortraitUrl } from './assetUrls.js';
-import { cardAvatarOperatorId } from '../../../shared/playerCard.js';
+import { cardAvatarOperatorId, cardPortraitOperatorId } from '../../../shared/playerCard.js';
 
 /** FNV-1a of a string (the portrait pick: the same operator for a player on every client). */
 function hash32(s) {
@@ -27,9 +27,23 @@ export function cardOperators(chessList) {
 export function seatPortrait(seat, { pool, m }) {
   if (!seat || seat.playerId == null || !Array.isArray(pool) || !pool.length) return null;
   if (seat.isBot) return null;
-  const chosen = pool.find((c) => c.charId === seat.card?.charId);
-  if (chosen) return chessPortraitUrl(m, chosen);
+  const chosen = pool.find((c) => c.charId === cardPortraitOperatorId(seat.card?.charId));
+  if (chosen) return cardPortraitUrl(seat.card.charId, m, chosen);
   return chessPortraitUrl(m, pool[hash32(seat.playerId) % pool.length]);
+}
+
+/** Explicit profile portraits are independent of battle skins and avatars, just like profile avatars. */
+export function cardPortraitUrl(choice, m, operator = null) {
+  const charId = cardPortraitOperatorId(choice);
+  if (!charId) return null;
+  return chessPortraitUrl(m, operator || { charId, isGolden: true }, { skin: choice !== charId ? choice : null });
+}
+
+export function cardPortraitSkins(charId, m, catalogue) {
+  const list = catalogue?.chars?.[charId];
+  return Array.isArray(list) ? list.filter((s) => cardPortraitOperatorId(s?.id) === charId && s.id !== charId
+    && typeof m?.chars?.[charId]?.skins?.[s.id]?.portrait === 'string' && m.chars[charId].skins[s.id].portrait)
+    .map((s) => ({ id: s.id, name: s.name, group: s.group || '' })) : [];
 }
 
 /** Resolve only manifest-listed avatars; a missing skin falls back to its operator's base icon. */

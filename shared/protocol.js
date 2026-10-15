@@ -7,7 +7,7 @@ import { diySlotIds, validateDiyPicks } from './diy.js';
 import { cultivatedStats, isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from './potential.js';
 import { validChatText } from './chat.js';
 import { SKIN_LIMITS, isSkinId } from './skins.js';
-import { isCardOperatorId, isCardAvatarId } from './playerCard.js';
+import { isCardPortraitId, isCardAvatarId } from './playerCard.js';
 export { SKIN_LIMITS, isSkinId } from './skins.js';
 
 // ---- tiny validators -------------------------------------------------------
@@ -422,7 +422,7 @@ export const C2S = {
   // the per-operator 潜能 / 练度 (absent = none set: every operator at 潜能 6, 精英2 Lv.60)
   'room.loadout': { entries: isLoadoutEntries, ops: isLoadoutOps, $optional: ['ops'] },
   'room.skins': { skins: isSkinSelection },
-  'room.card': { charId: isCardOperatorId, avatar: isCardAvatarId },
+  'room.card': { charId: isCardPortraitId, avatar: isCardAvatarId },
   // operator ownership (干员持有, 0.2.0 补位): stored per session / seat; a match takes the list its seat had when it
   // started (an out-of-match setting — during a match it is stored for the next one: ROOM_STARTED)
   'room.ownership': { notOwned: isNotOwnedList },

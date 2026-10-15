@@ -8,11 +8,12 @@
   ],
   "note": "Only skins whose Spine model directory exists upstream, and only for the pool operators of 07-assets.json. Default outfits (默认服装) are omitted: they are the chars[].spine entries the manifest already carries.",
   "stemRule": "skinId.replace(/@/g,'_').replace(/#/g,'_') === stem  (fexli directory and model file stem)",
-  "avatarRule": "avatar/{avatarId}.png from yuanyan3060 (180×180, ~25 KB), with '#' percent-encoded as %23. Deliberately NOT the full skin art skin/{portraitId}b.png: that is ~2.5 MB each, 435 MB for the set.",
+  "avatarRule": "avatar/{avatarId}.png from yuanyan3060 (180x180), with # percent-encoded as %23.",
   "counts": {
    "operators": 174,
    "skins": 273
-  }
+  },
+  "portraitRule": "portrait/{portraitId}.png from yuanyan3060 (180x360); portraitId verified against official skin_table.json. Kept separate from the full-resolution skin art."
  },
  "skins": {
   "char_498_inside": [
@@ -49,6 +50,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_498_inside/char_498_inside_kitchen_2/Back/char_498_inside_kitchen_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_498_inside_kitchen%232.png"
     }
    },
    {
@@ -84,6 +88,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_498_inside/char_498_inside_summer_22/Back/char_498_inside_summer_22.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_498_inside_summer%2322.png"
     }
    }
   ],
@@ -121,6 +128,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_199_yak/char_199_yak_summer_1/Back/char_199_yak_summer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_199_yak_summer%231.png"
     }
    }
   ],
@@ -158,6 +168,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_306_leizi/char_306_leizi_game_3/Back/char_306_leizi_game_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_306_leizi_game%233.png"
     }
    }
   ],
@@ -195,6 +208,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4137_udflow/char_4137_udflow_epoque_46/Back/char_4137_udflow_epoque_46.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4137_udflow_epoque%2346.png"
     }
    }
   ],
@@ -232,6 +248,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_290_vigna/char_290_vigna_as_1/Back/char_290_vigna_as_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_290_vigna_as%231.png"
     }
    },
    {
@@ -267,6 +286,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_290_vigna/char_290_vigna_summer_1/Back/char_290_vigna_summer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_290_vigna_summer%231.png"
     }
    }
   ],
@@ -304,6 +326,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_494_vendla/char_494_vendla_game_10/Back/char_494_vendla_game_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_494_vendla_game%2310.png"
     }
    }
   ],
@@ -341,6 +366,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_145_prove/char_145_prove_summer_3/Back/char_145_prove_summer_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_145_prove_summer%233.png"
     }
    },
    {
@@ -376,6 +404,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_145_prove/char_145_prove_wild_5/Back/char_145_prove_wild_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_145_prove_wild%235.png"
     }
    }
   ],
@@ -413,6 +444,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_102_texas/char_102_texas_epoque_7/Back/char_102_texas_epoque_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_102_texas_epoque%237.png"
     }
    },
    {
@@ -448,6 +482,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_102_texas/char_102_texas_winter_1/Back/char_102_texas_winter_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_102_texas_winter%231.png"
     }
    }
   ],
@@ -485,6 +522,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4100_caper/char_4100_caper_summer_18/Back/char_4100_caper_summer_18.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4100_caper_summer%2318.png"
     }
    }
   ],
@@ -522,6 +562,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_196_sunbr/char_196_sunbr_summer_1/Back/char_196_sunbr_summer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_196_sunbr_summer%231.png"
     }
    }
   ],
@@ -559,6 +602,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_183_skgoat/char_183_skgoat_epoque_30/Back/char_183_skgoat_epoque_30.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_183_skgoat_epoque%2330.png"
     }
    }
   ],
@@ -596,6 +642,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_127_estell/char_127_estell_epoque_50/Back/char_127_estell_epoque_50.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_127_estell_epoque%2350.png"
     }
    }
   ],
@@ -633,6 +682,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_258_podego/char_258_podego_epoque_9/Back/char_258_podego_epoque_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_258_podego_epoque%239.png"
     }
    }
   ],
@@ -670,6 +722,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_253_greyy/char_253_greyy_epoque_515/Back/char_253_greyy_epoque_515.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_253_greyy_epoque%23515.png"
     }
    },
    {
@@ -705,6 +760,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_253_greyy/char_253_greyy_epoque_8/Back/char_253_greyy_epoque_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_253_greyy_epoque%238.png"
     }
    }
   ],
@@ -742,6 +800,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4151_tinman/char_4151_tinman_sale_11/Back/char_4151_tinman_sale_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4151_tinman_sale%2311.png"
     }
    }
   ],
@@ -779,6 +840,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_469_indigo/char_469_indigo_nian_7/Back/char_469_indigo_nian_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_469_indigo_nian%237.png"
     }
    }
   ],
@@ -816,6 +880,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_337_utage/char_337_utage_epoque_15/Back/char_337_utage_epoque_15.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_337_utage_epoque%2315.png"
     }
    },
    {
@@ -851,6 +918,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_337_utage/char_337_utage_summer_4/Back/char_337_utage_summer_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_337_utage_summer%234.png"
     }
    }
   ],
@@ -888,6 +958,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_496_wildmn/char_496_wildmn_epoque_16/Back/char_496_wildmn_epoque_16.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_496_wildmn_epoque%2316.png"
     }
    }
   ],
@@ -925,6 +998,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_107_liskam/char_107_liskam_nian_2/Back/char_107_liskam_nian_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_107_liskam_nian%232.png"
     }
    },
    {
@@ -960,6 +1036,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_107_liskam/char_107_liskam_striker_1/Back/char_107_liskam_striker_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_107_liskam_striker%231.png"
     }
    }
   ],
@@ -997,6 +1076,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_279_excu/char_279_excu_boc_1/Back/char_279_excu_boc_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_279_excu_boc%231.png"
     }
    }
   ],
@@ -1034,6 +1116,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_108_silent/char_108_silent_sweep_1/Back/char_108_silent_sweep_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_108_silent_sweep%231.png"
     }
    },
    {
@@ -1069,6 +1154,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_108_silent/char_108_silent_winter_2/Back/char_108_silent_winter_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_108_silent_winter%232.png"
     }
    }
   ],
@@ -1106,6 +1194,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_173_slchan/char_173_slchan_wild_1/Back/char_173_slchan_wild_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_173_slchan_wild%231.png"
     }
    },
    {
@@ -1141,6 +1232,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_173_slchan/char_173_slchan_wwf_1/Back/char_173_slchan_wwf_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_173_slchan_wwf%231.png"
     }
    }
   ],
@@ -1178,6 +1272,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4122_grabds/char_4122_grabds_yun_3/Back/char_4122_grabds_yun_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4122_grabds_yun%233.png"
     }
    }
   ],
@@ -1215,6 +1312,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4114_harold/char_4114_harold_snow_7/Back/char_4114_harold_snow_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4114_harold_snow%237.png"
     }
    }
   ],
@@ -1252,6 +1352,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4139_papyrs/char_4139_papyrs_game_8/Back/char_4139_papyrs_game_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4139_papyrs_game%238.png"
     }
    }
   ],
@@ -1289,6 +1392,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_143_ghost/char_143_ghost_winter_1/Back/char_143_ghost_winter_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_143_ghost_winter%231.png"
     }
    }
   ],
@@ -1326,6 +1432,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_381_bubble/char_381_bubble_marthe_11/Back/char_381_bubble_marthe_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_381_bubble_marthe%2311.png"
     }
    }
   ],
@@ -1363,6 +1472,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_491_humus/char_491_humus_marthe_10/Back/char_491_humus_marthe_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_491_humus_marthe%2310.png"
     }
    }
   ],
@@ -1400,6 +1512,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4040_rockr/char_4040_rockr_lxh_1/Back/char_4040_rockr_lxh_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4040_rockr_lxh%231.png"
     }
    }
   ],
@@ -1437,6 +1552,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4016_kazema/char_4016_kazema_witch_3/Back/char_4016_kazema_witch_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4016_kazema_witch%233.png"
     }
    }
   ],
@@ -1474,6 +1592,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_237_gravel/char_237_gravel_winter_2/Back/char_237_gravel_winter_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_237_gravel_winter%232.png"
     }
    }
   ],
@@ -1511,6 +1632,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4191_tippi/char_4191_tippi_epoque_57/Back/char_4191_tippi_epoque_57.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4191_tippi_epoque%2357.png"
     }
    }
   ],
@@ -1548,6 +1672,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_181_flower/char_181_flower_daily_1/Back/char_181_flower_daily_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_181_flower_daily%231.png"
     }
    },
    {
@@ -1583,6 +1710,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_181_flower/char_181_flower_epoque_9/Back/char_181_flower_epoque_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_181_flower_epoque%239.png"
     }
    }
   ],
@@ -1620,6 +1750,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4051_akkord/char_4051_akkord_summer_23/Back/char_4051_akkord_summer_23.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4051_akkord_summer%2323.png"
     }
    }
   ],
@@ -1657,6 +1790,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_140_whitew/char_140_whitew_boc_1/Back/char_140_whitew_boc_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_140_whitew_boc%231.png"
     }
    }
   ],
@@ -1694,6 +1830,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4207_branch/char_4207_branch_yun_10/Back/char_4207_branch_yun_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4207_branch_yun%2310.png"
     }
    }
   ],
@@ -1731,6 +1870,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_431_ashlok/char_431_ashlok_epoque_28/Back/char_431_ashlok_epoque_28.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_431_ashlok_epoque%2328.png"
     }
    }
   ],
@@ -1768,6 +1910,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_103_angel/char_103_angel_kfc_1/Back/char_103_angel_kfc_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_103_angel_kfc%231.png"
     }
    },
    {
@@ -1803,6 +1948,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_103_angel/char_103_angel_sale_8/Back/char_103_angel_sale_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_103_angel_sale%238.png"
     }
    },
    {
@@ -1838,6 +1986,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_103_angel/char_103_angel_wild_1/Back/char_103_angel_wild_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_103_angel_wild%231.png"
     }
    }
   ],
@@ -1875,6 +2026,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_294_ayer/char_294_ayer_boc_3/Back/char_294_ayer_boc_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_294_ayer_boc%233.png"
     }
    }
   ],
@@ -1912,6 +2066,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_308_swire/char_308_swire_nian_2/Back/char_308_swire_nian_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_308_swire_nian%232.png"
     }
    }
   ],
@@ -1949,6 +2106,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1033_swire2/char_1033_swire2_ambienceSynesthesia_4/Back/char_1033_swire2_ambienceSynesthesia_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1033_swire2_ambienceSynesthesia%234.png"
     }
    }
   ],
@@ -1986,6 +2146,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_263_skadi/char_263_skadi_marthe_5/Back/char_263_skadi_marthe_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_263_skadi_marthe%235.png"
     }
    },
    {
@@ -2021,6 +2184,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_263_skadi/char_263_skadi_summer_3/Back/char_263_skadi_summer_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_263_skadi_summer%233.png"
     }
    }
   ],
@@ -2058,6 +2224,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4148_philae/char_4148_philae_nian_12/Back/char_4148_philae_nian_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4148_philae_nian%2312.png"
     }
    }
   ],
@@ -2095,6 +2264,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4036_forcer/char_4036_forcer_epoque_20/Back/char_4036_forcer_epoque_20.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4036_forcer_epoque%2320.png"
     }
    }
   ],
@@ -2132,6 +2304,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_388_mint/char_388_mint_epoque_22/Back/char_388_mint_epoque_22.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_388_mint_epoque%2322.png"
     }
    },
    {
@@ -2167,6 +2342,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_388_mint/char_388_mint_epoque_30/Back/char_388_mint_epoque_30.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_388_mint_epoque%2330.png"
     }
    }
   ],
@@ -2204,6 +2382,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4079_haini/char_4079_haini_epoque_45/Back/char_4079_haini_epoque_45.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4079_haini_epoque%2345.png"
     }
    }
   ],
@@ -2241,6 +2422,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_440_pinecn/char_440_pinecn_epoque_31/Back/char_440_pinecn_epoque_31.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_440_pinecn_epoque%2331.png"
     }
    },
    {
@@ -2276,6 +2460,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_440_pinecn/char_440_pinecn_shining_1/Back/char_440_pinecn_shining_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_440_pinecn_shining%231.png"
     }
    }
   ],
@@ -2313,6 +2500,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_423_blemsh/char_423_blemsh_littlePony_1/Back/char_423_blemsh_littlePony_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_423_blemsh_littlePony%231.png"
     }
    },
    {
@@ -2348,6 +2538,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_423_blemsh/char_423_blemsh_witch_2/Back/char_423_blemsh_witch_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_423_blemsh_witch%232.png"
     }
    }
   ],
@@ -2385,6 +2578,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4054_malist/char_4054_malist_summer_14/Back/char_4054_malist_summer_14.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4054_malist_summer%2314.png"
     }
    }
   ],
@@ -2422,6 +2618,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_174_slbell/char_174_slbell_snow_1/Back/char_174_slbell_snow_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_174_slbell_snow%231.png"
     }
    }
   ],
@@ -2459,6 +2658,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_254_vodfox/char_254_vodfox_witch_2/Back/char_254_vodfox_witch_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_254_vodfox_witch%232.png"
     }
    },
    {
@@ -2494,6 +2696,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_254_vodfox/char_254_vodfox_yun_8/Back/char_254_vodfox_yun_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_254_vodfox_yun%238.png"
     }
    }
   ],
@@ -2531,6 +2736,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_150_snakek/char_150_snakek_wild_1/Back/char_150_snakek_wild_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_150_snakek_wild%231.png"
     }
    },
    {
@@ -2566,6 +2774,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_150_snakek/char_150_snakek_yun_7/Back/char_150_snakek_yun_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_150_snakek_yun%237.png"
     }
    }
   ],
@@ -2603,6 +2814,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_126_shotst/char_126_shotst_epoque_10/Back/char_126_shotst_epoque_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_126_shotst_epoque%2310.png"
     }
    },
    {
@@ -2638,6 +2852,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_126_shotst/char_126_shotst_epoque_28/Back/char_126_shotst_epoque_28.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_126_shotst_epoque%2328.png"
     }
    }
   ],
@@ -2675,6 +2892,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4026_vulpis/char_4026_vulpis_epoque_55/Back/char_4026_vulpis_epoque_55.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4026_vulpis_epoque%2355.png"
     }
    }
   ],
@@ -2712,6 +2932,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_427_vigil/char_427_vigil_epoque_27/Back/char_427_vigil_epoque_27.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_427_vigil_epoque%2327.png"
     }
    }
   ],
@@ -2749,6 +2972,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4013_kjera/char_4013_kjera_epoque_18/Back/char_4013_kjera_epoque_18.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4013_kjera_epoque%2318.png"
     }
    }
   ],
@@ -2786,6 +3012,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_332_archet/char_332_archet_sale_14/Back/char_332_archet_sale_14.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_332_archet_sale%2314.png"
     }
    },
    {
@@ -2821,6 +3050,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_332_archet/char_332_archet_shining_1/Back/char_332_archet_shining_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_332_archet_shining%231.png"
     }
    }
   ],
@@ -2858,6 +3090,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4194_rmixer/char_4194_rmixer_boc_12/Back/char_4194_rmixer_boc_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4194_rmixer_boc%2312.png"
     }
    }
   ],
@@ -2895,6 +3130,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_213_mostma/char_213_mostma_ambienceSynesthesia_6/Back/char_213_mostma_ambienceSynesthesia_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_213_mostma_ambienceSynesthesia%236.png"
     }
    },
    {
@@ -2930,6 +3168,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_213_mostma/char_213_mostma_epoque_5/Back/char_213_mostma_epoque_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_213_mostma_epoque%235.png"
     }
    }
   ],
@@ -2967,6 +3208,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4087_ines/char_4087_ines_ambienceSynesthesia_5/Back/char_4087_ines_ambienceSynesthesia_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4087_ines_ambienceSynesthesia%235.png"
     }
    },
    {
@@ -3002,6 +3246,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4087_ines/char_4087_ines_boc_8/Back/char_4087_ines_boc_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4087_ines_boc%238.png"
     }
    }
   ],
@@ -3039,6 +3286,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_344_beewax/char_344_beewax_epoque_9/Back/char_344_beewax_epoque_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_344_beewax_epoque%239.png"
     }
    },
    {
@@ -3074,6 +3324,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_344_beewax/char_344_beewax_summer_11/Back/char_344_beewax_summer_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_344_beewax_summer%2311.png"
     }
    }
   ],
@@ -3111,6 +3364,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1021_kroos2/char_1021_kroos2_game_3/Back/char_1021_kroos2_game_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1021_kroos2_game%233.png"
     }
    },
    {
@@ -3146,6 +3402,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1021_kroos2/char_1021_kroos2_nian_8/Back/char_1021_kroos2_nian_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1021_kroos2_nian%238.png"
     }
    }
   ],
@@ -3183,6 +3442,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_222_bpipe/char_222_bpipe_epoque_28/Back/char_222_bpipe_epoque_28.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_222_bpipe_epoque%2328.png"
     }
    },
    {
@@ -3218,6 +3480,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_222_bpipe/char_222_bpipe_epoque_40/Back/char_222_bpipe_epoque_40.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_222_bpipe_epoque%2340.png"
     }
    },
    {
@@ -3253,6 +3518,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_222_bpipe/char_222_bpipe_race_1/Back/char_222_bpipe_race_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_222_bpipe_race%231.png"
     }
    }
   ],
@@ -3290,6 +3558,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4163_rosesa/char_4163_rosesa_game_7/Back/char_4163_rosesa_game_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4163_rosesa_game%237.png"
     }
    }
   ],
@@ -3327,6 +3598,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_437_mizuki/char_437_mizuki_game_6/Back/char_437_mizuki_game_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_437_mizuki_game%236.png"
     }
    },
    {
@@ -3362,6 +3636,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_437_mizuki/char_437_mizuki_sale_7/Back/char_437_mizuki_sale_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_437_mizuki_sale%237.png"
     }
    }
   ],
@@ -3399,6 +3676,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_446_aroma/char_446_aroma_epoque_54/Back/char_446_aroma_epoque_54.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_446_aroma_epoque%2354.png"
     }
    }
   ],
@@ -3436,6 +3716,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_474_glady/char_474_glady_boc_5/Back/char_474_glady_boc_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_474_glady_boc%235.png"
     }
    },
    {
@@ -3471,6 +3754,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_474_glady/char_474_glady_epoque_33/Back/char_474_glady_epoque_33.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_474_glady_epoque%2333.png"
     }
    }
   ],
@@ -3508,6 +3794,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_206_gnosis/char_206_gnosis_boc_4/Back/char_206_gnosis_boc_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_206_gnosis_boc%234.png"
     }
    }
   ],
@@ -3545,6 +3834,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_373_lionhd/char_373_lionhd_snow_3/Back/char_373_lionhd_snow_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_373_lionhd_snow%233.png"
     }
    },
    {
@@ -3580,6 +3872,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_373_lionhd/char_373_lionhd_wild_3/Back/char_373_lionhd_wild_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_373_lionhd_wild%233.png"
     }
    }
   ],
@@ -3617,6 +3912,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4196_reckpr/char_4196_reckpr_yun_12/Back/char_4196_reckpr_yun_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4196_reckpr_yun%2312.png"
     }
    }
   ],
@@ -3654,6 +3952,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1028_texas2/char_1028_texas2_epoque_36/Back/char_1028_texas2_epoque_36.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1028_texas2_epoque%2336.png"
     }
    },
    {
@@ -3689,6 +3990,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1028_texas2/char_1028_texas2_iteration_1/Back/char_1028_texas2_iteration_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1028_texas2_iteration%231.png"
     }
    }
   ],
@@ -3726,6 +4030,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_136_hsguma/char_136_hsguma_nian_3/Back/char_136_hsguma_nian_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_136_hsguma_nian%233.png"
     }
    },
    {
@@ -3761,6 +4068,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_136_hsguma/char_136_hsguma_summer_16/Back/char_136_hsguma_summer_16.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_136_hsguma_summer%2316.png"
     }
    }
   ],
@@ -3798,6 +4108,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_311_mudrok/char_311_mudrok_ambienceSynesthesia_2/Back/char_311_mudrok_ambienceSynesthesia_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_311_mudrok_ambienceSynesthesia%232.png"
     }
    },
    {
@@ -3833,6 +4146,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_311_mudrok/char_311_mudrok_summer_6/Back/char_311_mudrok_summer_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_311_mudrok_summer%236.png"
     }
    },
    {
@@ -3868,6 +4184,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_311_mudrok/char_311_mudrok_wild_10/Back/char_311_mudrok_wild_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_311_mudrok_wild%2310.png"
     }
    }
   ],
@@ -3905,6 +4224,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_420_flamtl/char_420_flamtl_game_2/Back/char_420_flamtl_game_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_420_flamtl_game%232.png"
     }
    }
   ],
@@ -3942,6 +4264,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_430_fartth/char_430_fartth_whirlwind_5/Back/char_430_fartth_whirlwind_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_430_fartth_whirlwind%235.png"
     }
    }
   ],
@@ -3979,6 +4304,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_128_plosis/char_128_plosis_epoque_3/Back/char_128_plosis_epoque_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_128_plosis_epoque%233.png"
     }
    },
    {
@@ -4014,6 +4342,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_128_plosis/char_128_plosis_yun_4/Back/char_128_plosis_yun_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_128_plosis_yun%234.png"
     }
    }
   ],
@@ -4051,6 +4382,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_172_svrash/char_172_svrash_ambienceSynesthesia_4/Back/char_172_svrash_ambienceSynesthesia_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_172_svrash_ambienceSynesthesia%234.png"
     }
    },
    {
@@ -4086,6 +4420,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_172_svrash/char_172_svrash_snow_1/Back/char_172_svrash_snow_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_172_svrash_snow%231.png"
     }
    },
    {
@@ -4121,6 +4458,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_172_svrash/char_172_svrash_summer_4/Back/char_172_svrash_summer_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_172_svrash_summer%234.png"
     }
    }
   ],
@@ -4158,6 +4498,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1026_gvial2/char_1026_gvial2_summer_12/Back/char_1026_gvial2_summer_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1026_gvial2_summer%2312.png"
     }
    }
   ],
@@ -4195,6 +4538,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_426_billro/char_426_billro_snow_3/Back/char_426_billro_snow_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_426_billro_snow%233.png"
     }
    },
    {
@@ -4230,6 +4576,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_426_billro/char_426_billro_summer_8/Back/char_426_billro_summer_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_426_billro_summer%238.png"
     }
    }
   ],
@@ -4267,6 +4616,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4134_cetsyr/char_4134_cetsyr_epoque_50/Back/char_4134_cetsyr_epoque_50.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4134_cetsyr_epoque%2350.png"
     }
    }
   ],
@@ -4304,6 +4656,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_171_bldsk/char_171_bldsk_summer_7/Back/char_171_bldsk_summer_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_171_bldsk_summer%237.png"
     }
    },
    {
@@ -4339,6 +4694,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_171_bldsk/char_171_bldsk_witch_1/Back/char_171_bldsk_witch_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_171_bldsk_witch%231.png"
     }
    }
   ],
@@ -4376,6 +4734,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4146_nymph/char_4146_nymph_ambienceSynesthesia_6/Back/char_4146_nymph_ambienceSynesthesia_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4146_nymph_ambienceSynesthesia%236.png"
     }
    },
    {
@@ -4411,6 +4772,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4146_nymph/char_4146_nymph_epoque_42/Back/char_4146_nymph_epoque_42.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4146_nymph_epoque%2342.png"
     }
    }
   ],
@@ -4448,6 +4812,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1032_excu2/char_1032_excu2_sale_12/Back/char_1032_excu2_sale_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1032_excu2_sale%2312.png"
     }
    },
    {
@@ -4483,6 +4850,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1032_excu2/char_1032_excu2_sanrio_2/Back/char_1032_excu2_sanrio_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1032_excu2_sanrio%232.png"
     }
    }
   ],
@@ -4520,6 +4890,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1040_blaze2/char_1040_blaze2_winter_5/Back/char_1040_blaze2_winter_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1040_blaze2_winter%235.png"
     }
    }
   ],
@@ -4557,6 +4930,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4145_ulpia/char_4145_ulpia_epoque_48/Back/char_4145_ulpia_epoque_48.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4145_ulpia_epoque%2348.png"
     }
    }
   ],
@@ -4594,6 +4970,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4010_etlchi/char_4010_etlchi_winter_5/Back/char_4010_etlchi_winter_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4010_etlchi_winter%235.png"
     }
    }
   ],
@@ -4631,6 +5010,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_350_surtr/char_350_surtr_ambienceSynesthesia_6/Back/char_350_surtr_ambienceSynesthesia_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_350_surtr_ambienceSynesthesia%236.png"
     }
    },
    {
@@ -4666,6 +5048,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_350_surtr/char_350_surtr_it_1/Back/char_350_surtr_it_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_350_surtr_it%231.png"
     }
    },
    {
@@ -4701,6 +5086,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_350_surtr/char_350_surtr_summer_9/Back/char_350_surtr_summer_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_350_surtr_summer%239.png"
     }
    }
   ],
@@ -4738,6 +5126,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4039_horn/char_4039_horn_epoque_24/Back/char_4039_horn_epoque_24.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4039_horn_epoque%2324.png"
     }
    }
   ],
@@ -4775,6 +5166,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_358_lisa/char_358_lisa_epoque_22/Back/char_358_lisa_epoque_22.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_358_lisa_epoque%2322.png"
     }
    },
    {
@@ -4810,6 +5204,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_358_lisa/char_358_lisa_lxh_1/Back/char_358_lisa_lxh_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_358_lisa_lxh%231.png"
     }
    },
    {
@@ -4845,6 +5242,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_358_lisa/char_358_lisa_wild_3/Back/char_358_lisa_wild_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_358_lisa_wild%233.png"
     }
    }
   ],
@@ -4882,6 +5282,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_202_demkni/char_202_demkni_ambienceSynesthesia_7/Back/char_202_demkni_ambienceSynesthesia_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_202_demkni_ambienceSynesthesia%237.png"
     }
    },
    {
@@ -4917,6 +5320,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_202_demkni/char_202_demkni_boc_1/Back/char_202_demkni_boc_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_202_demkni_boc%231.png"
     }
    },
    {
@@ -4952,6 +5358,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_202_demkni/char_202_demkni_test_1/Back/char_202_demkni_test_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_202_demkni_test%231.png"
     }
    }
   ],
@@ -4989,6 +5398,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2015_dusk/char_2015_dusk_nian_12/Back/char_2015_dusk_nian_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2015_dusk_nian%2312.png"
     }
    },
    {
@@ -5024,6 +5436,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2015_dusk/char_2015_dusk_nian_7/Back/char_2015_dusk_nian_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2015_dusk_nian%237.png"
     }
    }
   ],
@@ -5061,6 +5476,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1023_ghost2/char_1023_ghost2_boc_6/Back/char_1023_ghost2_boc_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1023_ghost2_boc%236.png"
     }
    }
   ],
@@ -5098,6 +5516,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_264_f12yin/char_264_f12yin_boc_3/Back/char_264_f12yin_boc_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_264_f12yin_boc%233.png"
     }
    },
    {
@@ -5133,6 +5554,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_264_f12yin/char_264_f12yin_epoque_15/Back/char_264_f12yin_epoque_15.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_264_f12yin_epoque%2315.png"
     }
    },
    {
@@ -5168,6 +5592,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_264_f12yin/char_264_f12yin_marthe_13/Back/char_264_f12yin_marthe_13.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_264_f12yin_marthe%2313.png"
     }
    }
   ],
@@ -5205,6 +5632,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4064_mlynar/char_4064_mlynar_epoque_28/Back/char_4064_mlynar_epoque_28.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4064_mlynar_epoque%2328.png"
     }
    },
    {
@@ -5240,6 +5670,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4064_mlynar/char_4064_mlynar_iteration_3/Back/char_4064_mlynar_iteration_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4064_mlynar_iteration%233.png"
     }
    }
   ],
@@ -5277,6 +5710,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_291_aglina/char_291_aglina_boc_1/Back/char_291_aglina_boc_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_291_aglina_boc%231.png"
     }
    },
    {
@@ -5312,6 +5748,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_291_aglina/char_291_aglina_summer_5/Back/char_291_aglina_summer_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_291_aglina_summer%235.png"
     }
    }
   ],
@@ -5349,6 +5788,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_341_sntlla/char_341_sntlla_summer_15/Back/char_341_sntlla_summer_15.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_341_sntlla_summer%2315.png"
     }
    }
   ],
@@ -5386,6 +5828,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4193_lemuen/char_4193_lemuen_ambienceSynesthesia_7/Back/char_4193_lemuen_ambienceSynesthesia_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4193_lemuen_ambienceSynesthesia%237.png"
     }
    }
   ],
@@ -5423,6 +5868,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1046_sbell2/char_1046_sbell2_ambienceSynesthesia_8/Back/char_1046_sbell2_ambienceSynesthesia_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1046_sbell2_ambienceSynesthesia%238.png"
     }
    }
   ],
@@ -5460,6 +5908,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2026_yu/char_2026_yu_nian_12/Back/char_2026_yu_nian_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2026_yu_nian%2312.png"
     }
    }
   ],
@@ -5485,6 +5936,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1012_skadi2/char_1012_skadi2_boc_4/Spine/char_1012_skadi2_boc_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1012_skadi2_boc%234.png"
     }
    },
    {
@@ -5508,6 +5962,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1012_skadi2/char_1012_skadi2_iteration_2/Spine/char_1012_skadi2_iteration_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1012_skadi2_iteration%232.png"
     }
    }
   ],
@@ -5545,6 +6002,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_472_pasngr/char_472_pasngr_epoque_17/Back/char_472_pasngr_epoque_17.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_472_pasngr_epoque%2317.png"
     }
    }
   ],
@@ -5582,6 +6042,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4058_pepe/char_4058_pepe_sightseer_2/Back/char_4058_pepe_sightseer_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4058_pepe_sightseer%232.png"
     }
    }
   ],
@@ -5619,6 +6082,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1019_siege2/char_1019_siege2_epoque_50/Back/char_1019_siege2_epoque_50.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1019_siege2_epoque%2350.png"
     }
    }
   ],
@@ -5656,6 +6122,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1020_reed2/char_1020_reed2_epoque_30/Back/char_1020_reed2_epoque_30.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1020_reed2_epoque%2330.png"
     }
    },
    {
@@ -5691,6 +6160,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1020_reed2/char_1020_reed2_snow_8/Back/char_1020_reed2_snow_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1020_reed2_snow%238.png"
     }
    },
    {
@@ -5726,6 +6198,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1020_reed2/char_1020_reed2_summer_17/Back/char_1020_reed2_summer_17.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1020_reed2_summer%2317.png"
     }
    }
   ],
@@ -5763,6 +6238,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_245_cello/char_245_cello_sale_12/Back/char_245_cello_sale_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_245_cello_sale%2312.png"
     }
    }
   ],
@@ -5800,6 +6278,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_249_mlyss/char_249_mlyss_ambienceSynesthesia_6/Back/char_249_mlyss_ambienceSynesthesia_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_249_mlyss_ambienceSynesthesia%236.png"
     }
    },
    {
@@ -5835,6 +6316,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_249_mlyss/char_249_mlyss_boc_8/Back/char_249_mlyss_boc_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_249_mlyss_boc%238.png"
     }
    }
   ],
@@ -5872,6 +6356,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_391_rosmon/char_391_rosmon_epoque_17/Back/char_391_rosmon_epoque_17.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_391_rosmon_epoque%2317.png"
     }
    },
    {
@@ -5907,6 +6394,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_391_rosmon/char_391_rosmon_sale_16/Back/char_391_rosmon_sale_16.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_391_rosmon_sale%2316.png"
     }
    }
   ],
@@ -5944,6 +6434,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1041_angel2/char_1041_angel2_iteration_6/Back/char_1041_angel2_iteration_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1041_angel2_iteration%236.png"
     }
    }
   ],
@@ -5981,6 +6474,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4042_lumen/char_4042_lumen_ambienceSynesthesia_3/Back/char_4042_lumen_ambienceSynesthesia_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4042_lumen_ambienceSynesthesia%233.png"
     }
    },
    {
@@ -6016,6 +6512,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4042_lumen/char_4042_lumen_sanrio_2/Back/char_4042_lumen_sanrio_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4042_lumen_sanrio%232.png"
     }
    }
   ],
@@ -6053,6 +6552,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4082_qiubai/char_4082_qiubai_epoque_31/Back/char_4082_qiubai_epoque_31.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4082_qiubai_epoque%2331.png"
     }
    },
    {
@@ -6088,6 +6590,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4082_qiubai/char_4082_qiubai_ncg_1/Back/char_4082_qiubai_ncg_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4082_qiubai_ncg%231.png"
     }
    }
   ],
@@ -6125,6 +6630,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1014_nearl2/char_1014_nearl2_epoque_17/Back/char_1014_nearl2_epoque_17.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1014_nearl2_epoque%2317.png"
     }
    }
   ],
@@ -6162,6 +6670,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1038_whitw2/char_1038_whitw2_sale_15/Back/char_1038_whitw2_sale_15.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1038_whitw2_sale%2315.png"
     }
    }
   ],
@@ -6199,6 +6710,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4116_blkkgt/char_4116_blkkgt_witch_5/Back/char_4116_blkkgt_witch_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4116_blkkgt_witch%235.png"
     }
    }
   ],
@@ -6236,6 +6750,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1016_agoat2/char_1016_agoat2_epoque_34/Back/char_1016_agoat2_epoque_34.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1016_agoat2_epoque%2334.png"
     }
    },
    {
@@ -6271,6 +6788,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1016_agoat2/char_1016_agoat2_epoque_57/Back/char_1016_agoat2_epoque_57.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1016_agoat2_epoque%2357.png"
     }
    }
   ],
@@ -6308,6 +6828,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1039_thorn2/char_1039_thorn2_marthe_9/Back/char_1039_thorn2_marthe_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1039_thorn2_marthe%239.png"
     }
    }
   ],
@@ -6345,6 +6868,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_003_kalts/char_003_kalts_boc_6/Back/char_003_kalts_boc_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_003_kalts_boc%236.png"
     }
    },
    {
@@ -6380,6 +6906,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_003_kalts/char_003_kalts_sale_14/Back/char_003_kalts_sale_14.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_003_kalts_sale%2314.png"
     }
    }
   ],
@@ -6417,6 +6946,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_010_chen/char_010_chen_nian_2/Back/char_010_chen_nian_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_010_chen_nian%232.png"
     }
    },
    {
@@ -6452,6 +6984,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_010_chen/char_010_chen_sale_10/Back/char_010_chen_sale_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_010_chen_sale%2310.png"
     }
    }
   ],
@@ -6489,6 +7024,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_017_huang/char_017_huang_as_1/Back/char_017_huang_as_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_017_huang_as%231.png"
     }
    },
    {
@@ -6524,6 +7062,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_017_huang/char_017_huang_witch_5/Back/char_017_huang_witch_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_017_huang_witch%235.png"
     }
    }
   ],
@@ -6561,6 +7102,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1013_chen2/char_1013_chen2_boc_6/Back/char_1013_chen2_boc_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1013_chen2_boc%236.png"
     }
    },
    {
@@ -6596,6 +7140,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1013_chen2/char_1013_chen2_summer_20/Back/char_1013_chen2_summer_20.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1013_chen2_summer%2320.png"
     }
    }
   ],
@@ -6633,6 +7180,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1031_slent2/char_1031_slent2_epoque_32/Back/char_1031_slent2_epoque_32.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1031_slent2_epoque%2332.png"
     }
    }
   ],
@@ -6670,6 +7220,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1034_jesca2/char_1034_jesca2_cfa_1/Back/char_1034_jesca2_cfa_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1034_jesca2_cfa%231.png"
     }
    }
   ],
@@ -6707,6 +7260,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1035_wisdel/char_1035_wisdel_game_9/Back/char_1035_wisdel_game_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1035_wisdel_game%239.png"
     }
    },
    {
@@ -6742,6 +7298,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1035_wisdel/char_1035_wisdel_sale_14/Back/char_1035_wisdel_sale_14.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1035_wisdel_sale%2314.png"
     }
    }
   ],
@@ -6779,6 +7338,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1042_phatm2/char_1042_phatm2_sightseer_4/Back/char_1042_phatm2_sightseer_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1042_phatm2_sightseer%234.png"
     }
    }
   ],
@@ -6816,6 +7378,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1043_leizi2/char_1043_leizi2_game_8/Back/char_1043_leizi2_game_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1043_leizi2_game%238.png"
     }
    }
   ],
@@ -6853,6 +7418,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1044_hsgma2/char_1044_hsgma2_whirlwind_11/Back/char_1044_hsgma2_whirlwind_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1044_hsgma2_whirlwind%2311.png"
     }
    }
   ],
@@ -6890,6 +7458,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_112_siege/char_112_siege_striker_2/Back/char_112_siege_striker_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_112_siege_striker%232.png"
     }
    },
    {
@@ -6925,6 +7496,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_112_siege/char_112_siege_wild_2/Back/char_112_siege_wild_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_112_siege_wild%232.png"
     }
    }
   ],
@@ -6962,6 +7536,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_113_cqbw/char_113_cqbw_epoque_7/Back/char_113_cqbw_epoque_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_113_cqbw_epoque%237.png"
     }
    }
   ],
@@ -6999,6 +7576,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_134_ifrit/char_134_ifrit_kfc_1/Back/char_134_ifrit_kfc_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_134_ifrit_kfc%231.png"
     }
    },
    {
@@ -7034,6 +7614,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_134_ifrit/char_134_ifrit_rilakkuma_1/Back/char_134_ifrit_rilakkuma_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_134_ifrit_rilakkuma%231.png"
     }
    },
    {
@@ -7069,6 +7652,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_134_ifrit/char_134_ifrit_summer_1/Back/char_134_ifrit_summer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_134_ifrit_summer%231.png"
     }
    }
   ],
@@ -7106,6 +7692,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_147_shining/char_147_shining_summer_1/Back/char_147_shining_summer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_147_shining_summer%231.png"
     }
    }
   ],
@@ -7143,6 +7732,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_1502_crosly/char_1502_crosly_iteration_5/Back/char_1502_crosly_iteration_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_1502_crosly_iteration%235.png"
     }
    }
   ],
@@ -7180,6 +7772,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_179_cgbird/char_179_cgbird_sightseer_1/Back/char_179_cgbird_sightseer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_179_cgbird_sightseer%231.png"
     }
    },
    {
@@ -7215,6 +7810,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_179_cgbird/char_179_cgbird_witch_1/Back/char_179_cgbird_witch_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_179_cgbird_witch%231.png"
     }
    }
   ],
@@ -7252,6 +7850,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_180_amgoat/char_180_amgoat_sanrio_2/Back/char_180_amgoat_sanrio_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_180_amgoat_sanrio%232.png"
     }
    },
    {
@@ -7287,6 +7888,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_180_amgoat/char_180_amgoat_summer_5/Back/char_180_amgoat_summer_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_180_amgoat_summer%235.png"
     }
    }
   ],
@@ -7324,6 +7928,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_188_helage/char_188_helage_boc_2/Back/char_188_helage_boc_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_188_helage_boc%232.png"
     }
    }
   ],
@@ -7361,6 +7968,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_197_poca/char_197_poca_epoque_12/Back/char_197_poca_epoque_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_197_poca_epoque%2312.png"
     }
    },
    {
@@ -7396,6 +8006,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_197_poca/char_197_poca_rilakkuma_1/Back/char_197_poca_rilakkuma_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_197_poca_rilakkuma%231.png"
     }
    }
   ],
@@ -7433,6 +8046,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2012_typhon/char_2012_typhon_summer_17/Back/char_2012_typhon_summer_17.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2012_typhon_summer%2317.png"
     }
    },
    {
@@ -7468,6 +8084,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2012_typhon/char_2012_typhon_wild_9/Back/char_2012_typhon_wild_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2012_typhon_wild%239.png"
     }
    }
   ],
@@ -7505,6 +8124,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2013_cerber/char_2013_cerber_summer_4/Back/char_2013_cerber_summer_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2013_cerber_summer%234.png"
     }
    },
    {
@@ -7540,6 +8162,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2013_cerber/char_2013_cerber_whirlwind_2/Back/char_2013_cerber_whirlwind_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2013_cerber_whirlwind%232.png"
     }
    }
   ],
@@ -7577,6 +8202,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2014_nian/char_2014_nian_cfa_1/Back/char_2014_nian_cfa_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2014_nian_cfa%231.png"
     }
    },
    {
@@ -7612,6 +8240,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2014_nian/char_2014_nian_nian_4/Back/char_2014_nian_nian_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2014_nian_nian%234.png"
     }
    }
   ],
@@ -7649,6 +8280,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2023_ling/char_2023_ling_ncg_1/Back/char_2023_ling_ncg_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2023_ling_ncg%231.png"
     }
    },
    {
@@ -7684,6 +8318,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2023_ling/char_2023_ling_nian_12/Back/char_2023_ling_nian_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2023_ling_nian%2312.png"
     }
    },
    {
@@ -7719,6 +8356,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2023_ling/char_2023_ling_nian_9/Back/char_2023_ling_nian_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2023_ling_nian%239.png"
     }
    }
   ],
@@ -7756,6 +8396,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2024_chyue/char_2024_chyue_cfa_1/Back/char_2024_chyue_cfa_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2024_chyue_cfa%231.png"
     }
    },
    {
@@ -7791,6 +8434,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2024_chyue/char_2024_chyue_nian_10/Back/char_2024_chyue_nian_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2024_chyue_nian%2310.png"
     }
    }
   ],
@@ -7828,6 +8474,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_2025_shu/char_2025_shu_nian_11/Back/char_2025_shu_nian_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_2025_shu_nian%2311.png"
     }
    }
   ],
@@ -7865,6 +8514,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_225_haak/char_225_haak_nian_4/Back/char_225_haak_nian_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_225_haak_nian%234.png"
     }
    },
    {
@@ -7900,6 +8552,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_225_haak/char_225_haak_nian_5/Back/char_225_haak_nian_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_225_haak_nian%235.png"
     }
    }
   ],
@@ -7937,6 +8592,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_248_mgllan/char_248_mgllan_kitchen_1/Back/char_248_mgllan_kitchen_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_248_mgllan_kitchen%231.png"
     }
    }
   ],
@@ -7974,6 +8632,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_250_phatom/char_250_phatom_ghost_1/Back/char_250_phatom_ghost_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_250_phatom_ghost%231.png"
     }
    },
    {
@@ -8009,6 +8670,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_250_phatom/char_250_phatom_sale_4/Back/char_250_phatom_sale_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_250_phatom_sale%234.png"
     }
    }
   ],
@@ -8046,6 +8710,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_293_thorns/char_293_thorns_boc_8/Back/char_293_thorns_boc_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_293_thorns_boc%238.png"
     }
    },
    {
@@ -8081,6 +8748,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_293_thorns/char_293_thorns_it_1/Back/char_293_thorns_it_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_293_thorns_it%231.png"
     }
    }
   ],
@@ -8118,6 +8788,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_300_phenxi/char_300_phenxi_boc_9/Back/char_300_phenxi_boc_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_300_phenxi_boc%239.png"
     }
    },
    {
@@ -8153,6 +8826,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_300_phenxi/char_300_phenxi_witch_4/Back/char_300_phenxi_witch_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_300_phenxi_witch%234.png"
     }
    }
   ],
@@ -8190,6 +8866,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_322_lmlee/char_322_lmlee_sanrio_1/Back/char_322_lmlee_sanrio_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_322_lmlee_sanrio%231.png"
     }
    },
    {
@@ -8225,6 +8904,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_322_lmlee/char_322_lmlee_whirlwind_10/Back/char_322_lmlee_whirlwind_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_322_lmlee_whirlwind%2310.png"
     }
    },
    {
@@ -8260,6 +8942,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_322_lmlee/char_322_lmlee_witch_3/Back/char_322_lmlee_witch_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_322_lmlee_witch%233.png"
     }
    }
   ],
@@ -8297,6 +8982,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_340_shwaz/char_340_shwaz_snow_1/Back/char_340_shwaz_snow_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_340_shwaz_snow%231.png"
     }
    },
    {
@@ -8332,6 +9020,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_340_shwaz/char_340_shwaz_striker_1/Back/char_340_shwaz_striker_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_340_shwaz_striker%231.png"
     }
    }
   ],
@@ -8369,6 +9060,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_362_saga/char_362_saga_sale_9/Back/char_362_saga_sale_9.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_362_saga_sale%239.png"
     }
    }
   ],
@@ -8406,6 +9100,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_377_gdglow/char_377_gdglow_sanrio_1/Back/char_377_gdglow_sanrio_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_377_gdglow_sanrio%231.png"
     }
    },
    {
@@ -8441,6 +9138,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_377_gdglow/char_377_gdglow_snow_5/Back/char_377_gdglow_snow_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_377_gdglow_snow%235.png"
     }
    },
    {
@@ -8476,6 +9176,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_377_gdglow/char_377_gdglow_summer_12/Back/char_377_gdglow_summer_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_377_gdglow_summer%2312.png"
     }
    }
   ],
@@ -8513,6 +9216,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4009_irene/char_4009_irene_ambienceSynesthesia_3/Back/char_4009_irene_ambienceSynesthesia_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4009_irene_ambienceSynesthesia%233.png"
     }
    },
    {
@@ -8548,6 +9254,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4009_irene/char_4009_irene_game_3/Back/char_4009_irene_game_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4009_irene_game%233.png"
     }
    }
   ],
@@ -8585,6 +9294,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_400_weedy/char_400_weedy_sightseer_1/Back/char_400_weedy_sightseer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_400_weedy_sightseer%231.png"
     }
    },
    {
@@ -8620,6 +9332,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_400_weedy/char_400_weedy_snow_2/Back/char_400_weedy_snow_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_400_weedy_snow%232.png"
     }
    }
   ],
@@ -8657,6 +9372,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4011_lessng/char_4011_lessng_whirlwind_7/Back/char_4011_lessng_whirlwind_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4011_lessng_whirlwind%237.png"
     }
    }
   ],
@@ -8694,6 +9412,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4027_heyak/char_4027_heyak_ambienceSynesthesia_4/Back/char_4027_heyak_ambienceSynesthesia_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4027_heyak_ambienceSynesthesia%234.png"
     }
    },
    {
@@ -8729,6 +9450,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4027_heyak/char_4027_heyak_epoque_50/Back/char_4027_heyak_epoque_50.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4027_heyak_epoque%2350.png"
     }
    }
   ],
@@ -8766,6 +9490,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4046_ebnhlz/char_4046_ebnhlz_boc_6/Back/char_4046_ebnhlz_boc_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4046_ebnhlz_boc%236.png"
     }
    }
   ],
@@ -8803,6 +9530,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4048_doroth/char_4048_doroth_witch_4/Back/char_4048_doroth_witch_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4048_doroth_witch%234.png"
     }
    }
   ],
@@ -8840,6 +9570,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4055_bgsnow/char_4055_bgsnow_wild_7/Back/char_4055_bgsnow_wild_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4055_bgsnow_wild%237.png"
     }
    },
    {
@@ -8875,6 +9608,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4055_bgsnow/char_4055_bgsnow_yun_7/Back/char_4055_bgsnow_yun_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4055_bgsnow_yun%237.png"
     }
    }
   ],
@@ -8912,6 +9648,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4065_judge/char_4065_judge_epoque_33/Back/char_4065_judge_epoque_33.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4065_judge_epoque%2333.png"
     }
    },
    {
@@ -8947,6 +9686,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4065_judge/char_4065_judge_snow_6/Back/char_4065_judge_snow_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4065_judge_snow%236.png"
     }
    }
   ],
@@ -8984,6 +9726,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4072_ironmn/char_4072_ironmn_ambienceSynesthesia_5/Back/char_4072_ironmn_ambienceSynesthesia_5.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4072_ironmn_ambienceSynesthesia%235.png"
     }
    },
    {
@@ -9019,6 +9764,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4072_ironmn/char_4072_ironmn_summer_11/Back/char_4072_ironmn_summer_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4072_ironmn_summer%2311.png"
     }
    }
   ],
@@ -9056,6 +9804,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4080_lin/char_4080_lin_littlePony_1/Back/char_4080_lin_littlePony_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4080_lin_littlePony%231.png"
     }
    },
    {
@@ -9091,6 +9842,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4080_lin/char_4080_lin_nian_10/Back/char_4080_lin_nian_10.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4080_lin_nian%2310.png"
     }
    },
    {
@@ -9126,6 +9880,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4080_lin/char_4080_lin_summer_19/Back/char_4080_lin_summer_19.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4080_lin_summer%2319.png"
     }
    }
   ],
@@ -9163,6 +9920,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4088_hodrer/char_4088_hodrer_sightseer_1/Back/char_4088_hodrer_sightseer_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4088_hodrer_sightseer%231.png"
     }
    }
   ],
@@ -9200,6 +9960,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4098_vvana/char_4098_vvana_epoque_40/Back/char_4098_vvana_epoque_40.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4098_vvana_epoque%2340.png"
     }
    }
   ],
@@ -9237,6 +10000,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4117_ray/char_4117_ray_shining_2/Back/char_4117_ray_shining_2.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4117_ray_shining%232.png"
     }
    },
    {
@@ -9272,6 +10038,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4117_ray/char_4117_ray_summer_22/Back/char_4117_ray_summer_22.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4117_ray_summer%2322.png"
     }
    }
   ],
@@ -9309,6 +10078,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4121_zuole/char_4121_zuole_nian_11/Back/char_4121_zuole_nian_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4121_zuole_nian%2311.png"
     }
    },
    {
@@ -9344,6 +10116,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4121_zuole/char_4121_zuole_sale_16/Back/char_4121_zuole_sale_16.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4121_zuole_sale%2316.png"
     }
    }
   ],
@@ -9381,6 +10156,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4132_ascln/char_4132_ascln_iteration_4/Back/char_4132_ascln_iteration_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4132_ascln_iteration%234.png"
     }
    }
   ],
@@ -9418,6 +10196,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4133_logos/char_4133_logos_ambienceSynesthesia_6/Back/char_4133_logos_ambienceSynesthesia_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4133_logos_ambienceSynesthesia%236.png"
     }
    }
   ],
@@ -9455,6 +10236,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4138_narant/char_4138_narant_breaker_1/Back/char_4138_narant_breaker_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4138_narant_breaker%231.png"
     }
    },
    {
@@ -9490,6 +10274,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4138_narant/char_4138_narant_littlePony_1/Back/char_4138_narant_littlePony_1.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4138_narant_littlePony%231.png"
     }
    }
   ],
@@ -9527,6 +10314,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_416_zumama/char_416_zumama_boc_3/Back/char_416_zumama_boc_3.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_416_zumama_boc%233.png"
     }
    }
   ],
@@ -9564,6 +10354,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4179_monstr/char_4179_monstr_boc_11/Back/char_4179_monstr_boc_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4179_monstr_boc%2311.png"
     }
    }
   ],
@@ -9601,6 +10394,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4195_radian/char_4195_radian_game_8/Back/char_4195_radian_game_8.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4195_radian_game%238.png"
     }
    }
   ],
@@ -9638,6 +10434,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4202_haruka/char_4202_haruka_iteration_6/Back/char_4202_haruka_iteration_6.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4202_haruka_iteration%236.png"
     }
    }
   ],
@@ -9675,6 +10474,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_4204_mantra/char_4204_mantra_sightseer_4/Back/char_4204_mantra_sightseer_4.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_4204_mantra_sightseer%234.png"
     }
    }
   ],
@@ -9712,6 +10514,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_450_necras/char_450_necras_ambienceSynesthesia_7/Back/char_450_necras_ambienceSynesthesia_7.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_450_necras_ambienceSynesthesia%237.png"
     }
    },
    {
@@ -9747,6 +10552,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_450_necras/char_450_necras_summer_20/Back/char_450_necras_summer_20.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_450_necras_summer%2320.png"
     }
    }
   ],
@@ -9784,6 +10592,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_479_sleach/char_479_sleach_epoque_14/Back/char_479_sleach_epoque_14.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_479_sleach_epoque%2314.png"
     }
    },
    {
@@ -9819,6 +10630,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_479_sleach/char_479_sleach_summer_11/Back/char_479_sleach_summer_11.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_479_sleach_summer%2311.png"
     }
    }
   ],
@@ -9856,6 +10670,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_485_pallas/char_485_pallas_epoque_12/Back/char_485_pallas_epoque_12.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_485_pallas_epoque%2312.png"
     }
    },
    {
@@ -9891,6 +10708,9 @@
       },
       "jsdelivrSkel": "https://cdn.jsdelivr.net/gh/fexli/ArknightsResource@main/spine/char_485_pallas/char_485_pallas_epoque_19/Back/char_485_pallas_epoque_19.skel"
      }
+    },
+    "portrait": {
+     "url": "https://raw.githubusercontent.com/yuanyan3060/ArknightsGameResource/main/portrait/char_485_pallas_epoque%2319.png"
     }
    }
   ]

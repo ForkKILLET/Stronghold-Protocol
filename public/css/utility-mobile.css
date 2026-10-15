@@ -321,7 +321,7 @@
   .room-screen .invite__btns .btn { min-width: .65rem; width: .65rem; min-height: .65rem; height: .65rem; padding: .075rem; font-size: 0; }
   .room-screen .invite__btns .icon { width: .4rem; height: .4rem; }
   .room-screen--coop { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
-  .room-screen .seats { padding: .2rem .25rem; gap: .2rem; grid-template-rows: minmax(0, 1fr); overflow-y: auto; }
+  .room-screen .seats { padding: .2rem .25rem; gap: .2rem; grid-template-rows: auto; overflow-y: auto; }
   .room-screen--coop .seats { flex: 1 0 3.6rem; min-height: 3.6rem; }
   .room-screen .seat { padding: .15rem; gap: .1rem; }
   .room-screen .seat__art .avatar { --av: min(1.5rem, 18vh); }

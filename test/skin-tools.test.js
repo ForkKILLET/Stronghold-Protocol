@@ -38,6 +38,7 @@ test('skin models are opt-in and use the same animation-role plan with a separat
   assert.deepEqual(model, fexliModelDef(model.key, 'op', model.dir, skin.battleSpine.front, model.skillIndices));
   assert.ok(model.skel.rel.includes(skin.stem));
   assert.ok(selected.template.chars[charId].skins[skin.skinId].spine.front.model);
+  assert.ok(selected.template.chars[charId].skins[skin.skinId].portrait.alts[0].rel.startsWith('char/portrait/skin/'));
   for (const leaf of collectLeaves(selected.template.chars[charId].skins)) {
     assert.equal(resourceGroup({ tier: 2, url: 'https://cdn.example/prefix/assets/' + leaf.leaf.alts[0].rel }), 'skins');
   }

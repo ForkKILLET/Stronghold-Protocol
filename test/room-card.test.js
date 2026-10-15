@@ -14,7 +14,7 @@ const chess = JSON.parse(readFileSync(new URL('../data/chess.json', import.meta.
 const operators = [...new Set(Object.values(chess).filter((c) => !c.isGolden && !c.isDiy && !c.isHidden && c.visible !== false).map((c) => c.charId))];
 const [aId, bId] = operators;
 const card = { charId: aId, avatar: bId };
-const skinCard = { ...card, avatar: `${bId}@test#1` };
+const skinCard = { charId: `${aId}@test#1`, avatar: `${bId}@test#1` };
 const quiet = { info() {}, warn() {}, error() {}, debug() {} };
 
 test('room.card schema admits bounded cosmetic IDs only; unknown operators and invalid partial edits are atomic', () => {
@@ -116,7 +116,7 @@ test('WebSocket room broadcast shares each owner card with both players, late jo
   assert.deepEqual(state.seats[0].card, skinCard);
 });
 
-test('skin avatar ids validate their operator and never accept paths, URLs or portrait skin ids', () => {
+test('skin avatar and portrait ids validate their operator and never accept paths or URLs', () => {
   const registry = new SessionRegistry();
   const lobby = new Lobby({ registry, log: quiet, MatchClass: StubMatch, getData: () => ({ chess }) });
   const s = registry.create('Avatar');
@@ -124,13 +124,20 @@ test('skin avatar ids validate their operator and never accept paths, URLs or po
   assert.deepEqual(lobby.card(s, skinCard), { ok: true });
   assert.equal(cardAvatarOperatorId(skinCard.avatar), bId);
   assert.deepEqual(cleanPlayerCard(skinCard, (id) => operators.includes(id)), skinCard);
-  assert.deepEqual(cleanPlayerCard(skinCard, (id) => id === aId), { charId: aId, avatar: '' });
+  assert.deepEqual(cleanPlayerCard(skinCard, (id) => id === aId), { charId: skinCard.charId, avatar: '' });
   for (const avatar of [`${bId}@`, `${bId}@../a`, `${bId}@https://example.com/a`, `${bId}@x@y`, 'https://example.com/a', `${bId}@${'x'.repeat(65)}`]) {
     assert.ok(validateC2S({ t: 'room.card', charId: aId, avatar }));
     assert.ok(lobby.card(s, { charId: aId, avatar }).error);
     assert.deepEqual(s.card, skinCard);
   }
   assert.equal(lobby.card(s, { ...card, avatar: 'char_unknown@test#1' }).error, 'BAD_TARGET');
-  assert.ok(lobby.card(s, { charId: skinCard.avatar, avatar: bId }).error, 'skin ids cannot select a room portrait');
   assert.deepEqual(s.card, skinCard);
+  assert.equal(validateC2S({ t: 'room.card', charId: skinCard.avatar, avatar: bId }), null);
+  assert.deepEqual(lobby.card(s, { charId: skinCard.avatar, avatar: bId }), { ok: true });
+  assert.equal(s.card.charId, skinCard.avatar, 'portrait validates its own operator independently of the avatar');
+  for (const charId of [`${aId}@`, `${aId}@../x`, `${aId}@x@y`, 'https://example.com/x']) {
+    assert.ok(validateC2S({ t: 'room.card', charId, avatar: bId }));
+    assert.ok(lobby.card(s, { charId, avatar: bId }).error);
+  }
+  assert.equal(lobby.card(s, { charId: 'char_unknown@test#1', avatar: bId }).error, 'BAD_TARGET');
 });
