@@ -1,7 +1,9 @@
 import { Emblem } from './title.js';
 import { useMyCard } from '../ui/playerCard.js';
 import { cardAvatarUrl } from '../ui/seatArt.js';
-import { HubBackdrop, HubRadar } from '../ui/hubBackdrop.js';
+import { HubBackdrop, HubRadar, BackdropGlyph, BackdropSettings } from '../ui/hubBackdrop.js';
+import { useHubBackdrop, backdropTheme } from '../ui/hubAppearance.js';
+import { LobbyMusicButton } from '../ui/lobbyMusic.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 / 同盟匹配 and a difficulty (标准/险境/绝境/终极), create a room,
 // join the public alliance queue, or join a private room with a 同盟密钥 (recent codes remembered).
@@ -342,6 +344,8 @@ export function LobbyScreen() {
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
   });
   const [panel, setPanel] = useState(null); // protocol | join | achievements | sweep; existing server actions only
+  const bg = useHubBackdrop();
+  const [bgOpen, setBgOpen] = useState(false);
   const sweepEntry = useRef(null);
   const previousPanel = useRef(null);
   useLayoutEffect(() => {
@@ -419,8 +423,8 @@ export function LobbyScreen() {
   // Replace the lobby instead of covering an interactive lobby with a dialog/backdrop.
   if (panel === 'sweep') return sweepModule ? html`<${sweepModule.SweepReport} onClose=${() => setPanel(null)} />`
     : html`<${SweepLoadingPage} onClose=${() => setPanel(null)} />`;
-  return html`<div class="screen lobby-screen lobby-hub" data-hub-theme="night">
-    <${HubBackdrop} />
+  return html`<div class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
+    <${HubBackdrop} bg=${bg} />
     <header class="topbar hub-topbar">
       <div class="topbar__left">
         <${Button} variant="ghost" size="sm" icon="chevronLeft" onClick=${backToTitle} title=${t('返回标题')}>${t('返回')}<//>
@@ -430,6 +434,9 @@ export function LobbyScreen() {
           <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
         </div>
         <div class="topbar__tools">
+          <${Button} variant="secondary" size="sm" square=${true} title=${t('大厅背景')} aria-label=${t('大厅背景')}
+            onClick=${() => setBgOpen(true)}><${BackdropGlyph} /><//>
+          <${LobbyMusicButton} />
           <${SettingsButton} class="lobby-settings" variant="secondary" square=${true} />
           <${GuideButton} class="lobby-guide" variant="secondary" square=${true} />
           <${PwaInstallButton} class="lobby-pwa" square=${true} />
@@ -447,7 +454,7 @@ export function LobbyScreen() {
     </header>
     <main class="hub-stage screen__scroll">
       <div class="hub-center" aria-hidden="true">
-        <div class="hub-center__mark"><${HubRadar} /><${Emblem} /></div>
+        <div class="hub-center__mark"><${HubRadar} bg=${bg} /><${Emblem} /></div>
         <span class="hub-center__en">STRONGHOLD <b>PROTOCOL</b></span>
         <h1 class="hub-center__title">${t('卫戍协议：盟约')}</h1>
       </div>
@@ -473,6 +480,9 @@ export function LobbyScreen() {
       </section>
     </main>
     ${panel === 'achievements' ? html`<${AchievementPanel} me=${me} onClose=${() => setPanel(null)} />` : null}
+    <${Modal} open=${bgOpen} utility=${true} class="hub-backdrop-panel" title=${t('大厅背景')} micro="LOBBY BACKDROP" onClose=${() => setBgOpen(false)}>
+      <${BackdropSettings} bg=${bg} />
+    <//>
     ${panel === 'protocol' ? html`<${ProtocolSelect} card=${card} roomMode=${roomMode} difficulty=${difficulty} onDifficulty=${pickDifficulty}
       online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
       queue=${matchQueue} onCancel=${cancelMatchmaking} />` : null}

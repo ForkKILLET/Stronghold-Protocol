@@ -47,6 +47,7 @@ import { LobbyScreen, rememberRoom, parseRoomParam } from './screens/lobby.js';
 import { RoomScreen } from './screens/room.js';
 import { GameScreen } from './screens/game.js';
 import { audio, installAudio } from './audio.js';
+import { installLobbyMusic } from './ui/lobbyMusic.js';
 import { settingsStore, useSettings, updateSettings } from './ui/settings.js';
 import { ResourceHost } from './ui/resourcePanel.js';
 import { bindResourceCombat } from './resources/combat.js';
@@ -423,6 +424,7 @@ async function boot() {
   net.attachBrowserHooks();
   // Audio: unlock on first gesture, BGM follows the route / match phase (js/audio.js).
   installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get() });
+  installLobbyMusic();
   data.load('assets').catch(() => {});
   // Warm the data cache in the background (missing files are tolerated).
   data.loadAll('config').catch(() => {});

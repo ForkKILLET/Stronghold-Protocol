@@ -34,7 +34,7 @@ function skinAvatar(charId, skinId) {
 export function SkinSection({ chess }) {
   const settings = useSettings();
   if (!chess?.chessId || !chess?.charId || chess.isDiy || chess.isHidden) return null;
-  if (!settings.skinsEnabled) return html`<section class="lo-sec lo-sec--skin">
+  if (!settings.skinsEnabled) return html`<section class="lo-sec lo-sec--skin" data-testid="skin-section" data-state="disabled">
     <header class="lo-sec__head"><h3>${t('皮肤')}<${MicroLabel}>SKIN<//></h3>
       <${Button} size="sm" variant="secondary" onClick=${() => updateSettings({ skinsEnabled: true })}>${t('启用皮肤')}<//>
     </header>
@@ -50,17 +50,24 @@ function EnabledSkinSection({ chess }) {
   // key the server validates and the renderer reads), while the catalogue and the asset manifest are per operator.
   const chessId = chess && chess.chessId;
   const charId = chess && chess.charId;
-  if (!ready || !chessId || !charId) return null;
+  if (!chessId || !charId) return null;
   const list = availableSkins(charId);
-  if (!list.length) return null; // this operator has no skins at all — say nothing rather than show an empty section
+  const missing = ['skins', 'assets'].filter((name) => data.status(name) === 'missing');
+  const state = !ready ? 'loading' : missing.length ? 'missing' : list.length ? 'ready' : 'empty';
+  // Keep an unavailable saved choice for a later deployment, while accurately showing the current default fallback.
+  const chosen = list.some((x) => x.id === s.entries[chessId]) ? s.entries[chessId] : null;
 
-  const chosen = s.entries[chessId] || null;
-
-  return html`<section class="lo-sec lo-sec--skin" data-testid="skin-section">
+  return html`<section class="lo-sec lo-sec--skin" data-testid="skin-section" data-state=${state}>
     <header class="lo-sec__head">
       <h3>${t('皮肤')}<${MicroLabel}>SKIN<//></h3>
-      <span class="lo-sec__note">${t('{n} 款', { n: list.length })}</span>
+      ${state === 'ready' || state === 'empty' ? html`<span class="lo-sec__note">${t('{n} 款', { n: list.length })}</span>` : null}
+      <${Button} size="sm" variant="secondary" onClick=${() => updateSettings({ skinsEnabled: false })}>${t('关闭皮肤')}<//>
     </header>
+    ${state === 'loading' ? html`<p class="set-hint" role="status">${t('正在载入皮肤目录…')}</p>`
+      : state === 'missing' ? html`<div class="lo-skin-status" role="status"><p class="set-hint">${t('皮肤数据加载失败，请重试。')}</p>
+        <${Button} size="sm" variant="secondary" onClick=${() => Promise.all(missing.map((name) => data.invalidate(name)))}>${t('重试')}<//></div>`
+      : html`${state === 'empty' ? html`<p class="set-hint" role="status">${data.get('skins')?.chars?.[charId]?.length
+        ? t('本服务器尚未部署该干员的皮肤，当前使用默认外观。') : t('该干员暂无可用皮肤，当前使用默认外观。')}</p>` : null}
     <div class="lo-skins" role="radiogroup" aria-label=${t('选择皮肤')}>
       <button type="button" role="radio" aria-checked=${chosen ? 'false' : 'true'} data-skin=""
         class=${cx('lo-skin', 'lo-skin--default', !chosen && 'is-on')} onClick=${() => clearSkin(chessId)}>
@@ -81,6 +88,6 @@ function EnabledSkinSection({ chess }) {
           </span>
         </button>`;
       })}
-    </div>
+    </div>`}
   </section>`;
 }

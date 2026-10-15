@@ -572,6 +572,8 @@ export class AudioManager {
     this.wantBgm = null;      // desired key (kept while locked)
     this.bgm = null;          // { key, loopUrl, nodes: [{src, gain}], gain }
     this.bgmToken = 0;
+    this.bgmKey = null;       // last requested key, including an asynchronous track that is still loading
+    this.lobbyMusic = null;   // browser-local streaming file { url, paused }; never part of the asset manifest
     this.units = new Map();   // battle unit id → defId
     this.pendingSkill = new Map(); // unit id → the 'skill' tuple that arrived before the unit was known (see _track)
     this.lastAttacker = new Map(); // target id → { def, at, skillIndex, skillActive } of the hostile attack aimed at it (its impact sound,
@@ -607,7 +609,7 @@ export class AudioManager {
   _unlock() {
     if (this.ctx) {
       const st = this.ctx.state;
-      if (st === 'running') { this._dropUnlock(); return; }
+      if (st === 'running') { this._dropUnlock(); this._syncLobbyMusic(); return; }
       if (!this.win?.document?.hidden) {
         this._primeOutput();
         const p = this.ctx.resume?.();
@@ -679,6 +681,7 @@ export class AudioManager {
   _onVis() {
     try {
       if (!this.ctx) return;
+      this._syncLobbyMusic();
       if (this.win?.document?.hidden) this.ctx.suspend().catch(() => {});
       else if (this.ctx.state !== 'running') {
         // back on the page: resume, and keep a gesture ready in case the browser wants one first (iOS after a call)
@@ -708,6 +711,7 @@ export class AudioManager {
       muted: typeof v?.muted === 'boolean' ? v.muted : this.volumes.muted,
     };
     this._applyVolumes();
+    this._syncLobbyMusic();
     if (this.volumes.muted || this.volumes.sfx <= 0) this.stopBondCue();
     // the music became audible again: download and start the track the screen wants now (none was fetched meanwhile)
     if (wasSilent && !this.bgmSilent && this.ctx && this.wantBgm) { const k = this.wantBgm; this.wantBgm = null; this.playBgm(k); }
@@ -716,6 +720,60 @@ export class AudioManager {
 
   /** Is the music silent — muted, or the BGM volume at 0? Then no BGM is downloaded (playBgm). */
   get bgmSilent() { return this.volumes.muted || this.volumes.bgm <= 0; }
+
+  /** A local file replaces only the existing lobby key (title, room and pre-battle/result screens included). */
+  setLobbyMusic(value) {
+    const next = value && typeof value.url === 'string' && value.url.startsWith('blob:')
+      ? { url: value.url, paused: value.paused === true } : null;
+    const same = next?.url === this.lobbyMusic?.url;
+    this.lobbyMusic = next;
+    if (same) { this._syncLobbyMusic(); return; }
+    if (this.bgmKey === 'lobby') this.playBgm('lobby');
+  }
+
+  _syncLobbyMusic() {
+    const current = this.bgm;
+    if (!current?.media) return;
+    if (this.bgmSilent || this.win?.document?.hidden || this.lobbyMusic?.paused) current.media.pause();
+    else {
+      const playing = current.media.play();
+      // Autoplay refusal is retried on the next user gesture; corrupt/unsupported files use the error handler.
+      playing?.catch?.(() => this._armUnlock());
+    }
+  }
+
+  _lobbyTrack(key) {
+    return key === 'lobby' && this.lobbyMusic ? { loop: this.lobbyMusic.url, local: true }
+      : resolveBgm(this.getManifest(), key);
+  }
+
+  /** Stream the file through the existing BGM gain instead of decoding a long song into the SFX buffer cache. */
+  _startLobbyMusic(key, track, token) {
+    let media, source, gain;
+    try {
+      media = new this.win.Audio(); media.loop = true; media.preload = 'none';
+      source = this.ctx.createMediaElementSource(media);
+      gain = this.ctx.createGain(); source.connect(gain); gain.connect(this.bgmGain);
+      const t = this.ctx.currentTime;
+      gain.gain.setValueAtTime(0, t); gain.gain.linearRampToValueAtTime(1, t + FADE_S);
+      const stop = () => {
+        media.onerror = null; media.pause(); media.removeAttribute('src'); media.load(); source.disconnect();
+      };
+      media.onerror = () => {
+        if (token !== this.bgmToken) return;
+        this._warn('lobby-music', 'local file cannot be played');
+        this.lobbyMusic = null;
+        this.playBgm(this.bgmKey);
+      };
+      media.src = track.loop;
+      this.bgm = { key, loopUrl: track.loop, nodes: [], gain, media, stop };
+      this._syncLobbyMusic();
+    } catch (err) {
+      media?.pause(); source?.disconnect(); gain?.disconnect();
+      this._warn('lobby-music', err);
+      if (token === this.bgmToken) { this.lobbyMusic = null; this.playBgm(this.bgmKey); }
+    }
+  }
 
   /**
    * The voice dub (settings 语音语言): 'jp' plays `audio.voiceJp`, anything else `audio.voice` (中文, the default). The
@@ -818,22 +876,24 @@ export class AudioManager {
    */
   playBgm(key) {
     try {
+      this.bgmKey = key;
       if (!this.ctx) { this.wantBgm = key; return; }
       if (this.bgmSilent) {
         this.wantBgm = key;
-        const silentTrack = resolveBgm(this.getManifest(), key);
+        const silentTrack = this._lobbyTrack(key);
         if (this.bgm && silentTrack && this.bgm.loopUrl === silentTrack.loop) { this.bgm.key = key; return; }
         ++this.bgmToken; // a start still waiting for its download stays silent too
         this._fadeOutBgm();
         return;
       }
       this.wantBgm = null;
-      const track = resolveBgm(this.getManifest(), key);
+      const track = this._lobbyTrack(key);
       if (this.bgm && track && this.bgm.loopUrl === track.loop) { this.bgm.key = key; return; }
       if (!track && !this.bgm) return;
       const token = ++this.bgmToken;
       this._fadeOutBgm();
       if (!track) return;
+      if (track.local) { this._startLobbyMusic(key, track, token); return; }
       this._startBgm(key, track, token);
     } catch (err) { this._warn('bgm', err); }
   }
@@ -888,7 +948,7 @@ export class AudioManager {
       cur.gain.gain.setValueAtTime(cur.gain.gain.value, t);
       cur.gain.gain.linearRampToValueAtTime(0, t + FADE_S);
       for (const n of cur.nodes) { try { n.src.stop(t + FADE_S + 0.05); } catch { /* ignore */ } }
-      setTimeout(() => { try { cur.gain.disconnect(); } catch { /* ignore */ } }, (FADE_S + 0.3) * 1000);
+      setTimeout(() => { try { cur.stop?.(); cur.gain.disconnect(); } catch { /* ignore */ } }, (FADE_S + 0.3) * 1000);
     } catch { /* ignore */ }
   }
 

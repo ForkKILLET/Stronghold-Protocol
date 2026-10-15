@@ -1,5 +1,8 @@
 // Procedural lobby artwork adapted from isomerpoi UI b2bd17af; no new storage or services.
 import { html } from './components.js';
+import { useRef, useState } from '../../vendor/hooks.module.js';
+import { HUB_THEMES, backdropScene } from './hubAppearance.js';
+import { t } from '../../../shared/i18n.js';
 function rng(seed) {
   let s = seed >>> 0;
   return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 2 ** 32);
@@ -108,11 +111,17 @@ function Scene({ theme }) {
       style=${`left:${m.x.toFixed(2)}%;top:${m.y.toFixed(2)}%;width:${m.s.toFixed(1)}px;height:${m.s.toFixed(1)}px;--d:${m.d.toFixed(1)}s;--dl:-${m.dl.toFixed(1)}s`}></i>`)}</div>` : null}`;
 }
 
-export function HubBackdrop() {
-  return html`<div class="hub-bg" aria-hidden="true"><${Scene} theme="night" /><div class="hub-bg__grid"></div><div class="hub-bg__dots"></div><div class="hub-bg__vignette"></div></div>`;
+export function HubBackdrop({ bg }) {
+  const scene = backdropScene(bg), { pref } = bg;
+  return html`<div class="hub-bg" data-scene=${scene} data-motion=${pref.motion ? 'on' : 'off'} aria-hidden="true">
+    ${scene === 'photo' ? html`<div class="hub-bg__photo" style=${{ backgroundImage: `url("${bg.imageUrl}")`, filter: `blur(${pref.blur}px)` }}></div>
+      <div class="hub-bg__shade" style=${{ opacity: pref.dim / 100 }}></div>`
+      : scene === 'blank' ? html`<div class="hub-bg__sky"></div>` : html`<${Scene} theme=${scene} />`}
+    ${scene !== 'photo' || pref.overlay ? html`<div class="hub-bg__grid"></div><div class="hub-bg__dots"></div>` : null}
+    <div class="hub-bg__vignette"></div></div>`;
 }
-export function HubRadar() {
-  const sweep = true;
+export function HubRadar({ bg }) {
+  const sweep = bg.pref.motion && backdropScene(bg) !== 'calm';
   return html`<div class="hub-radar" aria-hidden="true">
     <svg viewBox="-240 -240 480 480">
       <circle r="92" /><circle r="152" /><circle class="hub-radar__ticks" r="214" />
@@ -123,3 +132,52 @@ export function HubRadar() {
 }
 
 /** The topbar button glyph: a framed landscape. */
+export function BackdropGlyph() {
+  return html`<svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path fill="currentColor" fill-rule="evenodd" d="M2 4h20v16H2zm2 2v9.6l4.6-4.8 3.6 3.7 2.6-2.6L20 17V6zm13 1.6a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z" />
+  </svg>`;
+}
+
+function Swatch({ theme }) {
+  return html`<span class="bgset__swatch" data-hub-theme=${theme} aria-hidden="true">
+    <svg viewBox="0 0 160 90" preserveAspectRatio="none">
+      <path class="sw-far" d="M0 56L18 49L34 53L56 38L76 47L98 36L122 49L142 42L160 51V90H0Z" />
+      <path class="sw-mid" d="M0 68L28 62L50 66H56V60H60V55H66V48H70V55H76V60H100V66L124 62L160 68V90H0Z" />
+      <path class="sw-near" d="M0 80L40 74L90 79L130 73L160 78V90H0Z" /><circle class="sw-beacon" cx="68" cy="46" r="1.3" />
+    </svg></span>`;
+}
+
+export function BackdropSettings({ bg }) {
+  const fileRef = useRef(null), [error, setError] = useState('');
+  const { pref, update, imageUrl, busy } = bg;
+  const action = async (fn) => { setError(''); try { await fn(); } catch (e) { setError(e.message || t('操作失败')); } };
+  return html`<div class="bgset">
+    <div class="bgset__themes" role="group" aria-label=${t('背景主题')}>
+      ${HUB_THEMES.map((x) => html`<button key=${x.id} type="button" aria-pressed=${pref.theme === x.id}
+        class=${`bgset__theme${pref.theme === x.id ? ' is-selected' : ''}`} onClick=${() => update({ theme: x.id })}>
+        <${Swatch} theme=${x.id} /><span class="bgset__name">${t(x.name)}</span><span class="bgset__en">${x.en}</span></button>`)}
+      <button type="button" disabled=${busy} aria-pressed=${pref.theme === 'custom'} class=${`bgset__theme${pref.theme === 'custom' ? ' is-selected' : ''}`}
+        onClick=${() => imageUrl ? update({ theme: 'custom' }) : fileRef.current?.click()}>
+        <span class="bgset__swatch bgset__swatch--custom" style=${imageUrl ? { backgroundImage: `url("${imageUrl}")` } : null} aria-hidden="true">
+          ${imageUrl ? null : html`<span class="bgset__plus">+</span>`}</span>
+        <span class="bgset__name">${t('自定义背景')}</span><span class="bgset__en">CUSTOM</span></button>
+    </div>
+    <input ref=${fileRef} type="file" accept="image/*" hidden onChange=${(e) => {
+      const file = e.currentTarget.files?.[0]; e.currentTarget.value = '';
+      if (file) action(() => bg.setImage(file));
+    }} />
+    ${imageUrl ? html`<div class="bgset__row">
+      <button type="button" class="btn btn--secondary btn--sm" disabled=${busy} onClick=${() => fileRef.current?.click()}>${t('更换背景')}</button>
+      <button type="button" class="btn btn--ghost btn--sm" disabled=${busy} onClick=${() => action(bg.clearImage)}>${t('移除背景')}</button></div>` : null}
+    ${pref.theme === 'custom' ? html`<div class="bgset__custom">
+      <label class="bgset__slider"><span>${t('暗化')}</span><input type="range" min="0" max="85" value=${pref.dim}
+        onInput=${(e) => update({ dim: Number(e.currentTarget.value) })} /><b class="num">${pref.dim}%</b></label>
+      <label class="bgset__slider"><span>${t('模糊')}</span><input type="range" min="0" max="16" value=${pref.blur}
+        onInput=${(e) => update({ blur: Number(e.currentTarget.value) })} /><b class="num">${pref.blur}px</b></label>
+      <label class="bgset__check"><input type="checkbox" checked=${pref.overlay} onChange=${(e) => update({ overlay: e.currentTarget.checked })} />${t('叠加战术网格')}</label></div>` : null}
+    <label class="bgset__check"><input type="checkbox" checked=${pref.motion} onChange=${(e) => update({ motion: e.currentTarget.checked })} />${t('动态效果（云层、粒子、雷达扫描）')}</label>
+    <p class="bgset__note">${t('图片上限 30MB，自动缩放至最长边 2560px，仅保存在当前浏览器。')}</p>
+    ${busy ? html`<p role="status">${t('图片处理中…')}</p>` : null}
+    ${error ? html`<p class="lobby-media-error" role="alert">${t(error)}</p>` : null}
+  </div>`;
+}

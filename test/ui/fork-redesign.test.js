@@ -150,7 +150,7 @@ test('battle/settlement decoration reads authoritative facts and does not invent
   for (const file of ['public/js/screens/lobby.js', 'public/js/screens/room.js', 'public/js/screens/settle.js']) {
     const src = read(file);
     const code = src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
-    assert.doesNotMatch(code, /from ['\"](?:.*\/)?(?:accounts|friends|cloudStats|federation|randomMode|namecards|trophies|lobbyMusic)\.js/);
+    assert.doesNotMatch(code, /from ['\"](?:.*\/)?(?:accounts|friends|cloudStats|federation|randomMode|namecards|trophies)\.js/);
     for (const [, type] of code.matchAll(/net\.request\('([^']+)'/g)) assert.ok(Object.hasOwn(C2S, type), `${file}: ${type}`);
   }
   assert.doesNotMatch(read('public/js/screens/settle.js'), /LevelStrip|levelProgress|accountApi|fetch\(|net\.request/);
