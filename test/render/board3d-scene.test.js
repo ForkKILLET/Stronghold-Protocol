@@ -385,6 +385,29 @@ describe('BoardScene with an official scene (stub renderer)', () => {
     assert.equal(board.sceneRes.size, 0, 'scene resources disposed');
   });
 
+  test('inactive shadow planes stay hidden through boss prep, enemy preview and battle area switches', () => {
+    const { doc, bin } = fakeScene([
+      ...PARTS,
+      { material: 'Shadow', x0: -0.5, y0: -0.5, z: -0.02, lightmap: -1, group: 'inactive' },
+    ]);
+    doc.materials.Shadow = { kind: 'lit', colors: { _Color: [1, 1, 1, 1] }, keywords: [] };
+    const chunks = parseSceneChunks(doc, bin);
+    const pack = { key: 'inactive-shadow', doc, chunks, groups: sceneGroupRects(chunks), images: { tex: {}, lm: [] } };
+    const board = new BoardScene(THREE, fakePack(), { renderer: stubRenderer() });
+    board.setScenePack(stage.id, pack);
+    board.setStage(stage);
+    try {
+      for (const area of [AREAS.normal, AREAS.boss, AREAS.normal, AREAS.boss, AREAS.unite]) {
+        board.setArea(area);
+        const count = sceneMeshes(board).reduce((n, m) => n + m.geometry.getAttribute('position').count, 0);
+        const expected = chunks.filter((c) => c.group !== 'inactive' && (!c.group || sceneGroupVisible(pack.groups[c.group], area)))
+          .reduce((n, c) => n + c.position.length / 3, 0);
+        assert.equal(count, expected, 'only active scene geometry reaches the renderer');
+        assert.equal(board.sceneRes.get(pack.key).mats.has('Shadow|-1'), false, 'the white shadow material is never created');
+      }
+    } finally { board.destroy(); }
+  });
+
   test('#569: the device slabs stay drawn on an official scene (the procedural board is gone); a stage without slabs adds nothing', () => {
     const board = new BoardScene(THREE, fakePack(), { renderer: stubRenderer() });
     const m03 = stages.act1autochess_m03;
@@ -492,7 +515,7 @@ describe('extracted scenes (when scene bundles were extracted here)', { skip: !O
       board.setStage(stage);
       for (const [name, area] of views) {
         board.setArea(area);
-        const shown = chunks.filter((c) => !c.group || sceneGroupVisible(rects[c.group], area));
+        const shown = chunks.filter((c) => c.group !== 'inactive' && (!c.group || sceneGroupVisible(rects[c.group], area)));
         const keys = new Set(shown.map((c) => sceneMaterialKey(c, doc.materials[c.material])));
         const meshes = sceneMeshes(board);
         assert.equal(meshes.length, keys.size, `${doc.stage} ${name}: ${shown.length} chunks → ${keys.size} meshes`);

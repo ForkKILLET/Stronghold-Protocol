@@ -1,7 +1,8 @@
 // Settlement presentation adapted from isomerpoi UI b2bd17af. Uses existing results only; no account, social or XP system.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, DifficultyTag } from '../ui/components.js';
-import { useGameData, Img, Sprite, PlayerAvatar, BondGlyph, BandIcon } from '../ui/gameComponents.js';
+import { useGameData, Img, Sprite, BondGlyph, BandIcon } from '../ui/gameComponents.js';
+import { ResultAvatar } from '../ui/resultAvatar.js';
 import { normalizeResult, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
 import { data } from '../data.js';
 import { chessPortraitUrl, chessAvatarUrl, itemIconUrl, enemyIconUrl, titleIconUrl } from '../ui/assetUrls.js';
@@ -304,7 +305,7 @@ function SelfPage({ r, raw, self, gd, seed, onNext }) {
       <${SettleMap} lose=${!cleared} seed=${seed} />
       <div class="smap__fx" aria-hidden="true"></div>
       <${Logo} />
-      <div class="sself__band">${self.bandId ? html`<${BandIcon} bandId=${self.bandId} size="lg" />` : html`<${PlayerAvatar} player=${self} self=${true} />`}<i aria-hidden="true"></i></div>
+      <div class="sself__band">${self.bandId ? html`<${BandIcon} bandId=${self.bandId} size="lg" />` : html`<${ResultAvatar} player=${self} self=${true} />`}<i aria-hidden="true"></i></div>
       <div class="sself__mode"><${ModePill} r=${r} /></div>
       <h1 class="sself__title">${cleared ? t('模拟完成') : t('模拟中断')}</h1>
       <div class="sself__rounds"><span>${t('通过回合')}</span><b class="num">${rounds}</b></div>
@@ -313,7 +314,7 @@ function SelfPage({ r, raw, self, gd, seed, onNext }) {
         <${Img} src=${enemyIconUrl(gd.m, m.rec.enemyKey)} fallback=${html`<${Icon} name="crown" class="smedal__glyph" />`} />
         <i class="smedal__check"><${Icon} name=${m.done ? 'check' : 'close'} /></i></span>`)}</div>` : null}
       <div class="splate">
-        <${PlayerAvatar} player=${self} self=${true} class="splate__ava" />
+        <${ResultAvatar} player=${self} self=${true} class="splate__ava" />
         <div class="splate__info">
           <b class="splate__name">${self.name}</b>
           <span class="splate__gain"><small><${Icon} name="crown" />${t('获得奖杯')}</small><b class="num">${self.trophies}</b></span>
@@ -366,7 +367,7 @@ function TeamCard({ p, i, gd, self, victory, raw }) {
     </div>
     <div class="tcard__plate">
       ${self ? html`<i class="tcard__me" aria-hidden="true"><${Icon} name="user" /></i>` : null}
-      <${PlayerAvatar} player=${p} self=${self} class="tcard__ava" />
+      <${ResultAvatar} player=${p} self=${self} class="tcard__ava" />
       <span class="tcard__who">
         <b class="tcard__name"><span>${p.name}</span>${p.isBot ? html`<span class="tcard__ai">AI</span>` : null}</b>
         ${band ? html`<span class="tcard__band"><${BandIcon} bandId=${band.bandId} size="xs" /><span>${band.name}</span></span>` : null}

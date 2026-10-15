@@ -242,10 +242,10 @@
 .sop__lv b { font-family: var(--font-display); font-size: calc(.19 * var(--t)); line-height: 1; color: #eef2f1; }
 .sop.is-golden .sop__lv b { color: #ffd34d; }
 .sop__si { position: absolute; right: .04rem; top: .04rem; padding: 0 .04rem; font-size: calc(.13 * var(--t)); font-weight: 700; background: var(--ice, #9ad7ff); color: var(--ice-900, #06202e); }
-.sop__slots { position: absolute; left: 0; right: 0; bottom: 0; height: .6rem; display: flex; gap: .05rem; padding: .05rem; background: #d3d8d6; }
-.sop__slot { flex: 1; display: grid; place-items: center; overflow: hidden; background: #e7ebe9; box-shadow: inset 0 0 0 1px #8e9593; }
+.sop__slots { position: absolute; left: 0; right: 0; bottom: 0; height: .6rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: .05rem; padding: .05rem; background: #d3d8d6; }
+.sop__slot { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); place-items: center; overflow: hidden; background: #e7ebe9; box-shadow: inset 0 0 0 1px #8e9593; }
 .sop__slot.has-item { background: #2c3231; box-shadow: inset 0 0 0 1px #5e6664; }
-.sop__slot img { width: 92%; height: 92%; object-fit: contain; }
+.sop__slot img { display: block; min-width: 0; min-height: 0; width: 100%; height: 100%; padding: .02rem; box-sizing: border-box; object-fit: contain; }
 .sop__slot b { font-size: calc(.2 * var(--t)); color: #e6eae8; }
 .sop__noinfo { display: flex; flex-direction: column; align-items: center; color: #7a8280; }
 .sop__noinfo svg { width: .2rem; height: .2rem; fill: none; stroke: currentColor; stroke-width: 2; }

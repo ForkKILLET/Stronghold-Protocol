@@ -17,7 +17,8 @@
 
 import { useEffect } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, MicroLabel, DifficultyTag } from '../ui/components.js';
-import { useGameData, Img, UnitThumb, BandIcon, PlayerAvatar, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
+import { useGameData, Img, UnitThumb, BandIcon, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
+import { ResultAvatar } from '../ui/resultAvatar.js';
 import { normalizeResult, fmtNum, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
 import { data } from '../data.js';
 import { enemyIconUrl, titleIconUrl, uiUrl } from '../ui/assetUrls.js';
@@ -75,7 +76,7 @@ function PlayerCard({ p, myId, titles, best, solo = false }) {
   const bonds = resultBonds(p.bonds, (id) => gd.bond(id));
   return html`<article class=${cx('rcard', p.playerId === myId && 'is-self', p.alive === false && 'is-dead')}>
     <header class="rcard__head">
-      <${PlayerAvatar} player=${p} self=${p.playerId === myId} />
+      <${ResultAvatar} player=${p} self=${p.playerId === myId} />
       <div class="rcard__who">
         <b class="rcard__name">${p.name}${p.isBot ? html`<span class="rcard__ai">AI</span>` : null}${p.playerId === myId ? html`<span class="rcard__you">${t('你')}</span>` : null}</b>
         <span class="rcard__band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : '—'}</span>
@@ -172,4 +173,3 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
     </main>
   </div>`;
 }
-
