@@ -99,6 +99,30 @@ describe('ResourceStore', () => {
     assert.equal(scans, 1);
   });
 
+  test('oversized cache enumeration falls back to bounded exact-key probes and repairs eviction', async () => {
+    const caches = new MemoryCaches();
+    const files = [{ url: '/assets/a.png', tier: 1, size: 1 }, { url: '/assets/b.png', tier: 1, size: 1 }];
+    const cache = await seed(caches, `${ORIGIN}/assets/a.png`, 'a', 'h0');
+    const s = store(manifest(files), { caches, fetch: async () => new Response('b') });
+    let probes = 0;
+    cache.keys = async (key) => {
+      if (!key) throw new Error('Failed to read: Operation too large.');
+      probes++;
+      return cache.entries.has(key) ? [new Request(key)] : [];
+    };
+    const before = await s.status();
+    assert.equal(before.enumerationLimited, true);
+    assert.equal(before.count, 1);
+    assert.ok(probes >= 2);
+    assert.equal((await s.download()).count, 2);
+    assert.equal(await s.pruneStale(), 0, 'unlisted stale keys are retained, not guessed');
+    await cache.delete(`${ORIGIN}/assets/a.png`);
+    const after = await s.status();
+    await s.reconcileRuntimeIndex(after);
+    assert.equal(after.count, 1);
+    assert.equal((await s.status({ verifyCache: false })).count, 1);
+  });
+
   test('runtime metadata merges concurrently without overwriting preload fingerprints', async () => {
     const caches = new MemoryCaches();
     const a = `${ORIGIN}/assets/a.png`, b = `${ORIGIN}/assets/b.png`, c = `${ORIGIN}/assets/c.png`;

@@ -43,6 +43,54 @@ const SKIN_FILES = [
 ];
 const SKIN_MANIFEST = { ...MANIFEST, version: 'skin-scope', files: SKIN_FILES, tier1: 1, totalBytes: 16 };
 
+test('all selected pack requests precede slow essential per-file fallback, including skins', async (t) => {
+  const files = [SKIN_FILES[0], SKIN_FILES[2]].map((file) => ({
+    ...file, hash: createHash('sha1').update('b'.repeat(file.size)).digest('hex').slice(0, 12),
+  }));
+  const pack = { id: 'skins-1', tier: 2, size: 100, sha1: 'a'.repeat(40),
+    url: '/resource-packs/skins-1.zip', files: [files[1]] };
+  const env = stubEnv({ manifest: { ...SKIN_MANIFEST, files, packs: [pack] } });
+  t.after(env.restore);
+  const fetcher = globalThis.fetch;
+  const order = [];
+  globalThis.fetch = async (url, options) => {
+    order.push(url);
+    if (url === pack.url) return new Response(null, { status: 404 });
+    return fetcher(url, options);
+  };
+  const mod = await import('../../public/js/resources/index.js?packs-before-gaps');
+  await mod.syncResources(true, false, 'cn', true);
+  assert.ok(order.indexOf(pack.url) < order.indexOf(ORIGIN + files[0].url));
+  assert.equal(mod.resourceState().selectionComplete, true);
+  await mod.syncResources(false);
+});
+
+test('continue retries incomplete files even when aggregate Cache.keys fails and never reports ready for gaps', async (t) => {
+  const env = stubEnv(); t.after(env.restore);
+  const cache = await env.caches.open(CACHE_NAME);
+  cache.keys = async (key) => {
+    if (!key) throw new Error('Failed to read: Operation too large.');
+    return cache.entries.has(key) ? [new Request(key)] : [];
+  };
+  let fail = true;
+  const fetcher = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    if (fail && url === ORIGIN + FILES[1].url) return new Response(null, { status: 503 });
+    return fetcher(url, options);
+  };
+  const mod = await import('../../public/js/resources/index.js?resume-large-cache');
+  await mod.syncResources(true, false);
+  assert.equal(mod.resourceState().selectionComplete, false);
+  assert.equal(mod.resourceState().phase, 'error');
+  assert.equal(mod.resourceState().failed, 1);
+  fail = false;
+  await mod.startResources();
+  assert.equal(mod.resourceState().selectionComplete, true);
+  assert.equal(mod.resourceState().phase, 'ready');
+  assert.equal(mod.resourceState().failed, 0);
+  await mod.syncResources(false);
+});
+
 test('skin preloading is independent: optional audio never opts in skins, skins need no audio opt-in', async t => {
   const env = stubEnv({ manifest: SKIN_MANIFEST }); t.after(env.restore);
   const mod = await import('../../public/js/resources/index.js?skins-independent');

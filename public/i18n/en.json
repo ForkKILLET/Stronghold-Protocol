@@ -1254,6 +1254,7 @@
   "暂停下载": "Pause download",
   "检查资源": "Check resources",
   "继续下载": "Resume download",
+  "资源未完成，请继续下载": "Resources incomplete; resume to retry",
   "开始预载": "Start preload",
   "先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。": "Preload required resources first; optional resources can load on demand. Downloads continue after closing this window.",
   "预载已开启": "Preload enabled",

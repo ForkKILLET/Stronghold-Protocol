@@ -175,6 +175,9 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   The client logs `[resources] preload check timings` with manifestMs,
   cacheKeysMs (zero on the fast path), indexReadMs, verified, background and total duration.
   These are standalone SW dependencies: rebuild/restart and update the worker on deployment.
+  If the browser rejects aggregate `Cache.keys()` with `Operation too large`, full checks probe exact known
+  manifest/index URLs with at most eight in-flight key lookups, without reading bodies or weakening fingerprint
+  matching. Unenumerable unknown stale entries are retained rather than blocking resume or deleting valid art.
 - **Voice preload scope.** The resource manager splits Chinese and Japanese voice categories and offers
   中文语音 / 日语语音 / 两种语言 / 不预载语音. `settings.preloadVoiceLang` (`cn`, `jp`, `all`, `none`) is
   persisted independently of playback `voiceLang` and per-operator overrides. Old profiles without a valid scope

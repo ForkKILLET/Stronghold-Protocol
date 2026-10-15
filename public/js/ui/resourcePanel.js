@@ -57,6 +57,7 @@ function stateText(st, enabled) {
   if (st.archive) return st.archive === 'import' ? t('正在导入') : t('正在导出');
   if (enabled && st.combatPaused && !st.manualPaused) return t('战斗中暂停');
   if (st.phase === 'foreign') return t('另一标签页处理中');
+  if (st.phase === 'error') return t('资源未完成，请继续下载');
   if (busy(st)) return t('处理中');
   if (st.cacheVerified === false && st.selectionComplete && st.tier1Total) return t('缓存索引已读取');
   if (st.complete) return t('全部已保存');

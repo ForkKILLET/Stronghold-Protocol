@@ -26,6 +26,11 @@ const INDEX_FLUSH_EVERY = 64;
 const SMALL_IMPORT_BYTES = 256 * 1024;
 const IMPORT_BUFFER_BYTES = 4 * SMALL_IMPORT_BYTES;
 
+/** Chromium can reject Cache.keys() when its aggregate IPC result is too large. */
+export function isCacheReadTooLarge(error) {
+  return /(?:operation|result|message|response).{0,24}too large/i.test(String(error?.message || error));
+}
+
 /**
  * The 12-hex SHA-1 of a response body — the same digest the server puts in the manifest (tools/asset-hashes.mjs,
  * tools/local-extract/extract.py). WebCrypto has no streaming digest, so one file is read at a time (Big files go
@@ -355,14 +360,34 @@ export class ResourceStore {
         return { ...index, files: { ...runtime, ...index.files } };
       } finally { indexMs = performance.now() - start; }
     };
+    const metadata = readIndex();
+    let enumerationLimited = false;
     const readKeys = async () => {
       const start = performance.now();
-      try { return await cache.keys(); } finally { keysMs = performance.now() - start; }
+      try { return await cache.keys(); }
+      catch (error) {
+        if (!isCacheReadTooLarge(error)) throw error;
+        enumerationLimited = true;
+        // Cache API has no pagination. Probe known manifest/index identities
+        // in bounded lanes without loading bodies or returning one huge list.
+        const index = await metadata;
+        const urls = [...new Set([...this.entries.map((entry) => entry.key), ...Object.keys(index.files)])];
+        const found = [];
+        let next = 0;
+        await Promise.all(Array.from({ length: Math.min(8, urls.length) }, async () => {
+          for (let i = next++; i < urls.length; i = next++) {
+            const matches = await cache.keys(urls[i]);
+            if (matches.some((request) => request.url === urls[i])) found.push({ url: urls[i] });
+          }
+        }));
+        return found;
+      } finally { keysMs = performance.now() - start; }
     };
-    const [index, keys] = await Promise.all([readIndex(), verifyCache ? readKeys() : null]);
+    const [index, keys] = await Promise.all([metadata, verifyCache ? readKeys() : null]);
     const cached = new Set(keys ? keys.map((k) => k.url) : Object.keys(index.files));
     const fresh = this.#fresh(cached, index);
-    return { ...this.#tally(fresh), present: fresh, ...(verifyCache ? { cachedKeys: cached } : {}), cacheVerified: !!verifyCache,
+    return { ...this.#tally(fresh), present: fresh, ...(verifyCache ? { cachedKeys: cached } : {}),
+      enumerationLimited, cacheVerified: !!verifyCache,
       checkTimings: { statusMs: performance.now() - started, cacheKeysMs: keysMs, indexReadMs: indexMs, verified: !!verifyCache } };
   }
 
@@ -665,7 +690,14 @@ export class ResourceStore {
     const wanted = new Map(this.files.map((f) => [this.keyOf(f.url), f]));
     const indexKey = indexUrl(this.origin);
     const runtimeKey = runtimeIndexUrl(this.origin);
-    const keys = await cache.keys();
+    let keys;
+    try { keys = await cache.keys(); }
+    catch (error) {
+      if (!isCacheReadTooLarge(error)) throw error;
+      // Unknown stale keys cannot be discovered safely without enumeration;
+      // retain them rather than block preload or delete valid resources.
+      return 0;
+    }
     const index = await this.#readIndex(cache);
     const doomed = keys.filter((k) => {
       if (k.url === indexKey || k.url === runtimeKey) return false;
