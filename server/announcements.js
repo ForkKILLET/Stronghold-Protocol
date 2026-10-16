@@ -1,9 +1,60 @@
-import { open } from 'node:fs/promises';
-import { parseAnnouncements, activeAnnouncement } from '../shared/announcements.js';
+import { open, realpath } from 'node:fs/promises';
+import path from 'node:path';
+import { parseAnnouncements, activeAnnouncement, ANNOUNCEMENT_MAX_COUNT } from '../shared/announcements.js';
 
 export const ANNOUNCEMENT_POLL_MS = 2000;
 export const ANNOUNCEMENT_MAX_BYTES = 128 * 1024;
 const quiet = { info() {}, warn() {}, error() {} };
+
+async function readBounded(file) {
+  let handle;
+  try {
+    handle = await open(file, 'r');
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size > ANNOUNCEMENT_MAX_BYTES) throw new Error('announcement file must be at most 128 KiB');
+    const buffer = Buffer.alloc(ANNOUNCEMENT_MAX_BYTES + 1);
+    let bytes = 0;
+    while (bytes < buffer.length) {
+      const chunk = await handle.read(buffer, bytes, buffer.length - bytes, null);
+      if (!chunk.bytesRead) break;
+      bytes += chunk.bytesRead;
+    }
+    if (bytes > ANNOUNCEMENT_MAX_BYTES) throw new Error('announcement file must be at most 128 KiB');
+    return buffer.toString('utf8', 0, bytes).replace(/^\uFEFF/, '');
+  } finally { await handle?.close().catch(() => {}); }
+}
+
+/** Optional local popup .md/.txt bodies. Never fetch remote content or read outside the config directory. */
+async function popupTextFiles(doc, file) {
+  if (!Array.isArray(doc?.announcements) || doc.announcements.length > ANNOUNCEMENT_MAX_COUNT) return doc;
+  let root;
+  let bodyBytes = 0;
+  const rows = [];
+  for (const row of doc.announcements) {
+    if (!row || !Object.hasOwn(row, 'textFile')) { rows.push(row); continue; }
+    if (row.type !== 'popup' || Object.hasOwn(row, 'text')) throw new Error('textFile requires popup and must not be combined with text');
+    const name = row.textFile;
+    if (typeof name !== 'string' || name.length > 256 || !/\.(md|txt)$/i.test(name)
+        || /[\\:\u0000-\u001f\u007f]/.test(name) || name.split('/').some(part => !part || part === '.' || part === '..')) {
+      throw new Error('textFile must be a relative .md/.txt path inside the config directory');
+    }
+    const { textFile, ...options } = row;
+    const format = Object.hasOwn(row, 'format') ? row.format : (/\.md$/i.test(textFile) ? 'markdown' : 'plain');
+    // Withdrawal must still work when the old body was removed or is being edited. Disabled entries never publish it.
+    if (row.enabled === false) {
+      rows.push({ ...options, format, text: '[disabled]' });
+      continue;
+    }
+    root ||= await realpath(path.dirname(file));
+    const target = await realpath(path.join(root, name));
+    if (!target.startsWith(root + path.sep)) throw new Error('textFile must stay inside the config directory');
+    const text = await readBounded(target);
+    bodyBytes += Buffer.byteLength(text, 'utf8');
+    if (bodyBytes > ANNOUNCEMENT_MAX_BYTES) throw new Error('expanded announcement content must be at most 128 KiB');
+    rows.push({ ...options, format, text });
+  }
+  return { ...doc, announcements: rows };
+}
 
 /** Read-only config service: content polling also catches atomic replacements inside Docker bind mounts. */
 export class Announcements {
@@ -46,23 +97,14 @@ export class Announcements {
   }
 
   async _read() {
-    let handle;
     try {
-      handle = await open(this.file, 'r');
-      const stat = await handle.stat();
-      if (!stat.isFile() || stat.size > ANNOUNCEMENT_MAX_BYTES) throw new Error('announcement file must be at most 128 KiB');
-      const buffer = Buffer.alloc(ANNOUNCEMENT_MAX_BYTES + 1);
-      let bytes = 0;
-      while (bytes < buffer.length) {
-        const chunk = await handle.read(buffer, bytes, buffer.length - bytes, null);
-        if (!chunk.bytesRead) break;
-        bytes += chunk.bytesRead;
-      }
-      if (bytes > ANNOUNCEMENT_MAX_BYTES) throw new Error('announcement file must be at most 128 KiB');
-      const raw = buffer.toString('utf8', 0, bytes).replace(/^\uFEFF/, '');
+      const input = await readBounded(this.file);
+      const doc = await popupTextFiles(JSON.parse(input), this.file);
+      const raw = JSON.stringify(doc);
+      if (Buffer.byteLength(raw, 'utf8') > ANNOUNCEMENT_MAX_BYTES) throw new Error('expanded announcement content must be at most 128 KiB');
       if (this.stopped) return false;
       if (raw !== this.raw) {
-        const rows = parseAnnouncements(JSON.parse(raw));
+        const rows = parseAnnouncements(doc);
         this.rows = rows;
         this.raw = raw;
         this.loaded = true;
@@ -79,7 +121,7 @@ export class Announcements {
         this.lastError = message;
       }
       return false;
-    } finally { await handle?.close().catch(() => {}); }
+    }
   }
 
   refresh() {
@@ -99,7 +141,7 @@ export class Announcements {
     let next = Infinity;
     for (const row of this.rows) if (row.enabled) {
       if (row.startAt > now) next = Math.min(next, row.startAt);
-      if (row.endAt > now) next = Math.min(next, row.endAt);
+      if (Number.isFinite(row.endAt) && row.endAt > now) next = Math.min(next, row.endAt);
     }
     if (Number.isFinite(next)) {
       // Recheck absolute wall time as well as boundaries: clock changes do not leave a long stale timer.

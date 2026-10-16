@@ -9,7 +9,7 @@
 #        docker build -t stronghold-protocol .
 #        docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
 #          -v "$PWD/public/assets:/app/public/assets:ro" stronghold-protocol
-#      (public/fonts, data/assets.json and data/local-assets.json are copied from the build context when present)
+#      (public/fonts, data/assets.json, data/local-assets.json and data/local-fx.json are copied from the build context when present)
 # Without any art the game still runs with placeholder visuals.
 #
 # Run:  docker run -d --name stronghold -p 3000:3000 --restart unless-stopped stronghold-protocol
@@ -43,6 +43,10 @@ COPY tools ./tools
 COPY data ./data
 COPY public ./public
 COPY config ./config
+COPY plugins ./plugin-resources
+COPY schemas ./schemas
+COPY test/helpers/battleHarness.js ./test/helpers/battleHarness.js
+COPY docs/PLUGIN*.md docs/plugin-catalog.example.json ./docs/
 COPY docs/research ./docs/research
 RUN node tools/vendor.mjs \
  && node node_modules/vite/bin/vite.js build \
@@ -55,7 +59,8 @@ RUN node tools/vendor.mjs \
 FROM ${NODE_IMAGE}
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOST=0.0.0.0
+    HOST=0.0.0.0 \
+    SP_PLUGIN_RESOURCES=/app/plugin-resources
 WORKDIR /app
 COPY --from=deps /app/package.json ./package.json
 COPY --from=deps /app/node_modules ./node_modules
@@ -64,6 +69,15 @@ COPY --from=build /app/server ./server
 COPY --from=build /app/data ./data
 COPY --from=build /app/public ./public
 COPY --from=build /app/config ./config
+# the Spine and atlas parsers the plugin packer and the plugin studio use (server/plugins/pack.js, server/studio/)
+COPY --from=build /app/tools/assets ./tools/assets
+COPY --from=build /app/tools/plugin.mjs ./tools/plugin.mjs
+COPY --from=build /app/test/helpers/battleHarness.js ./test/helpers/battleHarness.js
+COPY --from=build /app/schemas ./schemas
+COPY --from=build /app/docs/PLUGIN*.md /app/docs/plugin-catalog.example.json ./docs/
+# Root-owned templates and author guides remain visible when /app/plugins is a bind mount or named volume.
+COPY --from=build /app/plugin-resources ./plugin-resources
+RUN mkdir -p /app/plugins && chown node:node /app/plugins
 # research tables: read by server/sim/nodeData.js as a fallback
 COPY --from=build /app/docs/research ./docs/research
 

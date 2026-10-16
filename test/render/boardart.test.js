@@ -18,7 +18,7 @@ import { FX_KINDS, fxSpec, tilesAround } from '../../public/js/render/fx.js';
 import { statusIconKey } from '../../public/js/render/style.js';
 import { STATUS_KEYS } from '../../public/js/render/textures.js';
 import { createAssets, localAssetUrl } from '../../public/js/assets.js';
-import { loadBoardArt, resetBoardArt } from '../../public/js/render/boardArt.js';
+import { loadBoardArt, resetBoardArt, sourceUrl } from '../../public/js/render/boardArt.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const stages = JSON.parse(readFileSync(path.join(ROOT, 'data/stages.json'), 'utf8'));
@@ -205,6 +205,7 @@ describe('impostor atlas allocator', () => {
     globalThis.PIXI = {
       Container: Obj,
       Sprite: class extends Obj { constructor(t) { super(); this.texture = t; } },
+      Graphics: class extends Obj { beginFill() { return this; } drawRect(x, y, w, h) { this.rect = [x, y, w, h]; return this; } endFill() { return this; } },
       Texture: class { constructor(b, f) { this.baseTexture = b; this.frame = f; } destroy() {} static WHITE = {} },
       Rectangle: class { constructor(x, y, w, h) { Object.assign(this, { x, y, width: w, height: h }); } },
       RenderTexture: { create: (o) => ({ ...o, baseTexture: { id: Math.random() }, framebuffer: { enableStencil() {} }, destroy() {} }) },
@@ -227,7 +228,7 @@ describe('impostor atlas allocator', () => {
       const body = new Obj();
       atlas.park(body);
       atlas.draw(c, body, { a: 0.3, d: 0.3, tx: 40, ty: 90 });
-      assert.equal(body.parent, c.page.bodies);
+      assert.equal(body.parent, c.box, 'drawn inside its slot\'s box (clipped to the slot, GitHub #542)');
       atlas.flush();
       assert.deepEqual(rendered, [true]);
       assert.equal(body.parent, atlas.parked);
@@ -254,6 +255,7 @@ describe('impostor atlas allocator', () => {
     globalThis.PIXI = {
       Container: Obj,
       Sprite: class extends Obj { constructor(t) { super(); this.texture = t; } },
+      Graphics: class extends Obj { beginFill() { return this; } drawRect() { return this; } endFill() { return this; } },
       Texture: class { constructor(b, f) { this.baseTexture = b; this.frame = f; } destroy() {} static WHITE = {} },
       Rectangle: class { constructor(x, y, w, h) { Object.assign(this, { x, y, width: w, height: h }); } },
       RenderTexture: { create: (o) => ({ ...o, baseTexture: {}, framebuffer: { enableStencil() {} }, destroy() {} }) },
@@ -314,8 +316,8 @@ describe('board art CDN loading', () => {
       globalThis.fetch = async (url, options) => {
         requests.push(url);
         assert.equal(options.cache, 'no-cache');
-        return { ok: true, json: async () => ({ version: 1, materials: {},
-          source: Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, { path }])) }) };
+        return Response.json({ version: 1, materials: {},
+          source: Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, { path }])) });
       };
       const assets = createAssets({ assetsCdn, manifest: {},
         fetch: async () => ({ ok: true, json: async () => ({ groups: {
@@ -332,6 +334,33 @@ describe('board art CDN loading', () => {
       assert.equal(art.tiles.source.external.path, paths.external, 'absolute URLs stay unchanged');
       assert.equal(await loadBoardArt(assets, { assetsCdn }), art, 'existing per-page cache is retained');
       assert.equal(requests.length, 1);
+    });
+  }
+  for (const assetsCdn of ['', 'https://cdn.example.com/stronghold', '/cdn']) {
+    test(`PNG crop tables select manifest WebP without a duplicate download (${assetsCdn || 'same origin'})`, async t => {
+      const originalFetch = globalThis.fetch;
+      resetBoardArt();
+      t.after(() => { globalThis.fetch = originalFetch; resetBoardArt(); });
+      const dir = '/assets/local/map/autochess';
+      const names = ['TX_autochessi_D', 'TX_autochessi_common_D', 'TX_autochessi_BG'];
+      const images = [];
+      globalThis.fetch = async url => {
+        assert.equal(url, assetsCdn + dir + '/tiles.json');
+        return Response.json({ version: 2, materials: {},
+          source: Object.fromEntries(['D', 'common', 'BG'].map((key, i) => [key, { path: `${dir}/${names[i]}.png` }])) });
+      };
+      const assets = createAssets({ assetsCdn, manifest: {},
+        fetch: async () => ({ ok: true, json: async () => ({ groups: { 'map/autochess':
+          Object.fromEntries(names.map(name => [name, { path: `${dir}/${name}.webp` }])) } }) }),
+        loadImage: async url => { images.push(url); return { width: 2048 }; },
+      });
+      const art = await loadBoardArt(assets, { assetsCdn });
+      assert.ok(art);
+      assert.deepEqual(images, names.map(name => `${assetsCdn}${dir}/${name}.webp`));
+      assert.equal(sourceUrl(assets, `${dir}/${names[0]}.png`), `${assetsCdn}${dir}/${names[0]}.webp`);
+      assert.equal(sourceUrl({}, `${dir}/missing.png`), `${dir}/missing.png`);
+      const external = `https://other.example.com${dir}/${names[0]}.png`;
+      assert.equal(sourceUrl(assets, external), external, 'explicit URLs are not silently redirected');
     });
   }
 });

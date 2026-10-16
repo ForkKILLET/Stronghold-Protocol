@@ -5,7 +5,10 @@
  * @param {number} seed uint32 (any number is coerced)
  */
 export function createRng(seed = 1) {
-  let s = (Number(seed) >>> 0) || 0x9e3779b9;
+  return rngFromState((Number(seed) >>> 0) || 0x9e3779b9);
+}
+
+function rngFromState(s) {
   const next = () => {
     s = (s + 0x6d2b79f5) >>> 0;
     let t = s;
@@ -41,20 +44,13 @@ export function createRng(seed = 1) {
   };
   /** current internal state (for debugging / hashing) */
   rng.state = () => s;
-  /** restore the internal state (match checkpoints, server/match/snapshot.js) */
-  rng.setState = (v) => { s = (Number(v) >>> 0) || 0; };
+  /** Independent stream at the same position, including internal state zero. */
+  rng.clone = () => rngFromState(s);
+  rng.setState = (v) => { s = Number(v) >>> 0; };
   return rng;
 }
 
-/**
- * Re-create a PRNG at an exact internal state (the counterpart of rng.state(), used by match checkpoints).
- * @param {number} state uint32 (0 is a legal state here, unlike the seed path)
- */
-export function createRngFromState(state) {
-  const rng = createRng(1);
-  rng.setState(state);
-  return rng;
-}
+export function createRngFromState(state) { return rngFromState(Number(state) >>> 0); }
 
 /** Derive a child seed deterministically (e.g. per field). */
 export function deriveSeed(seed, salt) {

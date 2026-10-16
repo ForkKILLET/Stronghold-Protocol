@@ -1,8 +1,16 @@
 # Assets: sources, layout, manifest, credits
 
+本分支可选干员皮肤见 [SKINS.md](SKINS.md)：部署端安装、观看者默认不启用、独立 `preloadSkins`，
+未预载时按实际显示请求，不随必备或其他可选音频自动下载；安装后同步数据/素材 CDN 并更新 SW。
+
 Owner: `tools/fetch-assets.mjs` and `tools/assets/*`. Research background: `docs/research/07-assets.md`.
 
 All official game art, Spine models and audio are **downloaded at install time**. They are never committed; `public/assets/` is git-ignored.
+
+The UI sound `audio.sfx.ui.bondUp` is the official `ON_ACT1AUTOCHESS_ADD_BOND` bank's
+`act1autochess_b_ui_buffup`. Live prep/battle layer gains use it as well as bond activation. Its bank settings are
+`maxSoundAllowed: 1` and `popOldest: true`: one dedicated SFX channel, replacing the previous sound without an extra
+cooldown. It respects the SFX/mute settings; a stale asynchronous decode cannot restart a replaced cue (#482).
 All downloaded game assets the client needs are listed in **`data/assets.json`**. Game-art requests must use that manifest.
 The original project icons below are shipped static files, not downloaded game assets.
 
@@ -74,25 +82,24 @@ client fetches Spine `.skel` / `.atlas` files with `fetch` and loads images with
 so a long `Cache-Control` is safe only if you invalidate on update — the server itself uses `max-age=86400` for
 `/assets/`.
 
-Game data can also use a CDN: set `SP_DATA_CDN=https://cdn.example.com/stronghold` and upload the matching release's
-`data/` directory under that base. Page, simulation and standalone asset loaders read the runtime `DATA_CDN` from
-`/js/asset-cdn.js` and request `<SP_DATA_CDN>/data/<file>.json` directly. Origin `/data/*.json` requests always read
-local data without a CDN redirect, retaining GET/HEAD and HTTP cache validators. The CDN must allow CORS for JSON and should use
-`Cache-Control: no-cache` with validators, or a release-specific base URL, to keep browser and server data in sync.
-Keep the local data directory: the server still reads it for game logic. `assets.json` and `asset-hashes.json` also
-come directly from the data CDN. Upload the original JSON files as-is: browser data and asset loaders rewrite `/assets/…`
-after reading the JSON, using the server's `SP_ASSETS_CDN` supplied by `/js/asset-cdn.js` (a small runtime module with
-`no-cache` and an ETag). Absolute URLs already present in a manifest are preserved. With no assets CDN configured,
-root-relative asset URLs continue to use the game origin. No export command or preprocessing is needed;
-hash-map keys and server-side source files stay unchanged.
-`local-assets.json` and the generated `resource-manifest.json` stay on the game server for optional art and preloading.
-The two CDN settings are independent; `/metrics.dataCdn` reports the data base, and unsetting `SP_DATA_CDN` restores
-local data responses. See [DEPLOY.md §3.2](DEPLOY.md#32-素材放-cdn).
+Game data can use a CDN: set `SP_DATA_CDN=https://cdn.example.com/stronghold` and upload the full `data/` directory.
+All same-origin `/data/**/*.json` requests use runtime `DATA_CDN`, including game tables, `assets.json`,
+`asset-hashes.json`, `local-assets.json`, `local-fx.json`, `resource-packs.json`, `resource-manifest.json`,
+and `data/i18n/`. Game text files under `/packs/<id>/texts/` also use the data CDN; UI strings under `/i18n/`
+and `/packs/<id>/` use `ASSETS_CDN`. `/packs/index.json`, `/js/asset-cdn.js`, and game-server API responses stay
+on the origin. The server continues reading local `data/` for game logic and generated APIs; only browser requests move.
 
-The CDN's data origin can serve static files or proxy to Node's local data responses; Node no longer redirects data
-requests. Configure CORS on the CDN. Keep `/data/local-assets.json`, `/data/resource-manifest.json` and `/js/asset-cdn.js` on the game
-origin backed by Node. Rebuild the client for this upgrade; subsequent CDN configuration changes only require a server
-restart and page refresh.
+`bash scripts/sync-to-r2.sh` uploads assets, optional fonts/resource packs and data to an `rclone` R2 remote. It prepares
+the generated `resource-manifest.json` in a temporary data tree, routes asset and pack URLs to the configured CDN bases,
+then uploads it with the other JSON. Copy `config/r2-sync.example.json` to the ignored `config/r2-sync.json` and fill in
+deployment credentials. With `--apply`, successful uploads are followed by a Cloudflare cache purge, scoped to CDN prefixes
+by default in JSON config mode. Legacy environment mode purges the entire Zone. The API token needs Zone Cache Purge
+permission. Without `--mirror` or `sync.mirror: true`, uploading never deletes remote files. See [R2_SYNC.md](R2_SYNC.md)
+and [DEPLOY.md §3.2](DEPLOY.md#32-素材放-cdn).
+
+The data CDN serves the uploaded static JSON while game-origin `/data/*.json` endpoints remain available for server and
+legacy clients; Node does not redirect those responses. Configure CORS on the CDN. Rebuild the client for this upgrade;
+subsequent CDN configuration changes only require a server restart and page refresh.
 
 ## Preload (optional asset preloading)
 
@@ -113,8 +120,8 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   `hash` — the first 12 hex of the SHA-1 of the file's bytes, written by `tools/asset-hashes.mjs` (fetched assets) and
   `tools/local-extract/extract.py` (local-client art) — plus a `tier`:
   **tier 1 (`essential`, 必备)** — maps and board meshes, operator/enemy/token pictures (including portraits), every
-  Spine model (skel/atlas/textures), local visual effects, fonts, UI and icons; **tier 2 (`optional`, 可选)** — character
-  voices, sound effects, background music and tutorial illustrations. Required files are preloaded by default; the
+  base Spine model (skel/atlas/textures), board effects, fonts, UI and icons; **tier 2 (`optional`, 可选)** — character
+  voices, official battle effects (`/assets/local/fx/`), sound effects, background music and tutorial illustrations. Required files are preloaded by default; the
   同时预载 checkbox opts into optional files, persisted as `settings.preloadOptional` (default false, including old
   settings). Unselected optional files still load normally on demand. Sizes are included
   for the files this install has on disk; a CDN-only install omits them and the client reports progress in files
@@ -123,23 +130,70 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
 - **Updating is incremental.** All the files live in one cache (`stronghold-resources-v1-all`) and each entry's hash is
   recorded in an index entry inside it, so a new manifest re-downloads the files whose hash changed and keeps the rest:
   adding the local-client art to an install that already preloaded costs the new files, not the whole set. A cache of
-  the older layout (named after a version, no hashes) is **migrated instead of discarded**: the store hashes the bytes
-  it finds there (`crypto.subtle.digest('SHA-1', …)`), moves the entries that are still current into the new cache,
-  drops the ones that are not, and only then fetches what is missing — the panel says 「正在整理已保存的资源（无需重新下载）」
-  while that runs. The worker prefers the current cache when a URL exists in both, so a stale copy can never shadow a
-  fresh file.
-  With preload enabled, each page load revalidates the server resource manifest and checks cached URL keys against
-  the local index. Startup does not read or hash resource bodies. Cache key enumeration and index reading run in
-  parallel; simultaneous checks share in-flight reads but receive independent status snapshots. Opening resource
-  management during an active run uses that run's counters rather than starting another scan. Later checks still
-  inspect the real cache so browser eviction is detected. The client logs `[resources] preload check timings` with
-  manifestMs, cacheKeysMs, indexReadMs and total duration to distinguish network waiting from cache metadata access.
-- **Voice preload scope.** The resource manager splits Chinese and Japanese voice categories and offers
-  中文语音 / 日语语音 / 两种语言 / 不预载语音. `settings.preloadVoiceLang` (`cn`, `jp`, `all`, `none`) is
-  persisted independently of playback `voiceLang` and per-operator overrides. Old profiles without a valid scope
-  use their saved playback dub once (Chinese by default). The 同时预载 checkbox must still be enabled for any
-  optional downloads; SFX, music and guide images retain their existing behaviour. Language detection uses
-  `/voice/cn/` or `/voice/jp/` directory names, including CDN prefixes, not filenames (Japanese files may be
+  the older layout (named after a version, no hashes) is **migrated instead of discarded**: an existing entry with a
+  valid non-negative integer `Content-Length` is moved into the new cache without reading or hashing its body.
+  Entries without that header are fetched again. The panel says 「正在整理已保存的资源（无需重新下载）」 while that runs.
+  The worker prefers the current cache when a URL exists in both. This is an explicit speed trade-off: a stale or corrupt
+  legacy entry can be reused, and its length need not match the manifest or actual body. The ordinary indexed cache
+  still rejects recorded fingerprints from another revision, so manifest updates remain incremental.
+  With preload enabled, each page load revalidates the server resource manifest (ETag/304 unchanged), then reads
+  the preload fingerprint index and the separate runtime URL index. A complete indexed selection avoids cache key
+  enumeration and pruning during startup. This is a provisional snapshot (`cacheVerified: false`), not proof that
+  the browser retained every file. Five seconds later a background full check repairs evicted metadata, discovers
+  older unindexed runtime entries, performs normal complete-set cleanup and downloads only selected missing files.
+  Saved-resource inspection is **header-only**, not an integrity check: at most eight concurrent `Cache.match` reads
+  require the entry to exist and carry a valid `Content-Length`. No asset body is read, cloned or hashed, and header
+  lengths are not compared with body or manifest sizes. Missing/invalid length headers are treated as missing files;
+  a valid zero is accepted. This deliberately cannot detect corrupted/truncated saved bodies. The startup index-only
+  path stays unchanged; `cacheVerified: true` means presence/headers were checked, not content integrity.
+  Fresh downloads without a length header, or with content encoding, record their actual decoded byte length before
+  storing; compressed wire lengths must never be reused. This reads only new downloads, not saved resources. Normal
+  fresh-download fingerprint verification and ZIP import/export body/CRC/digest checks remain intact.
+  Opening resource management or clicking 检查资源 performs an authoritative check too. Missing indexes fall back
+  to the download's real-cache inspection rather than assuming completeness. No startup/check path hashes or reads
+  asset bodies. Full scans read cache keys and both metadata indexes in parallel; only in-flight checks of the same
+  mode are coalesced, with independent status snapshots. Active runs publish their counters to the manager.
+- Deployment-generated transport packs (`data/resource-packs.json` plus `public/resource-packs/`) are an optional first-fill
+  optimization. At most two ZIP requests run concurrently. The browser parses stored entries from each response stream as
+  bytes arrive, shows aggregate download progress/speed plus cache-import progress, and lets the next package download
+  overlap the preceding package's cache import. It authenticates the complete ZIP once against the pack index's full
+  SHA-1, then checks the embedded manifest and each selected entry's URL, size and hash metadata against the index/current
+  resource manifest. Trusted transport-pack payloads are not rehashed or CRC-checked per file; unselected payload bytes
+  are consumed for the whole-package digest but not retained. This exception is only for server-indexed deployment packs.
+  Manually imported/general ZIP files still receive the normal per-entry CRC, size and content-digest checks. Missing,
+  invalid or mismatched transport packs fall back to the ordinary per-file fetch path.
+- **Weak-network runtime art recovery.** Battle-time images, Spine files and official board sidecars use a shared
+  request transport (`public/js/resourceNetwork.js`): identical URLs are coalesced, visible critical art is prioritized,
+  runtime transfers are limited to four (two on `2g`/`3g`), transient HTTP failures retry with 1/3/8/20-second
+  jittered backoff, and permanent 404s are not retried. A transfer must receive bytes within 30 seconds and finish
+  within 180 seconds; receiving bytes resets only the idle deadline. The response stream is consumed once and is then
+  decoded by the existing image/Pixi pipeline. A timeout aborts the old request before retrying, so it cannot duplicate
+  a still-hung download. Failed art remains a placeholder rather than blocking the battle; `online`/visible recovery
+  retries failed images and board packs, while a healthy pending Spine request remains shared. Preload and manual ZIP
+  integrity paths are not routed through this transport.
+  Runtime writes record a URL only after Cache.put succeeds; their separate index cannot overwrite the preload/ZIP
+  hash index. Shared runtime resource locks and exclusive download/clear/repair locks prevent cleanup races; runtime
+  index updates are serialized separately. Runtime registrations are deduplicated and coalesced: each batch flushes
+  after 250 ms from its first registration or when it reaches 64 distinct URLs, whichever comes first. One batch
+  reads/merges the index once and writes it only if it changed; an already-indexed URL does not cause a rewrite.
+  Registrations arriving during I/O join a new serialized batch. Every fetch's `waitUntil` and shared resource lock
+  cover its batch flush, so neither normal SW lifetime completion nor a successful clear can leave a delayed write.
+  Failed metadata writes keep valid asset bytes; a later full inspection repairs missing metadata. Preload and ZIP
+  retain their existing 64-resource/final-flush policy; full-check repair/prune still update metadata immediately.
+  The client logs `[resources] preload check timings` with manifestMs,
+  cacheKeysMs (zero on the fast path), indexReadMs, verified, background and total duration.
+  These are standalone SW dependencies: rebuild/restart and update the worker on deployment.
+  If the browser rejects aggregate `Cache.keys()` with `Operation too large`, full checks probe exact known
+  manifest/index URLs with at most eight in-flight key lookups, without reading bodies or weakening fingerprint
+  matching. Unenumerable unknown stale entries are retained rather than blocking resume or deleting valid art.
+- **Voice preload scope.** The resource manager splits Chinese, Japanese, English and Korean voice categories and
+  offers four independent checkboxes; unchecking all disables voice preload. `settings.preloadVoiceLang` is an ordered
+  array of `cn`, `jp`, `en`, `kr`, persisted independently of playback `voiceLang` and per-operator overrides.
+  Old `cn`/`jp` strings migrate to one-element arrays, `all` to `["cn", "jp"]` (its original scope), and `none` to `[]`.
+  Old profiles without a valid scope use their saved playback dub once (Chinese by default).
+  The 同时预载 checkbox must still be enabled for voice and official battle-effect downloads; SFX, music and guide
+  images retain their existing behaviour. Language detection uses `/voice/cn/`, `/voice/jp/`, `/voice/en/` or
+  `/voice/kr/` directory names, including CDN prefixes, not filenames (Japanese files may be
   named `cn_019.mp3`). Legacy/shared voice paths without a dub directory are shown separately and selected
   unless voice preload is disabled entirely. A language switch cancels the previous download scope, waits for
   in-flight work, and incrementally fills the latest selection; cached voices are never deleted by a switch.
@@ -150,6 +204,12 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   with other cached files; only missing network downloads after import are filtered by the selected dub.
   This touches standalone Service Worker dependencies: rebuild/restart and update SW on deployment. If UI language
   JSON is served from the assets CDN, sync `public/i18n/` and refresh the corresponding cache; `data/` is unchanged.
+- **Official battle effects.** Files from `data/local-fx.json` appear as the separate optional 官方特效 group, including
+  index/textures JSON, prefab/mesh JSON and textures. They are not required for essential-only completion, do not depend
+  on selected voice languages or the playback/display settings, and still load on demand when unselected. Existing
+  board `/assets/local/map/fx/` remains essential. ZIP JSON allowlists and per-file integrity checks are unchanged;
+  the pack builder now separates `voice_en`, `voice_kr` and `fx`. Regenerate deployment manifests/ZIP packs after upgrading
+  so the new categories and optional effect tier are reflected (old mismatched-tier packs safely fall back to files).
 - The client (`public/js/resources/*`) downloads tier 1 first, then tier 2 only when selected: four lanes for small files
   and one for files above 4 MiB, skipping whatever is already cached. Two tabs of the same browser never download the
   same file twice: a Web Lock (`stronghold-resources-preload`, `ifAvailable`) makes one tab do the work while the others
@@ -210,8 +270,12 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   completion, cancellation and errors update immediately; integrity checks and cache writes continue independently.
   Category counts are maintained incrementally per completed cache key; UI updates copy only the short category list.
   Parallel imports can complete out of package order. On failure/cancellation, already-started cache puts are awaited
-  and successful writes indexed before releasing the download lock. Index writes are serialized. A console summary
-  records read, hash and cache timings after completion or interruption; stage durations are sums of overlapping work,
+  and successful writes indexed before releasing the download lock. Index writes are serialized.
+  A valid existing runtime cache copy also receives its verified preload fingerprint even when no asset rewrite is
+  needed, so subsequent metadata-only startup checks can count it. Index checkpoints flush after 64 changed records
+  and at completion/failure/cancellation; unchanged repeat imports do not rewrite the index. The final flush includes
+  writes that completed after another lane failed and retries a failed intermediate checkpoint.
+  A console summary records read, hash and cache timings after completion or interruption; stage durations are sums of overlapping work,
   not CPU measurements or fractions of the total wall time. Diagnostics stay on the client.
   If a same-version package imports far fewer files than it exported, check the server hash table: run
   `node tools/asset-hashes.mjs` after downloading/updating local assets, then reload the receiving browser to fetch the
@@ -231,6 +295,45 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   has brought the set up to date, the caches of earlier layouts and the entries the manifest no longer lists are
   dropped. The host therefore has to serve `/resource-sw.js` and never cache it at the edge.
 
+### 离线分析与制作增量资源 ZIP
+
+Deployment ZIP transport packs are documented in [RESOURCE_PACKS.md](RESOURCE_PACKS.md).
+Main no longer ships the optional asset shrink/conversion tool; existing WebP/atlas and HTTP precompression
+read compatibility remains. Generated art/hashes never enter source commits.
+
+`tools/resource_delta.py` 使用 Python 3.10+ 标准库，对比两个由资源管理窗口导出的 ZIP，
+无需安装依赖，也不将素材解压到磁盘。例如在仓库根目录运行：
+
+```powershell
+python tools/resource_delta.py `
+  --base "artifacts/resources/baselines/全量资源包stronghold-resources-76a510f2c124.zip" `
+  --target "artifacts/resources/baselines/stronghold-resources-fad149b815dd.zip" `
+  --output "artifacts/resources/deltas/0.2.3/stronghold-resources-76a510f2c124-to-fad149b815dd-delta.zip"
+```
+
+- 先完整校验两个输入包的 CRC、实际大小和版本对应摘要；v1 必须通过 SHA-256 和 SHA-1 短指纹，
+  v2 必须通过完整 SHA-1 和短指纹。随后按规范化资源路径、实际完整 SHA-1 和大小比较，
+  不会因 v1/v2 清单格式变化或方括号路径编码变化重复打包。
+- 增量 ZIP 只含新增和内容变化的完整文件，重新编号并生成标准 v2 `stronghold-resources.json`，
+  保留目标 `resourceVersion`。输出完成后再次逐文件校验。不是二进制差分，也不是服务端发行更新包。
+- 默认输出 `<目标包名>-delta.zip` 和同名 `.report.json`；可通过 `--report` 指定报告路径。
+  `--analyze-only` 只校验、对比并写报告，不生成 ZIP。没有新增或变化时只写报告，不生成客户端拒绝的空包。
+- 报告包含新增、变化、未变化、目标包中缺失的数量/字节数、新增/变化/缺失文件明细及增量目录统计。
+  `absentFromTarget` 只表示目标 ZIP 没有该文件：导出包可能不完整，不能据此认定游戏删除了资源。
+  不在增量 ZIP 中写入报告或删除指令。
+- 两个原始 ZIP 不变，已有输出和报告拒绝覆盖。流式读写并校验，单次正文读取最多 1 MiB；
+  保持 24 MiB 单文件、50,000 资源、32 MiB 清单及 2 GiB 包限制。失败时删除正在写入的不完整输出。
+- 玩家应先导入旧全量包，再导入增量包。现有客户端按**当前服务器**清单指纹复用缓存，
+  并继续下载所选范围内尚缺的资源；已有旧缓存不会因为缺失列表被删除。
+  增量包不能替代首次安装的全量资源，服务端仍须同步部署当前素材和真实指纹表。
+
+验证脚本及现有导入兼容性：
+
+```powershell
+python -m unittest discover -s test/resources -p resource_delta_test.py
+node --test test/resources/delta-script.test.js test/resources/archive.test.js
+```
+
 ## Running
 
 ```bash
@@ -243,16 +346,72 @@ npm run assets       # = node tools/vendor.mjs && node tools/fetch-assets.mjs
 |---|---|
 | `--concurrency=N` | Parallel downloads (default 16). |
 | `--force` | Re-download everything. |
+| `--source-snapshot=PATH` | Verify raw upstream bytes against pinned Git trees; see "Source snapshot verification" below. |
 | `--offline` | No network. Re-runs post-processing (atlas fixes, skeleton parsing, WOFF2) on what is already on disk, then rebuilds `data/assets.json`. |
 | `--dry-run` | Print the plan (file and model counts, alias notes) and exit. |
 | `--refresh-index` | Re-download the upstream indexes: `audio_data.json`, `charword_table.json` (the 干员战斗语音 slots) and `models_data.json`. |
 | `--voice-lang=cn` | The dub of `audio.voice` (the 中文 voice setting): `cn` (default) | `jp` | `en` | `kr` — the same file names under `voice_cn/`, `voice/`, `voice_en/`, `voice_kr/`. `audio.voiceJp` (the 日本語 setting) is always the JP dub: every run plans both trees. |
+| `--no-optional-voice` | Skip the English, Korean and own-language trees (`audio.voiceEn`, `audio.voiceKr`, `audio.voiceNative`, `audio.voiceNativeLangType`). A plain run plans them. |
 | `--voice-all` | Plan every official voice slot, including the prep-only lines no battle plays (干员报到 / 编入队伍 / 任命队长 — 360 files, one per operator and slot). Off by default: nothing requests them, so planning them only makes every run download more. |
 | `--prune` | Delete files under `public/assets/` that the manifest no longer references, for example after a mapping change. Without this flag they are only listed in the report. `public/assets/local/` (written by `tools/local-extract`) is never pruned. Implies `--allow-shrink`. |
 | `--allow-shrink` | Write `data/assets.json` even when it loses entries the current one has (see "The manifest never shrinks by accident" below). |
 | `--strict` | Exit 1 when a leaf was dropped for having no file on disk, instead of only reporting it (see "A dropped leaf is reported" below). The same as the environment variable `SP_ASSETS_STRICT=1` — for CI and packaging builds. |
 | `--add-only` | For a checkout whose `public/assets/` and `public/fonts/` are shared with another one (a git worktree with symlinked asset folders): download only the files missing on disk and never re-download, rewrite or delete an existing file — atlases already on disk are left as they are, the fonts are not rebuilt (the manifest keeps its current `fonts`). Not with `--prune` / `--force`. |
 | `--local-spines` | Rewrite `tools/assets/local-enemy-spines.json` and `tools/assets/local-token-spines.json` (the metadata of the enemy and token models only the local client has, see "Enemy aliases" and "Token models from the local client") from the models `tools/local-extract/extract.py` extracted to `public/assets/local/spine/enemy/` and `public/assets/local/spine/token/`. Run it after a game update changed them; without it the committed files are used and a differing extraction only gets a warning. |
+
+### Source snapshot verification
+
+`node tools/fetch-assets.mjs --source-snapshot=/path/to/sources.json` enables content verification for upstream
+downloads and cached JSON indexes. Without it, the existing size/format reuse policy is unchanged.
+The snapshot is supplied by the caller, with one entry for each source repository and branch used by the current plan:
+
+```json
+{
+  "owner/repo@branch": {
+    "commit": "1111111111111111111111111111111111111111",
+    "tree": "2222222222222222222222222222222222222222"
+  }
+}
+```
+
+Both identifiers must be full 40-character hexadecimal Git SHAs. The caller must supply the root tree belonging to
+that commit. Candidate URLs and their order still come from the generator, not from an old ledger. GitHub's tree API
+resolves each candidate to a blob at the supplied tree; truncated recursive results are discarded and lookup walks
+complete nonrecursive subtrees (at most 64 path segments). Complete trees are memoized within the run.
+Failed nonrecursive lookups can retry on the next lookup; failed recursive probes remain cached and use the subtree fallback.
+Payload requests use the pinned commit through the selected direct/mirror policy. A payload must pass both existing
+format checks and `SHA1("blob " + byteLength + "\0" + rawBytes)` comparison with the authoritative blob. A same-size
+stale mirror response is rejected and the next transport is tried. Matching untransformed local bytes are reused,
+including across source revisions, and the ledger is updated even on a skip. Ledger URLs retain the logical source
+branch for cache grouping and Spine page lookup, rather than the mirror or pinned transport URL.
+
+JSON indexes are verified before parsing or planning. Missing snapshot entries, unsupported source URLs, malformed
+API responses and API failures fail closed; they do not allow stale indexes to drive the plan. Failed asset replacements,
+including confirmed source absence and HTTP 404/410, preserve existing bytes and ledger records. `--prune` protects
+these paths across all consumers, even when an older ledger has no blob record. Preservation alone does not authorize
+publication: only files matching the current source blob or revalidated against a previous ledger blob can enter the
+rebuilt manifest. Legacy files without that proof remain on disk for retry, excluded from the manifest and post-processing.
+When a transient error blocks later alternatives, `--prune` preserves their cached files without publication approval.
+Unattempted cached alternatives cannot enter the rebuilt manifest. A verified run exits 1 on
+download errors or font-generation errors; missing optional sources still follow the existing fallback/drop rules,
+and `--strict` rejects dropped leaves. The manifest shrink guard remains in effect.
+
+Mutable atlases are downloaded and verified in raw form on each verified run, then normalized by the existing Spine
+pipeline. Atlas page discovery, normalization and skeleton parsing (including parse-cache reuse) require accepted inputs;
+every texture page must also be accepted. A previously normalized atlas that no longer matches its raw blob is preserved
+on failure but cannot be used until a verified raw replacement arrives. Pruning defers deletion within a failed model's
+directory, preserving old extra pages without using a rejected atlas for page discovery.
+Font originals use the same verifier and accepted file set. Accepted originals reuse matching WOFF2 outputs;
+rejected originals keep existing WOFF2 files on disk but do not enter the new font manifest or generated CSS.
+If no font is accepted, the existing `fonts.css` is left untouched and no CSS is published in the new manifest.
+When accepted fonts generate CSS, replacement is atomic and includes only those fonts.
+Local-client extraction overlays are not upstream downloads and are outside this check.
+
+`--offline`, `--add-only` and `--local-spines` are incompatible with verification. `--dry-run` still verifies the indexes
+needed to produce the plan, but does not verify asset payloads. `GH_TOKEN`, when set, authenticates only requests to
+`api.github.com`; API redirects are rejected and the token is never sent to raw sources or mirrors.
+
+### Manifest guards and default download policy
 
 **The manifest never shrinks by accident.** An entry whose files are missing on this machine is left out of a rebuilt
 manifest, so a run where some downloads failed (or whose upstream audio / model index lost them) would drop entries that
@@ -331,15 +490,18 @@ The research JSONs in `docs/research/` (03, 05, 07) define **which** ids are nee
 | Band (strategy) icons | AA2 `…/arts/bandicon/` | `band/{bandId}.png` |
 | Profession, sub-profession and battle-card icons | AA2 `arts/profession_hub`, `arts/ui/subprofessionicon`, `ui_battle_new/battlecard` | `prof/icon_{p}.png`, `prof/large_{p}.png`, `prof/battlecard_{p}.png`, `prof/sub/{subProfessionId}.png` |
 | UI sprites (see below) | AA2 `ui/autochess/**`, `arts/**`, `activity/[uc]act2autochess/**`, `battle/[pack]common/sprites` | `ui/{group}/{key}.png` |
+| Statistics artwork and fonts | [Official statistics template](https://ak-webview.hypergryph.com/autoChess/act1autochess) | `ui/statistics/`; fetched by asset setup, or separately with `node tools/fetch-stats-assets.mjs` |
 | The 36 battle emotes and the 19 玩法说明 (tutorial) pages, which `tools/local-extract` also extracts (GitHub issue #42: without the local client a server showed default emote icons) | AA2 `cn` `ui/emoticon/theme/[uc]{themeId}/icon/{picId}.png` (`shared/constants.js EMOTE_CATALOG`) and `arts/guidebookpages/[pack]autochess/{key}.png` (1024², shown at 16:9 like the local copies) | `ui/emoticon/{dir}/{picId}.png`, `ui/guide/{key}.png` |
 | Operator battle Spine (Front, Back) | fexli/ArknightsResource `spine/{id}/{id}/{Front,Back}/` | `spine/op/{charId}/{front,back}/{stem}.{skel,atlas,png}` |
 | Token Spine | fexli: the default model, or else the first skin variant (`spine/{tokenId}/{variant}/Spine/`) | `spine/token/{tokenId}/{stem}.*` |
 | Enemy Spine (PC build, premultiplied alpha) | isHarryh/Ark-Models `models_enemies/{key}/`, file names from `models_data.json` | `spine/enemy/{enemyId}/{stem}.*` |
 | Enemy Spine that no dump carries (灼热源石虫 / 炽焰源石虫) | the local client only (`tools/local-extract/extract.py ENEMY_SPINES`, optional); never downloaded and never required: an overlay of the web alias (`enemies[id].spineLocal`) | `local/spine/enemy/{enemyId}/{stem}.*` (listed in `data/local-assets.json`) |
 | Original token Spine overlays (40 summons: most 自选 summons, 凯瑟琳's 爬行号·防护单元, 凛御银灰's 风雪之眼, 香槟炸弹) | local-client extraction (`tools/local-extract/extract.py TOKEN_SPINES`, optional); the original overlay is preferred, with any listed web model retained as fallback | `local/spine/token/{tokenId}/{stem}.*` (listed in `data/local-assets.json`) |
+| Official battlefield scenes (one per battlefield: meshes, lightmaps, albedo textures; DESIGN §15, DESIGN §30.21) | the scene bundles `scenes/activities/<season>/level_<stage>/…` (`tools/local-extract/extract.py --only scene`, optional). The client carries them only while the season runs; off season `tools/local-extract/fetch_scenes.py` downloads the bundles of the in-season version `26-04-13-12-31-42_e9b560` from the official CDN into `.cache/official-scenes/` (33 bundles, 22,801,308 bytes compressed on the Android list, md5-checked), and the materials / textures still come from the local client's theme bundles. The 0.2.5 full release zip includes the extracted files under `public/assets/local/scene/` when the maintainer extracted them before packaging; a lite zip and a source install may fetch and extract them (`node tools/setup.mjs --scenes`). The repository never stores the bundles or the extracted files. Without a scene the 3D board draws its procedural metal tiles | `local/scene/{stageId}/scene.json`, `scene.bin`, `lm{i}.*`; `local/scene/tex/{texture}.*` (listed in `data/local-assets.json`) |
+| Official battle effects (特效: the particle systems, meshes and textures of hits, projectiles, casts, status loops and skills; DESIGN §33) | the local client only (`tools/local-extract/extract.py --only fx --fx-set used`, opt-in: a plain extraction leaves them out); never downloaded, and not in the release zips while `tools/package.mjs FULL_ZIP_FX` is off | `local/fx/index.json`, `local/fx/textures.json`, `local/fx/prefabs/{key}.json`, `local/fx/tex/{key}.webp` (and `tex/half/`), `local/fx/mesh/{key}.json` (listed in their own `data/local-fx.json`, not in `data/local-assets.json`) |
 | BGM | AA2 `voice` branch `audio/sound_beta_2/music/**` (大厅/休整期 `act1autochess`, 开战 `act13side/m_bat_kazimierz2_{1,2}` — 骑士之日 / 无畏者; the 开战 track follows the round: `_2` 无畏者 rounds 1–7, `_1` 骑士之日 from round 8) | `audio/bgm/{file}.mp3` |
 | SFX (UI, battle, per unit) | AA2 `voice` `audio/sound_beta_2/**`, mapped from `audio_data.json` banks | `audio/sfx/{same sub-path}.mp3` |
-| 干员战斗语音 | AA2 `voice` `audio/sound_beta_2/voice_cn/{charId}/cn_nn.mp3` (Chinese, `audio.voice`) and `voice/{charId}/cn_nn.mp3` (Japanese, `audio.voiceJp`: the same file names) — the lines `charword_table.json` lists (`placeType` = when the game plays one, `voiceAsset` = the path); `--voice-lang=jp|en|kr` fills `audio.voice` from `voice/`, `voice_en/`, `voice_kr/` instead | `audio/voice/cn/{charId}/{cn_nn}.mp3`, `audio/voice/jp/{charId}/{cn_nn}.mp3` (`audio/voice/{lang}/…` for another `--voice-lang`) |
+| 干员战斗语音 | AA2 `voice` `audio/sound_beta_2/voice_cn/{charId}/cn_nn.mp3` (Chinese, `audio.voice`), `voice/{charId}/cn_nn.mp3` (Japanese, `audio.voiceJp`), `voice_en/` (English, `audio.voiceEn`), `voice_kr/` (Korean, `audio.voiceKr`) and `voice_custom/<wordkey lowercase>/` (the operator's own-language dub, `audio.voiceNative`: charword `voiceLangDict` entries whose `voiceLangTypeDict` `groupType` is `CUSTOM` — Italian, Russian, Spanish, Chinese dialect, German, French; the first such dub when there are several). Same file names. `--voice-lang=jp|en|kr` fills `audio.voice` from `voice/`, `voice_en/`, `voice_kr/` instead. `--no-optional-voice` skips the three extra trees. | `audio/voice/cn/{charId}/{cn_nn}.mp3`, `audio/voice/jp/…`, `audio/voice/en/…`, `audio/voice/kr/…`, `audio/voice/native/<wordkey>/{cn_nn}.mp3` |
 | Fonts: Bender Regular and Light, Novecento Wide | TimWangZi/The-font-of-Arknights | `public/fonts/*.{otf,ttf,woff2}`, `public/fonts/fonts.css` |
 
 The `stem` of a Spine model is the upstream file name. Two examples: `char_107_liskam` has the stem `char_107_liskarm`, and `enemy_9032_aclionk` uses `enemy_1559_vtlionk`. The skel and atlas of a model always share one stem. pixi-spine locates the atlas by swapping the extension, so this matters.
@@ -382,7 +544,11 @@ The `stem` of a Spine model is the upstream file name. Two examples: `char_107_l
 - **Fonts:** OTF/TTF files are converted to WOFF2 by a built-in encoder (`tools/assets/woff2.mjs`: Brotli with null transforms).
   - Its output was verified lossless against Google's reference `woff2` decoder.
   - `fonts.css` lists WOFF2 first and falls back to the original file.
-- Images stay PNG. WebP conversion is not done: it would need a native dependency.
+- The default fetch pipeline still produces PNG. The optional branch-wide shrink converter has been removed
+  from main. Existing WebP/explicit `.webp.atlas` manifests and raw PNG/atlas URLs remain readable for deployed assets.
+  The upstream local extractor is unchanged: `extract.py --webp` produces board/guide copies without the client
+  (board color q95, normal/data maps lossless, local guide q90), and keeps PNGs for `tools/crop-board-atlas.mjs`.
+  Do not manually reuse a PNG fingerprint for different WebP bytes.
 
 ## Manifest schema (`data/assets.json`)
 
@@ -394,7 +560,9 @@ All paths are URL paths relative to the site root, for example `/assets/char/ava
   hash: 'a1b2c3d4e5f6',             // content hash (cache busting)
   generator: 'tools/fetch-assets.mjs',
   stats: { files, bytes, chars, charsWithBack, enemies, enemiesWithSpine, tokens, tokensWithSpine,
-           spineModels, bonds, items, bands, skills, modules, ui, sfxUnits, voiceChars, voiceJpChars },
+           spineModels, bonds, items, bands, skills, modules, ui, sfxUnits, voiceChars, voiceJpChars,
+           voiceEnChars, voiceKrChars, voiceNativeChars },
+           // voiceEnChars / voiceKrChars / voiceNativeChars count the extra dubs; 0 until those trees are fetched
   chars:   { [charId]: { avatar, avatarE2?, portrait, portraitE2?, spine: { front: Spine, back?: Spine } } },
   enemies: { [enemyId]: { icon, spine?: Spine, spineAliasOf?: enemyId,
                           spineLocal?: { group, skel, atlas, textures, …Spine } } },
@@ -438,6 +606,17 @@ All paths are URL paths relative to the site root, for example `/assets/char/ava
                            // player picks 日本語 (settings 语音语言, not tied to the interface language) and falls back to
                            // `voice` for a slot it lacks or a file the host does not have (public/js/audio.js voiceLine);
                            // the full zip ships it unless tools/package.mjs FULL_ZIP_JP_VOICE is off
+    voiceEn?: { [charId]: { …the slots of `voice` } },
+    voiceKr?: { [charId]: { …the slots of `voice` } },
+    voiceNative?: { [charId]: { …the slots of `voice` } },
+                           // English (`voice_en/`), Korean (`voice_kr/`) and the operator's own-language dub
+                           // (`voice_custom/<wordkey>/`, under /assets/audio/voice/native/). Same slots and file names.
+                           // Optional until `fetch-assets` has downloaded them (`--no-optional-voice` leaves them out).
+                           // A missing line falls back to the Chinese file of the same name (public/js/audio.js voiceLine).
+                           // The full zip ships them unless tools/package.mjs FULL_ZIP_OPTIONAL_VOICE is off (default: on).
+    voiceNativeLangType?: { [charId]: 'ITA' | 'GER' | 'RUS' | 'FRE' | 'SPA' | 'CN_TOPOLECT' },
+                           // the official voiceLangType of that operator's own-language dub, only when voiceNative
+                           // has the operator. The per-operator dropdown uses it as the option's name.
     sfx: {
       ui:     { click, back, confirm, tab, pick, drop, error, buy, sell, income, refresh, freeze, levelup,
                 merge, equip, itemMerge, bondUp, artPlace, ready, timer, draft, yourTurn, yourTurnCircle,
@@ -624,7 +803,7 @@ Other renderer rules from research 07 §5.4–5.5:
   - Without a Spine (and without its local-client model, "Token models from the local client"), draw the avatar sprite with a bob tween.
   - `spineVariant` names the skin-variant model that stands in for the missing default model.
 - **Enemies without a spine** (for example `enemy_9016_acstmr`): draw `icon` in a diamond. Enemies with no manifest entry at all (`enemy_5601_entlec` 心烛): draw a procedural glyph.
-- **Battle effects** (projectiles per kind, hit sparks and slashes, skill bursts and auras, 蕾缪安's lock reticles and shells, 回环射手 boomerangs — DESIGN §17.3) are procedural: the FX atlas is drawn at run time (`public/js/render/textures.js`), so they need no downloaded or local art. The local client does have battle effect art — `battle/[pack]common.ab` holds per-weapon projectile sprites (`projectile_arrow(_new)`, `projectile_crossbow(_new)`, `projectile_yuki`, `img_fx_light_01/02`, `trail_11`), and the per-character `battle/prefabs/effects/*.ab` are particle systems whose textures live in other bundles — but none of it is extracted: the sim's `arrow` also covers gun snipers, and friends joining a game may not have the local art.
+- **Battle effects** (projectiles per kind, hit sparks and slashes, skill bursts and auras, 蕾缪安's lock reticles and shells, 回环射手 boomerangs — DESIGN §17.3) are procedural by default: the FX atlas is drawn at run time (`public/js/render/textures.js`), so they need no downloaded or local art. Since 0.3.0 the official battle effects can be extracted from the local client (`tools/local-extract/extract.py --only fx --fx-set used`, opt-in; the files under `public/assets/local/fx/` with their own file list `data/local-fx.json`, DESIGN §33). When the served list names effects, 设置「官方特效」 appears and the 3D board draws them in WebGL2 (`public/js/render/vfx/`, DESIGN §9 "Official battle effects"): normal attacks' casts, projectiles and hits (a multi-hit attack's hit groups, an enemy's blow on a blocker), heals, status loops, deaths and deploys, the operators' and summons' skills, passive ones included (their start, loop, end, ready and range effects, the skill attacks' casts, hit groups and projectiles, the buffs on their targets), the enemies' skills (the sim names each use), the units' talents and abilities (deploy, passive, toggled and 重生 effects) and 深靛's stored energies. They come from the server's files, so every player of that server sees them, whatever client they have. Effects the battle gives no moment for (a buff template's cast at an event the client never sees), a unit the effects' index does not list, the 2D and simplified boards, a browser without WebGL2 and an install without the files keep the procedural effects; a missing texture or mesh leaves that part of an effect undrawn. The older sprites of `battle/[pack]common.ab` (`projectile_arrow(_new)`, `projectile_crossbow(_new)`, `projectile_yuki`, `img_fx_light_01/02`, `trail_11`) are still not extracted: the sim's `arrow` also covers gun snipers.
 - **Spine memory** (`public/js/assets.js`): skeletons are refcounted in an LRU with an idle budget (`SPINE_IDLE_BYTES`, 48 MB) and a 15 s grace; eviction runs `SPINE_EVICT_DELAY_MS` (1 s) after a release, the "no scene on screen" budget (0 bytes) applies after `SPINE_QUIET_DELAY_MS` (3 s) with nothing referenced, and a skeleton whose unload is still in flight is never handed out again — a new load waits for the unload (DESIGN §17.1; it used to leave operators invisible after a battle → prep switch).
 
 ### Looking up `data/chess.json` asset ids
@@ -721,3 +900,15 @@ node tools/profile-avatars.mjs --refresh --revision 441454  # 维护时显式审
 
 Docker 复用旧素材镜像时，须在复制旧 assets/fonts 后、生成资源哈希前运行 `npm run assets:avatars`；
 仅复用旧图片无法提供新增头像，不必重下整套游戏素材。本次源码更新未部署。
+
+## 0.3.0 官方特效与分支素材管线
+
+官方特效按需部署：`python tools/local-extract/extract.py --only fx --fx-set used --game <AB root>`，
+使用安装了 UnityPy/Pillow 的提取环境。默认提取不加入特效；缺失时仍按上游渲染回退。
+`data/local-fx.json` 独立于 `local-assets.json`，服务端资源索引同时观察它的更新时间，合入预载、CDN 与 ZIP 文件列表。
+更新或重新提取后运行 `node tools/asset-hashes.mjs` 和原有分包生成流程，按实际文件字节生成 SHA-1 指纹，
+先部署文件/ZIP，再更新清单。允许作为资源缓存的特效 JSON 限于 index、textures、prefabs/*.json、mesh/*.json。
+
+0.3.0 的射击台使用 `mesh/trap_110` 模型；旧本地清单需重新提取该组，缺少时使用已有回退。
+本分支不合入标题“导入素材包”及另起的缓存/SW/`package --assets`；原有资源管理 ZIP 导入/导出与多线路分包保留。
+插件的 `/p/<id>/<hash>/…` 资源身份独立于普通素材 CDN/指纹，不引入上游普通素材的路径哈希改写。

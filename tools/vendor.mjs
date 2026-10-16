@@ -33,11 +33,14 @@ export function rewriteBare(src, map) {
 
 /** [source under the repo root, file name in public/vendor, optional] */
 export const VENDOR_FILES = Object.freeze([
+  ['node_modules/ses/dist/ses.umd.js', 'ses.umd.js'],
+  ['node_modules/acorn/dist/acorn.mjs', 'acorn.mjs'],
   ['node_modules/pixi.js/dist/pixi.min.js', 'pixi.min.js'],
   ['node_modules/pixi-spine/dist/pixi-spine.js', 'pixi-spine.js'],
   ['node_modules/preact/dist/preact.module.js', 'preact.module.js'],
   ['node_modules/preact/hooks/dist/hooks.module.js', 'hooks.module.js'],
   ['node_modules/htm/dist/htm.module.js', 'htm.module.js'],
+  ['node_modules/marked/lib/marked.esm.js', 'marked.module.js'],
   ['node_modules/@zip.js/zip.js/index.min.js', 'zip.module.js'],
   ['node_modules/@zip.js/zip.js/lib/core/streams/codecs/crc32.js', 'zip-crc32.module.js'],
   ['node_modules/three/build/three.core.js', 'three.core.js', true],

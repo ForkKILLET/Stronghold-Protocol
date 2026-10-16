@@ -6,7 +6,18 @@ node_modules
 .cache
 .venv*
 **/__pycache__
-test
+test/*
+!test/helpers/
+test/helpers/*
+!test/helpers/battleHarness.js
+plugins/*
+!plugins/README.md
+!plugins/AGENTS.md
+!plugins/_template/
+handoff
+pv
+3，9，11回合情况
+review
 logs
 *.log
 docs/img
@@ -14,6 +25,8 @@ docs/img
 docs/research/*.md
 # game art is mounted at runtime or downloaded with --build-arg FETCH_ASSETS=1, never sent from the host
 public/assets
+# Transport packs are published to the CDN; keep them out of the application image.
+public/resource-packs
 # generated from node_modules inside the image
 public/vendor
 public/build
@@ -22,6 +35,7 @@ scripts/service.env.cmd
 Thumbs.db
 .env
 .env.*
+config/r2-sync.json
 deploy/monitoring/monitoring.env
 deploy/monitoring/exporter/targets.json
 deploy/monitoring/network.override.yml

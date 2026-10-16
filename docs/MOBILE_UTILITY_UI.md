@@ -24,6 +24,13 @@ setting. That variable must never be used for widths, heights or battlefield pos
 | Match information/console | Wider, bounded dialogs with compact controls | Server ownership/permissions, all data and actions, validation |
 | Archived settlement | Responsive local-history replay layout | Live result/battle screens remain unchanged |
 
+Settings and its separate shortcut editor use the game's `rem` geometry and saved `--t` typography, without the
+generic utility text floor. Their controls have a `.6rem` minimum height; native voice, language, FPS and shortcut
+controls wrap or shrink within the row. Label/action SVGs use `em`, while the close glyph uses half its button.
+Switch tracks/knobs, slider hit boxes/thumbs, spacing and diagnostic boxes use `rem` rather than fixed mobile
+pixels. Native selects and text boxes retain the 16px iOS focus-zoom guard. The existing global landscape gate,
+safe areas, visible-viewport height, focus stack and scrollable body remain unchanged.
+
 Utility dialogs explicitly opt into `Modal`'s `utility` prop. Their requested desktop width becomes
 `--utility-width`, allowing the mobile stylesheet to resize them without an inline-width override. Other modals
 retain their existing width behaviour. Utility headers gain a keyboard-accessible close button; the existing focus
@@ -33,7 +40,7 @@ Management surfaces also use the existing `device.js` visual-viewport height (`-
 soft keyboard reduces their explicit size budget rather than leaving footer actions behind it. This is a static
 budget contract; keyboard panning/focus behaviour still requires real-device verification.
 
-Compact targets use their actual boxes, generally 28–36px high; they do not retain invisible 44px pseudo-elements
+Compact targets use their actual boxes, generally 24–36px high; they do not retain invisible 44px pseudo-elements
 that overlap neighbouring controls. Text fields/native selects retain a 16px readable floor against iOS focus zoom.
 Larger saved text sizes still enlarge content and may require scrolling; content is not truncated to meet a row budget.
 
@@ -57,6 +64,8 @@ the guide and damage panel. No utility surface bypasses the rotate hint.
 
 ## Verification
 
+- `test/ui/settings-mobile.test.js` checks settings/shortcut scaling, mobile/coarse-pointer cascade, SVG proportions,
+  switch/slider geometry, native control wrapping and unchanged normal desktop dimensions.
 - `test/ui/utility-mobile.test.js` checks the CSS contract, resource columns, retained content, real hit boxes, text
   scope, global orientation gate, and explicit width/height budgets at 320×568, 390×844, 640×360, 844×390, 915×412 and
   1000×600 with synthetic safe areas.

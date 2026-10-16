@@ -2,11 +2,20 @@
 // (i18n-ignore-file: the error pages are bilingual by design, 中文 · English — docs/I18N.md)
 //
 //   * a URL longer than 4096 characters → 414; one that does not parse → 400;
+//   * /studio and /studio/… → the plugin studio (server/studio/index.js: for this machine and the local network only — any
+//     other client gets the 404 page; its API also takes POST / PUT / DELETE), when the server has one;
 //   * any method but GET / HEAD → 405 with `Allow: GET, HEAD`;
-//   * GET /healthz → JSON status (protocol `version`, release `app`, uptime, the served `build`, sockets, sessions,
-//     rooms, matches), never cached;
+//   * GET /healthz → JSON status (protocol `version`, release `app`, uptime, the served `build`, the vanilla content
+//     hash `content.vanilla`, the modded content sets in use `content.sets` and — only when there are some — how many
+//     unofficial plugins the server has, `content.plugins` (the title screen's count before any hello) — DESIGN §32 —,
+//     sockets, sessions,
+//     rooms, matches), never cached; `?traffic=1` adds the traffic counters (traffic.js: bytes by category since the
+//     start, WebSocket wire and payload bytes) for a loopback or private-network client only — the maintainer's
+//     decision of 2026-10-12: the figures are the host's, so any other client, also one a tunnel or proxy on this
+//     machine forwards, gets the plain report (net.js clientAddress, honouring TRUST_PROXY like the WebSocket limits);
 //   * everything else → the static files (static.js).
-// A route that throws is logged and answers 500.
+// Every response's body bytes count in the traffic counters (traffic.js meter). A route that throws is logged and
+// answers 500.
 
 import { PROTOCOL_VERSION, APP_VERSION } from '../../shared/constants.js';
 import { performance } from 'node:perf_hooks';
@@ -14,20 +23,35 @@ import { parseBotRehearsal, parseCombat, parseVerify } from '../match/Match.js';
 import { WS_DEFLATE_THRESHOLD } from './websocket.js';
 import { buildTag } from './buildTag.js';
 import { setSecurityHeaders, sendError, sendJson, sendJsonBody, splitUrl } from './common.js';
+import { clientAddress, isLocalIp } from '../net.js';
 
 const MAX_URL_LENGTH = 4096;
 
+/** `{ plugins: n }` when the server has n > 0 unofficial plugins (the lobby's visual sets count them), else nothing. */
+function pluginCount(lobby) {
+  let n;
+  try { n = Number(lobby?.plugins?.unofficial?.()) || 0; } catch { n = 0; }
+  return n > 0 ? { plugins: n } : {};
+}
+
+/** The content sets with gameplay plugins rooms hold now (DESIGN §32.6; 0 without any). */
+function contentSets(lobby) {
+  try { return Number(lobby?.plugins?.contentInUse?.()) || 0; } catch { return 0; }
+}
+
 /**
- * The GET /healthz body.
+ * The ordinary GET /healthz body. Local ?traffic=1 adds a fresh traffic snapshot separately.
  * @param {{ startedAt: number, network: import('../net.js').Network, registry: import('../net.js').SessionRegistry,
- *           lobby: import('../lobby.js').Lobby }} health
+ *           lobby: import('../lobby.js').Lobby, traffic?: ReturnType<typeof import('./traffic.js').createTrafficCounter> }} health
  */
-export function healthReport({ startedAt, network, registry, lobby }, counters = lobby.stats(), build = buildTag()) {
+export function healthReport({ startedAt, network, registry, lobby, content = null, trusted = null }, counters = lobby.stats(), build = buildTag()) {
   return {
     ok: true, version: PROTOCOL_VERSION, app: APP_VERSION, uptimeSec: Math.round((Date.now() - startedAt) / 1000),
     // the runtime the server is serving right now (public/js/ui/buildGuard.js): a page whose own build is
     // older than this reloads itself, so a deploy reaches clients that never reload
     build,
+    ...(content ? { content: { vanilla: content.cs, sets: contentSets(lobby), ...pluginCount(lobby) } } : {}),
+    ...(trusted && Object.keys(trusted).length ? { plugins: trusted } : {}),
     sockets: network.connectionCount, sessions: registry.size, ...counters,
   };
 }
@@ -72,14 +96,20 @@ export function createHealthBody(health, { now = () => performance.now(), maxAge
   };
 }
 
+/** Does the query ask for the traffic counters (`traffic`, `traffic=1`, `traffic=true`)? */
+const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.test(query || '');
+
 /**
  * The request listener for `http.createServer`.
  * @param {{ serveStatic: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse,
  *             rawPath: string, query: string) => Promise<void>,
- *           health: Parameters<typeof healthReport>[0], log: object }} deps
+ *           health: Parameters<typeof healthReport>[0], log: object, trustProxy?: 'auto' | boolean,
+ *           studio?: { handles: (rawPath: string) => boolean, handle: (req: any, res: any, rawPath: string, query: string) => Promise<void> } | null }} deps
+ *   trustProxy: whose forwarding headers name the client (net.js clientAddress; the server's TRUST_PROXY); studio: the
+ *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log }) {
+export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null }) {
   const healthBody = createHealthBody(health);
   function serveHealth(req, res) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -87,7 +117,10 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
       return;
     }
-    sendJsonBody(req, res, 200, healthBody());
+    const query = splitUrl(req.url || '/')?.query || '';
+    if (health.traffic && wantsTraffic(query) && isLocalIp(clientAddress(req, trustProxy).ip)) {
+      sendJson(req, res, 200, { ...JSON.parse(healthBody().toString()), traffic: health.traffic.snapshot() });
+    } else sendJsonBody(req, res, 200, healthBody());
   }
   function failed(req, res, e) {
     log.error('[http] request failed', e);
@@ -99,6 +132,8 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
     if (url.length > MAX_URL_LENGTH) { sendError(req, res, 414, '请求地址过长 · URI too long'); return; }
     const parts = splitUrl(url);
     if (!parts) { sendError(req, res, 400, '请求地址无效 · Bad request'); return; }
+    if (trustedRuntime && parts.rawPath.startsWith('/x/') && await trustedRuntime.route(req, res, parts.rawPath)) return;
+    if (studio && studio.handles(parts.rawPath)) { await studio.handle(req, res, parts.rawPath, parts.query); return; }
     if (parts.rawPath === '/healthz') { serveHealth(req, res); return; }
     if (serveApi && await serveApi(req, res, parts.rawPath)) return;
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -155,6 +190,7 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
 
   return (req, res) => {
     setSecurityHeaders(res);
+    if (health.traffic) health.traffic.meter(res, splitUrl(req.url || '/')?.rawPath || '/');
     const url = req.url || '/';
     if (url.length <= MAX_URL_LENGTH && (url === '/healthz' || url.startsWith('/healthz?') || url.startsWith('/healthz#'))) {
       try { serveHealth(req, res); } catch (e) { failed(req, res, e); }

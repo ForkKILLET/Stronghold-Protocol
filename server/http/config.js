@@ -4,8 +4,9 @@
 //   * TRUST_PROXY ('auto' default: honour CF-Connecting-IP / X-Real-IP / X-Forwarded-For only from loopback/private
 //     peers such as a local cloudflared; '1' always; '0' never) → net.js trustProxy;
 //   * DEBUG → the console logger's debug level;
-//   * the served directories (public/, data/, shared/ and the content packs' packs/ of this repository unless the
-//     options name others), and which startServer() options are handed on to net.js Network and lobby.js Lobby.
+//   * the served directories (public/, data/, shared/, the content packs' packs/ and the plugins' plugins/ of this
+//     repository unless the options name others), and which startServer() options are handed on to net.js Network and
+//     lobby.js Lobby.
 
 import path from 'node:path';
 import { NET_DEFAULTS } from '../net.js';
@@ -54,15 +55,19 @@ export function bindCandidates(host) {
 }
 
 /**
- * The directories the static server reads (packsDir: the pack folders, server/packs.js).
- * @param {{ publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string }} opts
+ * The directories the static server reads (packsDir: the pack folders, pluginsDir: the plugin folders —
+ * server/plugins/registry.js; default: the plugins/ folder beside packsDir, so a server given its own packs folder —
+ * a test — never reads this checkout's plugins).
+ * @param {{ publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string, pluginsDir?: string }} opts
  */
 export function serveDirs(opts) {
+  const packsDir = opts.packsDir || path.join(ROOT, 'packs');
   return {
     publicDir: opts.publicDir || path.join(ROOT, 'public'),
     dataDir: opts.dataDir || path.join(ROOT, 'data'),
     sharedDir: opts.sharedDir || path.join(ROOT, 'shared'),
-    packsDir: opts.packsDir || path.join(ROOT, 'packs'),
+    packsDir,
+    pluginsDir: opts.pluginsDir || path.join(path.dirname(path.resolve(packsDir)), 'plugins'),
   };
 }
 

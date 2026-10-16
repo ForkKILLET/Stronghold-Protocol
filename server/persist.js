@@ -53,7 +53,8 @@ export function sessionDoc(s, now, activeMatchKey = null) {
     userId:s.userId || null, avatarId:s.avatarId || null,
     name: s.name,
     roomCode: s.roomCode || null,
-    loadout: s.loadout || null, ops: s.ops || null, notOwned: s.notOwned || null, diy: s.diy || null, lang: s.lang || 'zh-CN',
+    card: s.card || null, skins: s.skins || null, loadout: s.loadout || null, ops: s.ops || null, notOwned: s.notOwned || null, diy: s.diy || null, lang: s.lang || 'zh-CN',
+    loadoutCs: s.loadoutCs || null, notOwnedCs: s.notOwnedCs || null, diyCs: s.diyCs || null,
     resumeWindowMs: typeof s.resumeWindowMs === 'number' && s.resumeWindowMs > 0 ? s.resumeWindowMs : null,
     connected: !!s.connected,
     disconnectedAt: s.connected || s.disconnectedAt == null ? now : s.disconnectedAt,
@@ -67,8 +68,9 @@ export function sessionDoc(s, now, activeMatchKey = null) {
 function seatDoc(seat) {
   return {
     seat: seat.seat, playerId: seat.playerId, name: seat.name, avatarId:seat.avatarId || null, isBot: !!seat.isBot,
+    loadoutCs: seat.loadoutCs || null, notOwnedCs: seat.notOwnedCs || null, diyCs: seat.diyCs || null,
     ready: !!seat.ready, left: !!seat.left, connected: !!seat.connected && !seat.left,
-    loadout: seat.loadout || null, ops: seat.ops || null, notOwned: seat.notOwned || null, diy: seat.diy || null,
+    card: seat.isBot ? null : seat.card || null, skins: seat.skins || null, loadout: seat.loadout || null, ops: seat.ops || null, notOwned: seat.notOwned || null, diy: seat.diy || null,
   };
 }
 
@@ -76,6 +78,7 @@ function seatDoc(seat) {
 export function roomDoc(room) {
   return {
     code: room.code,
+    ...(room.content ? { content: room.content } : {}),
     mode: room.mode,
     difficulty: room.difficulty,
     consoleEnabled: !!room.consoleEnabled, aiPicksLast: !!room.aiPicksLast,
@@ -189,7 +192,8 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
         disconnectedAt: since,
         resumeWindowMs: windowMs,
         roomCode: s.roomCode,
-        loadout: s.loadout, ops: s.ops, notOwned: s.notOwned, diy: s.diy, lang: s.lang,
+        loadoutCs: s.loadoutCs, notOwnedCs: s.notOwnedCs, diyCs: s.diyCs,
+        card: s.card, skins: s.skins, loadout: s.loadout, ops: s.ops, notOwned: s.notOwned, diy: s.diy, lang: s.lang,
         addr: s.addr,
         notice: s.notice, pendingResult: s.pendingResult,
       }, { allowOverCapacity: activeIds.has(s.playerId) });

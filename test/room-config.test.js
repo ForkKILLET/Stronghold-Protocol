@@ -25,6 +25,12 @@ test('host updates broadcast together, unready teammates only on changes and loc
   const room=srv.lobby.rooms.get(state.code);assert.equal(roomDoc(room).prepMultiplier,1.5);
   await guest.request({t:'room.ready',ready:true});await host.request(options);
   assert.equal(room.seatOf(gw.playerId).ready,true,'no-op does not reset readiness');
+  room.content=Object.freeze({...room.content,modeId:'mode_x_custom'});
+  await host.request({...options,battleSpeed:4});
+  assert.equal(room.content.modeId,'mode_x_custom','pacing alone preserves the selected plugin mode');
+  await host.request({...options,difficulty:'NORMAL'});
+  assert.equal(room.content.modeId,undefined,'choosing another difficulty leaves the plugin mode');
+
   await host.request({...options,prepMultiplier:null,battleSpeed:2});
   assert.equal((await host.request({t:'match.join',mode:'coop',difficulty:'HARD'})).t,'ok');
   assert.equal((await host.request(options)).code,'MATCHING');

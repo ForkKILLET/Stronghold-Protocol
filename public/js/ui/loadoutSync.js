@@ -15,11 +15,16 @@
 // loadout locks when INFO_CHECK ends; the ownership and the 自选 picks never change during a match) — stored for the
 // next match, not an error for the player; anything else is logged. `sync` / `ownSync` / `diySync` ∈ 'idle' |
 // 'pending' | 'sending' | 'synced' | 'locked' | 'error' are mirrored into the store for the screen's status line.
+// A room with gameplay plugins (DESIGN §32.6): data.js then shows the room's content set, so what goes out is checked
+// against the room's data (its operators too); the stored settings keep every entry — one the room does not know is
+// only left out of what is sent, never deleted. Whenever the room's content set arrives or goes (content.js contentSet)
+// the three settings are sent again, and the 自选 picker's list (`diyKitted`) is the set's own (else welcome's).
 
 import { createStore, loadPref, savePref } from '../store.js';
 import { data } from '../data.js';
+import { contentSet as appContentSet } from '../content.js';
 import { LOADOUT_PREF, parseStored, parseStoredOps, toStored, sanitizeEntries, sanitizeOps } from './loadoutModel.js';
-import { cultivationCharIds } from '../../../shared/protocol.js';
+import { cultivationCharIds, charPotentialChanges } from '../../../shared/protocol.js';
 import { OWNERSHIP_PREF, parseStoredOwnership, toStoredOwnership, cleanIds, sanitizeNotOwned } from './ownershipModel.js';
 import { DIY_PREF, parseStoredDiy, toStoredDiy, cleanPicks, sanitizeDiyPicks } from './diyModel.js';
 import { toast } from './toasts.js';
@@ -163,12 +168,13 @@ export const closeLoadout = () => loadoutStore.set({ open: false });
  * is the message body), `prepare()` → the payload to send (may await data; null = the data is missing: nothing is sent,
  * state 'error'), `lockedText` = what a refused edit tells the player.
  */
-function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, field, prepare, lockedText, tag }) {
+export function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, field, prepare, lockedText, tag, content = appContentSet }) {
   const T = timers || { setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: (id) => globalThis.clearTimeout(id) };
   // (`lockedText` is a msgid: the toast is translated when it shows — docs/I18N.md)
   const tell = notify || ((text) => toast(t(text), 'warn'));
   let timer = null;
   let seq = 0;            // requests sent (the reply of an older one never overrides a newer one's state)
+  let revision = 0;       // edits and welcome invalidate a preparation still awaiting game data (GitHub #540)
   let pendingJson = null; // JSON of the newest request still awaiting its reply
   let lastSent = null;    // JSON of the last payload the server accepted (on this session)
   let edited = false;     // an edit is waiting to be sent (a lock refusal is then worth telling the player)
@@ -189,9 +195,12 @@ function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, 
   async function flush() {
     if (disposed) return;
     if (net.status !== 'online') { setState('idle'); return; } // the next welcome resends
+    const preparing = revision;
     try {
       const payload = await prepare();
-      if (disposed) return;
+      // a newer edit or welcome happened while prepare awaited chess/backups: do not send, and do not touch the
+      // sync state that newer flush owns (an older skill must not overwrite a restore-defaults)
+      if (disposed || preparing !== revision) return;
       // never sanitise against missing data: every entry would be dropped and the server's copy cleared
       if (payload == null) { setState('error'); return; }
       const json = JSON.stringify(payload);
@@ -203,7 +212,10 @@ function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, 
       pendingJson = json;
       setState('sending');
       try {
-        await net.request(msgType, field ? { [field]: payload } : payload);
+        const c = content?.get();
+        const fields = field ? { [field]: payload } : { ...payload };
+        if (['room.loadout', 'room.ownership', 'room.diy'].includes(msgType) && c?.status === 'ready' && c.cs) fields.cs = c.cs;
+        await net.request(msgType, fields);
         if (my !== seq) return;
         pendingJson = null;
         lastSent = json;
@@ -221,15 +233,16 @@ function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, 
         else { console.warn(`[${tag}] ${msgType} refused`, code, err && err.detail); setState('error'); }
       }
     } catch (e) {
+      if (disposed || preparing !== revision) return;
       console.warn(`[${tag}] sync failed`, e);
       setState('error');
     }
   }
 
-  const offWelcome = net.on('welcome', () => { lastSent = null; pendingJson = null; seq++; schedule(50); });
+  const offWelcome = net.on('welcome', () => { revision++; lastSent = null; pendingJson = null; seq++; schedule(50); });
   const keys = Array.isArray(key) ? key : [key];
   const offStore = target.subscribe((s, prev) => {
-    if (keys.some((k) => s[k] !== prev[k])) { edited = true; schedule(); }
+    if (keys.some((k) => s[k] !== prev[k])) { revision++; edited = true; schedule(); }
     // closing the overlay sends a pending edit at once (review fix): the player's next click — 准备就绪 in the solo
     // briefing, 开始模拟 in the room — must not overtake the debounced message (the match locks its loadout when
     // INFO_CHECK ends, so a late edit would silently only apply to the next match). Same socket ⇒ ordered.
@@ -237,6 +250,14 @@ function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, 
   });
   // a match leaving INFO_CHECK locks the loadout; a new match (the room back in LOBBY / a new INFO_CHECK) accepts it again
   const offRoom = net.on('room.state', (msg) => { if (msg && !msg.inMatch && target.get()[stateKey] === 'locked') { lastSent = null; schedule(); } });
+  // the room's content set arrived or went (DESIGN §32.6): sent again, checked against the data the room plays now
+  let contentKey = content ? `${content.get().cs}|${content.get().status}` : '';
+  const offContent = content ? content.subscribe((c) => {
+    const k = `${c.cs}|${c.status}`;
+    if (k === contentKey) return;
+    contentKey = k;
+    if (c.status === 'ready' || c.status === 'idle') { revision++; lastSent = null; schedule(50); }
+  }) : null;
 
   return {
     flush,
@@ -246,6 +267,7 @@ function installPrefSync({ net, timers, target, notify, key, stateKey, msgType, 
       offWelcome?.();
       offStore?.();
       offRoom?.();
+      offContent?.();
     },
   };
 }
@@ -278,7 +300,7 @@ export function installLoadoutSync({ net, getChessReady, getBackupsReady, lookup
       if (!hasOps) return { entries, ops: {} };
       if ((await readyBackups()) == null) return null;
       const ids = opIds();
-      return { entries, ops: sanitizeOps(target.get().ops, (id) => ids.has(id)) };
+      return { entries, ops: sanitizeOps(target.get().ops, (id) => ids.has(id), (id) => charPotentialChanges({ chess: data.get('chess'), backups: data.get('backups') }, id)) };
     },
   });
 }
@@ -306,15 +328,25 @@ export function installOwnershipSync({ net, timers, target = loadoutStore, notif
  * @param {{ net: any, timers?: { setTimeout: Function, clearTimeout: Function }, target?: ReturnType<typeof createStore>,
  *   notify?: (text: string) => void }} deps
  */
-export function installDiySync({ net, timers, target = loadoutStore, notify } = {}) {
+export function installDiySync({ net, timers, target = loadoutStore, notify, content = appContentSet } = {}) {
+  // the picker's list: welcome's, and the operators the room's content set adds while it plays one (DESIGN §32.6)
+  let welcomeList = null;
+  let joined = { base: null, extra: null, list: null };
+  const pickList = () => {
+    const extra = content?.get().status === 'ready' ? content.get().kitted : null;
+    if (!welcomeList || !Array.isArray(extra) || !extra.length) return welcomeList;
+    if (joined.base !== welcomeList || joined.extra !== extra) joined = { base: welcomeList, extra, list: [...new Set([...welcomeList, ...extra])] };
+    return joined.list;
+  };
   const offKit = net.on('welcome', (msg) => {
-    const list = msg && Array.isArray(msg.diyKitted) ? msg.diyKitted.filter((x) => typeof x === 'string') : null;
-    target.set({ diyKitted: list });
+    welcomeList = msg && Array.isArray(msg.diyKitted) ? msg.diyKitted.filter((x) => typeof x === 'string') : null;
+    target.set({ diyKitted: pickList() });
   });
+  const offKitContent = content ? content.subscribe(() => { const l = pickList(); if (l !== target.get().diyKitted) target.set({ diyKitted: l }); }) : null;
   const sync = installPrefSync({
     net, timers, target, notify, key: 'diy', stateKey: 'diySync', msgType: 'room.diy', field: 'picks', tag: 'diy',
     lockedText: N_('自选编队是局外设置，修改将在下一局生效'),
     prepare: async () => cleanPicks(target.get().diy),
   });
-  return { flush: sync.flush, dispose() { offKit?.(); sync.dispose(); } };
+  return { flush: sync.flush, dispose() { offKit?.(); offKitContent?.(); sync.dispose(); } };
 }

@@ -127,15 +127,15 @@ test('0.2.4 console merges preserve zero-reservation shared/private grants, incl
   } finally { h.m.dispose(); }
 });
 
-test('0.2.4 exhausted console equipment grants return SOLD_OUT without spending quota', () => {
+test('console equipment grants preserve stock and use their ordinary quota', () => {
   const h = makeMatch({ mode: 'solo', seed: 11, fake: true, consoleEnabled: true }).start();
   try {
     for (let i = 0; i < 2; i++) assert.deepEqual(h.m.handle('p_0', { t: 'g.console', kind: 'item', id: PACK }), { ok: true });
     const ps = h.ps('p_0');
-    assert.equal(h.m.itemPool.left(PACK), 0);
-    assert.equal(h.m.handle('p_0', { t: 'g.console', kind: 'item', id: PACK }).error, 'SOLD_OUT');
-    assert.equal(ps.consoleRoundUses, 2);
-    assert.equal(ps.consoleTotalUses, 2);
+    assert.equal(h.m.itemPool.left(PACK), 2);
+    assert.deepEqual(h.m.handle('p_0', { t: 'g.console', kind: 'item', id: PACK }), { ok: true });
+    assert.equal(ps.consoleRoundUses, 3);
+    assert.equal(ps.consoleTotalUses, 3);
     checkInvariants(h.m);
   } finally { h.m.dispose(); }
 });

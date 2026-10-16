@@ -86,23 +86,24 @@ test('export/import round trip includes only cached files and serves imported by
   assert.equal((await importResourceZip(target.store, exported.blob)).imported, 1, 'a damaged cached copy is replaced by verified package bytes');
 });
 
-test('board JSON metadata and bracket textures preload, round-trip through ZIP and match encoded CDN requests', async () => {
+test('board/scene JSON metadata and bracket textures preload, round-trip through ZIP and match encoded CDN requests', async () => {
   const paths = ['/assets/local/map/fx/materials.json', '/assets/local/map/fx/prefab.json', '/assets/local/map/autochess/tiles.json',
-    '/assets/local/map/fx/[opt]merged_textures.png', '/assets/local/map/water/[ucp]TX_water_normal.png'];
+    '/assets/local/map/fx/[opt]merged_textures.png', '/assets/local/map/water/[ucp]TX_water_normal.png',
+    '/assets/local/scene/act2autochess_m02/scene.json', '/assets/local/scene/act2autochess_m02/scene.bin'];
   const files = paths.map((url) => file(url, url.endsWith('.json') ? '{"board":true}' : 'texture'));
   const source = store(files);
-  assert.equal((await source.store.download({ tiers: [1] })).count, 5);
+  assert.equal((await source.store.download({ tiers: [1] })).count, paths.length);
   const exported = await exportResourceZip(source.store);
-  assert.equal(exported.count, 5);
+  assert.equal(exported.count, paths.length);
   const targetFiles = files.map((f) => ({ ...f, url: 'https://cdn.example/game' + encodeURI(f.url) }));
   const target = store(targetFiles);
-  assert.equal((await importResourceZip(target.store, exported.blob)).imported, 5);
+  assert.equal((await importResourceZip(target.store, exported.blob)).imported, paths.length);
   for (const f of targetFiles) {
     const response = await handleResourceRequest(new Request(f.url), { caches: target.caches });
     assert.equal(await response.text(), f.body);
     if (f.url.endsWith('.json')) assert.match(response.headers.get('content-type'), /application\/json/);
   }
-  assert.equal((await target.store.status()).tier1Present, 5);
+  assert.equal((await target.store.status()).tier1Present, paths.length);
 });
 
 test('legacy ZIP raw bracket paths match new encoded paths; encoded duplicates and unrelated JSON are refused', async () => {
@@ -118,6 +119,32 @@ test('legacy ZIP raw bracket paths match new encoded paths; encoded duplicates a
   for (const url of ['/assets/local/map/fx/other.json', '/assets/game.json', '/data/assets.json', '/i18n/en.json']) {
     await assert.rejects(importResourceZip(target.store, await packageZip([file(url, '{}')])));
   }
+});
+
+test('PNG-to-WebP migration reuses unchanged skeletons from old ZIPs, never relabels PNG bytes', async () => {
+  const skeleton = file('/assets/spine/a.skel', 'unchanged-skeleton');
+  const png = file('/assets/spine/a.png', 'legacy-png');
+  const oldAtlas = file('/assets/spine/a.atlas', 'a.png\nsize: 32,32\n');
+  const webp = file('/assets/spine/a.webp', 'converted-webp');
+  const newAtlas = file('/assets/spine/a.webp.atlas', 'a.webp\nsize: 32,32\n');
+  const optional = file('/assets/audio/bgm/a.mp3', 'music', 2);
+  const files = [skeleton, webp, newAtlas, optional];
+  const target = store(files, { version: 'compressed' });
+  const old = await packageZip([skeleton, png, oldAtlas]);
+  const imported = await importResourceZip(target.store, old);
+  assert.equal(imported.imported, 1);
+  assert.equal(imported.skippedPackage, 2);
+  assert.deepEqual(target.calls, []);
+  const cache = await target.caches.open(CACHE_NAME);
+  await cache.put(target.store.keyOf(png.url), new Response(png.body));
+  await target.store.download({ tiers: [1] });
+  assert.deepEqual(target.calls, [target.store.keyOf(webp.url), target.store.keyOf(newAtlas.url)]);
+  assert.equal(await (await cache.match(target.store.keyOf(png.url))).text(), png.body,
+    'partial selected-scope upgrade must retain old cache until full-set cleanup is safe');
+  assert.equal(await (await cache.match(target.store.keyOf(webp.url))).text(), webp.body);
+  assert.equal((await importResourceZip(target.store, await packageZip([webp, newAtlas], { version: 2 }))).imported, 0);
+  const exported = await exportResourceZip(target.store);
+  assert.equal(exported.count, 3, 'current ZIP excludes legacy PNG and old atlas');
 });
 
 test('old ZIP reuses unchanged files across CDN prefixes, skips stale/removed/unverifiable files, downloads only the remainder', async () => {
@@ -405,7 +432,7 @@ test('cancellation keeps only already imported verified entries; quota errors fl
 test('export rejects corrupted cached bytes instead of endorsing them in a package', async () => {
   const target = store([file('/assets/a.png', 'correct')]);
   await target.store.download();
-  await (await target.caches.open(CACHE_NAME)).put(target.store.keyOf('/assets/a.png'), new Response('incorrect'));
+  await (await target.caches.open(CACHE_NAME)).put(target.store.keyOf('/assets/a.png'), new Response('incorrect', { headers: { 'Content-Length': '9' } }));
   await assert.rejects(exportResourceZip(target.store), /缓存资源校验失败/);
 });
 
@@ -537,7 +564,7 @@ test('checking an existing cache copy hashes those distinct bytes once and reuse
   const target = store(files);
   await target.store.download();
   const cache = await target.caches.open(CACHE_NAME);
-  await cache.put(target.store.keyOf(files[1].url), new Response('damaged'));
+  await cache.put(target.store.keyOf(files[1].url), new Response('damaged', { headers: { 'Content-Length': '7' } }));
   const calls = [];
   const digest = crypto.subtle.digest.bind(crypto.subtle);
   t.mock.method(crypto.subtle, 'digest', (algorithm, bytes) => {
@@ -720,6 +747,58 @@ test('parallel index checkpoints never overlap and the final index contains ever
   assert.deepEqual(counts, counts.toSorted((a, b) => a - b));
   assert.equal(counts.at(-1), files.length);
   assert.equal((await target.store.status()).count, files.length);
+});
+
+test('ZIP verifies an unindexed runtime cache and records its fingerprint without rewriting valid asset bytes', async () => {
+  const files = [file('/assets/char/runtime.png', 'runtime'), file('/assets/audio/bgm/runtime.mp3', 'music', 2)];
+  const target = store(files);
+  const cache = await target.caches.open(CACHE_NAME);
+  for (const resource of files) await cache.put(target.store.keyOf(resource.url), new Response(resource.body, { headers: { 'Content-Length': String(resource.size) } }));
+  assert.equal((await target.store.status({ verifyCache: false })).count, 0);
+  const puts = [];
+  const put = cache.put.bind(cache);
+  cache.put = async (key, response) => { puts.push(key); await put(key, response); };
+  const blob = await packageZip(files, { version: 2 });
+  assert.equal((await importResourceZip(target.store, blob)).imported, 0, 'valid cached bytes do not need replacing');
+  const doc = await (await cache.match(indexUrl(target.store.origin))).json();
+  assert.deepEqual(doc.files, Object.fromEntries(files.map((f) => [target.store.keyOf(f.url), f.hash])));
+  assert.equal((await target.store.status({ verifyCache: false })).count, 2);
+  assert.deepEqual(puts, [indexUrl(target.store.origin)], 'only the verified fingerprint index is written');
+});
+
+test('reimporting unchanged verified ZIP resources performs no index writes', async () => {
+  const files = [file('/assets/a.png', 'a'), file('/assets/b.png', 'b')];
+  const target = store(files);
+  const blob = await packageZip(files, { version: 2 });
+  await importResourceZip(target.store, blob);
+  const cache = await target.caches.open(CACHE_NAME);
+  let writes = 0;
+  const put = cache.put.bind(cache);
+  cache.put = async (...args) => { writes++; await put(...args); };
+  const result = await importResourceZip(target.store, blob);
+  assert.equal(result.imported, 0);
+  assert.equal(writes, 0, 'unchanged metadata is not serialized/written again');
+});
+
+test('ZIP final index retries a failed checkpoint and includes every completed resource write', async () => {
+  const files = Array.from({ length: 70 }, (_, i) => file(`/assets/${i}.png`, String(i)));
+  const target = store(files);
+  const blob = await packageZip(files, { version: 2 });
+  const cache = await target.caches.open(CACHE_NAME);
+  const put = cache.put.bind(cache);
+  let indexWrites = 0;
+  cache.put = async (key, response) => {
+    if (key === indexUrl(target.store.origin) && ++indexWrites === 1) {
+      throw new DOMException('', 'QuotaExceededError');
+    }
+    await put(key, response);
+  };
+  await assert.rejects(importResourceZip(target.store, blob), { name: 'QuotaExceededError' });
+  assert.equal(indexWrites, 2, 'the final flush retries metadata persistence after the checkpoint failed');
+  const doc = await (await cache.match(indexUrl(target.store.origin))).json();
+  const stored = (await cache.keys()).map((request) => request.url).filter((key) => key !== indexUrl(target.store.origin));
+  assert.deepEqual(Object.keys(doc.files).sort(), stored.sort());
+  assert.equal((await target.store.status({ verifyCache: false })).count, stored.length);
 });
 
 test('incremental import counters preserve same-key URL aliases and unknown resource sizes', async () => {

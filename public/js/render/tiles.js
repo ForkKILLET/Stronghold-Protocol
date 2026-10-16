@@ -205,7 +205,7 @@ const DEVICE_ROLES = new Set(['crate', 'platform', 'mound', 'blower', 'turret', 
 /** Textured box props: role → { size (tiles), height, top / side materials }. */
 export const DEVICE_BOX = Object.freeze({
   crate: { size: 0.84, height: 0.74, top: 'crateTop', side: 'crateSide' },
-  platform: { size: 0.94, height: 0.26, top: 'platformTop', side: 'forbidSide' },
+  platform: { size: 0.94, height: TILE_H.platform, top: 'platformTop', side: 'forbidSide' },
   waterPlatform: { size: 0.94, height: 0.2, top: 'platformTop', side: 'lowSide' },
   sealedFloor: { size: 0.92, height: 0.05, top: 'sealed', side: 'forbidSide' },
   blower: { size: 0.86, height: 0.28, top: 'blowerTop', side: 'forbidSide' },
@@ -230,6 +230,7 @@ export class TileField {
    */
   constructor(layers) {
     const P = globalThis.PIXI;
+    this.destroyed = false;
     this.P = P;
     this.layers = layers;
     this.atlas = tileAtlas();
@@ -344,7 +345,8 @@ export class TileField {
     for (const d of this._stageDevices()) {
       const t = this.grid[d.pos[0]]?.[d.pos[1]];
       if (!t) continue;
-      if (d.role === 'platform' || d.role === 'mound') t.devH = TILE_H.platform;
+      if (d.role === 'platform') t.devH = TILE_H.platform;
+      else if (d.role === 'mound') t.devH = TILE_H.mound;
       else if (d.role === 'waterPlatform') t.devH = DEVICE_BOX.waterPlatform.height;
     }
     const hs = new Set([0]);
@@ -514,6 +516,7 @@ export class TileField {
    * diagonal stripes over the fill (the official striped range tiles; drawn under the units like every highlight).
    */
   setHighlights(tiles, style = 'range', group, opts) {
+    if (this.destroyed) return;
     let st = typeof style === 'object' && style ? { ...HL_STYLES.range, ...style } : (HL_STYLES[style] || HL_STYLES.range);
     if (opts && opts.stripes) st = { ...st, stripes: true };
     const key = group || (typeof style === 'object' && style?.group) || (typeof style === 'string' ? style : 'custom');
@@ -530,11 +533,13 @@ export class TileField {
   }
 
   clearHighlights(group) {
+    if (this.destroyed) return;
     if (group) this.highlights.delete(group); else this.highlights.clear();
     this._drawHighlights();
   }
 
   _drawHighlights() {
+    if (this.destroyed) return;
     this.hlGfx.clear();
     for (const s of this.rowSurfaces.values()) if (s._hl) s._hl.clear();
     const cam = this.cam;
@@ -719,7 +724,8 @@ export class TileField {
     for (const b of this.boxes) b.g.destroy();
     this.boxes = [];
     // the field's gates / objectives, and the enemy preview pen's two gates (the red cubes behind which the next
-    // round's enemies wait, also while the pen is dim scenery behind the prep board)
+    // round's enemies wait) whenever the pen's rows are drawn — the prep and pen cameras (render/app/view.js bandFor),
+    // also as dim scenery
     const pen = parsePenRect(this.stage?.config?.enemy_place_rect) || PEN_RECT;
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       const tile = this.grid[r][c];
@@ -777,6 +783,9 @@ export class TileField {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.highlights.clear();
     for (const d of this.devices) d.gfx.destroy();
     for (const a of this.animSprites) a.sprite.destroy();
     for (const b of [...this.boxMeshes]) b.destroy();

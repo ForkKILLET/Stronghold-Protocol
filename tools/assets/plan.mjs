@@ -24,7 +24,7 @@ import {profileAvatarJobs} from './profile-avatars.mjs';
 
 import { RAW, joinUrl, safeName, urlBase, urlDir } from './sources.mjs';
 import { kindOf } from './formats.mjs';
-import { pickUnitSfx, pickModeAttacks, pickModeHits, skillModeLetter, SLOT_MODE_LETTER, UI_SFX, BATTLE_SFX, resolveSpec, indexVoice, VOICE_DIRS, VOICE_BATTLE_SLOTS } from './audio.mjs';
+import { pickUnitSfx, pickModeAttacks, pickModeHits, skillModeLetter, SLOT_MODE_LETTER, UI_SFX, BATTLE_SFX, resolveSpec, indexVoice, nativeVoiceDirs, VOICE_DIRS, VOICE_CUSTOM_DIR, VOICE_BATTLE_SLOTS } from './audio.mjs';
 import { literal } from './manifest.mjs';
 import { EMOTE_CATALOG } from '../../shared/constants.js';
 
@@ -42,6 +42,15 @@ const VOICE_ID_LANG = 'CN';
  * request of 2026-10-08 「全套的日配语音」: the JP dub of every line the game plays, beside the Chinese one.
  */
 export const VOICE_JP_LANG = 'jp';
+
+/**
+ * The extra dub trees beside `audio.voiceJp` (`optionalVoice`, on by default in fetch-assets.mjs): the EN and KR
+ * dubs (`voice_en/`, `voice_kr/`) and each operator's own-language dub (`voice_custom/<wordkey>/`, audio.mjs
+ * nativeVoiceDirs) — the same slots and file names, under `audio/voice/<en|kr|native/<dir>>/`. public/js/audio.js
+ * VOICE_TREES plays them; tools/package.mjs FULL_ZIP_OPTIONAL_VOICE decides whether the full zip ships them
+ * (default: yes, so the 0.3.0 full zip includes them).
+ */
+export const VOICE_OPTIONAL_TREES = Object.freeze({ voiceEn: 'en', voiceKr: 'kr', voiceNative: 'native' });
 
 /**
  * Enemies whose Spine no community dump carries: the web model is another enemy's (research 07 §5.6). Their official
@@ -134,14 +143,14 @@ const ARTS_GROUPS = Object.freeze({
  * @param {string|string[]} urls
  * @param {number} [bytes] expected size
  */
-function alt(rel, urls, bytes) {
+export function alt(rel, urls, bytes) {
   const a = { rel, urls: [].concat(urls).filter((u) => typeof u === 'string' && u), kind: kindOf(rel) };
   if (Number.isInteger(bytes) && bytes > 0) a.bytes = bytes;
   return a;
 }
 
 /** A leaf with the given alternatives (null alternatives are dropped). */
-function leaf(...alts) {
+export function leaf(...alts) {
   const list = alts.flat().filter((a) => a && a.urls && a.urls.length);
   return list.length ? { alts: list } : null;
 }
@@ -152,6 +161,14 @@ function voiceAlt(asset, lang) {
   if (!charId || !voiceId || !/^[a-z0-9_]+$/i.test(charId) || !/^[a-z]{2}_\d+$/i.test(voiceId)) return null;
   const file = `${charId}/${voiceId.toLowerCase()}.mp3`;
   return alt(`audio/voice/${lang}/${file}`, joinUrl(RAW.aa2voice, `${VOICE_DIRS[lang]}/${file}`));
+}
+
+/** The same line from an operator's own-language dub (audio.mjs nativeVoiceDirs) → `audio/voice/native/<dir>/cn_023.mp3`. */
+function nativeVoiceAlt(asset, dir) {
+  const voiceId = String(asset).split('/')[1];
+  if (!dir || !/^[a-z0-9_]+$/.test(dir) || !voiceId || !/^[a-z]{2}_\d+$/i.test(voiceId)) return null;
+  const file = `${dir}/${voiceId.toLowerCase()}.mp3`;
+  return alt(`audio/voice/native/${file}`, joinUrl(RAW.aa2voice, `${VOICE_CUSTOM_DIR}/${file}`));
 }
 
 /** Sound path under sound_beta_2 → alternative under public/assets/audio/<sub>. */
@@ -189,6 +206,34 @@ function bytesOf(rec, url) {
 /** Local file stem for a skeleton URL or file name ('…/char_102_texas.skel' → 'char_102_texas'). */
 function skelStem(urlOrName) {
   return safeName(urlBase(urlOrName).replace(/\.skel$/i, ''));
+}
+
+/**
+ * The `plan.models` definition for one fexli source record (skel + atlas + page PNGs, all under `dir`).
+ *
+ * Exported because tools/install-skins.mjs builds a skin model exactly the way the full plan does — if the two
+ * ever drifted, an installed skin would download a different file set than a rebuilt manifest expects.
+ * @param {string} key unique model key (plan.models key)
+ * @param {string} kind 'op' | 'enemy' | 'token'
+ * @param {string} dir local directory under public/assets (trailing slash)
+ * @param {{skel?:any, atlas?:any, png?:any}} rec research record: `{url,bytes}` | url | url[]
+ * @param {number[]} skillIndices skill clip indices to resolve animation roles for
+ * @returns {object|null} null when the record is missing any of the three parts
+ */
+export function fexliModelDef(key, kind, dir, rec, skillIndices) {
+  // arrays are candidate folders (same order for all three)
+  const us = (x) => (Array.isArray(x) ? x : [typeof x === 'string' ? x : x?.url]).filter((v) => typeof v === 'string' && v);
+  const b = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x.bytes : undefined);
+  if (!us(rec?.skel).length || !us(rec?.atlas).length || !us(rec?.png).length) return null;
+  const stem = skelStem(us(rec.skel)[0]);
+  return {
+    key, kind, dir, pma: false, skillIndices,
+    baseUrl: urlDir(us(rec.atlas)[0]),
+    skel: alt(`${dir}${stem}.skel`, us(rec.skel), b(rec.skel)),
+    // pixi-spine finds the atlas by swapping the .skel extension: keep the same stem.
+    atlas: { ...alt(`${dir}${stem}.atlas`, us(rec.atlas), b(rec.atlas)), mutable: true },
+    pngs: [alt(dir + safeName(urlBase(us(rec.png)[0])), us(rec.png), b(rec.png))],
+  };
 }
 
 /** Collect every enemy key referenced under a wave/branch structure. */
@@ -308,6 +353,9 @@ export function collectEnemyIds({ assets07, enemies05, maps05, ops03 }) {
  * @param {string} [p.voiceLang] voice dump of `audio.voice` (the 中文 setting): cn (default) | jp | en | kr — `audio.voiceJp`
  *   is the JP dub (`voice/`) whatever it is
  * @param {boolean} [p.voiceJp] plan the JP tree `audio.voiceJp` (default true)
+ * @param {boolean} [p.optionalVoice] also plan the EN / KR / own-language trees (VOICE_OPTIONAL_TREES: `audio.voiceEn` /
+ *   `audio.voiceKr` / `audio.voiceNative`, plus `audio.voiceNativeLangType`); default false so a plan that only asks
+ *   for the two 0.2.2 trees stays those two. fetch-assets passes true unless `--no-optional-voice`.
  * @param {Iterable<string>|null} [p.voiceSlots] which voice slots to plan: VOICE_BATTLE_SLOTS (default) plans only the
  *   lines a battle can play, null plans every slot of audio.mjs VOICE_SLOTS (`--voice-all`). The prep-only slots
  *   (干员报到 / 编入队伍 / 任命队长) are never requested by the client and cost 360 files / 19.3 MB of downloads.
@@ -327,8 +375,8 @@ export function collectEnemyIds({ assets07, enemies05, maps05, ops03 }) {
  *   official type icon (arts/ui/uniequiptype) the 干员调配 / 自选 module tiles draw when the local-client art lacks it
  * @returns {{ template: any, models: Map<string, any>, notes: string[] }}
  */
-export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsData, charword = null, voiceLang = 'cn',
-  voiceJp = true, voiceSlots = VOICE_BATTLE_SLOTS,
+export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsData, skins08 = null, skinsInstalled = null, charword = null, voiceLang = 'cn',
+  voiceJp = true, voiceSlots = VOICE_BATTLE_SLOTS, optionalVoice = false,
   extraEnemyIds = [], extraTokenIds = [], extraHandbook = {}, localEnemySpines = {}, localTokenSpines = {}, extraOperators = {},
   moduleTypes = [], profileAvatars = {} }) {
   const notes = [];
@@ -340,18 +388,8 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
   const addModel = (key, def) => { if (!models.has(key)) models.set(key, { key, ...def }); return { model: key }; };
   const fexliModel = (key, kind, dir, rec, skillIndices) => {
     // rec: 07 { skel:{url,bytes}|url|url[], atlas, png } — arrays are candidate folders (same order for all three)
-    const us = (x) => (Array.isArray(x) ? x : [typeof x === 'string' ? x : x?.url]).filter((v) => typeof v === 'string' && v);
-    const b = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x.bytes : undefined);
-    if (!us(rec?.skel).length || !us(rec?.atlas).length || !us(rec?.png).length) return null;
-    const stem = skelStem(us(rec.skel)[0]);
-    return addModel(key, {
-      kind, dir, pma: false, skillIndices,
-      baseUrl: urlDir(us(rec.atlas)[0]),
-      skel: alt(`${dir}${stem}.skel`, us(rec.skel), b(rec.skel)),
-      // pixi-spine finds the atlas by swapping the .skel extension: keep the same stem.
-      atlas: { ...alt(`${dir}${stem}.atlas`, us(rec.atlas), b(rec.atlas)), mutable: true },
-      pngs: [alt(dir + safeName(urlBase(us(rec.png)[0])), us(rec.png), b(rec.png))],
-    });
+    const def = fexliModelDef(key, kind, dir, rec, skillIndices);
+    return def ? addModel(def.key, def) : null;
   };
 
   // --- operators -----------------------------------------------------------
@@ -380,6 +418,36 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
     if (front) c.spine.front = front; else notes.push(`${id}: no Front battle Spine in research data`);
     const back = fexliModel(`op:${id}:back`, 'op', `spine/op/${id}/back/`, o.battleSpine?.back, idx);
     if (back) c.spine.back = back;
+    // 干员皮肤 (docs/SKINS.md): per operator, keyed by official skinId — avatar, portrait and Front/Back Spine pair.
+    // Every skin model is registered in `models` on purpose: tools/assets/spine.mjs resolves its animation roles
+    // offline there (resolveRoles) and the client's validSpine() requires `anims`. A skin model that skipped that
+    // step would fail to load and silently leave the unit on its placeholder avatar — a failure invisible until
+    // someone looks at the board, so registering them here is not optional.
+    const skinList = skins08?.skins?.[id];
+    if (skinList?.length) {
+      const skins = {};
+      for (const sk of skinList) {
+        // Deployment selection only: fresh installs download no skin files. An administrator can install a subset
+        // with tools/install-skins.mjs; browser display/preload switches never modify this record.
+        if (!skinsInstalled || !skinsInstalled.has(sk.skinId)) continue;
+        const entry = {};
+        const dir = `spine/op/${id}/${sk.stem}/`;
+        const sfront = fexliModel(`skin:${sk.stem}:front`, 'op', `${dir}front/`, sk.battleSpine?.front, idx);
+        if (!sfront) { notes.push(`${sk.skinId}: no Front skin Spine in research data`); continue; }
+        entry.spine = { front: sfront };
+        const sback = fexliModel(`skin:${sk.stem}:back`, 'op', `${dir}back/`, sk.battleSpine?.back, idx);
+        if (sback) entry.spine.back = sback;
+        // Small avatar and half-body portrait; full-resolution skin art is not needed by the existing UI.
+        // `stem` is already filename-safe (skinId with @ and # turned into _), so it needs no sanitizing.
+        if (sk.avatar?.url) entry.avatar = leaf(alt(`char/avatar/skin/${sk.stem}.png`, sk.avatar.url, sk.avatar.bytes));
+        if (sk.portrait?.url) entry.portrait = leaf(alt(`char/portrait/skin/${sk.stem}.png`, sk.portrait.url, sk.portrait.bytes));
+        entry.name = sk.name;
+        entry.group = sk.group;
+        skins[sk.skinId] = entry;
+      }
+      if (Object.keys(skins).length) c.skins = skins;
+    }
+
     chars[id] = c;
     // skill icons (+ skill SFX) of every skill index; normal-mode attack / impact sounds only (a ranged operator's own
     // projectile banks projectile_chr_<name> as fallbacks — user playtest #4 item 6, audio.mjs pickUnitSfx)
@@ -665,15 +733,18 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
   // `audio.voiceJp` (VOICE_JP_LANG): the same slots and lines in the Japanese dub, a second tree beside the Chinese one
   // (the owner's request of 2026-10-08) — same file names, `audio/voice/jp/`.
   const voiceSlotsByChar = indexVoice(charword, VOICE_ID_LANG, voiceSlots);
-  const voiceTree = (lang) => {
+  // `dirOf` (VOICE_OPTIONAL_TREES native): the operator's own-language folder, or nothing when it has no such dub
+  const voiceTree = (lang, dirOf = null) => {
     const tree = {};
     for (const [charId, slots] of voiceSlotsByChar) {
       if (!chars[charId]) continue;          // only the operators this game can field (`chars`: the 138 pool charIds and the 自选 picks)
+      const dir = dirOf ? dirOf(charId) : null;
+      if (dirOf && !dir) continue;
       const v = {};
       for (const [slot, assets] of Object.entries(slots)) {
         // one leaf per line (部署1 / 部署2 …): an array stays an array so the client can draw one — chaining them as
         // alternatives of a single leaf would keep only the first line that landed on disk.
-        const lines = assets.map((a) => leaf(voiceAlt(a, lang))).filter(Boolean);
+        const lines = assets.map((a) => leaf(dir ? nativeVoiceAlt(a, dir) : voiceAlt(a, lang))).filter(Boolean);
         if (!lines.length) continue;
         v[slot] = lines.length === 1 ? lines[0] : lines;
       }
@@ -684,6 +755,22 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
   const voice = voiceTree(voiceLang);
   if (!Object.keys(voice).length) notes.push('battle voice: charword_table.json has no slots (index missing?)');
 
+  // English, Korean and each operator's own-language dub (VOICE_OPTIONAL_TREES; public/js/audio.js VOICE_TREES):
+  // `audio.voiceEn` / `audio.voiceKr` / `audio.voiceNative`, the same slots and file names. A line missing upstream
+  // stays missing (the client plays the Chinese one), never filled from another dub. `audio.voiceNativeLangType`
+  // names each own-language dub's official voiceLangType (ITA / RUS / …) for operators this game fields who also
+  // have a line in the primary `voice` tree.
+  const nativeDirs = optionalVoice ? nativeVoiceDirs(charword) : new Map();
+  const optionalTrees = {};
+  if (optionalVoice) {
+    for (const [key, lang] of Object.entries(VOICE_OPTIONAL_TREES)) {
+      optionalTrees[key] = lang === 'native' ? voiceTree(lang, (id) => nativeDirs.get(id)?.dir) : voiceTree(lang);
+    }
+    const types = {};
+    for (const [charId, n] of nativeDirs) if (chars[charId] && voice[charId]) types[charId] = n.type;
+    optionalTrees.voiceNativeLangType = literal(types);
+  }
+
   const template = {
     chars, enemies, tokens, bonds, items, bands, skills, skillsById, modules, ui, prof,
     profileAvatars:Object.fromEntries(profileAvatarJobs(profileAvatars).map(job=>['avatar:'+job.rel.split('/').pop().slice(0,-4),{alts:[job]}])),
@@ -692,6 +779,7 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
       bossBgm: Object.fromEntries(Object.entries(bossBgm).sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))),
       voice,
       ...(voiceJp ? { voiceJp: voiceTree(VOICE_JP_LANG) } : {}),
+      ...optionalTrees,
       sfx: { ui: sfxUi, battle: sfxBattle, units: unitsSfx },
     },
   };

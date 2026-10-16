@@ -1,5 +1,8 @@
 import { N_ } from '../../../shared/i18n.js';
 import { canonicalResourceUrl, isBoardResourceJson } from '../../../shared/resourcePaths.js';
+import { isResourcePackUrl } from '../../../shared/resourcePackRoutes.js';
+import { dataUrl } from '../../../shared/cdn.js';
+import { DATA_CDN } from '../asset-cdn.js';
 // public/js/resources/common.js — shared pieces of the optional asset preload (docs/ASSETS.md「Preload」).
 //
 // No DOM and no Preact: the page (store.js / index.js), the Service Worker (service.js) and the Node tests all import
@@ -21,10 +24,13 @@ export const RESOURCES_FORMAT = 1;
 export const MAX_FILE_BYTES = 24 * 1024 * 1024;
 /** Required visuals: maps, portraits, Spine, fonts, UI and icons. */
 export const TIER_ESSENTIAL = 1;
-/** Optional: voices, sound effects, music and tutorial illustrations. */
+/** Optional: voices, official battle effects, sound effects, music and tutorial illustrations. */
 export const TIER_REST = 2;
-export const MANIFEST_URL = '/data/resource-manifest.json';
+export const MANIFEST_URL = dataUrl('/data/resource-manifest.json', DATA_CDN);
+export const PACK_MANIFEST_URL = dataUrl('/data/resource-packs.json', DATA_CDN);
 export const SW_URL = '/resource-sw.js';
+/** A pack is a transport optimization, never a cache identity or a second hash authority. */
+export const RESOURCE_PACK_MAX_BYTES = 16_000_000;
 
 export const RESOURCE_GROUPS = Object.freeze({
   map: { name: N_('地图与棋盘'), tier: TIER_ESSENTIAL },
@@ -34,9 +40,13 @@ export const RESOURCE_GROUPS = Object.freeze({
   avatar: { name: N_('个人头像'), tier: TIER_REST },
   voice_cn: { name: N_('中文语音'), tier: TIER_REST },
   voice_jp: { name: N_('日语语音'), tier: TIER_REST },
+  voice_en: { name: N_('英语语音'), tier: TIER_REST },
+  voice_kr: { name: N_('韩语语音'), tier: TIER_REST },
   voice: { name: N_('其他角色语音'), tier: TIER_REST },
+  fx: { name: N_('官方特效'), tier: TIER_REST },
   sfx: { name: N_('音效'), tier: TIER_REST },
   music: { name: N_('背景音乐'), tier: TIER_REST },
+  skins: { name: N_('干员皮肤'), tier: TIER_REST },
   other: { name: N_('玩法说明与其他资源'), tier: TIER_REST },
 });
 
@@ -44,9 +54,14 @@ export function resourceGroup(file) {
   const path = new URL(file.url, 'https://resources.invalid').pathname;
   if (file.tier === TIER_REST) {
     if (/\/profile-avatars\//.test(path)) return 'avatar';
+    // Skin model stems contain an outfit directory; handle a CDN prefix too.
+    if (/\/char\/(?:avatar|portrait)\/skin\//.test(path) || /\/spine\/op\/[^/]+\/[^/]+\/(?:front|back)\//.test(path)) return 'skins';
     if (/\/voice\/cn\//.test(path)) return 'voice_cn';
     if (/\/voice\/jp\//.test(path)) return 'voice_jp';
+    if (/\/voice\/en\//.test(path)) return 'voice_en';
+    if (/\/voice\/kr\//.test(path)) return 'voice_kr';
     if (/\/voice\//.test(path)) return 'voice';
+    if (/\/assets\/local\/fx\//.test(path)) return 'fx';
     if (/\/sfx\//.test(path)) return 'sfx';
     if (/\/bgm\//.test(path)) return 'music';
     return 'other';
@@ -58,27 +73,32 @@ export function resourceGroup(file) {
 }
 
 /** Preload scope is independent of playback's global/individual operator dub settings. */
-export const PRELOAD_VOICE_LANGS = Object.freeze(['cn', 'jp', 'all', 'none']);
+export const PRELOAD_VOICE_LANGS = Object.freeze(['cn', 'jp', 'en', 'kr']);
+/** Canonical ordered array; migrate the old cn/jp/all/none radio preference without expanding its scope. */
 export function normalizePreloadVoiceLang(value, fallback = 'cn') {
-  return PRELOAD_VOICE_LANGS.includes(value) ? value : PRELOAD_VOICE_LANGS.includes(fallback) ? fallback : 'cn';
+  if (Array.isArray(value)) return PRELOAD_VOICE_LANGS.filter((lang) => value.includes(lang));
+  if (value === 'all') return ['cn', 'jp']; // the old choice meant "both", not future dubs
+  if (value === 'none') return [];
+  if (PRELOAD_VOICE_LANGS.includes(value)) return [value];
+  return PRELOAD_VOICE_LANGS.includes(fallback) ? [fallback] : ['cn'];
 }
 
-export function selectedResourceGroup(id, includeOptional, voiceLang = 'cn') {
+export function selectedResourceGroup(id, includeOptional, voiceLang = 'cn', preloadSkins = false) {
   const group = RESOURCE_GROUPS[id];
   if (!group) return false;
   if (group.tier === TIER_ESSENTIAL) return true;
+  if (id === 'skins') return preloadSkins === true;
   if (!includeOptional) return false;
-  const lang = normalizePreloadVoiceLang(voiceLang);
-  if (id === 'voice_cn') return lang === 'cn' || lang === 'all';
-  if (id === 'voice_jp') return lang === 'jp' || lang === 'all';
-  if (id === 'voice') return lang !== 'none'; // legacy/shared voice URLs without a known dub
+  const langs = normalizePreloadVoiceLang(voiceLang);
+  if (id.startsWith('voice_')) return langs.includes(id.slice('voice_'.length));
+  if (id === 'voice') return langs.length > 0; // legacy/shared voice URLs without a known dub
   return true;
 }
 
 /** UI/download completion uses the short, incrementally maintained category list, not manifest rescans. */
-export function resourceSelection(status, includeOptional, voiceLang) {
+export function resourceSelection(status, includeOptional, voiceLang, preloadSkins = false) {
   const groups = (status.groups || []).map((group) => ({ ...group,
-    selected: selectedResourceGroup(group.id, includeOptional, voiceLang) }));
+    selected: selectedResourceGroup(group.id, includeOptional, voiceLang, preloadSkins) }));
   const chosen = groups.filter((g) => g.selected);
   const selectedWanted = chosen.reduce((n, g) => n + g.wanted, 0);
   const selectedDone = chosen.reduce((n, g) => n + g.present, 0);
@@ -219,6 +239,42 @@ export function validateManifest(m) {
     if (f.hash != null && (typeof f.hash !== 'string' || !HASH_RE.test(f.hash))) throw new Error(`资源指纹无效：${f.url.slice(0, 80)}`);
   }
   return m;
+}
+
+/** Optional transport packs are advisory; invalid metadata falls back to file downloads. */
+export function validateResourcePacks(doc) {
+  // The standalone deployment index has an envelope, while /data/resource-manifest.json
+  // embeds only its already-validated `packs` array. Accept both wire shapes.
+  const packs = Array.isArray(doc) ? doc
+    : doc?.format === 'stronghold-resource-pack-index' && doc.version === 1
+      && doc.maxBytes === RESOURCE_PACK_MAX_BYTES && Array.isArray(doc.packs) ? doc.packs : [];
+  return packs.filter((pack) => {
+    if (!pack || typeof pack.id !== 'string' || typeof pack.url !== 'string') return false;
+    let parsed;
+    try { parsed = new URL(pack.url, globalThis.location?.origin || 'https://resources.invalid'); } catch { return false; }
+    if (!isResourcePackUrl(pack.url)
+      || !/\/resource-packs\/[A-Za-z0-9._-]+\.zip$/.test(parsed.pathname)
+      || parsed.username || parsed.password || parsed.search || parsed.hash
+      || !Number.isSafeInteger(pack.size) || pack.size <= 0 || pack.size > RESOURCE_PACK_MAX_BYTES
+      || !Array.isArray(pack.files) || pack.files.length === 0) return false;
+    return /^[0-9a-f]{40}$/.test(pack.sha1 || '')
+      && pack.files.every((file) => file && typeof file.url === 'string' && CONTENT_HASH_RE.test(file.hash)
+        && Number.isSafeInteger(file.size) && file.size >= 0);
+  });
+}
+
+/** Progress of the active transport-pack download or its per-file import. */
+export function resourcePackPercent(progress) {
+  if (!progress) return 0;
+  if (Number.isFinite(progress.downloadedBytes) && Number.isFinite(progress.totalBytes)) {
+    if (progress.totalBytes <= 0) return 0;
+    return Math.max(0, Math.min(100, Math.floor(progress.downloadedBytes * 100 / progress.totalBytes)));
+  }
+  const downloading = progress.phase === 'download';
+  const value = downloading ? progress.loaded : progress.done;
+  const total = downloading ? progress.totalBytes : progress.totalFiles;
+  if (!Number.isFinite(value) || !Number.isFinite(total) || total <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.floor(value * 100 / total)));
 }
 
 /** Whether an error means "the browser is out of storage" (a quota failure must stop the run, not retry 4 000 times). */

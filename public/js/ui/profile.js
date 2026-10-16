@@ -66,7 +66,7 @@ export function ProfileEditor({user}){
   <div class="profile-avatars" role="group" aria-label=${t('选择头像')}>
    ${choices.slice(0,shown).map(a=>html`<button type="button" key=${a.id} class=${selected===a.id?'is-on':''} aria-pressed=${selected===a.id} aria-label=${a.name} title=${a.name} onClick=${()=>setAvatar(a.id)}><${Img} src=${profileAvatarUrl(data.get('assets'),a.id)} alt="" fallback=${html`<span>?</span>`} /><span>${a.name}</span></button>`)}
   </div>${choices.length>shown?html`<div class="doctor-actions"><${Button} variant="secondary" onClick=${()=>setShown(shown+48)}>${t('显示更多')}<//></div>`:null}
-  <p class="profile-note"><a href="https://prts.wiki/w/个人头像一览" target="_blank" rel="noopener noreferrer">${t('头像来源：PRTS')}</a> · ${t('可在资源管理中随可选资源预载。')}</p>
+  <p class="profile-note"><a href="https://prts.wiki/w/%E4%B8%AA%E4%BA%BA%E5%A4%B4%E5%83%8F%E4%B8%80%E8%A7%88" target="_blank" rel="noopener noreferrer">${t('头像来源：PRTS')}</a> · ${t('可在资源管理中随可选资源预载。')}</p>
   <div class="doctor-actions"><${Button} variant="primary" icon="check" disabled=${busy||!name.trim()||!catalogReady} onClick=${save}>${t('保存资料')}<//></div>
  </section>`;
 }

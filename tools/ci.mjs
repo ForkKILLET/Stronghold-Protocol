@@ -320,10 +320,18 @@ async function smoke(env) {
   return 0;
 }
 
+/** Mirror npm run build without relying on a shell or a different Node on PATH. */
+export async function buildProductionClient(env, execute = node) {
+  const vendor = await execute(['tools/vendor.mjs'], env);
+  if (vendor !== 0) return vendor;
+  return execute([binPath('vite', 'vite'), 'build'], env);
+}
+
 /** @param {Step} step @param {Record<string, string | undefined>} env */
 function runStep(step, env) {
   switch (step.id) {
     case 'setup': return node(['tools/setup.mjs', '--check', '--no-local'], env);
+    case 'build': return buildProductionClient(env);
     case 'test': return node(['--test'], env);
     case 'smoke': return smoke(env);
     case 'lint': return node([binPath('eslint', 'eslint'), '.'], env);

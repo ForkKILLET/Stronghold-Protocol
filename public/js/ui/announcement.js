@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, Button, Modal, useTicker } from './components.js';
 import { createStore, store, useStore, loadPref, savePref } from '../store.js';
 import { net } from '../net.js';
-import { announcementLive } from '../../../shared/announcements.js';
+import { announcementLive, validAnnouncementUrl } from '../../../shared/announcements.js';
 import { PHASE } from '../../../shared/constants.js';
 import { t } from '../../../shared/i18n.js';
 
@@ -15,8 +15,9 @@ export function announcementScroll(viewport, textWidth) {
 export function announcementDismissKey(notice) {
   if (!notice) return '';
   const key = `${notice.type === 'popup' ? 'popup:' : ''}${notice.id}:${notice.startAt}:${notice.endAt}:${notice.text}`;
-  return notice.title !== undefined || notice.url !== undefined || notice.autoPopup !== undefined
+  const display = notice.title !== undefined || notice.url !== undefined || notice.autoPopup !== undefined
     ? `${key}:${JSON.stringify([notice.title, notice.url, notice.autoPopup])}` : key;
+  return notice.format !== undefined ? `${display}:${notice.format}` : display;
 }
 
 export const announcementUi = createStore({ open: false, automatic: false, noticeKey: '' });
@@ -65,11 +66,37 @@ export function AnnouncementButton({ class: cls, variant = 'secondary', size = '
     aria-haspopup="dialog" title=${t('公告')} onClick=${() => { onClick?.(); openAnnouncement(); }}>${t('公告')}<//>`;
 }
 
+// No Markdown parser in the initial static graph. Load only while a Markdown popup body is mounted.
+let markdownModule = null, markdownPending = null;
+export function loadAnnouncementMarkdown() {
+  if (markdownModule) return Promise.resolve(markdownModule);
+  if (!markdownPending) {
+    markdownPending = import('./announcementMarkdown.js').then(module => {
+      markdownModule = module;
+      return module;
+    }).finally(() => { markdownPending = null; });
+  }
+  return markdownPending;
+}
+
+function MarkdownBody({ text }) {
+  const [module, setModule] = useState(() => markdownModule);
+  useEffect(() => {
+    let mounted = true;
+    if (!module) loadAnnouncementMarkdown().then(value => { if (mounted) setModule(value); }).catch(() => {});
+    return () => { mounted = false; };
+  }, [module]);
+  // Expiry/clock ticks must not re-lex a long body; cache only within this mounted component.
+  return useMemo(() => module ? module.renderAnnouncementMarkdown(text)
+    : html`<p class="modal__text announcement-content__plain">${text}</p>`, [module, text]);
+}
+
 export function AnnouncementContent({ notice }) {
   if (!notice) return html`<p class="modal__text">${t('暂无公告')}</p>`;
   return html`<div class="announcement-content">
-    <p class="modal__text">${notice.text}</p>
-    ${notice.url ? html`<a class="announcement-content__link" href=${notice.url} target="_blank" rel="noopener noreferrer">
+    ${notice.format === 'markdown' ? html`<${MarkdownBody} text=${notice.text} />`
+      : html`<p class="modal__text announcement-content__plain">${notice.text}</p>`}
+    ${validAnnouncementUrl(notice.url) ? html`<a class="announcement-content__link" href=${notice.url} target="_blank" rel="noopener noreferrer">
       <${Icon} name="link" />${t('查看详情')}<span class="announcement-content__url">${notice.url}</span>
     </a>` : null}
   </div>`;
@@ -81,14 +108,14 @@ export function AnnouncementHost() {
   useStore((s) => s.clock.offset);
   const { open, automatic } = useStore((s) => s, Object.is, announcementUi);
   const now = net.serverNow();
-  useTicker(notice && now < notice.endAt ? 250 : 0);
+  useTicker(notice && Number.isFinite(notice.endAt) && now < notice.endAt ? 250 : 0);
   const live = announcementLive(notice, now);
   const key = announcementDismissKey(notice);
   useEffect(() => { syncAnnouncementPopup(notice, net.serverNow(), inMatch); }, [key, live, inMatch]);
   return html`<${Modal} open=${open && (!automatic || !inMatch)} title=${live ? notice.title || t('公告') : t('公告')} micro="ANNOUNCEMENT"
     class="announcement-modal" width="min(7.4rem, 94vw)" onClose=${closeAnnouncement} utility=${true}
     actions=${html`<${Button} variant="primary" icon="close" data-autofocus onClick=${closeAnnouncement}>${t('关闭')}<//>`}>
-    <${AnnouncementContent} notice=${live ? notice : null} />
+    ${open && (!automatic || !inMatch) ? html`<${AnnouncementContent} notice=${live ? notice : null} />` : null}
   <//>`;
 }
 

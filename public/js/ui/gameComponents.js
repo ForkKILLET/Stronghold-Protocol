@@ -202,8 +202,9 @@ export function GIcon({ name, class: cls, title }) {
 
 /**
  * Green LP tower + number. `pending` (> 0): the loss the running battle's leaks will cost at settlement (user
- * playtest #3 item 2) — the number shows value − pending in red followed by a −N tick that pops again on every change
- * (keyed); `note` a small tag after it (联防中); `tip` the title text.
+ * playtest #3 item 2) — the number keeps the settled LP (owner-approved #479 / #504),
+ * shown in red with a −N tick that pops again on every change (keyed); `note` a
+ * small tag after it (联防中); `tip` the title text.
  * @param {{ value: any, size?: 'sm'|'md'|'lg', class?: string, tone?: string|null, pending?: number, note?: string|null, tip?: string|null }} props
  */
 export function LpTower({ value, size = 'md', class: cls, tone, pending = 0, note = null, tip = null }) {
@@ -212,7 +213,7 @@ export function LpTower({ value, size = 'md', class: cls, tone, pending = 0, not
   return html`<span class=${cx('lp', `lp--${size}`, tone && `lp--${tone}`, p > 0 && 'is-pending', cls)} title=${tip || tr('目标生命值')}
       data-pending=${p > 0 ? p : null}>
     <${Sprite} k="hudPanel/icon_hp" class="lp__icon" fallback=${html`<${Icon} name="rook" class="lp__icon" />`} />
-    <b class="num lp__val">${ok ? Math.max(0, value - p) : '--'}</b>
+    <b class="num lp__val">${ok ? Math.max(0, value) : '--'}</b>
     ${p > 0 ? html`<span key=${p} class="lp__pend num" aria-label=${tr('结算时扣除 {p}', { p })}>−${p}</span>` : null}
     ${note ? html`<span class="lp__note">${note}</span>` : null}
   </span>`;
@@ -253,11 +254,11 @@ export function RichTip({ text, children, placement = 'top' }) {
 }
 
 /**
- * Seat-coloured player avatar: band icon when a band is picked, else glyph/robot.
- * @param {{ player: any, size?: 'sm'|'md', self?: boolean, class?: string }} props
+ * Seat-coloured player avatar: optional cosmetic image, else band icon when picked, else glyph/robot.
+ * @param {{ player: any, size?: 'sm'|'md', self?: boolean, class?: string, avatar?: string|null }} props
  */
-export function PlayerAvatar({ player, size = 'md', self = false, class: cls }) {
-  const src = player?.avatarId ? profileAvatarUrl(data.get('assets'),player.avatarId) : bandIconUrl(data.get('assets'),player?.bandId);
+export function PlayerAvatar({ player, size = 'md', self = false, class: cls, avatar = null }) {
+  const src = player?.avatarId ? profileAvatarUrl(data.get('assets'), player.avatarId) : avatar || (player?.bandId ? bandIconUrl(data.get('assets'), player.bandId) : null);
   const glyph = [...(player?.name || '').trim()][0] || '?';
   const dead = player?.alive === false || player?.status === 'dead';
   const left = player?.status === 'left';

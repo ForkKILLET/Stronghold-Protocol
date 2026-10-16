@@ -259,3 +259,18 @@ test('matchmaking screens no longer expose AI flags, AI countdowns or deadline t
     assert.match(source, /正在寻找同盟队友/);
   }
 });
+
+ test('public matchmaking refuses gameplay plugin rooms, including unresolved restored content', async () => {
+  const c = await player('PluginQueue');
+  await ok(c, { t: 'room.create', mode: 'coop', difficulty: 'NORMAL' });
+  const state = await c.waitFor('room.state', s => s.code);
+  const room = srv.lobby.getRoom(state.code);
+  const original = room.content;
+  room.content = { ...original, vanilla: false };
+  assert.equal((await c.request({ t: 'match.join', mode: 'coop', difficulty: 'NORMAL' })).code, ERR.MATCHING);
+  room.content = original; room.recoveryContentMissing = true;
+  assert.equal((await c.request({ t: 'match.join', mode: 'coop', difficulty: 'NORMAL' })).code, ERR.MATCHING);
+  assert.equal(srv.lobby.queueByPlayer.has(c.id), false);
+  room.recoveryContentMissing = false;
+  await ok(c, { t: 'room.leave' });
+});

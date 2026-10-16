@@ -1,5 +1,5 @@
-// ui/gameLogic/shortcuts.js — in-match keyboard shortcuts and the player's key map (设置 → 快捷键, 0.2.0: the community
-// request 「快捷键可不可以自己设置」, the owner's decision of 2026-10-07). Re-exported from ../gameLogic.js.
+// ui/gameLogic/shortcuts.js — in-match keyboard shortcuts and the player's key map (Settings > Shortcuts,
+// community request, 2026-10-07). Re-exported from ../gameLogic.js.
 
 import { isObj } from './shared.js';
 import { t } from '../../../../shared/i18n.js';
@@ -9,13 +9,13 @@ import { t } from '../../../../shared/i18n.js';
 
 /**
  * Map a keydown to a game shortcut under the player's key map (defaults: R refresh, F freeze, D level-up, Q retreat,
- * X sell, Space ready) or Esc (close; fixed). A shortcut key means its action even while a HUD button has focus (a
- * mouse click leaves the shop card / 刷新 focused, and Space must not re-trigger it); the caller prevents the button's
+ * X sell, W buy, Space ready) or Esc (close; fixed). A shortcut key means its action even while a HUD button has focus (a
+ * mouse click leaves the shop card / refresh button focused, and Space must not re-trigger it); the caller prevents the button's
  * own activation. Enter still activates buttons (it cannot be a shortcut; behind the facing wheel only its ✕:
  * facingEnter). Nothing while Ctrl / ⌘ / Alt is held or a text field has the focus.
  * @param {{ key?: string, code?: string, ctrlKey?: boolean, metaKey?: boolean, altKey?: boolean, repeat?: boolean, target?: any }} e
  * @param {any} [keys] the player's map (settings `keys`)
- * @returns {'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'|'escape'|null}
+ * @returns {'buy'|'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'|'escape'|null}
  */
 export function shortcutFor(e, shortcuts = null) {
   if (!e || e.ctrlKey || e.metaKey || e.altKey) return null;
@@ -53,7 +53,7 @@ const CONTROL = 'button, a[href], input, select, textarea, summary, [contentedit
 
 /**
  * What Enter does while the facing wheel is open (GitHub #394, PR #395): on the wheel's own ✕ button it cancels; on
- * any other control (准备, 刷新, 设置, 玩法说明, a shop card … — Tab reaches them behind the wheel) nothing happens — the
+ * any other control (ready, refresh, settings, guide, a shop card — Tab reaches them behind the wheel) nothing happens — the
  * wheel holds the keyboard as it holds Space and the shortcuts; with the focus anywhere else (the wheel itself, the
  * page) it confirms the previewed direction, and does nothing while none is previewed. null: not Enter.
  * @param {{ key?: string, target?: any }} e @param {boolean} chosen a direction is previewed
@@ -80,9 +80,9 @@ export const closesOnFieldPress = (detail) => detail?.kind === 'piece' || detail
 
 /**
  * Whether an open overlay swallows a game shortcut: a modal / the guide own the keyboard (Esc included — they close
- * themselves); the 本局信息 / 敌方情报 drawer is a dialog too — only Esc (it closes the drawer) passes, the other
+ * themselves); the match-info / enemy-intel drawer is a dialog too — only Esc (it closes the drawer) passes, the other
  * shortcuts never act behind it.
- * @param {'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'|'escape'|null} act shortcutFor
+ * @param {'buy'|'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready'|'escape'|null} act shortcutFor
  * @param {{ modal?: boolean, drawer?: boolean }} open
  */
 export function shortcutBlocked(act, { modal = false, drawer = false } = {}) {
@@ -115,3 +115,7 @@ export const shortcutLabel = (shortcuts, action) => {
 };
 
 const SHORTCUT_ACTIONS = Object.keys(DEFAULT_SHORTCUTS);
+
+export function prepShortcutsSuspended(s) {
+  return !!s && (s.spectator === true || s.alive === false || s.watchingOther === true || s.away === true || s.autoplay === true);
+}

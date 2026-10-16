@@ -21,7 +21,7 @@ test('healthz retains metadata and all headline counters; metrics collects the d
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   const health = await response.json();
-  assert.deepEqual(Object.keys(health).sort(), ['ok', 'version', 'app', 'uptimeSec', 'build', ...COUNTERS].sort());
+  assert.deepEqual(Object.keys(health).sort(), ['ok', 'version', 'app', 'uptimeSec', 'build', 'content', ...COUNTERS].sort());
   assert.equal(health.ok, true);
   assert.equal(health.app, APP_VERSION);
   assert.equal(health.version, PROTOCOL_VERSION);

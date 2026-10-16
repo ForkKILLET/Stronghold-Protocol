@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 import { parseStage, mixColor } from '../../public/js/render/tiles.js';
 import { GLYPH, TILE_H, dmgStyleKey, STATUS_ICON, PROJ } from '../../public/js/render/style.js';
 import { STATUS_KEYS } from '../../public/js/render/textures.js';
@@ -99,6 +100,70 @@ describe('style helpers', () => {
 });
 
 describe('TileField external board (the 3D board layer draws the tiles)', () => {
+  test('late highlight requests after disposal never touch destroyed Graphics or retain tiles', async () => {
+    const { installFakePixi } = await import('./fakepixi.js');
+    const fake = installFakePixi();
+    try {
+      const P = fake.P;
+      // Model Pixi's actual failure: Graphics.destroy() releases geometry, so
+      // a subsequent clear() throws while trying to call null.clear().
+      P.Graphics = class extends P.Graphics {
+        constructor() { super(); this.geometry = { clear() {} }; this.destroyCalls = 0; }
+        clear() { this.geometry.clear(); return this; }
+        destroy() {
+          if (++this.destroyCalls > 1) throw new Error('Graphics destroyed twice');
+          super.destroy(); this.geometry = null;
+        }
+      };
+      const { TileField } = await import('../../public/js/render/tiles.js');
+      const layers = Object.fromEntries(['ground', 'overlay', 'props', 'anim'].map(k => [k, new P.Container()]));
+      const field = new TileField(layers);
+      const graphics = field.hlGfx;
+      field.setHighlights([[10, 5]], 'legal');
+      assert.equal(field.highlights.size, 1, 'live requests still work');
+      field.clearHighlights('legal');
+      assert.equal(field.highlights.size, 0);
+      field.setHighlights([[10, 5]], 'range');
+      field.destroy();
+      assert.equal(graphics.geometry, null);
+      assert.doesNotThrow(() => field.setHighlights([[10, 6]], 'legal'));
+      assert.doesNotThrow(() => field.clearHighlights('range'));
+      assert.doesNotThrow(() => field.clearHighlights());
+      assert.doesNotThrow(() => field._drawHighlights());
+      assert.equal(field.highlights.size, 0, 'destroyed field cannot accumulate late requests');
+      assert.doesNotThrow(() => field.destroy());
+      assert.equal(graphics.destroyCalls, 1);
+    } finally { fake.restore(); }
+  });
+
+  test('the public highlight API declines late calls before changing request state or drawing', () => {
+    const source = readFileSync(path.join(ROOT, 'public/js/render/app.js'), 'utf8');
+    const body = source.match(/    highlightTiles\(tilesList, style\) \{([\s\S]*?)\n    \},/)[1];
+    const requests = new Map();
+    const draws = [], clears = [];
+    let leaderSyncs = 0;
+    const context = vm.createContext({
+      destroyed: false, hlReq: requests,
+      hlKey: style => typeof style === 'object' ? style.group : style,
+      drawHighlight: (...args) => draws.push(args),
+      clearHl: (...args) => clears.push(args),
+      syncLeaderHits: () => leaderSyncs++,
+    });
+    const highlight = vm.runInContext(`(function(tilesList, style) {${body}\n})`, context);
+    assert.equal(highlight([[10, 5]], 'range'), true);
+    assert.equal(requests.size, 1);
+    assert.equal(draws.length, 1);
+    assert.equal(leaderSyncs, 1);
+    context.destroyed = true;
+    for (const [tiles, style] of [[null, null], [[], null], [[], 'range'], [[[10, 6]], 'legal']]) {
+      assert.equal(highlight(tiles, style), false);
+    }
+    assert.equal(requests.size, 1, 'late calls never change request ownership');
+    assert.equal(draws.length, 1);
+    assert.equal(clears.length, 0);
+    assert.equal(leaderSyncs, 1);
+  });
+
   test('external mode builds no Pixi board, keeps heights / levels / highlights; switching back rebuilds the 2D board', async () => {
     const { installFakePixi } = await import('./fakepixi.js');
     const fake = installFakePixi();

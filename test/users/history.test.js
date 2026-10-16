@@ -51,3 +51,26 @@ test('opening an archive without storage or an account never reads a null cache'
  assert.equal(cachedAccountStats({userId:'other',data},'known'),null);
  assert.equal(cachedAccountStats({userId:'known',data},'known'),data);
 });
+
+
+test('account totals and achievements distinguish gameplay plugins from cosmetics across the complete history',async()=>{
+ const db=await openUserStore(':memory:');
+ try {
+  const {user}=await db.call('create');
+  for(let i=0;i<55;i++)await db.call('record',{id:'official-'+i,endedAt:i,mode:'mode_multi_funny',difficulty:'FUNNY',source:'server',rows:[{userId:user.id,playerId:'p1',victory:true,rounds:9,payload:{...own,trophies:2,frame:{...frame,roomMode:'coop',vs:'a'.repeat(64),content:null}}}]});
+  await db.call('record',{id:'modded',endedAt:100,mode:'mode_custom',difficulty:'FUNNY',source:'server',rows:[{userId:user.id,playerId:'p1',victory:true,rounds:9,payload:{...own,trophies:999,frame:{...frame,roomMode:'coop',content:{cs:'b'.repeat(64),plugins:['example@1']}}}}]});
+  const standard=await db.call('stats',{id:user.id});
+  assert.equal(standard.records.length,50);
+  assert.equal(standard.aggregate.count,55);
+  assert.equal(standard.aggregate.modded,1);
+  assert.equal(standard.aggregate.trophies,110);
+  assert.equal(standard.aggregate.byMode.coop.games,55);
+  assert.equal(standard.achievements.count,55);
+  assert.equal(standard.achievements.trophies,110);
+  const all=await db.call('stats',{id:user.id,modded:true});
+  assert.equal(all.aggregate.count,56);
+  assert.equal(all.aggregate.byMode.coop.games,56);
+  assert.equal(all.achievements.count,56);
+  assert.equal(all.achievements.trophies,1109);
+ } finally {await db.close();}
+});

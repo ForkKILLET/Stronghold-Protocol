@@ -11,7 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  FOLDER, REFUSE, RUNTIME_RESEARCH, entryProblems, isRefused, packageOutIsUnsafe, plan, resolveSpecifier, scanFiles,
+  AUTHOR_TEST_FILES, FOLDER, REFUSE, RUNTIME_RESEARCH, entryProblems,
+  isRefused, packageOutIsUnsafe, parseArgs, plan, playerPackageJson, rewritePlayerDoc, resolveSpecifier, scanFiles,
   selectTracked,
 } from '../tools/package.mjs';
 
@@ -41,7 +42,7 @@ test('selection: runtime files in; tests, maintainer tools, other docs, dev page
     'data/chess.json', 'data/i18n/en.json', 'tools/setup.mjs', 'tools/vendor.mjs', 'tools/fetch-assets.mjs', 'tools/doctor.mjs',
     'tools/crop-board-atlas.mjs', 'tools/assets/plan.mjs', 'tools/assets/local-enemy-spines.json', 'tools/assets/local-token-spines.json',
     'tools/local-extract/extract.py',
-    'tools/local-extract/LICENSE-Ark-Unpacker.txt', 'scripts/start.sh', 'scripts/start-windows.bat', 'scripts/launch.mjs',
+    'tools/local-extract/LICENSE-Ark-Unpacker.txt', 'scripts/start.sh', 'scripts/start-windows.bat', 'scripts/start-windows-sandbox.bat', 'scripts/launch.mjs',
     'scripts/install-service-windows.ps1', 'docs/PLAYING.md', 'docs/DEPLOY.md', ...RUNTIME_RESEARCH, 'package.json',
     'package-lock.json', 'LICENSE', 'NOTICE.md', 'THIRD-PARTY-NOTICES.md', 'README.md', 'CHANGELOG.md',
     // out
@@ -55,11 +56,11 @@ test('selection: runtime files in; tests, maintainer tools, other docs, dev page
     'public/.DS_Store', 'tools/local-extract/.venv-extract/x.py', 'node_modules/ws/index.js',
   ]);
   for (const f of ['server/index.js', 'public/i18n/en.json', 'data/i18n/en.json', 'tools/assets/local-enemy-spines.json',
-    'tools/assets/local-token-spines.json', 'tools/local-extract/LICENSE-Ark-Unpacker.txt', 'scripts/install-service-windows.ps1',
+    'tools/assets/local-token-spines.json', 'tools/local-extract/LICENSE-Ark-Unpacker.txt', 'scripts/install-service-windows.ps1', 'scripts/start-windows-sandbox.bat',
     'docs/research/07-assets.json', 'CHANGELOG.md']) {
     assert.ok(keep.includes(f), `keeps ${f}`);
   }
-  assert.equal(keep.length, 35, keep.join(' '));
+  assert.equal(keep.length, 37, keep.join(' ')); // includes the skin research read by the shipped asset tools
   assert.equal(drop.length, 40, drop.join(' '));
   assert.ok(!keep.some((f) => drop.includes(f)));
 });
@@ -85,7 +86,7 @@ test('the real tracked tree: runtime in, the rest out; every shipped import, npm
     assert.ok(!got.has(f), f);
   }
   // the design document (the index docs/DESIGN.md and its parts in docs/design/, docs/history/) stays out too
-  for (const f of got) assert.ok(!/^(?:test|handoff|\.github|types|public\/dev|docs\/img|docs\/design|docs\/history)\//.test(f), f);
+  for (const f of got) if (!AUTHOR_TEST_FILES.includes(f)) assert.ok(!/^(?:test|handoff|\.github|types|public\/dev|docs\/img|docs\/design|docs\/history)\//.test(f), f);
   const code = [...got].filter((f) => /\.(?:m?js|py)$/.test(f));
   for (const f of code) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
@@ -277,7 +278,7 @@ test('a --no-install build of the temporary checkout zips exactly the plan in on
     assert.deepEqual(fs.readdirSync(out), [path.basename(zip)], 'the stage is removed after zipping');
     if (hasUnzip) {
       const entries = spawnSync('unzip', ['-Z1', zip], { encoding: 'utf8' }).stdout.split(/\r?\n/).filter((l) => l && !l.endsWith('/'));
-      assert.deepEqual(entries.sort(), [...SHIPPED_TRACKED, ...ART].map((f) => `${FOLDER}/${f}`).sort());
+      assert.deepEqual(entries.sort(), [...SHIPPED_TRACKED, ...ART, 'MANIFEST.json'].map((f) => `${FOLDER}/${f}`).sort());
     }
     const again = runTool(['--root', dir, '--out', out, '--no-install', '--allow-dirty']);
     assert.equal(again.status, 1, 'an existing zip is not replaced without --force');
@@ -328,6 +329,40 @@ test('content packs ship: every committed pack of both layouts, never one only o
   }
 });
 
+test('the stage drops dishonest npm scripts and rewrites unshipped doc links', { skip: !hasZipTool && 'no zip / tar' }, () => {
+  const { dir, put } = fakeCheckout();
+  const out = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-package-out-'));
+  const readme = '# r\n\n[design](docs/DESIGN.md)\n[play](docs/PLAYING.md)\n[rel](../../releases/latest)\n![shot](docs/img/x.jpg)\n';
+  try {
+    put('README.md', readme);
+    put('docs/PLAYING.md', '# p\n\n[idx](research/00-INDEX.md)\n[home](../README.md#操作)\n');
+    put('docs/DEPLOY.md', '# d\n\n[packs](PACKS.md)\n[win](WINDOWS.md)\n[notice](../NOTICE.md)\n');
+    const r = runTool(['--root', dir, '--out', out, '--no-install', '--allow-dirty', '--lite', '--keep-stage']);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const stage = path.join(out, `${FOLDER}-v9.9.9-lite`, FOLDER);
+    const stagedPkg = JSON.parse(fs.readFileSync(path.join(stage, 'package.json'), 'utf8'));
+    assert.deepEqual(Object.keys(stagedPkg.scripts).sort(), ['assets', 'doctor', 'launch', 'postinstall', 'setup', 'start', 'vendor']);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')).scripts.test, 'node --test');
+    const host = 'https://github.com/sganggs/Stronghold-Protocol';
+    const got = fs.readFileSync(path.join(stage, 'README.md'), 'utf8');
+    assert.equal(got, `# r\n\n[design](${host}/blob/v9.9.9/docs/DESIGN.md)\n[play](docs/PLAYING.md)\n[rel](${host}/releases/latest)\n![shot](${host}/raw/v9.9.9/docs/img/x.jpg)\n`);
+    assert.equal(fs.readFileSync(path.join(dir, 'README.md'), 'utf8'), readme, 'the git checkout keeps its relative links');
+    const playing = fs.readFileSync(path.join(stage, 'docs/PLAYING.md'), 'utf8');
+    assert.match(playing, new RegExp(`\\(${host}/blob/v9.9.9/docs/research/00-INDEX.md\\)`));
+    assert.match(playing, /\(\.\.\/README\.md#操作\)/);
+    const deploy = fs.readFileSync(path.join(stage, 'docs/DEPLOY.md'), 'utf8');
+    assert.match(deploy, new RegExp(`\\(${host}/blob/v9.9.9/docs/PACKS.md\\)`));
+    assert.match(deploy, new RegExp(`\\(${host}/blob/v9.9.9/docs/WINDOWS.md\\)`));
+    assert.match(deploy, /\(\.\.\/NOTICE\.md\)/);
+    const shipped = new Set(plan(dir, { lite: true, allowDirty: true, scan: false, measure: false }).tracked);
+    assert.equal(rewritePlayerDoc(readme, 'README.md', shipped, '9.9.9'), got);
+    assert.equal(playerPackageJson(JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8')), shipped).scripts.test, undefined);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(out, { recursive: true, force: true });
+  }
+});
+
 test('the personal scan reads bytes, never reports the matched text, and skips files it cannot read', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-package-scan-'));
   try {
@@ -341,3 +376,5 @@ test('the personal scan reads bytes, never reports the matched text, and skips f
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,24 @@
+{
+  "r2": {
+    "accountId": "00000000000000000000000000000000",
+    "accessKeyId": "REPLACE_WITH_R2_ACCESS_KEY_ID",
+    "secretAccessKey": "REPLACE_WITH_R2_SECRET_ACCESS_KEY",
+    "bucket": "stronghold",
+    "prefix": ""
+  },
+  "cdn": {
+    "dataBaseUrl": "https://data.example.com",
+    "assetsBaseUrl": "https://assets.example.com"
+  },
+  "cloudflare": {
+    "zoneId": "00000000000000000000000000000000",
+    "apiToken": "REPLACE_WITH_ZONE_CACHE_PURGE_TOKEN",
+    "purgeMode": "prefixes"
+  },
+  "sync": {
+    "transfers": 32,
+    "checkers": 64,
+    "mirror": false,
+    "packRoutes": []
+  }
+}

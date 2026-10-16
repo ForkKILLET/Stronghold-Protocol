@@ -11,6 +11,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Component, h, options } from '../../public/vendor/preact.module.js';
+import { OperatorPortrait } from '../../public/js/ui/operatorPortrait.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 globalThis.fetch = async (url) => {
@@ -65,7 +67,13 @@ function expand(v, depth = 6) {
   const children = v.props?.children;
   return children === undefined ? v : { ...v, props: { ...v.props, children: expand(children, depth) } };
 }
-const srcsOf = (v) => [...walk(v)].map((n) => n.props?.src).filter((x) => typeof x === 'string');
+const srcsOf = (v) => [...walk(v)].map((n) => {
+  if (n.type !== OperatorPortrait) return n.props?.src;
+  const old = options.__s, vnode = h(n.type, n.props), instance = new Component(n.props, {});
+  instance.__h = []; vnode.__c = instance; instance.__v = vnode; options.__s = true;
+  try { options.__r(vnode); return OperatorPortrait(n.props).props.src; }
+  finally { options.diffed(vnode); options.unmount(vnode); options.__s = old; }
+}).filter((x) => typeof x === 'string');
 
 describe('干员持有 model (ui/ownershipModel.js)', () => {
   test('storage: tolerant parse, clean sorted ids, round trip; hostile keys dropped', () => {
@@ -368,11 +376,13 @@ describe('match UI of a not-owned chess', () => {
     assert.match(src, /const si = chess && standInList\.includes\(chess\.baseId \|\| chess\.chessId\) \? data\.standIn\(piece\.id\) : null;/);
     assert.doesNotMatch(src, /area === 'board' && chess && standInList/, 'not only on the board');
     assert.match(src, /standInList = Array\.isArray\(src\.standIns\)/);
-    assert.match(src, /const sig = `\$\{info\.kind\}\|\$\{info\.defId\}\|\$\{info\.golden \? 1 : 0\}\|\$\{info\.spine \|\| ''\}`/);
+    assert.match(src, /const sig = `\$\{info\.kind\}\|\$\{info\.defId\}\|\$\{info\.golden \? 1 : 0\}\|\$\{info\.spine \|\| ''\}\|\$\{info\.skin \|\| ''\}`/);
     assert.match(readFileSync(path.join(ROOT, 'public/js/render/app/info.js'), 'utf8'), /standInFor: typeof u\.standInFor === 'string'/);
     // the DOM fallback field draws every own piece of it with the stand-in's avatar and name
     const ff = readFileSync(path.join(ROOT, 'public/js/ui/fallbackField.js'), 'utf8');
-    assert.match(ff, /chessAvatarUrl\(mm, ownSi\(chess\) \|\| ownDiy\(chess\) \|\| chess\)/);
+    assert.match(ff, /const replacement = ownSi\(chess\) \|\| ownDiy\(chess\)/);
+    assert.match(ff, /chessAvatarUrl\(mm, replacement \|\| chess\)/);
+    assert.match(ff, /const skin = replacement \? null : visibleSkin\(p.skin, st.settings\)/);
     assert.match(ff, /\(ownSi\(chess\) \|\| ownDiy\(chess\) \|\| chess\)\?\.name/);
   });
 });

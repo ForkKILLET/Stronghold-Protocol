@@ -2,12 +2,12 @@
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Button, MicroLabel, Modal, ProgressBar } from './components.js';
 import { createStore, useStore } from '../store.js';
-import { formatBytes, PRELOAD_VOICE_LANGS } from '../resources/common.js';
+import { formatBytes, normalizePreloadVoiceLang, PRELOAD_VOICE_LANGS, resourcePackPercent } from '../resources/common.js';
 import { clearResources, exportResources, importResources, inspectResources, pauseResources,
   resourceState, startResources, subscribeResources } from '../resources/index.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
-const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), all: N_('两种语言'), none: N_('不预载语音') };
+const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), en: N_('英语语音'), kr: N_('韩语语音') };
 
 const RESOURCE_DOWNLOAD_URL = 'https://t.bilibili.com/1256354225629167619';
 
@@ -55,10 +55,13 @@ function useResources() {
 
 function stateText(st, enabled) {
   if (st.archive) return st.archive === 'import' ? t('正在导入') : t('正在导出');
+  if (enabled && st.combatPaused && !st.manualPaused) return t('战斗中暂停');
   if (st.phase === 'foreign') return t('另一标签页处理中');
+  if (st.phase === 'error') return t('资源未完成，请继续下载');
   if (busy(st)) return t('处理中');
+  if (st.cacheVerified === false && st.selectionComplete && st.tier1Total) return t('缓存索引已读取');
   if (st.complete) return t('全部已保存');
-  if (st.selectionComplete && st.tier1Total) return st.optional ? t('所选资源已齐全。') : t('必备已保存');
+  if (st.selectionComplete && st.tier1Total) return st.optional || st.skins ? t('所选资源已齐全。') : t('必备已保存');
   return enabled ? t('已暂停') : t('未开启');
 }
 
@@ -84,7 +87,7 @@ export function ResourceLauncher({ enabled }) {
   </div>`;
 }
 
-function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, disabled }) {
+function ResourceTier({ st, tier, optional, onOptional, disabled }) {
   const groups = st.groups.filter((g) => g.tier === tier);
   const chosen = groups.filter((g) => g.selected !== false);
   const total = chosen.reduce((n, g) => n + g.wanted, 0);
@@ -95,20 +98,10 @@ function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, 
   return html`<section class="resource-tier">
     <header class="resource-tier__head">
       <div><h3>${tier === 1 ? t('必备资源') : t('可选资源')}</h3>
-        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、音效、背景音乐与玩法说明图片')}</p></div>
+        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、官方特效、音效、背景音乐与玩法说明图片')}</p></div>
       ${tier === 2 ? html`<label class="resource-choice"><input type="checkbox" checked=${optional} disabled=${disabled}
         onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : html`<${MicroLabel}>REQUIRED<//>`}
     </header>
-    ${tier === 2 ? html`<fieldset class="resource-voice-choice" disabled=${disabled}>
-      <legend>${t('预载语音语言')}</legend>
-      <div class="resource-voice-choice__options" role="radiogroup" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
-        ${PRELOAD_VOICE_LANGS.map((lang) => html`<label class="resource-choice" key=${lang}>
-          <input type="radio" name="preload-voice-lang" value=${lang} checked=${voiceLang === lang}
-            onChange=${() => onVoiceLang(lang)} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
-      </div>
-      <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
-      ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
-    </fieldset>` : null}
     <div class="resource-tier__summary"><span class="num">${t('{done} / {total} 个文件', { done, total })}</span>
       <span class="num">${unknown ? t('部分大小未知') : `${formatBytes(bytes)} / ${formatBytes(totalBytes)}`}</span></div>
     <${ProgressBar} value=${done} max=${Math.max(1, total)} size="sm" tone=${tier === 1 ? 'mint' : 'amber'} />
@@ -123,8 +116,29 @@ function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, 
   </section>`;
 }
 
+function ResourceOptions({ optional, voiceLang, onVoiceLang, skins, onSkins, disabled }) {
+  const selected = normalizePreloadVoiceLang(voiceLang);
+  return html`<div class="resource-manager__options">
+    <fieldset class="resource-voice-choice" disabled=${disabled}>
+      <legend>${t('预载语音语言')}</legend>
+      <div class="resource-voice-choice__options" role="group" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
+        ${PRELOAD_VOICE_LANGS.map((lang) => html`<label class="resource-choice" key=${lang}>
+          <input type="checkbox" name="preload-voice-lang" value=${lang} checked=${selected.includes(lang)}
+            onChange=${(e) => onVoiceLang(normalizePreloadVoiceLang(e.currentTarget.checked
+              ? [...selected, lang] : selected.filter((id) => id !== lang)))} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
+      </div>
+      <p>${t('可多选；全部取消勾选则不预载语音。')}</p>
+      <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
+      ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
+    </fieldset>
+    <div class="resource-skin-options"><label class="resource-choice resource-skin-choice"><input type="checkbox" checked=${skins} disabled=${disabled}
+      onChange=${(e) => onSkins(e.currentTarget.checked)} />${t('预载皮肤')}</label>
+      <p class="resource-skin-hint">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p></div>
+  </div>`;
+}
+
 /** Mounted once in main.js, above all screens including the settings modal. */
-export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang, onChange, onOptional }) {
+export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang, skins = false, onSkins, onChange, onOptional }) {
   const { open } = useStore((s) => s, Object.is, resourceUi);
   const st = useResources();
   const fileInput = useRef(null);
@@ -152,17 +166,34 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
   return html`<${Modal} open=${open} onClose=${closeResources} title=${t('预载资源管理')} micro="RESOURCE MANAGER" class="resource-modal" utility=${true}
     actions=${html`
       ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy ? t('取消处理') : t('暂停下载')}<//>`
-        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported}
+        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused}
           onClick=${() => enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
+      ${enabled && st.combatPaused && !st.manualPaused && !archiveBusy ? html`<${Button} variant="secondary" icon="hourglass"
+        onClick=${pauseResources}>${t('暂停下载')}<//>` : null}
       <${Button} variant="secondary" onClick=${closeResources}>${t('关闭')}<//>`}>
     <div class="resource-manager">
       <p class="resource-manager__intro">${t('先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。')}</p>
+      <${ResourceOptions} optional=${optional} voiceLang=${voiceLang} onVoiceLang=${onVoiceLang} skins=${skins} onSkins=${onSkins} disabled=${archiveBusy} />
       <div class="resource-manager__tiers">
         <${ResourceTier} st=${st} tier=${1} />
-        <${ResourceTier} st=${st} tier=${2} optional=${optional} onOptional=${onOptional} voiceLang=${voiceLang} onVoiceLang=${onVoiceLang} disabled=${archiveBusy} />
+        <${ResourceTier} st=${st} tier=${2} optional=${optional} onOptional=${onOptional} disabled=${archiveBusy} />
       </div>
       <p class=${`resource-manager__status${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
         ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
+      ${st.packProgress ? html`<div class="resource-manager__pack-progress">
+        <${ProgressBar}
+          value=${resourcePackPercent(st.packProgress)} max=${100} size="sm" tone="mint"
+          label=${t('{0}资源包：{percent}%', { 0: t('正在下载'),
+            percent: resourcePackPercent(st.packProgress) })} />
+        <small>${t('下载速度：{0}/秒', { 0: formatBytes(st.packProgress.speedBytesPerSecond || 0) })}
+          ${st.packProgress.activeDownloads > 1 ? ` · ×${st.packProgress.activeDownloads}` : ''}</small>
+      </div>` : null}
+      ${st.packProgress?.importing ? html`<${ProgressBar}
+        value=${st.packProgress.importing.done} max=${Math.max(1, st.packProgress.importing.totalFiles)}
+        size="sm" tone="amber" label=${t('{0}资源包：{percent}%', {
+          0: t('正在导入'),
+          percent: st.packProgress.importing.totalFiles
+            ? Math.floor(st.packProgress.importing.done * 100 / st.packProgress.importing.totalFiles) : 0 })} />` : null}
       ${st.worker ? html`<p class="resource-manager__warn">${st.worker}</p>` : null}
       ${st.failed ? html`<p class="resource-manager__warn">${t('{failed} 个文件下载失败，继续下载时重试。', { failed: st.failed })}</p>` : null}
       ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}

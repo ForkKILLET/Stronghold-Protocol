@@ -74,6 +74,15 @@ describe('resource manifest validation', () => {
     assert.equal(resourceType('https://cdn/x.SKEL'), 'application/octet-stream');
     assert.equal(resourceType('/assets/x.json'), null);
     assert.equal(resourceType('/assets/local/map/fx/materials.json'), 'application/json; charset=utf-8');
+    for (const url of ['/assets/local/scene/act1autochess_m07/scene.json',
+      'https://cdn.example.com/game/assets/local/scene/act2autochess_m04/scene.json']) {
+      assert.equal(resourceType(url), 'application/json; charset=utf-8');
+      assert.equal(isResourceUrl(url), true);
+    }
+    for (const url of ['/assets/local/scene/custom/scene.json', '/assets/local/scene/act1autochess_m08/scene.json',
+      '/assets/local/scene/act2autochess_m01/config.json', '/build/assets/local/scene/act1autochess_m01/scene.json']) {
+      assert.equal(isResourceUrl(url), false);
+    }
     assert.equal(cacheName('deadbeef'), `${CACHE_PREFIX}deadbeef`);
     assert.equal(cacheName(undefined), `${CACHE_PREFIX}none`);
     assert.equal(CACHE_NAME.startsWith(CACHE_PREFIX), true, 'the store uses one cache of this app');

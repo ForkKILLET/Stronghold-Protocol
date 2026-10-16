@@ -112,10 +112,11 @@ test('server can route a room Match to a Worker while keeping /ws and persistenc
   await c.hello('Remote Match');
   await c.request({ t: 'room.create', mode: 'solo', difficulty: 'NORMAL' });
   const room = await c.waitFor('room.state');
-  await c.request({ t: 'room.start' });
+  // Starting a complete Match Worker includes cold engine imports; the default two-second WS budget is too short.
+  await c.request({ t: 'room.start' }, 10000);
   const running = srv.lobby.rooms.get(room.code).match;
   assert.equal(running.remote, true);
-  await c.waitFor('m.public', (m) => m.phase === 'INFO_CHECK');
+  await c.waitFor('m.public', (m) => m.phase === 'INFO_CHECK', 10000);
   await c.request({ t: 'g.infoReady' });
   assert.ok(running.publicView()?.phase);
   const snapshot = await running.snapshot();
@@ -144,8 +145,8 @@ test('room Worker checkpoints use the existing persistence document and restore 
   await c.hello('Persist');
   await c.request({ t: 'room.create', mode: 'solo', difficulty: 'NORMAL' });
   const room = await c.waitFor('room.state');
-  await c.request({ t: 'room.start' });
-  await c.waitFor('m.public', (m) => m.phase === 'INFO_CHECK');
+  await c.request({ t: 'room.start' }, 10000);
+  await c.waitFor('m.public', (m) => m.phase === 'INFO_CHECK', 10000);
   await first.persister.checkpointMatches();
   await first.persister.flush('worker-test');
   assert.ok(Object.keys(store.doc?.matches || {}).includes(room.code));

@@ -1,3 +1,4 @@
+import {achievementStats} from '../../shared/achievementStats.js';
 import {aggregateStats,accountRecord} from '../../shared/userStats.js';
 // The SQLite connection lives off the game/network event loop. Only newly issued credentials are returned; existing credentials are stored as hashes.
 import {parentPort,workerData} from 'node:worker_threads';
@@ -39,15 +40,19 @@ const methods={
   for(const row of rows){if(!profile(row.userId))continue;inserted+=Number(q('INSERT OR IGNORE INTO results(game_id,user_id,player_id,victory,rounds,payload) VALUES(?,?,?,?,?,?)').run(id,row.userId,row.playerId,row.victory?1:0,row.rounds,JSON.stringify(row.payload)).changes);}
   return {inserted};
  });},
- stats({id,before=null}){
+ stats({id,before=null,modded=false}){
   const summary=q('SELECT count(*) AS matches,coalesce(sum(victory),0) AS wins,coalesce(max(rounds),0) AS bestRound FROM results WHERE user_id=?').get(id);
   const all=q('SELECT g.id,g.ended_at AS endedAt,g.mode,g.difficulty,g.source,r.player_id AS playerId,r.victory,r.rounds,r.payload FROM results r JOIN games g ON g.id=r.game_id WHERE r.user_id=? ORDER BY g.rowid DESC').all(id);
-  const aggregate=aggregateStats(all.map(r=>accountRecord({...r,victory:!!r.victory,payload:JSON.parse(r.payload)})));
+  const records=all.map(r=>accountRecord({...r,victory:!!r.victory,payload:JSON.parse(r.payload)}));
+  const aggregate=aggregateStats(records,{modded});
+  const hidden=new Set(workerData.hiddenBonds || []);
+  const achievements=achievementStats(modded?records:records.filter(r=>!r.content),{hiddenLayers:id=>hidden.has(id),modded});
+  achievements.achievements=achievements.achievements.map(({value:_value,...a})=>a);
   aggregate.missingFrame=all.some(r=>!JSON.parse(r.payload).frame);
   const rows=q(`SELECT g.id,g.ended_at AS endedAt,g.mode,g.difficulty,g.source,r.player_id AS playerId,r.victory,r.rounds,r.payload FROM results r JOIN games g ON g.id=r.game_id WHERE r.user_id=? AND (? IS NULL OR g.rowid<?) ORDER BY g.rowid DESC LIMIT 51`).all(id,before,before);
   const hasMore=rows.length>50;rows.length=Math.min(rows.length,50);
   const last=rows[rows.length-1];const next=hasMore&&last?q('SELECT rowid FROM games WHERE id=?').get(last.id).rowid:null;
-  return {userId:id,summary,aggregate,...(before===null?{matchIds:all.map(r=>r.id)}:{}),records:rows.map(r=>({...r,victory:!!r.victory,payload:JSON.parse(r.payload)})),next};
+  return {userId:id,summary,aggregate,achievements,...(before===null?{matchIds:all.map(r=>r.id)}:{}),records:rows.map(r=>({...r,victory:!!r.victory,payload:JSON.parse(r.payload)})),next};
  },
  backup({directory}){
   fs.mkdirSync(directory,{recursive:true,mode:0o700});const target=path.join(directory,'users-'+Date.now()+'.sqlite');

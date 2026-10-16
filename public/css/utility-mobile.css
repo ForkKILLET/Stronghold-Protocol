@@ -3,9 +3,18 @@
    Compact controls have real, non-overlapping hit boxes (no oversized ::before).
    Text size settings still apply; density comes from columns and spacing, not scale()/zoom or hiding content. */
 
+@media (max-width: 1000px), (max-height: 600px) {
+  .lo-skins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 6px; }
+  .lo-skin { min-width: 0; max-width: none; min-height: 44px; padding: 4px; gap: 6px; }
+  .lo-skin__art { width: 32px; height: 32px; }
+  .lo-skin__name { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
+  .lo-skin__group { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
+  .resource-skin-hint { font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
+}
+
 .modal__titles { display: flex; flex-direction: column; gap: .04rem; min-width: 0; }
 .utility-modal { width: var(--utility-width, min(6.4rem, 94vw)); max-width: 100%; min-height: 0; }
-.utility-modal.resource-modal { width: min(10.4rem, calc(100vw - .4rem)); }
+.utility-modal.resource-modal { width: min(9.6rem, calc(100vw - .4rem)); }
 .utility-modal .modal__head { flex: none; flex-direction: row; align-items: center; justify-content: space-between; }
 .utility-modal .modal__title { overflow-wrap: anywhere; }
 .utility-modal .modal__body {
@@ -22,7 +31,11 @@
 @media (max-width: 1000px), (max-height: 600px) {
   /* A local readable floor derived from the saved text size. --t remains owned by theme.css.
      Consumers use this fallback only for typography, never layout geometry or the global rem. */
-  :is(.utility-modal, .lobby-screen, .room-screen) { --utility-text: max(var(--t), 64px); }
+  .utility-modal { --utility-text: max(var(--t), 64px); }
+  /* Title and lobby use the same text scale as the battlefield. Do not apply the
+     management readability floor here: it makes these screens visibly larger
+     than the in-game UI and ignores the user's saved text-size setting. */
+  :is(.title-screen, .lobby-screen, .room-screen) { --utility-text: var(--t); }
   /* device.js updates --sp-vh from visualViewport: the soft keyboard must not cover the close/actions region.
      Only management surfaces adopt this height; the battlefield retains its own viewport ownership. */
   .modal--utility, .guide, .lo, .st {
@@ -42,7 +55,7 @@
     max-height: calc(min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px);
     font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px);
   }
-  .modal--utility .resource-modal { width: min(17rem, 100%); }
+  .modal--utility .resource-modal { width: min(9.6rem, 100%); }
   .modal--utility .settings-modal { width: min(14rem, 100%); }
   .modal--utility .minfo-dlg { width: min(17rem, 100%); }
   .modal--utility .console-modal { width: min(14rem, 100%); }
@@ -68,11 +81,11 @@
 
   /* Resources: both tiers fit side by side on landscape phones; real narrow widths stack.
      Category names, counts, archive checks and the current import group stay visible. */
-  .resource-manager { gap: 8px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .resource-manager { gap: 6px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
   .resource-manager p { line-height: 1.45; }
   .resource-manager__intro, .resource-manager__maintenance { color: var(--text-lo); }
   .resource-manager__tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: start; }
-  .resource-tier, .resource-archive { padding: 8px; min-width: 0; }
+  .resource-tier, .resource-archive { padding: 6px; min-width: 0; }
   .resource-tier h3, .resource-archive h3 { font-size: max(calc(.19 * var(--utility-text, var(--t))), 13px); }
   .resource-tier__head { gap: 6px; flex-wrap: wrap; }
   .resource-tier__head p, .resource-archive p, .resource-voice-choice p,
@@ -91,36 +104,13 @@
   .resource-tier__list .num { white-space: nowrap; }
   .resource-tier__list small { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
   .resource-manager__status { padding: 6px; }
+  .resource-manager__pack-progress { gap: 5px; }
+  .resource-manager__pack-progress small { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
   .resource-archive .res-actions, .resource-archive .pbar { margin-top: 6px; }
   .resource-modal .res-link { min-height: 28px; font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
   .resource-modal .pbar__meta { flex-wrap: wrap; gap: 2px 6px; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
   .resource-modal .pbar__value { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
 
-  /* Settings: remove empty micro-label space, keep full controls and diagnostic text. */
-  .settings-modal .set-list { gap: 6px; padding-top: 0; }
-  .settings-modal .set-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; gap: 8px; min-height: 30px; }
-  .settings-modal .set-row__label { gap: 5px; line-height: 1.35; }
-  .settings-modal .set-row__label { font-size: calc(.18 * var(--utility-text, var(--t))); }
-  .settings-modal .set-row__label .micro { display: none; }
-  .settings-modal .set-row__label .icon { width: 14px; height: 14px; }
-  .settings-modal .set-row__val { min-width: 2.5em; }
-  .settings-modal .set-row__val { font-size: calc(.18 * var(--utility-text, var(--t))); }
-  .settings-modal .set-seg { width: 100%; }
-  .settings-modal .set-seg button { min-width: 0; padding: 4px 7px; }
-  .settings-modal .set-toggle { padding: 4px 8px; }
-  .settings-modal .set-toggle i { width: 28px; height: 16px; }
-  .settings-modal .set-toggle i::after { left: 2px; top: 2px; width: 12px; height: 12px; }
-  .settings-modal .set-toggle.is-on i::after { transform: translateX(12px); }
-  .settings-modal .set-range { min-width: 0; height: 28px; border-block: 10px solid transparent; background-clip: padding-box; }
-  .settings-modal .set-range::-webkit-slider-thumb { width: 14px; height: 20px; }
-  .settings-modal .set-range::-moz-range-thumb { width: 14px; height: 20px; }
-  .settings-modal .set-row--fps { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
-  .settings-modal .set-row--fps .set-seg--fps button { min-width: 0; }
-  .settings-modal .set-hint { margin: 0; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); line-height: 1.45; color: var(--text-lo); }
-  .settings-modal .set-res { gap: 4px; }
-  .settings-modal .set-res__body { gap: 4px; }
-  .settings-modal .set-diag { gap: 4px; padding-top: 6px; }
-  .settings-modal .set-diag__text { height: 96px; min-height: 64px; }
   .utility-modal .shortcut-row { min-height: 30px; grid-template-columns: minmax(0, 1fr) 90px; gap: 8px; }
   .utility-modal .shortcut-list { gap: 4px; }
   .utility-modal .lo-io__text { height: 120px; min-height: 72px; }
@@ -140,117 +130,285 @@
     font-size: max(calc(.15 * var(--utility-text, var(--t))), 11px);
   }
 
+  /* Resource preload, settings and about-server are ordinary game-scale surfaces.
+     Keep their typography and geometry tied to the same rem/--t system as the
+     title, lobby and battle HUD instead of the readable utility floor. */
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about) {
+    --utility-text: var(--t);
+    font-size: calc(.16 * var(--t));
+  }
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about) .modal__head {
+    padding: .12rem .2rem .08rem; gap: .15rem;
+  }
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about) .modal__title {
+    font-size: calc(.22 * var(--t)); line-height: 1.25;
+  }
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about) .modal__body {
+    padding: .1rem .2rem .15rem;
+  }
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about) .modal__actions {
+    gap: .1rem; padding: .1rem .2rem; font-size: calc(.16 * var(--t));
+  }
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about)
+    :is(.btn, .set-toggle, .set-seg button, .shortcut-key) {
+    min-height: .75rem; height: auto; padding: .125rem .225rem;
+    font-size: calc(.16 * var(--t)); line-height: 1.25;
+  }
+  :is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about)
+    :is(.btn--square, .utility-modal__close) {
+    width: .75rem; height: .75rem; min-width: .75rem; min-height: .75rem; padding: 0;
+  }
+
+  .resource-manager { gap: .12rem; font-size: calc(.16 * var(--t)); }
+  .resource-manager__tiers { gap: .12rem; }
+  .resource-tier, .resource-archive { padding: .14rem; }
+  .resource-tier h3, .resource-archive h3 { font-size: calc(.19 * var(--t)); }
+  .resource-tier__head { gap: .15rem; }
+  .resource-tier__head p, .resource-archive p, .resource-voice-choice p,
+  .resource-tier__summary, .resource-tier__list li, .resource-manager__maintenance {
+    font-size: calc(.14 * var(--t));
+  }
+  .resource-choice, .resource-voice-choice .resource-choice {
+    min-height: .7rem; gap: .125rem; font-size: calc(.14 * var(--t));
+  }
+  .resource-choice input { width: .35rem; height: .35rem; }
+  .resource-voice-choice { margin-top: .15rem; padding: .1rem .15rem; }
+  .resource-voice-choice__options { gap: .05rem .15rem; }
+  .resource-tier__summary { margin: .1rem 0 .06rem; gap: .05rem; }
+  .resource-tier__list { margin-top: .075rem; }
+  .resource-tier__list li { gap: .08rem; padding: .07rem 0; }
+  .resource-tier__list small { font-size: calc(.12 * var(--t)); }
+  .resource-manager__status { padding: .15rem; }
+  .resource-archive .res-actions, .resource-archive .pbar { margin-top: .15rem; }
+  .resource-modal .res-link { min-height: .7rem; font-size: calc(.13 * var(--t)); }
+  .resource-modal .pbar__meta { gap: .05rem .15rem; font-size: calc(.14 * var(--t)); }
+  .resource-modal .pbar__value { font-size: calc(.16 * var(--t)); }
+
+  /* Settings and its portal-mounted shortcut editor share one scale. Geometry follows rem,
+     typography follows --t, and SVGs follow their text/button rather than fixed mobile pixels.
+     Keep the generic utility readability floor and larger controls out of these two dialogs. */
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) {
+    --utility-text: var(--t); font-size: calc(.16 * var(--t));
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__head {
+    padding: .12rem .2rem .08rem; gap: .15rem;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__head .micro {
+    font-size: calc(.1 * var(--t));
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__title {
+    font-size: calc(.22 * var(--t)); line-height: 1.25;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__body {
+    padding: .1rem .2rem .15rem;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__actions {
+    gap: .1rem; padding: .1rem .2rem;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) :is(.btn, .set-seg button, .set-toggle, .set-native, .shortcut-key) {
+    min-width: 0; max-width: 100%; min-height: .6rem; height: auto; padding: .1rem .16rem;
+    font-size: calc(.16 * var(--t)); line-height: 1.35; white-space: normal; overflow-wrap: anywhere;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .btn__icon {
+    flex: none; width: 1.15em; height: 1.15em;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .utility-modal__close {
+    width: .6rem; height: .6rem; min-width: .6rem; min-height: .6rem; padding: 0;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .utility-modal__close .icon {
+    width: 50%; height: 50%;
+  }
+  .settings-modal .set-list { gap: .12rem; padding-top: 0; }
+  .settings-modal .set-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
+    gap: .14rem; min-height: .6rem; min-width: 0;
+  }
+  .settings-modal .set-row__label {
+    min-width: 0; gap: .1rem; line-height: 1.4; overflow-wrap: anywhere; font-size: calc(.18 * var(--t));
+  }
+  .settings-modal .set-row__label .micro { display: none; }
+  .settings-modal .set-row__label .icon { flex: none; width: 1.15em; height: 1.15em; }
+  .settings-modal .set-row__val { min-width: 2.5em; font-size: calc(.18 * var(--t)); }
+  .settings-modal .set-row > .btn { grid-column: 2 / 4; justify-self: start; }
+  .settings-modal .set-row--fps { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  .settings-modal .set-row--fps .set-seg--fps button { min-width: 0; }
+  .settings-modal .set-seg { width: 100%; min-width: 0; }
+  .settings-modal .set-voice { width: 100%; min-width: 0; gap: .1rem; }
+  .settings-modal .set-voice .set-seg { flex: 1 1 auto; }
+  .settings-modal .lang-select select {
+    box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%;
+    min-height: .6rem; height: auto; padding: .08rem .12rem;
+    font-size: max(calc(.16 * var(--t)), 16px); /* native select: retain the iOS focus-zoom guard */
+  }
+  .settings-modal .set-toggle { gap: .1rem; }
+  .settings-modal .set-toggle i { flex: none; width: .46rem; height: .24rem; }
+  .settings-modal .set-toggle i::after { left: .03rem; top: .03rem; width: .18rem; height: .18rem; }
+  .settings-modal .set-toggle.is-on i::after { transform: translateX(.22rem); }
+  .settings-modal .set-range {
+    box-sizing: border-box; min-width: 0; height: .6rem; margin: 0;
+    border-block: .24rem solid transparent; border-inline: 0; background-clip: padding-box;
+  }
+  .settings-modal .set-range::-webkit-slider-thumb { width: .24rem; height: .32rem; }
+  .settings-modal .set-range::-moz-range-thumb { width: .24rem; height: .32rem; }
+  :is(.settings-modal, .settings-shortcuts-modal) .set-hint {
+    margin: 0; font-size: calc(.14 * var(--t)); line-height: 1.5; color: var(--text-lo);
+  }
+  .settings-modal .set-res, .settings-modal .set-res__body { gap: .1rem; }
+  .settings-modal .set-keys__head { display: flex; flex-wrap: wrap; align-items: center; gap: .12rem; justify-content: space-between; }
+  .settings-modal .set-diag { gap: .1rem; padding-top: .15rem; }
+  .settings-modal .set-diag__text { height: 2.4rem; min-height: 1.6rem; padding: .1rem .12rem; }
+  .settings-shortcuts-modal .shortcut-list { gap: .1rem; }
+  .settings-shortcuts-modal .shortcut-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.25rem);
+    gap: .14rem; min-height: .6rem; font-size: calc(.16 * var(--t)); overflow-wrap: anywhere;
+  }
+
+  .utility-modal.title-about .title-about__links { gap: .2rem; }
+  .utility-modal.title-about .title-about__links dt { margin-bottom: .075rem; font-size: calc(.16 * var(--t)); }
+  .utility-modal.title-about .title-about__links dd { font-size: calc(.2 * var(--t)); line-height: 1.7; }
+  .utility-modal.title-about .title-about__hint { margin-top: .075rem; font-size: calc(.16 * var(--t)); line-height: 1.6; }
+  .utility-modal.title-about .title-about__disclaimer { margin-top: .25rem; padding-top: .15rem; }
+  .utility-modal.title-about .title-about__disclaimer h3,
+  .utility-modal.title-about .title-about__disclaimer p { font-size: calc(.16 * var(--t)); }
+  .utility-modal.title-about .title-about__disclaimer p + p { margin-top: .125rem; }
+
   /* Lobby and waiting rooms: full usable width, compact cards, no removal of rule explanations. */
-  :is(.lobby-screen, .room-screen) .btn { min-height: 30px; height: auto; padding: 5px 9px; line-height: 1.25; }
-  :is(.lobby-screen, .room-screen) .btn--square { min-width: 30px; width: 30px; height: 30px; padding: 0; }
-  :is(.lobby-screen, .room-screen) .btn--xl { min-height: 36px; font-size: calc(.24 * var(--utility-text, var(--t))); letter-spacing: .08em; }
-  :is(.lobby-screen, .room-screen) .field__box { min-height: 34px; height: auto; padding: 4px 8px; }
+  :is(.lobby-screen, .room-screen) .btn { min-height: .75rem; height: auto; padding: .125rem .225rem; line-height: 1.25; }
+  :is(.lobby-screen, .room-screen) :is(.topbar__tools, .room-topbar__tools) {
+    display: flex; flex-wrap: nowrap; align-items: center; gap: .12rem;
+    min-width: 0; white-space: nowrap;
+  }
+  :is(.lobby-screen, .room-screen) :is(.topbar__tools, .room-topbar__tools) > .btn,
+  :is(.lobby-screen, .room-screen) :is(.topbar__tools, .room-topbar__tools) > .settings-btn,
+  :is(.lobby-screen, .room-screen) :is(.topbar__tools, .room-topbar__tools) > .guide-btn {
+    flex: none; width: .75rem; height: .75rem;
+    min-width: .75rem; min-height: .75rem;
+    max-width: .75rem; max-height: .75rem;
+    padding: 0;
+  }
+  :is(.lobby-screen, .room-screen) :is(.topbar__tools, .room-topbar__tools) .btn__icon,
+  :is(.lobby-screen, .room-screen) :is(.topbar__tools, .room-topbar__tools) .icon {
+    width: 50%; height: 50%;
+  }
+  :is(.lobby-screen, .room-screen) .btn--square { min-width: .75rem; width: .75rem; height: .75rem; padding: 0; }
+  .lobby-screen .topbar__tools .btn--square,
+  .room-screen .room-topbar__tools .btn--square {
+    width: .75rem; height: .75rem; min-width: .75rem; min-height: .75rem;
+    max-width: .75rem; max-height: .75rem; flex: none;
+  }
+  :is(.lobby-screen, .room-screen) .btn--xl { min-height: .9rem; font-size: calc(.24 * var(--utility-text, var(--t))); letter-spacing: .08em; }
+  :is(.lobby-screen, .room-screen) .field__box { min-height: .85rem; height: auto; padding: .1rem .2rem; }
   :is(.lobby-screen, .room-screen) .field__input { min-width: 0; font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
   :is(.lobby-screen, .room-screen) .micro { font-size: max(calc(.11 * var(--utility-text, var(--t))), 9px); letter-spacing: .08em; }
-  .lobby-screen .lobby-body { max-width: none; padding: 8px 10px; gap: 12px; }
-  .lobby-screen .mode-cards { gap: 6px; margin-bottom: 8px; }
-  .lobby-screen .mode-card { min-height: 0; gap: 6px; padding: 8px; }
-  .lobby-screen .mode-card__icon { width: 30px; height: 30px; }
+  .lobby-screen .micro { font-size: calc(.11 * var(--utility-text, var(--t))); }
+  .lobby-screen .lobby-body { max-width: none; padding: .2rem .25rem; gap: .3rem; }
+  .lobby-screen .mode-cards { gap: .15rem; margin-bottom: .2rem; }
+  .lobby-screen .mode-card { min-height: 0; gap: .15rem; padding: .2rem; }
+  .lobby-screen .mode-card__icon { width: .75rem; height: .75rem; }
   .lobby-screen .mode-card__icon .icon { width: 50%; height: 50%; }
   .lobby-screen .mode-card__name { font-size: calc(.25 * var(--utility-text, var(--t))); letter-spacing: .02em; }
-  .lobby-screen .mode-card__text { gap: 4px; }
+  .lobby-screen .mode-card__text { gap: .1rem; }
   .lobby-screen .mode-card__desc { line-height: 1.4; }
-  .lobby-screen .mode-card__points { display: flex; gap: 2px; font-size: max(calc(.14 * var(--utility-text, var(--t))), 10px); }
-  .lobby-screen .mode-card__check { top: 4px; right: 4px; padding: 2px 4px; font-size: max(calc(.12 * var(--utility-text, var(--t))), 9px); }
-  .lobby-screen .diff-list { gap: 4px; }
-  .lobby-screen .diff-card { padding-block: 5px; }
+  .lobby-screen .mode-card__points { display: flex; gap: .05rem; font-size: calc(.14 * var(--utility-text, var(--t))); }
+  .lobby-screen .mode-card__check { top: .1rem; right: .1rem; padding: .05rem .1rem; font-size: calc(.12 * var(--utility-text, var(--t))); }
+  .lobby-screen .diff-list { gap: .1rem; }
+  .lobby-screen .diff-card { padding-block: .125rem; }
   .lobby-screen .diff-card__effects { display: flex; }
-  .lobby-screen .create-box { margin-top: 8px; gap: 4px; }
+  .lobby-screen .create-box { margin-top: .2rem; gap: .1rem; }
   .lobby-screen .create-box__hint { display: flex; }
-  .lobby-screen .join-panel .panel__body { padding: 8px; gap: 6px; }
-  .lobby-screen .tips { display: block; margin-top: 8px; padding: 8px; }
-  .lobby-screen .tips__text { margin-top: 4px; line-height: 1.4; }
+  .lobby-screen .join-panel .panel__body { padding: .2rem; gap: .15rem; }
+  .lobby-screen .tips { display: block; margin-top: .2rem; padding: .2rem; }
+  .lobby-screen .tips__text { margin-top: .1rem; line-height: 1.4; }
   /* Room chrome owns explicit areas at every compact width, including 761–1000px landscape phones.
      Override the generic <=760px grid-area rules and the room's desktop fixed heights together. */
   .room-screen .topbar {
-    height: auto; min-height: 0; padding: 6px 8px; gap: 6px;
+    height: auto; min-height: 0; padding: .15rem .2rem; gap: .15rem;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
     grid-template-areas: "controls title invite";
   }
-  .room-screen .topbar__left { grid-area: controls; justify-self: start; min-width: 0; max-width: 100%; flex-wrap: wrap; gap: 4px; }
+  .room-screen .topbar__left {
+    grid-area: controls; justify-self: start; min-width: 0; max-width: 100%;
+    flex-wrap: nowrap; gap: .1rem; overflow: hidden;
+  }
   .room-screen .topbar__center { grid-area: title; min-width: 0; padding: 0; }
   .room-screen .topbar__center > .micro { display: none; }
   .room-screen .topbar__title {
     justify-content: center; flex-wrap: nowrap; white-space: nowrap; min-width: 0; max-width: 100%; gap: 4px;
-    font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); letter-spacing: 0;
+    font-size: calc(.16 * var(--utility-text, var(--t))); letter-spacing: 0;
   }
   .room-screen .topbar__right { grid-area: invite; justify-self: end; max-width: 100%; min-width: 0; gap: 0; }
-  .room-screen .room-topbar__tools { display: flex; flex: none; gap: 4px; align-items: center; }
-  .room-screen .room-topbar__tools .btn--square { width: 30px; height: 30px; min-width: 30px; flex: none; padding: 0; }
-  .room-screen .room-ping { align-items: flex-start; gap: 0; min-width: 0; }
+  .room-screen .room-topbar__tools { flex: none; }
+  .room-screen .room-ping { align-items: flex-start; gap: 0; min-width: 0; flex: 1 1 auto; overflow: hidden; }
   .room-screen .room-ping > .micro { display: none; }
-  .room-screen .connection-status { flex-wrap: wrap; gap: 4px; max-width: 100%; }
-  .room-screen .invite { min-width: 0; max-width: 100%; padding: 3px 4px; gap: 2px 4px; }
-  .room-screen .invite__label { flex-wrap: nowrap; gap: 3px; }
+  .room-screen .connection-status { flex-wrap: nowrap; gap: .1rem; max-width: 100%; overflow: hidden; }
+  .room-screen .invite { min-width: 0; max-width: 100%; padding: .075rem .1rem; gap: .05rem .1rem; }
+  .room-screen .invite__label { flex-wrap: nowrap; gap: .075rem; }
   .room-screen .invite__label .micro { display: none; }
-  .room-screen .invite__code { gap: 3px; }
-  .room-screen .invite__code { gap: 1px; }
+  .room-screen .invite__code { gap: .025rem; }
   .room-screen .invite__code span {
-    width: .72em; height: 1em; flex: none; font-size: max(calc(.2 * var(--utility-text, var(--t))), 12px);
+    width: .72em; height: 1em; flex: none; font-size: calc(.2 * var(--utility-text, var(--t)));
   }
-  .room-screen .invite__btns { flex-direction: row; gap: 2px; }
-  .room-screen .invite__btns .btn { min-width: 26px; width: 26px; min-height: 26px; height: 26px; padding: 3px; font-size: 0; }
-  .room-screen .invite__btns .icon { width: 16px; height: 16px; }
+  .room-screen .invite__btns { flex-direction: row; gap: .05rem; }
+  .room-screen .invite__btns .btn { min-width: .65rem; width: .65rem; min-height: .65rem; height: .65rem; padding: .075rem; font-size: 0; }
+  .room-screen .invite__btns .icon { width: .4rem; height: .4rem; }
   .room-screen--coop { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
-  .room-screen .seats { padding: 8px 10px; gap: 8px; grid-template-rows: minmax(0, 1fr); overflow-y: auto; }
-  .room-screen--coop .seats { flex: 1 0 144px; min-height: 144px; }
-  .room-screen .seat { padding: 6px; gap: 4px; }
+  .room-screen .seats { padding: .2rem .25rem; gap: .2rem; grid-template-rows: auto; overflow-y: auto; }
+  .room-screen--coop .seats { flex: 1 0 3.6rem; min-height: 3.6rem; }
+  .room-screen .seat { padding: .15rem; gap: .1rem; }
   .room-screen .seat__art .avatar { --av: min(1.5rem, 18vh); }
   .room-screen .seat__name { font-size: calc(.2 * var(--utility-text, var(--t))); }
   .room-screen .seat__state { min-width: 0; max-width: 100%; overflow-wrap: anywhere; line-height: 1.25; }
-  .room-screen .seat__foot { flex-wrap: wrap; gap: 4px; }
+  .room-screen .seat__foot { flex-wrap: wrap; gap: .1rem; }
   .room-screen--coop .seat__foot .tt-anchor { position: static; flex: none; }
-  .room-screen .solo-brief { padding: 10px; gap: 6px; overflow-y: auto; touch-action: pan-y; }
+  .room-screen .solo-brief { padding: .25rem; gap: .15rem; overflow-y: auto; touch-action: pan-y; }
   .room-screen .solo-brief h2 { font-size: calc(.26 * var(--utility-text, var(--t))); }
-  .room-screen .specbar { padding: 0 10px 6px; gap: 6px; }
+  .room-screen .specbar { padding: 0 .25rem .15rem; gap: .15rem; }
   .room-screen .room-bar {
-    height: auto; min-height: 0; padding: 6px 10px; gap: 6px 10px;
+    height: auto; min-height: 0; padding: .15rem .25rem; gap: .15rem .25rem;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas: "options actions" "status actions";
   }
-  .room-screen .room-bar__left, .room-screen .room-bar__right { gap: 6px; flex-wrap: wrap; }
+  .room-screen .room-bar__left, .room-screen .room-bar__right { gap: .15rem; flex-wrap: wrap; }
   .room-screen .room-bar__left { grid-area: options; min-width: 0; }
   .room-screen .room-bar__label .micro { display: none; }
-  .room-screen .room-bar__center { grid-area: status; flex-direction: row; flex-wrap: wrap; justify-self: start; gap: 4px 8px; min-width: 0; text-align: left; }
+  .room-screen .room-bar__center { grid-area: status; flex-direction: row; flex-wrap: wrap; justify-self: start; gap: .1rem .2rem; min-width: 0; text-align: left; }
   .room-screen .room-bar__right { grid-area: actions; min-width: 0; align-items: flex-end; justify-content: flex-end; }
   .room-screen .room-bar__status { overflow-wrap: anywhere; }
   .room-screen .room-bar .btn--xl { min-width: 0; }
   .room-screen .dpick { min-width: 0; max-width: 100%; flex-wrap: wrap; }
-  .room-screen .dpick__opt { height: auto; min-height: 28px; padding: 4px 7px; }
+  .room-screen .dpick__opt { height: auto; min-height: .7rem; padding: .1rem .175rem; }
   .room-screen .room-match-actions { min-width: 0; max-width: 100%; }
   .room-screen .room-match-state { flex-wrap: wrap; }
   .room-screen .room-loadout { max-width: 100%; flex-wrap: wrap; white-space: normal; }
-  .room-screen .ailast { max-width: 100%; flex-wrap: wrap; gap: 4px; }
+  .room-screen .ailast { max-width: 100%; flex-wrap: wrap; gap: .1rem; }
 
   /* Title login remains scrollable on short / narrow viewports; decorative art does not occupy form space. */
-  .title-screen { --utility-text: max(var(--t), 64px); overflow-y: auto; justify-content: flex-start; }
-  .title-screen .title-main { flex: none; width: 100%; min-width: 0; margin: auto 0; padding: 10px 8px; }
-  .title-screen .title-login { width: min(7.2rem, 100%); margin-top: 12px; gap: 6px; padding: 10px; }
-  .title-screen .title-login .field__box { min-height: 34px; height: auto; }
-  .title-screen .title-login .field__input { font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
-  .title-screen .title-login .btn--xl { height: auto; min-height: 36px; padding: 6px 10px; letter-spacing: .16em; font-size: max(calc(.24 * var(--utility-text, var(--t))), 14px); }
-  .title-screen .title-login .title-invite, .title-screen .title-conn { font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
-  .title-screen .title-conn { flex-wrap: wrap; gap: 4px; }
-  .title-screen .title-settings, .title-screen .title-fs { width: 28px; height: 28px; }
-  .title-screen .title-tag { font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); letter-spacing: .02em; text-align: center; }
-  .title-screen .title-foot { position: relative; inset: auto; width: 100%; flex-wrap: wrap; padding: 6px 10px; gap: 4px; font-size: max(calc(.13 * var(--utility-text, var(--t))), 10px); }
+  .title-screen { overflow-y: auto; justify-content: flex-start; }
+  .title-screen .title-main { flex: none; width: 100%; min-width: 0; margin: auto 0; padding: .25rem .2rem; }
+  .title-screen .title-cn { font-size: calc(.72 * var(--t)); line-height: 1.1; letter-spacing: .04em; }
+  .title-screen .title-cn--latin { font-size: calc(.44 * var(--t)); }
+  .title-screen .title-tag { max-width: 7rem; }
+  .title-screen .title-login { width: min(7.2rem, 100%); margin-top: .3rem; gap: .15rem; padding: .25rem; }
+  .title-screen .title-login .field__box { min-height: .85rem; height: auto; }
+  .title-screen .title-login .field__input { font-size: calc(.2 * var(--utility-text, var(--t))); }
+  .title-screen .title-login .btn--xl { height: auto; min-height: 36px; padding: 6px 10px; letter-spacing: .16em; font-size: calc(.24 * var(--utility-text, var(--t))); }
+  .title-screen .title-login .title-invite, .title-screen .title-conn { font-size: calc(.14 * var(--utility-text, var(--t))); }
+  .title-screen .title-conn { flex-wrap: wrap; gap: .1rem; }
+  .title-screen .title-settings, .title-screen .title-fs { width: .7rem; height: .7rem; }
+  .title-screen .title-tag { font-size: calc(.16 * var(--utility-text, var(--t))); letter-spacing: .02em; text-align: center; }
+  .title-screen .title-foot { position: relative; inset: auto; width: 100%; flex-wrap: wrap; padding: .15rem .25rem; gap: .1rem; font-size: calc(.13 * var(--utility-text, var(--t))); }
   .title-screen .title-corner--tl { display: none; }
-  .title-screen .title-corner--tr { position: relative; inset: auto; flex: none; width: 100%; padding: 6px 10px; justify-content: flex-end; }
+  .title-screen .title-corner--tr { position: relative; inset: auto; flex: none; width: 100%; padding: .15rem .25rem; justify-content: flex-end; }
   .title-screen .title-corner--tr > div > .micro, .title-screen .title-corner--tr > div > br { display: none; }
-  .title-screen .title-corner__tools { margin: 0; gap: 6px; }
-  .title-screen .title-corner__tools .btn, .title-screen .title-lang button { height: auto; min-height: 30px; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
-  .title-screen .lang-select select { height: 30px; font-size: max(calc(.2 * var(--utility-text, var(--t))), 16px); }
-  .title-screen .res-pill__head { min-height: 30px; flex-wrap: wrap; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
-  .title-screen .res-pill__state { font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
+  .title-screen .title-corner__tools { margin: 0; gap: .15rem; }
+  .title-screen .title-corner__tools .btn, .title-screen .title-lang button { height: auto; min-height: .75rem; font-size: calc(.16 * var(--utility-text, var(--t))); }
+  .title-screen .lang-select select { height: .75rem; font-size: calc(.2 * var(--utility-text, var(--t))); }
+  .title-screen .res-pill__head { min-height: .75rem; flex-wrap: wrap; font-size: calc(.16 * var(--utility-text, var(--t))); }
+  .title-screen .res-pill__state { font-size: calc(.14 * var(--utility-text, var(--t))); }
   .title-screen .title-en { display: none; }
-  .title-screen .emblem { margin-bottom: 6px; }
-  .title-screen .emblem__svg { height: 32px; width: 30px; }
-  .title-screen .emblem__bracket { height: 38px; }
+  .title-screen .emblem { margin-bottom: .15rem; }
+  .title-screen .emblem__svg { height: .8rem; width: .75rem; }
+  .title-screen .emblem__bracket { height: .95rem; }
 
   /* Operator management and local history: reduce independent px floors and keep aligned, scrollable columns.
      The roster's quick-choice/detail workflow and all data columns remain intact. */
@@ -306,25 +464,25 @@
     height: min(10rem, var(--combat-viewport-height, calc(100dvh - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px)));
     max-height: min(10rem, var(--combat-viewport-height, calc(100dvh - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px)));
   }
-  .combat-metrics__head { flex-wrap: nowrap; padding: 4px 8px; gap: 6px; }
+  .combat-metrics__head { flex-wrap: nowrap; padding: .1rem .2rem; gap: .15rem; }
   .combat-metrics__head > div:first-child { min-width: 0; }
-  .combat-metrics__head h2 { font-size: max(calc(.2 * var(--utility-text, var(--t))), 14px); overflow-wrap: anywhere; }
+  .combat-metrics__head h2 { font-size: calc(.2 * var(--utility-text, var(--t))); overflow-wrap: anywhere; }
   .combat-metrics__micro { display: none; }
-  .combat-metrics__close { order: 1; width: 28px; min-width: 28px; height: 28px; min-height: 28px; }
+  .combat-metrics__close { order: 1; width: .7rem; min-width: .7rem; height: .7rem; min-height: .7rem; }
   .combat-metrics__body { display: flex; flex-direction: column; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
   .combat-metrics__head > .combat-metrics__tools { flex: 1 1 0; min-width: 0; padding: 0; }
-  .combat-metrics__scopes button { min-height: 28px; padding: 3px 6px; white-space: normal; overflow-wrap: anywhere; }
-  .combat-metrics__totals { padding: 0 8px 4px; gap: 6px; }
-  .combat-metrics__totals b { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
-  .combat-metrics__legend { gap: 3px 8px; padding: 0 8px 4px; }
-  .combat-metrics__list { order: -1; flex: none; min-height: 0; padding: 0 8px; overflow: visible; }
-  .combat-metrics__row { grid-template-columns: 16px 26px minmax(0, 1fr); padding: 4px 0; gap: 5px; }
-  .combat-metrics__row > .uthumb { width: 26px; height: 26px; }
-  .combat-metrics__bar { margin: 3px 0; height: 4px; }
-  .combat-metrics__values { gap: 4px; }
-  .combat-metrics__values span { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; }
-  .combat-metrics__values b { font-size: max(calc(.13 * var(--utility-text, var(--t))), 11px); }
-  .combat-metrics__note { padding: 4px 8px; font-size: max(calc(.1 * var(--utility-text, var(--t))), 10px); line-height: 1.3; }
+  .combat-metrics__scopes button { min-height: .7rem; padding: .075rem .15rem; white-space: normal; overflow-wrap: anywhere; }
+  .combat-metrics__totals { padding: 0 .2rem .1rem; gap: .15rem; }
+  .combat-metrics__totals b { font-size: calc(.16 * var(--utility-text, var(--t))); }
+  .combat-metrics__legend { gap: .075rem .2rem; padding: 0 .2rem .1rem; }
+  .combat-metrics__list { order: -1; flex: none; min-height: 0; padding: 0 .2rem; overflow: visible; }
+  .combat-metrics__row { grid-template-columns: .4rem .65rem minmax(0, 1fr); padding: .1rem 0; gap: .125rem; }
+  .combat-metrics__row > .uthumb { width: .65rem; height: .65rem; }
+  .combat-metrics__bar { margin: .075rem 0; height: .1rem; }
+  .combat-metrics__values { gap: .1rem; }
+  .combat-metrics__values span { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: .05rem .1rem; }
+  .combat-metrics__values b { font-size: calc(.13 * var(--utility-text, var(--t))); }
+  .combat-metrics__note { padding: .1rem .2rem; font-size: calc(.1 * var(--utility-text, var(--t))); line-height: 1.3; }
   .combat-metrics__note br { display: none; }
 
   /* Guide uses dynamic height AND both horizontal safe areas, including its text fallback. */
@@ -362,11 +520,12 @@
 }
 
 @media (max-width: 560px) {
+  .resource-manager__options { grid-template-columns: minmax(0, 1fr); }
   .resource-manager__tiers { grid-template-columns: minmax(0, 1fr); }
   .lobby-screen .lobby-body { grid-template-columns: minmax(0, 1fr); }
   .room-screen .seats { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-y: auto; align-content: start; }
-  .room-screen .seat { min-height: 140px; }
-  .room-screen--coop .seats { flex-basis: 304px; grid-template-rows: none; grid-auto-rows: minmax(140px, auto); }
+  .room-screen .seat { min-height: 3.5rem; }
+  .room-screen--coop .seats { flex-basis: 7.6rem; grid-template-rows: none; grid-auto-rows: minmax(3.5rem, auto); }
   .room-screen .seats--solo { grid-template-columns: minmax(0, 1fr); }
   .room-screen .topbar { grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) minmax(0, .85fr); grid-template-areas: "controls title invite"; }
   .room-screen .topbar__left { flex-direction: column; align-items: flex-start; }
@@ -379,4 +538,66 @@
   .lo-top__center, .st-top__center { grid-column: 1 / -1; grid-row: 2; }
   .lo-top__right, .st-top__right { grid-column: 2; grid-row: 1; }
   .st--replay .result__main { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+}
+
+/* Adapt the fork artwork to this branch's density layer; global landscape enforcement is unchanged. */
+@media (max-width: 1000px), (max-height: 600px) {
+  .lobby-hub > .hub-topbar { height: auto; min-height: 0; padding: .12rem .2rem; gap: .12rem; }
+  .lobby-hub > .hub-topbar .topbar__left { flex-wrap: wrap; gap: .12rem; }
+  .lobby-hub > .hub-topbar .topbar__right { min-width: 0; }
+  .lobby-hub .hub-stage { min-height: 4.8rem; overflow-y: auto; padding: .12rem .25rem .25rem; }
+  .lobby-hub .hub-entries__row { flex-wrap: wrap; justify-content: flex-end; gap: .14rem; transform: translateY(-.06rem); }
+  .lobby-hub .hub-entry { min-height: 56px; }
+  .lobby-hub .hub-entry__name { font-size: max(calc(.24 * var(--t)), 14px); }
+  .lobby-hub .hub-tile__label { font-size: max(calc(.2 * var(--t)), 13px); }
+  .lobby-hub .hub-side { padding-top: .1rem; }
+  .lobby-hub .hub-side .tips { display: none; }
+  .room-screen .rseat__actions .btn { min-width: 0; padding: .1rem; white-space: normal; }
+  .lo--deck .lo-top--deck { height: auto; min-height: 1.2rem; flex-shrink: 0; gap: .12rem; padding: .12rem .2rem; }
+  .lo--deck .lo-top__right { flex-wrap: wrap; gap: .1rem; }
+  .lo--deck .lo-deck { touch-action: pan-x; }
+  .hub-ach__scene { height: max(.64rem, 32px); }
+  .hub-ach__label { min-height: 30px; height: auto; padding-block: 5px; }
+  .sweep-host { --utility-text: max(var(--t), 64px); }
+  .sweep-host .sw-top, .sweep-host .sw-codex__top { gap: 6px; padding-inline: 8px; }
+  .sweep-host .sw-tabs { overflow-x: auto; }
+  .sweep-host .sw-tab { min-width: 0; min-height: 32px; height: auto; padding: 6px 10px; }
+  .sweep-host .sw-tile__cap { display: block; white-space: normal; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .sweep-host .sw-stat__k { white-space: normal; }
+  .sweep-host .sw-cd__stats { grid-template-columns: minmax(0, 1fr); }
+  .sweep-host .sw-search { min-width: 0; max-width: 100%; }
+  .sweep-host .sw-search input { min-width: 0; font-size: 16px; }
+  .sweep-host .sw-grade-note { font-size: 11px; }
+}
+
+
+/* The new HUD frame must not reserve desktop minimum widths on short landscape phones. */
+@media (max-width: 1000px), (max-height: 600px) {
+  .gtop__band { grid-template-columns: auto auto auto; }
+  .gtop__half { padding-inline: .12rem; }
+  .gtop__plus { display: none; }
+  .gtop__frame { padding-inline: .06rem; }
+  .gtop__cap .capsule--boss { min-width: 3.2rem; }
+}
+
+/* Reference achievement canvas: only viewport/safe-area containment differs on phones. */
+.ach { height: calc(var(--sp-vh, 1vh) * 100); padding: var(--sa-t, 0px) var(--sa-r, 0px) var(--sa-b, 0px) var(--sa-l, 0px); }
+@media (max-width: 1000px), (max-height: 600px) {
+  .ach__box { max-width: calc(100vw - var(--sa-l, 0px) - var(--sa-r, 0px) - 12px); max-height: calc(var(--sp-vh, 1vh) * 100 - var(--sa-t, 0px) - var(--sa-b, 0px) - 12px); }
+  .ach__close { min-width: 32px; min-height: 32px; }
+  .ach__foot { max-width: 100%; font-size: max(calc(.2 * var(--t)), 10px); }
+  /* The reference achievement rows are compact cards: keep two columns on phones so the seven groups
+     do not become an unnecessarily long single-column page. */
+  .ach-marks--list { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: .2rem; gap: .12rem .16rem; }
+  .ach-mark--row { min-width: 0; gap: .1rem; }
+  .ach-mark--row .ach-mark__frame { width: .78rem; height: .78rem; }
+  .ach-mark--row .ach-mark__frame > .icon { width: .38rem; height: .38rem; }
+  .ach-mark__text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+@media (max-width: 1000px), (max-height: 600px) {
+  .cardpick__search input { font-size: 16px; }
+  .cardpick__name { white-space: normal; font-size: max(calc(.16 * var(--utility-text, var(--t))), 11px); }
+  .rseat__pick { min-height: 28px; right: 6px; padding: 2px 8px; }
+  .rseat__avatar { min-width: 30px; min-height: 30px; }
 }

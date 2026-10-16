@@ -14,10 +14,15 @@ import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // Spectator seats (community report #26, a remake feature): a co-op room with spectators shows the 观战席 strip under
 // the seats — names, offline marks, the host's ✕ (room.removeSpectator) — and a spectator's own view swaps the ready
 // button for 观战中 and offers 入座 (room.join of the room) while a player seat is free.
+// Plugins (DESIGN §32 P1a): the tag under the title — 「原版」 or 「插件 ×N」 — opens the 插件 panel (ui/pluginPanel.js:
+// the host switches the room's plugins, everybody else reads them). With gameplay plugins (§32.6: a content set of its
+// own — the tag reads 「非官方」 too) every seat shows whether its page has loaded and checked the room's content
+// (seats[].content: 载入中 / 就绪 / 校验失败), 准备就绪 and 开始模拟 wait for it (the server refuses them before:
+// CONTENT_NOT_READY), and a plugin mode the host chose shows beside the difficulty.
 // Texts go through t() (docs/I18N.md).
 
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTY_NAMES, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
+import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
   html, Button, Icon, MicroLabel, PingPill, OnlineCount, AvatarFrame, DifficultyTag, Tooltip, Modal, confirmDialog, doctorNo,
 } from '../ui/components.js';
@@ -28,18 +33,25 @@ import { AnnouncementButton } from '../ui/announcement.js';
 import { openStats } from './stats.js';
 import { SettingsButton } from '../ui/settings.js';
 import { LoadoutButton } from './loadout.js';
+import { PluginTag, isModdedRoom } from '../ui/pluginTag.js';
+import { hasScriptConsent, rememberScriptConsent } from '../content.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
 import { difficultyInfo } from './lobby.js';
+import { data, useData } from '../data.js';
+import { cardOperators, seatPortrait, cardAvatarUrl } from '../ui/seatArt.js';
+import { useMyCard, setCardOperator, setCardAvatar } from '../ui/playerCard.js';
+import { PortraitPicker, AvatarPicker } from '../ui/opPicker.js';
+import { useRise } from '../ui/transitions.js';
 import { t, tc } from '../../../shared/i18n.js';
 
-/** Co-op room utilities are icon-only on every device; solo keeps its existing labels. */
+/** Room header utilities use the same compact icon-button treatment in solo and co-op rooms. */
 export function RoomTools({ coop }) {
   return html`<div class="room-topbar__tools">
-    <${Button} variant="secondary" size="sm" square=${coop} icon="chart" class="stats-entry" onClick=${openStats}
-      title=${t('博士档案')} aria-label=${t('博士档案')}>${coop ? null : t('博士档案')}<//>
-    <${SettingsButton} class="room-settings" variant="secondary" square=${coop} label=${t('设置')} />
-    <${GuideButton} class="room-guide" variant="secondary" square=${coop} label=${t('玩法说明')} />
+    <${Button} variant="secondary" size="sm" square=${true} icon="chart" class="stats-entry" onClick=${openStats}
+      title=${t('博士档案')} aria-label=${t('博士档案')} />
+    <${SettingsButton} class="room-settings" variant="secondary" square=${true} label=${t('设置')} />
+    <${GuideButton} class="room-guide" variant="secondary" square=${true} label=${t('玩法说明')} />
   </div>`;
 }
 
@@ -76,11 +88,17 @@ export function roomFacts(room, myId) {
   const isReady = (s) => !!s.ready || s.playerId === room?.hostId;
   const readyHumans = humans.filter(isReady).length;
   const othersReady = others.every((s) => s.ready && s.connected !== false);
+  // a room with gameplay plugins (DESIGN §32.6): every player's page has loaded and checked its content (the host's too)
+  const modded = isModdedRoom(room);
+  const contentReady = !modded || humans.every((s) => s.content === 'ready');
   return {
     seats, occupied, humans, mine, isHost, readyHumans, isReady,
     emptySeats: seats.filter((s) => !s).length,
-    canStart: isHost && othersReady && !!mine,
+    canStart: isHost && othersReady && !!mine && contentReady && (!room?.content?.trusted || humans.every(s => room.content.trusted.consent[s.seat])),
     othersReady,
+    modded,
+    contentReady,
+    myContent: modded ? (mine?.content || 'loading') : 'ready',
     // spectator seats (never players: not in `humans`, never counted for ready / start)
     spectators: Array.isArray(room?.spectators) ? room.spectators.filter((s) => s && typeof s === 'object') : [],
     spectating: isSpectating(room, myId),
@@ -115,61 +133,82 @@ export function inviteLink(code) {
  */
 export { copyText };
 
-function SeatCard({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot, onKick }) {
-  const coop = room.mode !== 'solo';
+function SeatCard({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot, onKick, searching, portraits, onPickCard, onPickAvatar }) {
+  const [bad, setBad] = useState([]);
+  // A new choice (or refreshed manifest) gets a fresh request, even if that art failed before deployment.
+  useEffect(() => setBad([]), [seat?.card?.charId, portraits?.m]);
+  const flash = useRise(!!seat && (seat.ready || seat.isBot || seat.playerId === room.hostId));
+  return html`<${SeatCardView} seat=${seat} index=${index} room=${room} facts=${facts} myId=${myId} busy=${busy}
+    onAddBot=${onAddBot} onRemoveBot=${onRemoveBot} onKick=${onKick} searching=${searching} portraits=${portraits}
+    bad=${bad} onBad=${(src) => setBad((prev) => prev.includes(src) ? prev : [...prev, src])} flash=${flash} onPickCard=${onPickCard} onPickAvatar=${onPickAvatar} />`;
+}
+
+/** Hook-free seat presentation: the existing room handlers remain the only source of actions. */
+export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot, onKick, searching, portraits, bad = null, onBad = () => {}, flash = false, onPickCard, onPickAvatar }) {
   if (!seat) {
-    const canAdd = coop && facts.isHost;
-    return html`<article class="seat seat--empty" style=${`--seat-i:${index}`}>
-      <header class="seat__head"><span class="seat__no num">P${index + 1}</span><${MicroLabel}>SEAT ${String(index + 1).padStart(2, '0')}<//></header>
-      <div class="seat__art seat__art--empty">
-        <div class="seat__radar" aria-hidden="true"></div>
-        <span class="seat__wait">${t('等待博士加入')}</span>
-        <${MicroLabel}>AWAITING DOCTOR<//>
+    const invitable = room.mode !== 'solo' && !facts.spectating;
+    return html`<article class=${`rseat rseat--empty${searching ? ' is-searching' : ''}`} style=${`--i:${index}`}>
+      <span class="rseat__clip" aria-hidden="true"></span>
+      <header class="rseat__strip"><i></i><span class="num">P${index + 1}</span></header>
+      <div class="rseat__art">
+        ${searching
+          ? html`<span class="rseat__wait"><svg viewBox="0 0 40 48" aria-hidden="true"><path d="M20 2l5 5-5 5-5-5z" /><rect x="10" y="16" width="14" height="22" rx="3" /><path d="M24 22h10l-4 7 4 7H24" /></svg><small>STRONGHOLD PROTOCOL</small></span>`
+          : invitable
+            ? html`<button type="button" class="rseat__invite" onClick=${async () => { const ok = await copyText(room.code); toast(ok ? t('已复制同盟密钥 {code}', { code: room.code }) : t('复制失败，请手动复制'), ok ? 'success' : 'warn'); }} title=${t('复制同盟密钥以邀请队友')}>
+                <span class="rseat__plus" aria-hidden="true"></span><b>${t('邀请')}</b><small>${t('复制同盟密钥以邀请队友')}</small></button>`
+            : html`<span class="rseat__wait"><small>${t('等待博士加入')}</small></span>`}
+        <span class="rseat__noinfo" aria-hidden="true">NOINFO</span>
       </div>
-      <footer class="seat__foot">
-        ${canAdd
-          ? html`<${Button} variant="secondary" size="sm" icon="robot" block=${true} loading=${busy === `add`} onClick=${onAddBot}>${t('添加 AI 队友')}<//>`
-          : html`<span class="seat__state t-dim">${t('空位')}</span>`}
-      </footer>
+      <div class="rseat__plate rseat__plate--empty rseat__actions">
+        ${room.mode !== 'solo' && facts.isHost ? html`<${Button} variant="secondary" size="sm" icon="robot" block=${true} disabled=${!!room.matching} loading=${busy === 'add'} onClick=${onAddBot}>${t('添加 AI 队友')}<//>` : null}
+      </div>
     </article>`;
   }
+  const consent = room.content?.trusted?.consent?.[seat.seat];
   const isMe = seat.playerId === myId;
   const isHostSeat = seat.playerId === room.hostId;
   const offline = seat.connected === false && !seat.isBot;
-  // The host never needs to toggle ready: starting the match readies them (server rule).
-  const state = offline ? 'offline' : seat.ready || seat.isBot ? 'ready' : isHostSeat ? 'host' : 'waiting';
-  return html`<article class=${`seat brackets${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${seat.isBot ? ' is-bot' : ''} is-${state}`}
-      style=${`--seat-i:${index}`}>
-    <header class="seat__head">
-      <span class="seat__no num">P${index + 1}</span>
-      <${MicroLabel}>SEAT ${String(index + 1).padStart(2, '0')}<//>
-      ${isHostSeat ? html`<span class="seat__host"><${Icon} name="crown" />${t('创建者')}</span>` : null}
-    </header>
-    <div class="seat__art">
-      <div class="seat__stripes" aria-hidden="true"></div>
-      <${AvatarFrame} size="xl" src=${seat.avatarId?profileAvatarUrl(avatarData.get('assets'),seat.avatarId):null} name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} ready=${state === 'ready'} offline=${offline} />
+  const ready = seat.ready || seat.isBot || isHostSeat;
+  const preferred = seat.isBot ? null : seatPortrait(seat, portraits);
+  const base = seat.isBot ? null : seatPortrait({ ...seat, card: { ...seat.card, charId: seat.card?.charId?.split('@')[0] } }, portraits);
+  const failed = (src) => Array.isArray(bad) ? bad.includes(src) : bad === src;
+  const src = failed(preferred) ? base : preferred;
+  const canPick = isMe && !seat.isBot && !facts.spectating && !room.inMatch;
+  const avatar = seat.isBot || !seat.avatarId ? null : profileAvatarUrl(portraits?.m, seat.avatarId);
+  return html`<article class=${`rseat${ready ? ' is-ready' : ''}${flash ? ' is-flash' : ''}${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${offline ? ' is-offline' : ''}${seat.isBot ? ' is-bot' : ''}`}
+      style=${`--i:${index}`}>
+    <span class="rseat__clip" aria-hidden="true"></span>
+    ${consent ? html`<span data-testid="script-consented">${t('已同意')}</span>` : null}
+    <header class="rseat__strip"><i></i><span class="num">P${index + 1}</span></header>
+    <div class=${`rseat__art${canPick && onPickCard ? ' is-pickable' : ''}`}>
+      ${src && !failed(src) ? html`<img key=${src} src=${src} alt="" draggable=${false} loading="lazy" onError=${() => onBad(src)} />`
+        : html`<span class="rseat__glyph">${seat.isBot ? html`<${Icon} name="robot" />` : [...(seat.name || '?')][0]}</span>`}
       <${CommunicationBubble} playerId=${seat.playerId} />
-      ${seat.isBot ? html`<span class="seat__bot-label"><${Icon} name="robot" />${t('AI 队友')}</span>` : null}
+      ${canPick && onPickCard ? html`<button type="button" class="rseat__pick" onClick=${onPickCard}
+        title=${t('更换立绘')} aria-label=${t('更换立绘')}><${Icon} name="edit" /><span>${t('更换立绘')}</span></button>` : null}
+      ${isHostSeat ? html`<span class="rseat__host">${t('创建者')}</span>` : null}
+      ${offline ? html`<span class="rseat__lost"><${Icon} name="wifiOff" />${t('失去信号')}</span>` : null}
+      <span class="rseat__state">${ready
+        ? html`<span class="rseat__box"><${Icon} name="check" /></span>${isHostSeat && !seat.ready ? t('待命中') : t('已就绪')}`
+        : html`<span class="rseat__box"></span>${t('准备中')}`}</span>
     </div>
-    <div class="seat__who">
-      <span class="seat__name">${seat.name || t('博士')}</span>
-      ${isMe ? html`<span class="seat__you">${t('你')}</span>` : null}
-    </div>
-    <${MicroLabel}>${seat.isBot ? 'AUTONOMOUS UNIT' : `DOCTOR #${doctorNo(seat.playerId)}`}<//>
-    <footer class="seat__foot">
-      <span class=${`seat__state seat__state--${state}`}>
-        ${state === 'ready' ? html`<${Icon} name="check" />${t('已就绪')}`
-          : state === 'offline' ? html`<${Icon} name="wifiOff" />${t('连接中断')}`
-          : state === 'host' ? html`<${Icon} name="crown" />${t('待命中')}`
-          : html`<${Icon} name="hourglass" />${t('准备中')}`}
+    ${!seat.isBot && !isMe && facts.isHost ? html`<button type="button" class="rseat__kick" disabled=${busy === `kick${index}`}
+      onClick=${() => onKick(index, seat.name, seat.playerId)} title=${t('将该博士移出同盟')} aria-label=${t('移出该博士')}><${Icon} name="user" /><${Icon} name="close" /></button>` : null}
+    ${seat.isBot && facts.isHost ? html`<button type="button" class="rseat__kick" disabled=${!!room.matching || busy === `rm${index}`}
+      onClick=${() => onRemoveBot(index)} title=${t('移除该 AI 队友')} aria-label=${t('移除 AI 队友')}><${Icon} name="close" /></button>` : null}
+    <div class="rseat__plate">
+      ${isMe ? html`<span class="rseat__me" title=${t('你')}><${Icon} name="info" /></span>` : null}
+      ${canPick && onPickAvatar ? html`<button type="button" class="rseat__avatar" onClick=${onPickAvatar} title=${t('更换头像')} aria-label=${t('更换头像')}>
+        <${AvatarFrame} src=${avatar} size="sm" name=${seat.name} seat=${index} self=${true} />
+      </button>` : html`<${AvatarFrame} src=${avatar} size="sm" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} />`}
+    ${facts.modded && !seat.isBot ? html`<span class=${`seat__content is-${seat.content || 'loading'}`} data-testid="seat-content">
+      ${seat.content === 'ready' ? t('插件内容就绪') : seat.content === 'failed' ? t('插件内容校验失败') : t('插件内容载入中')}
+    </span>` : null}
+      <span class="rseat__who">
+        <b class="rseat__name">${seat.name || t('博士')}</b>
       </span>
-      ${seat.isBot && facts.isHost ? html`<${Tooltip} text=${t('移除该 AI 队友')}>
-        <${Button} variant="ghost" size="sm" square=${true} icon="close" loading=${busy === `rm${index}`} onClick=${() => onRemoveBot(index)} aria-label=${t('移除 AI 队友')} />
-      <//>` : null}
-      ${!seat.isBot && !isMe && facts.isHost ? html`<${Tooltip} text=${t('将该博士移出同盟')}>
-        <${Button} variant="ghost" size="sm" square=${true} icon="close" loading=${busy === `kick${index}`} onClick=${() => onKick(index, seat.name, seat.playerId)} aria-label=${t('移出该博士')} />
-      <//>` : null}
-    </footer>
+      <small class="rseat__doc">${seat.isBot ? 'AUTONOMOUS UNIT' : `DOCTOR #${doctorNo(seat.playerId)}`}</small>
+    </div>
   </article>`;
 }
 
@@ -242,6 +281,10 @@ export function RoomScreen() {
   const conn = useStore((s) => s.connection, shallowEqual);
   const presence = useStore((s) => s.presence, shallowEqual);
   const [configDraft, setConfigDraft] = useState(null);
+  const artReady = useData('chess', 'assets');
+  const portraits = useMemo(() => ({ pool: cardOperators(data.list('chess')), m: data.get('assets') }), [artReady, data.locale()]);
+  const myCard = useMyCard();
+  const [picking, setPicking] = useState(null);
   const [busy, setBusy] = useState(null);
   const [matchTeammates, setMatchTeammates] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
@@ -255,7 +298,7 @@ export function RoomScreen() {
     const id = setInterval(() => setConsoleNow(Date.now()), 200);
     return () => clearInterval(id);
   }, [consoleOpen]);
-  useEffect(() => { if (room?.consoleEnabled || (room?.prepSeconds != null || room?.prepMultiplier != null || (room?.battleSpeed ?? 2) !== 2)) setMatchTeammates(false); }, [room?.consoleEnabled, room?.prepSeconds, room?.prepMultiplier, room?.battleSpeed]);
+  useEffect(() => { if (room?.content?.vanilla === false || room?.consoleEnabled || (room?.prepSeconds != null || room?.prepMultiplier != null || (room?.battleSpeed ?? 2) !== 2)) setMatchTeammates(false); }, [room?.content?.vanilla, room?.consoleEnabled, room?.prepSeconds, room?.prepMultiplier, room?.battleSpeed]);
 
   if (!room) return null;
   const online = conn.status === 'online';
@@ -335,6 +378,8 @@ export function RoomScreen() {
       ? html`<span class="t-lo"><${Icon} name="eye" />${t('观战中 · 不占博士席位，模拟开始后可切换观看各位博士')}</span>`
     : !coop
       ? html`<span class="t-mint">${t('*模拟协议已就绪，准许进入模拟')}</span>`
+    : facts.modded && !facts.contentReady
+      ? html`<span class="t-lo">${t('等待所有博士载入房间的插件内容')}</span>`
     : facts.isHost
       ? facts.canStart
         ? html`<span class="t-mint">${t('*同盟人数达标，准许进入模拟')}</span>`
@@ -371,7 +416,9 @@ export function RoomScreen() {
       </div>
       <div class="topbar__center">
         <${MicroLabel} tone="mint">${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}<//>
-        <h1 class="topbar__title">${coop ? t('同盟模拟') : t('独立模拟')}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" /></h1>
+        <h1 class="topbar__title">${coop ? t('同盟模拟') : t('独立模拟')}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" />
+          ${room.content?.modeId ? html`<span class="room-mode" data-testid="room-mode">${(room.content.modes || []).find((m) => m.id === room.content.modeId)?.name || room.content.modeId}</span>` : null}</h1>
+        <${PluginTag} room=${room} myId=${me.playerId} />
       </div>
       <div class="topbar__right">
         ${coop ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>${t('仅限 1 名博士')}</span></div>`}
@@ -380,7 +427,8 @@ export function RoomScreen() {
 
     <main class=${`seats${coop ? '' : ' seats--solo'}`}>
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
-        myId=${me.playerId} busy=${busy} onAddBot=${addBot} onRemoveBot=${removeBot} onKick=${kick} />`)}
+        myId=${me.playerId} busy=${busy} onAddBot=${addBot} onRemoveBot=${removeBot} onKick=${kick} searching=${!!room.matching} portraits=${portraits}
+        onPickCard=${artReady ? () => setPicking('op') : null} onPickAvatar=${openStats} />`)}
       ${coop ? null : html`<aside class="solo-brief brackets">
         <${MicroLabel} tone="mint">BRIEFING<//>
         <h2>${DIFFICULTY_NAMES[room.difficulty] ? t(DIFFICULTY_NAMES[room.difficulty]) : ''}<span class="num t-dim"> ${info.code}</span></h2>
@@ -422,12 +470,12 @@ export function RoomScreen() {
               ? html`<div class="room-match-actions room-match-actions--active"><span class="room-match-state"><${Icon} name="signal" />${t('正在寻找同盟队友')} <b class="num">${room.matching.count}/${room.matching.capacity}</b></span><${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelQueue}>${t('取消匹配')}<//></div>`
               : html`<div class="room-match-actions">
                 <div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}>
-                  <label class="room-match-toggle"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
+                  <label class="room-match-toggle"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || facts.modded || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
                     onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
                 </div>
-                <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) && matchTeammates ? t('自定义配置的房间仅支持邀请好友或添加 AI') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates && hasBots ? t('请先移除 AI 队友，再匹配真人队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
+                <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) && matchTeammates ? t('自定义配置的房间仅支持邀请好友或添加 AI') : facts.modded ? t('插件房间不能参加公共匹配') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates && hasBots ? t('请先移除 AI 队友，再匹配真人队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
                   <${Button} variant="primary" size="xl" icon=${matchTeammates ? 'users' : 'play'} loading=${busy === (matchTeammates ? 'match' : 'start')}
-                    disabled=${((room.consoleEnabled || hasBots || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)) && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
+                    disabled=${((room.consoleEnabled || facts.modded || hasBots || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)) && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>
                 <//>
               </div>`
             : html`<${Tooltip} text=${facts.canStart ? null : t('仍有博士未准备就绪')}>
@@ -435,11 +483,59 @@ export function RoomScreen() {
               <//>`
           : facts.spectating
             ? html`<${Button} variant="secondary" size="xl" icon="eye" disabled=${true}>${t('观战中')}<//>`
-          : html`<${Button} variant=${myReady ? 'primary' : 'secondary'} size="xl" icon=${myReady ? 'check' : 'hourglass'} active=${myReady}
-              loading=${busy === 'ready'} disabled=${!online || !facts.mine} onClick=${toggleReady}>${myReady ? t('已就绪') : t('准备就绪')}<//>`}
+          : html`<${Tooltip} text=${!myReady && facts.myContent !== 'ready' ? t('房间的插件内容载入并通过校验后才能准备') : null}>
+              <${Button} variant=${myReady ? 'primary' : 'secondary'} size="xl" icon=${myReady ? 'check' : 'hourglass'} active=${myReady}
+              loading=${busy === 'ready'} disabled=${!online || !facts.mine || (!myReady && facts.myContent !== 'ready')} onClick=${toggleReady}>${myReady ? t('已就绪') : t('准备就绪')}<//>
+            <//>`}
       </div>
     </footer>
     <${ConsoleWarning} open=${consoleOpen} remaining=${Math.max(0, Math.ceil((consoleReadyAt - consoleNow) / 1000))}
       busy=${busy === 'console'} onCancel=${cancelConsole} onConfirm=${confirmConsole} />
+    ${picking === 'op' && facts.mine && !facts.spectating && !room.inMatch ? html`<${PortraitPicker}
+      current=${myCard.charId} list=${portraits.pool} m=${portraits.m}
+      onPick=${(id) => { setCardOperator(id); setPicking(null); }} onClose=${() => setPicking(null)} />` : null}
   </div>`;
+}
+
+/** Persistent across room/game routes, including spectators who never consent. */
+export function TrustedNotice() {
+  const state = useStore(s => s);
+  const room = state.room, cs = room?.content?.cs, trusted = room?.content?.trusted;
+  const seat = room?.seats?.find(s => s && s.playerId === state.me?.playerId);
+  const [dismissed,setDismissed] = useState(null);
+  const [busy,setBusy] = useState(false);
+  const [review,setReview] = useState(false);
+  const choose = async accept => {
+    setBusy(true);
+    try {
+      if (seat) await net.request('room.consent',{cs,accept});
+      rememberScriptConsent(cs,accept);
+      setDismissed(cs); setReview(false);
+      if (accept && trusted.plugins.some(p => p.permissions.includes('trusted.page'))) {
+        const url = new URL(location.href); url.searchParams.set('cs',cs); url.searchParams.set('room',room.code);
+        location.assign(url.href); return;
+      }
+      store.set({room:{...store.get().room}}); // wake the content loader after local persistence
+    } catch (e) { toastError(e); }
+    finally { setBusy(false); }
+  };
+  useEffect(() => {
+    if (trusted && seat && hasScriptConsent(cs) && !trusted.consent?.[seat.seat] && !room.inMatch) {
+      net.request('room.consent',{cs,accept:true}).catch(toastError);
+    }
+  },[cs,seat?.seat,!!trusted?.consent?.[seat?.seat]]);
+  if (!trusted) return null;
+  return html`<aside class="trusted-banner" data-testid="trusted-banner">
+    <strong>${t('受信任插件')}</strong>
+    <button onClick=${() => setReview(true)}>${t('查看风险与同意状态')}</button>
+    <${Modal} open=${review || (dismissed !== cs && !hasScriptConsent(cs))} title=${t('受信任插件')} tone="red" closeOnBackdrop=${false}
+      onClose=${() => room.inMatch ? setReview(false) : choose(false)} actions=${html`<${Button} disabled=${busy} onClick=${() => choose(false)} data-testid="script-decline">${t('拒绝')}<//>
+        <${Button} disabled=${busy} onClick=${() => choose(true)} data-testid="script-accept">${t('同意运行')}<//>`}>
+      <p>${t('它可以完全控制你的游戏页面')}</p>
+      <p>${t('仅在你信任所有作者及以下代码时同意。换了内容组合需要重新同意。')}</p>
+      <ul>${trusted.plugins.map(p => html`<li key=${p.id}><strong>${p.id} ${p.version}</strong>
+        <p>${t('作者：{authors}',{authors:(p.authors || []).join(', ') || '—'})}</p>
+        <p class="trusted-hash">SHA-256: ${p.hash}</p><p>${t('权限：{permissions}',{permissions:p.permissions.join(', ')})}</p></li>`)}</ul>
+    <//>
+  </aside>`;
 }

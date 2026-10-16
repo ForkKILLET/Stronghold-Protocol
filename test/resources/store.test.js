@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { CACHE_NAME, CACHE_PREFIX, cacheName, indexUrl, rangeResponse } from '../../public/js/resources/common.js';
 import { ResourceStore } from '../../public/js/resources/store.js';
 import { handleResourceRequest } from '../../public/js/resources/service.js';
+import { readRuntimeIndex, updateRuntimeIndex } from '../../public/js/resources/runtimeIndex.js';
 
 /** Minimal Cache Storage (Cache API surface the store uses: open/keys/delete + cache.put/match/keys). */
 class MemoryCache {
@@ -43,7 +44,7 @@ function manifest(files, over = {}) {
  */
 async function seed(caches, url, body, hash) {
   const cache = await caches.open(CACHE_NAME);
-  await cache.put(url, new Response(body));
+  await cache.put(url, new Response(body, { headers: { 'Content-Length': String(Buffer.byteLength(body)) } }));
   if (hash) {
     const res = await cache.match(indexUrl(ORIGIN));
     const doc = res ? await res.json() : { version: 1, manifest: '', files: {} };
@@ -79,6 +80,180 @@ function fetcherFor({ bodies = {}, fail = [], opaque = [], gzip = [], onCall } =
 const store = (m, extra = {}) => new ResourceStore(m, { caches: extra.caches ?? new MemoryCaches(), fetcher: extra.fetch, origin: ORIGIN, smallLanes: extra.smallLanes ?? 4, bigLanes: extra.bigLanes ?? 1, now: extra.now });
 
 describe('ResourceStore', () => {
+  test('saved-resource inspection trusts existence and length headers without reading or hashing any asset body', async (t) => {
+    const files = Array.from({ length: 20 }, (_, i) => ({ url: `/assets/headers/${i}.png`, tier: 1,
+      size: 100, hash: '0123456789ab' }));
+    const caches = new MemoryCaches();
+    for (const file of files) await seed(caches, ORIGIN + file.url, 'damaged', file.hash);
+    const cache = await caches.open(CACHE_NAME);
+    const match = cache.match.bind(cache);
+    let active = 0, maximum = 0, reads = 0;
+    cache.match = async key => {
+      if (!key.includes('/assets/')) return match(key);
+      active++; maximum = Math.max(maximum, active); reads++;
+      await new Promise(resolve => setImmediate(resolve));
+      active--;
+      const response = await match(key);
+      for (const method of ['arrayBuffer', 'blob', 'text', 'json', 'clone']) {
+        response[method] = () => { throw new Error('asset body must not be inspected'); };
+      }
+      return response;
+    };
+    t.mock.method(crypto.subtle, 'digest', () => { throw new Error('saved resources must not be hashed'); });
+    const s = store(manifest(files), { caches, fetch: async () => { throw new Error('no download expected'); } });
+    assert.equal((await s.status({ verifyCache: false })).count, files.length);
+    assert.equal(reads, 0, 'startup index fast path has no asset-header lookups');
+    const status = await s.status();
+    assert.equal(status.count, files.length, 'a short or corrupted body is deliberately accepted');
+    assert.equal(status.complete, true, 'length header need not match manifest size');
+    assert.equal(reads, files.length);
+    assert.ok(maximum > 1 && maximum <= 8, `header reads use bounded concurrency (${maximum})`);
+    assert.ok(status.checkTimings.headerCheckMs >= 0);
+    await s.download();
+  });
+
+  test('missing, empty or invalid length headers are not accepted, while a zero-length file is valid', async () => {
+    const values = [null, '', 'unknown', '-1', '1.5', '9007199254740992', '0', '7'];
+    const files = values.map((_, i) => ({ url: `/assets/length/${i}.png`, tier: 1, size: 1 }));
+    const caches = new MemoryCaches(), cache = await caches.open(CACHE_NAME);
+    for (let i = 0; i < values.length; i++) {
+      await cache.put(ORIGIN + files[i].url, new Response('x', { headers: values[i] == null ? {} : { 'Content-Length': values[i] } }));
+    }
+    const s = store(manifest(files), { caches });
+    const status = await s.status();
+    assert.deepEqual([...status.present].sort(), files.slice(-2).map(f => ORIGIN + f.url));
+    await s.reconcileRuntimeIndex(status);
+    assert.equal((await s.status({ verifyCache: false })).count, 2);
+    assert.equal(s.storable(new Response('missing')).headers.get('content-length'), null, 'do not invent zero for a missing header');
+  });
+
+  test('new downloads without a length header store their actual byte length and do not loop on future inspections', async () => {
+    const caches = new MemoryCaches();
+    let calls = 0;
+    const s = store(manifest([{ url: '/assets/unknown-length.png', tier: 1, size: 8 }]), {
+      caches, fetch: async () => { calls++; return new Response('xxxxxxxx'); },
+    });
+    assert.equal((await s.download()).complete, true);
+    const response = await (await caches.open(CACHE_NAME)).match(ORIGIN + '/assets/unknown-length.png');
+    assert.equal(response.headers.get('content-length'), '8');
+    await s.download();
+    assert.equal(calls, 1);
+  });
+
+  test('legacy cache migration accepts a length header without hashing corrupt or stale saved bytes', async (t) => {
+    const caches = new MemoryCaches(), key = ORIGIN + '/assets/legacy.png';
+    await (await caches.open(cacheName('old-layout'))).put(key, new Response('stale', { headers: { 'Content-Length': '5' } }));
+    t.mock.method(crypto.subtle, 'digest', () => { throw new Error('legacy migration must not hash'); });
+    const s = store(manifest([{ url: '/assets/legacy.png', tier: 1, size: 99, hash: '0123456789ab' }]), {
+      caches, fetch: async () => { throw new Error('no download expected'); },
+    });
+    const result = await s.download();
+    assert.equal(result.adopted, 1);
+    assert.equal(result.complete, true);
+    assert.equal(await (await (await caches.open(CACHE_NAME)).match(key)).text(), 'stale');
+  });
+
+  test('fast status reads indexes without enumerating keys; full verification repairs evicted records', async () => {
+    const caches = new MemoryCaches();
+    const key = `${ORIGIN}/assets/a.png`;
+    const cache = await seed(caches, key, 'a', 'h0');
+    const s = store(manifest([{ url: '/assets/a.png', tier: 1, size: 1 }]), { caches });
+    const keys = cache.keys.bind(cache);
+    let scans = 0;
+    cache.keys = async () => { scans++; return keys(); };
+    assert.equal((await s.status({ verifyCache: false })).count, 1);
+    assert.equal(scans, 0, 'startup does not enumerate Cache Storage');
+    await cache.delete(key);
+    assert.equal((await s.status({ verifyCache: false })).cacheVerified, false);
+    const verified = await s.status();
+    assert.equal(verified.count, 0);
+    await s.reconcileRuntimeIndex(verified);
+    assert.equal((await s.status({ verifyCache: false })).count, 0, 'repair removes evicted preload records');
+    assert.equal(scans, 1);
+  });
+
+  test('oversized cache enumeration falls back to bounded exact-key probes and repairs eviction', async () => {
+    const caches = new MemoryCaches();
+    const files = [{ url: '/assets/a.png', tier: 1, size: 1 }, { url: '/assets/b.png', tier: 1, size: 1 }];
+    const cache = await seed(caches, `${ORIGIN}/assets/a.png`, 'a', 'h0');
+    const s = store(manifest(files), { caches, fetch: async () => new Response('b') });
+    let probes = 0;
+    cache.keys = async (key) => {
+      if (!key) throw new Error('Failed to read: Operation too large.');
+      probes++;
+      return cache.entries.has(key) ? [new Request(key)] : [];
+    };
+    const before = await s.status();
+    assert.equal(before.enumerationLimited, true);
+    assert.equal(before.count, 1);
+    assert.ok(probes >= 2);
+    assert.equal((await s.download()).count, 2);
+    assert.equal(await s.pruneStale(), 0, 'unlisted stale keys are retained, not guessed');
+    await cache.delete(`${ORIGIN}/assets/a.png`);
+    const after = await s.status();
+    await s.reconcileRuntimeIndex(after);
+    assert.equal(after.count, 1);
+    assert.equal((await s.status({ verifyCache: false })).count, 1);
+  });
+
+  test('runtime metadata merges concurrently without overwriting preload fingerprints', async () => {
+    const caches = new MemoryCaches();
+    const a = `${ORIGIN}/assets/a.png`, b = `${ORIGIN}/assets/b.png`, c = `${ORIGIN}/assets/c.png`;
+    const cache = await seed(caches, a, 'a', 'h0');
+    await Promise.all([
+      updateRuntimeIndex(cache, ORIGIN, { add: [b] }),
+      updateRuntimeIndex(cache, ORIGIN, { add: [c] }),
+    ]);
+    assert.deepEqual(Object.keys(await readRuntimeIndex(cache, ORIGIN)).sort(), [b, c]);
+    assert.equal((await (await cache.match(indexUrl(ORIGIN))).json()).files[a], 'h0');
+    const s = store(manifest([
+      { url: '/assets/a.png', tier: 1, size: 1 },
+      { url: '/assets/b.png', tier: 2, size: 1 },
+      { url: '/assets/c.png', tier: 2, size: 1 },
+    ]), { caches });
+    assert.equal((await s.status({ verifyCache: false })).count, 3);
+    const verified = await s.status();
+    await s.reconcileRuntimeIndex(verified);
+    assert.deepEqual(await readRuntimeIndex(cache, ORIGIN), {}, 'full check removes evicted runtime metadata');
+  });
+
+  test('full verification never reuses an in-flight provisional index check', async () => {
+    const caches = new MemoryCaches();
+    const cache = await seed(caches, `${ORIGIN}/assets/a.png`, 'a', 'h0');
+    await cache.delete(`${ORIGIN}/assets/a.png`);
+    const s = store(manifest([{ url: '/assets/a.png', tier: 1, size: 1 }]), { caches });
+    const [fast, actual] = await Promise.all([s.status({ verifyCache: false }), s.status()]);
+    assert.equal(fast.count, 1);
+    assert.equal(actual.count, 0);
+    assert.equal(actual.cacheVerified, true);
+  });
+
+  test('full inspection migrates legacy unindexed runtime entries to the fast metadata index', async () => {
+    const caches = new MemoryCaches();
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(`${ORIGIN}/assets/a.png`, new Response('a', { headers: { 'Content-Length': '1' } }));
+    const s = store(manifest([{ url: '/assets/a.png', tier: 1, size: 1 }]), { caches });
+    assert.equal((await s.status({ verifyCache: false })).count, 0);
+    await s.reconcileRuntimeIndex(await s.status());
+    assert.equal((await s.status({ verifyCache: false })).count, 1);
+    await s.prune();
+    assert.equal((await s.status({ verifyCache: false })).count, 1, 'prune preserves the runtime metadata entry');
+  });
+
+  test('metadata repair does not relabel known stale bytes as unindexed runtime art', async () => {
+    const caches = new MemoryCaches();
+    const key = `${ORIGIN}/assets/a.png`;
+    const cache = await seed(caches, key, 'old', 'old-hash');
+    await updateRuntimeIndex(cache, ORIGIN, { add: [key] });
+    const s = store(manifest([{ url: '/assets/a.png', tier: 1, size: 3, hash: 'new-hash' }]), { caches });
+    await s.reconcileRuntimeIndex(await s.status());
+    assert.equal((await s.status()).count, 0);
+    assert.equal((await s.status({ verifyCache: false })).count, 0);
+    await s.pruneStale();
+    assert.equal((await s.status({ verifyCache: false })).count, 0);
+    assert.equal(await cache.match(key), undefined);
+  });
+
   test('simultaneous status checks share cache metadata reads; later checks detect actual eviction', async () => {
     const m = manifest([{ url: '/assets/a.png', tier: 1, size: 1 }]);
     const caches = new MemoryCaches();
@@ -96,7 +271,7 @@ describe('ResourceStore', () => {
     const s = store(m, { caches });
     const pending = [s.status(), s.status(), s.status()];
     await Promise.all([keysStarted.promise, indexStarted.promise]);
-    assert.deepEqual([keyReads, indexReads], [1, 1], 'key enumeration and index reading start in parallel, once');
+    assert.deepEqual([keyReads, indexReads], [1, 2], 'key enumeration and both metadata indexes start in parallel, once');
     release.resolve();
     const [a, b, c] = await Promise.all(pending);
     assert.deepEqual([a.count, b.count, c.count], [1, 1, 1]);
@@ -106,7 +281,7 @@ describe('ResourceStore', () => {
     assert.equal(b.groups[0].present, 1);
     await cache.delete(`${ORIGIN}/assets/a.png`);
     assert.equal((await s.status()).count, 0, 'status results are not permanently cached');
-    assert.deepEqual([keyReads, indexReads], [2, 2]);
+    assert.deepEqual([keyReads, indexReads], [2, 5], 'one shared header read plus two index reads per inspection');
   });
 
   test('a failed metadata check does not leave a rejected status promise cached', async () => {
@@ -133,6 +308,19 @@ describe('ResourceStore', () => {
     await seed(caches, `${ORIGIN}/assets/b.png`, 'stale-bytes', 'an-old-digest');
     const stale = await s.status();
     assert.deepEqual([stale.count, stale.complete], [1, false], 'the cached bytes belong to an older revision');
+  });
+
+  test('runtime-cached entries without a preload index record appear in resource lists', async () => {
+    const m = manifest([
+      { url: '/assets/char/runtime.png', tier: 1, size: 12, hash: 'runtime-hash' },
+      { url: '/assets/audio/runtime.mp3', tier: 2, size: 8, hash: 'runtime-audio' },
+    ]);
+    const caches = new MemoryCaches();
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(`${ORIGIN}/assets/char/runtime.png`, new Response('runtime-image', { headers: { 'Content-Length': '13' } }));
+    await cache.put(`${ORIGIN}/assets/audio/runtime.mp3`, new Response('runtime-audio', { headers: { 'Content-Length': '13' } }));
+    const status = await store(m, { caches }).status();
+    assert.deepEqual([status.count, status.tier1Present, status.tier2Present, status.complete], [2, 1, 1, true]);
   });
 
   test('downloads the essential tier first, then the rest, skipping what is cached', async () => {
@@ -168,7 +356,7 @@ describe('ResourceStore', () => {
     assert.equal(cached.headers.get('content-length'), '8', 'an uncompressed response keeps its exact length');
   });
 
-  test('a gzip response never keeps the compressed Content-Length (it would truncate the stored body)', async () => {
+  test('a gzip response records its decoded Content-Length for subsequent header-only inspections', async () => {
     const m = manifest([{ url: '/assets/spine/a.skel', tier: 1, size: 8 }]);
     const caches = new MemoryCaches();
     const { fetch } = fetcherFor({ gzip: [`${ORIGIN}/assets/spine/a.skel`] });
@@ -176,7 +364,7 @@ describe('ResourceStore', () => {
     const res = await s.download();
     assert.equal(res.failed, 0);
     const cached = await (await caches.open(CACHE_NAME)).match(`${ORIGIN}/assets/spine/a.skel`);
-    assert.equal(cached.headers.get('content-length'), null, 'fetch reports the compressed size (42) for a longer body');
+    assert.equal(cached.headers.get('content-length'), '8', 'use decoded bytes, never compressed wire size 42');
     assert.equal(cached.headers.get('content-encoding'), null, 'the stored body is already decoded');
     assert.equal(cached.headers.get('content-type'), 'application/octet-stream', 'the type still follows the file');
     assert.equal(await cached.text(), 'x'.repeat(8));
@@ -226,6 +414,59 @@ describe('ResourceStore', () => {
     const { fetch } = fetcherFor();
     const s = store(m, { caches, fetch });
     await assert.rejects(() => s.download(), (err) => err.name === 'QuotaExceededError');
+  });
+
+  test('a failed concurrent preload waits for started writes and persists their index before rejecting', async () => {
+    const m = manifest([
+      { url: '/assets/a.png', tier: 1, size: 8 },
+      { url: '/assets/b.png', tier: 1, size: 8 },
+      { url: '/assets/c.png', tier: 1, size: 8 },
+    ]);
+    const caches = new MemoryCaches();
+    const cache = await caches.open(CACHE_NAME);
+    const put = cache.put.bind(cache);
+    const started = Promise.withResolvers(), release = Promise.withResolvers(), quotaRaised = Promise.withResolvers();
+    cache.put = async (key, response) => {
+      if (key.endsWith('/a.png')) { started.resolve(); await release.promise; }
+      if (key.endsWith('/b.png')) {
+        await started.promise;
+        quotaRaised.resolve();
+        throw new DOMException('', 'QuotaExceededError');
+      }
+      await put(key, response);
+    };
+    const { fetch, calls } = fetcherFor();
+    const s = store(m, { caches, fetch, smallLanes: 2 });
+    let settled = false;
+    const downloading = s.download();
+    downloading.then(() => { settled = true; }, () => { settled = true; });
+    await quotaRaised.promise;
+    await new Promise(setImmediate);
+    const earlySettlement = settled;
+    release.resolve();
+    await assert.rejects(downloading, { name: 'QuotaExceededError' });
+    assert.equal(earlySettlement, false, 'preload keeps the resource lock until every started write settles');
+    assert.equal((await s.status({ verifyCache: false })).count, 1, 'the late successful put is indexed');
+    assert.equal(calls.includes(`${ORIGIN}/assets/c.png`), false, 'failure prevents a lane from starting another file');
+  });
+
+  test('preload already downloads four small resources concurrently and supports configured lane counts', async () => {
+    for (const lanes of [undefined, 8]) {
+      const files = Array.from({ length: 12 }, (_, i) => ({ url: `/assets/${i}.png`, tier: 1, size: 8 }));
+      let active = 0, maxActive = 0;
+      const fetch = async () => {
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        active--;
+        return new Response('xxxxxxxx');
+      };
+      const s = store(manifest(files), { fetch, smallLanes: lanes });
+      const result = await s.download();
+      assert.equal(maxActive, lanes ?? 4);
+      assert.equal(result.downloaded, files.length);
+      assert.equal((await s.status({ verifyCache: false })).count, files.length);
+    }
   });
 
   test('files bigger than the cap are skipped, never fetched', async () => {
@@ -330,11 +571,11 @@ describe('ResourceStore', () => {
     const m = manifest(files);
     const caches = new MemoryCaches();
     const legacy = await caches.open(cacheName('v1')); // the pre-hash layout: no index, no recorded hashes
-    for (const [url, body] of Object.entries(bodies)) await legacy.put(`${ORIGIN}${url}`, new Response(body));
+    for (const [url, body] of Object.entries(bodies)) await legacy.put(`${ORIGIN}${url}`, new Response(body, { headers: { 'Content-Length': String(body.length) } }));
     const { fetch, calls } = fetcherFor();
     const s = store(m, { caches, fetch });
     const res = await s.download();
-    assert.deepEqual(calls, [], 'every file was verified against its hash and moved: no network at all');
+    assert.deepEqual(calls, [], 'every file has a length header and is moved without body verification');
     assert.equal(res.adopted, 2);
     assert.equal(res.downloaded, 0);
     assert.equal(res.complete, true);
@@ -346,7 +587,7 @@ describe('ResourceStore', () => {
     assert.equal(again.adopted, 0);
   });
 
-  test('a stale entry in an old cache is dropped and fetched, never left to shadow the new file', async () => {
+  test('a legacy entry without a Content-Length is not accepted and is fetched again', async () => {
     const fresh = 'new-bytes';
     const m = manifest([{ url: '/assets/a.png', tier: 1, size: fresh.length, hash: await digest(fresh) }]);
     const caches = new MemoryCaches();
@@ -354,7 +595,7 @@ describe('ResourceStore', () => {
     const { fetch, calls } = fetcherFor({ bodies: { [`${ORIGIN}/assets/a.png`]: fresh } });
     const s = store(m, { caches, fetch });
     const res = await s.download();
-    assert.deepEqual(calls, [`${ORIGIN}/assets/a.png`], 'the stored bytes do not match the manifest hash');
+    assert.deepEqual(calls, [`${ORIGIN}/assets/a.png`], 'missing length header requires a fresh download');
     assert.deepEqual([res.adopted, res.downloaded], [0, 1]);
     assert.deepEqual(await caches.keys(), [CACHE_NAME], 'the stale copy went with the old cache');
     assert.equal(await (await (await caches.open(CACHE_NAME)).match(`${ORIGIN}/assets/a.png`)).text(), fresh);
@@ -388,6 +629,24 @@ describe('ResourceStore', () => {
     assert.equal(res.downloaded, 1);
   });
 
+  test('an incomplete CDN update cannot endorse old bytes under the new audio fingerprint', async () => {
+    const url = '/assets/audio/voice/cn/a.mp3', old = 'old-audio', fresh = 'new-audio';
+    const oldHash = await digest(old), hash = await digest(fresh);
+    const caches = new MemoryCaches();
+    const cache = await seed(caches, ORIGIN + url, old, oldHash);
+    const { fetch, calls } = fetcherFor({ bodies: {
+      [ORIGIN + url]: old, [`${ORIGIN}${url}?sp=${hash}`]: old,
+    } });
+    const s = store(manifest([{ url, tier: 2, size: fresh.length, hash }]), { caches, fetch });
+    const result = await s.download({ tiers: [2] });
+    assert.equal(result.failed, 1);
+    assert.equal(result.downloaded, 0);
+    assert.equal(calls.length, 2);
+    assert.equal(await (await cache.match(ORIGIN + url)).text(), old);
+    assert.equal((await (await cache.match(indexUrl(ORIGIN))).json()).files[ORIGIN + url], oldHash);
+    assert.equal(result.complete, false);
+  });
+
   test('an interrupted run keeps the progress it flushed', async () => {
     const files = Array.from({ length: 70 }, (_, i) => ({ url: `/assets/f${i}.png`, tier: 1, size: 8 }));
     const ac = new AbortController();
@@ -418,9 +677,98 @@ describe('ResourceStore', () => {
     assert.equal(calls.length, 1);
     assert.equal(res.count, 1);
   });
+
+  test('a transport pack imports package-authenticated bytes and commits the manifest index without per-file hashing', async () => {
+    const bytes = new TextEncoder().encode('package authenticated image');
+    const f = { url: '/assets/pack/a.png', tier: 1, size: bytes.byteLength, hash: await digest('package authenticated image') };
+    const caches = new MemoryCaches();
+    const s = store(manifest([f]), { caches });
+    const progress = [];
+    const result = await s.importTransportPack([{ file: s.files[0], bytes }], { onProgress: (p) => progress.push(p) });
+    assert.equal(result.imported, 1);
+    assert.deepEqual(progress.map((p) => [p.done, p.total]), [[0, 1], [1, 1]]);
+    const cache = await caches.open(CACHE_NAME);
+    assert.equal(await (await cache.match(`${ORIGIN}${f.url}`)).text(), 'package authenticated image');
+    const index = await (await cache.match(indexUrl(ORIGIN))).json();
+    assert.equal(index.files[`${ORIGIN}${f.url}`], f.hash);
+    assert.equal((await s.importTransportPack([{ file: s.files[0], bytes }])).imported, 0);
+  });
 });
 
 describe('the Service Worker handler', () => {
+  test('failed resource writes never enqueue phantom runtime metadata', async (t) => {
+    const caches = new MemoryCaches();
+    const cache = await caches.open(CACHE_NAME);
+    const key = `${ORIGIN}/assets/runtime/quota.png`;
+    cache.put = async () => { throw new DOMException('', 'QuotaExceededError'); };
+    t.mock.method(console, 'warn', () => {});
+    const waits = [];
+    const response = await handleResourceRequest(new Request(key), {
+      caches, fetcher: async () => new Response('image'), waitUntil: (task) => waits.push(task),
+    });
+    assert.equal(await response.text(), 'image');
+    await Promise.all(waits);
+    assert.deepEqual(await readRuntimeIndex(cache), {});
+    assert.equal(cache.entries.size, 0);
+  });
+
+  test('fetch lifetime and shared lock remain active through the batch flush; clear cannot race it', async (t) => {
+    const saved = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    let activeShared = 0;
+    const locks = {
+      async request(name, opts, job) {
+        if (name !== 'stronghold-resources-preload') return job({ name });
+        if (opts.mode === 'shared') {
+          activeShared++;
+          try { return await job({ name }); } finally { activeShared--; }
+        }
+        return job(activeShared ? null : { name });
+      },
+    };
+    Object.defineProperty(globalThis, 'navigator', { value: { locks }, configurable: true });
+    t.after(() => { if (saved) Object.defineProperty(globalThis, 'navigator', saved); else delete globalThis.navigator; });
+    const caches = new MemoryCaches();
+    const waits = [];
+    const responses = await Promise.all([1, 2].map((i) =>
+      handleResourceRequest(new Request(`${ORIGIN}/assets/runtime/locked-${i}.png`), {
+        caches, fetcher: async () => new Response('image'), waitUntil: (task) => waits.push(task),
+      })));
+    assert.equal(waits.length, 2);
+    assert.equal(activeShared, 2);
+    assert.equal(await locks.request('stronghold-resources-preload', { ifAvailable: true }, (lock) => !!lock), false);
+    assert.equal(await responses[0].text(), 'image', 'network reply is usable while metadata is pending');
+    await Promise.all(waits);
+    assert.equal(activeShared, 0, 'waitUntil covers index persistence, not only Cache.put');
+    await locks.request('stronghold-resources-preload', { ifAvailable: true }, async (lock) => {
+      assert.ok(lock);
+      await caches.delete(CACHE_NAME);
+    });
+    assert.deepEqual(await caches.keys(), [], 'no deferred index task recreates the cleared cache');
+  });
+
+  test('runtime writes clone before browser consumption and record metadata only after Cache.put succeeds', async () => {
+    const caches = new MemoryCaches();
+    const cache = await caches.open(CACHE_NAME);
+    const open = caches.open.bind(caches);
+    const gate = Promise.withResolvers();
+    let opens = 0;
+    caches.open = async (...args) => {
+      if (++opens > 1) await gate.promise; // lookup can finish; only the background writer waits
+      return open(...args);
+    };
+    const key = `${ORIGIN}/assets/runtime/consume.png`;
+    const waits = [];
+    const response = await handleResourceRequest(new Request(key), {
+      caches, fetcher: async () => new Response('runtime-body'), waitUntil: (task) => waits.push(task),
+    });
+    assert.equal(await response.text(), 'runtime-body', 'the browser can consume before cache.open resolves');
+    gate.resolve();
+    await Promise.all(waits);
+    assert.equal(await (await cache.match(key)).text(), 'runtime-body');
+    const runtime = await readRuntimeIndex(cache);
+    assert.ok(Object.hasOwn(runtime, key));
+    assert.equal(await cache.match(indexUrl()), undefined, 'SW never rewrites the preload fingerprint index');
+  });
   const cached = async () => {
     const caches = new MemoryCaches();
     await (await caches.open(CACHE_NAME)).put(`${ORIGIN}/assets/a.png`, new Response('0123456789', { headers: { 'Content-Type': 'image/png' } }));

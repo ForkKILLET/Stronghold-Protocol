@@ -41,7 +41,7 @@ export function createUserApi({users,registry,lobby,data,moderation,trustProxy,l
    if(pathname==='/api/user/stats'&&req.method==='GET'){
     const cursor=new URL(req.url,'http://local').searchParams.get('before');
     const before=cursor==null?null:Number(cursor);if(before!=null&&(!Number.isSafeInteger(before)||before<1)){json(req,res,400,{error:'CURSOR'});return true;}
-    json(req,res,200,await users.call('stats',{id:user.id,before}));return true;
+    json(req,res,200,await users.call('stats',{id:user.id,before,modded:new URL(req.url,'http://local').searchParams.get('modded')==='1'}));return true;
    }
    if(req.method!=='POST'){json(req,res,405,{error:'METHOD'});return true;}
    const input=await body(req);

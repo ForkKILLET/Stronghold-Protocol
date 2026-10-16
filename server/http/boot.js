@@ -1,13 +1,16 @@
 // server/http/boot.js — running the server as a process (`node server/index.js`, npm start, scripts/launch.mjs):
 //
-//   * the boot banner: release version, the Local URL, the LAN URLs when listening on every interface, the
-//     cloudflared command for internet play;
+//   * the boot banner: release version, the Local URL, the LAN URLs when listening on every interface, the plugin
+//     studio's address with its key (server/studio/key.js: this machine and the local network only), the cloudflared
+//     command for internet play;
 //   * a server that cannot start exits 1 (with a hint when the port is in use); unhandled rejections and uncaught
 //     exceptions are logged, not fatal;
 //   * graceful shutdown on SIGINT/SIGTERM (rooms get room.closed{reason:'shutdown'}, sockets close 1001); a second
 //     signal exits at once, and the process exits anyway 5 s after the first.
 
 import fs from 'node:fs';
+import { applyPendingUpdate } from '../update.js';
+import { ROOT } from './config.js';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { APP_VERSION, DEV_BUILD } from '../../shared/constants.js';
@@ -58,7 +61,10 @@ export function isProcessEntry(metaUrl) {
   }
 }
 
-/** Print the boot banner of a started server. @param {{ url: string, host: string, port: number }} srv */
+/**
+ * Print the boot banner of a started server.
+ * @param {{ url: string, host: string, port: number, studio?: { pageUrl: (base: string) => string | null } | null }} srv
+ */
 export function printBanner(srv) {
   console.log(`\n  卫戍协议：盟约 · Stronghold Protocol: Alliance v${APP_VERSION}`);
   if (DEV_BUILD) console.log('  ! 开发版（dev 分支）：不稳定，请勿用于公开服务器 · development build — unstable, not for public servers');
@@ -66,6 +72,9 @@ export function printBanner(srv) {
   if (srv.host === '0.0.0.0' || srv.host === '::') {
     for (const u of lanUrls(srv.port)) console.log(`  LAN:     ${u}`);
   }
+  // the plugin studio with its key: what a change in it needs (a raw TCP tunnel looks like this machine; the key does not)
+  const studio = srv.studio?.pageUrl?.(srv.url);
+  if (studio) console.log(`  Studio:  ${studio}  (插件工作台 · plugin studio — this machine and the LAN; the link carries its key)`);
   console.log('  Internet: cloudflared tunnel --url ' + `http://localhost:${srv.port}` + '\n');
 }
 
@@ -76,6 +85,7 @@ export function printBanner(srv) {
 export async function runMain(start) {
   process.on('unhandledRejection', (e) => console.error('[process] unhandled rejection', e));
   process.on('uncaughtException', (e) => console.error('[process] uncaught exception', e));
+  if (applyPendingUpdate(ROOT).state === 'failed') { process.exitCode = 1; return; }
   let srv;
   try {
     srv = await start();

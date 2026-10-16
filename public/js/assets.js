@@ -23,6 +23,14 @@
 // by its view (`spine.restart(entry)`, RefLru.restart); such a fresh load — and any load after a failure — drops PIXI's
 // still-pending requests of that skeleton first (forgetPendingSpine), so it does not join them.
 //
+// Cosmetic plugins (DESIGN §32 P1a, docs/PLUGINS.md §9): the manifest the helpers read is the installation's with the
+// cosmetic layers laid over it — `cosmetics` (public/js/cosmetics.js createCosmeticLayers; public/js/content.js sets
+// them): the room's visual set, then the player's personal plugins, composed on the page's own manifest (every plugin
+// URL built from a set's checked composition, every reference copied out of that manifest: shared/plugins/visual.js). A
+// layer change is told like a late manifest (onChange 'manifest'). A plugin file that fails to load (an image, a model)
+// is reported (`cosmetics.fail`): its entry falls back to the art beneath it. This store itself loads with the first
+// match (ui/fieldHost.js), as in 0.2.6: the title page needs neither it nor its Spine cache.
+//
 // Pure at import time: no PIXI, no DOM access until a loader actually runs (Node tests import this file).
 //
 //   import { assets } from './assets.js';          // browser singleton (manifest fetched on first use, or seeded)
@@ -48,6 +56,8 @@
 
 import { ASSETS_CDN, DATA_CDN } from './asset-cdn.js';
 import { rewriteAssetPaths, dataUrl } from '../../shared/cdn.js';
+import { ART_REQUEST_MS, installArtParsers, loadRuntimeImage, subscribeArtRecovery } from './resourceNetwork.js';
+import { cosmetics, createCosmeticLayers, EMPTY_MANIFEST } from './cosmetics.js';
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const str = (v) => (typeof v === 'string' && v ? v : null);
@@ -76,7 +86,15 @@ export function avatarUrl(m, id, opts) {
     rec = get(get(m, 'chars'), base);
     if (rec && /_2$/.test(s)) e2 = true;
   }
-  if (rec) return str(e2 && rec.avatarE2) || str(rec.avatar) || null;
+  if (rec) {
+    // 皮肤 (docs/SKINS.md): an installed skin may ship its own avatar; `opts.skin` is a skinId, and an unknown one
+    // (this install does not have it) falls back to the operator's own avatar rather than failing
+    if (opts && str(opts.skin)) {
+      const skin = get(get(rec, 'skins'), opts.skin);
+      if (skin && str(skin.avatar)) return str(skin.avatar);
+    }
+    return str(e2 && rec.avatarE2) || str(rec.avatar) || null;
+  }
   return null;
 }
 
@@ -90,7 +108,7 @@ export function portraitUrl(m, id, opts) {
     if (rec && /_2$/.test(s)) e2 = true;
   }
   if (!rec) return null;
-  return str(e2 && rec.portraitE2) || str(rec.portrait) || null;
+  return str(opts?.skin && rec.skins?.[opts.skin]?.portrait) || str(e2 && rec.portraitE2) || str(rec.portrait) || null;
 }
 
 export function enemyIconUrl(m, enemyId) {
@@ -159,9 +177,19 @@ export function spineEntry(m, id, opts) {
   const s = str(id);
   if (!s) return null;
   const ch = get(get(m, 'chars'), s) || get(get(m, 'chars'), baseCharId(s));
-  if (ch && isObj(ch.spine)) {
-    const sp = (opts && opts.back && isObj(ch.spine.back)) ? ch.spine.back : ch.spine.front;
-    return validSpine(sp) ? sp : null;
+  if (ch) {
+    // 皮肤 (docs/SKINS.md): an installed skin replaces the operator's own model. `opts.skin` is a skinId; when it
+    // is absent — or names a skin this install does not have — the operator's default model is used, so a client
+    // meeting a manifest without that skin still works.
+    const skin = opts && str(opts.skin) ? get(get(ch, 'skins'), opts.skin) : null;
+    const src = validSpine(skin?.spine?.front) ? skin.spine : ch.spine;
+    if (isObj(src)) {
+      const sp = opts?.back && validSpine(src.back) ? src.back : src.front;
+      if (!validSpine(sp)) return null;
+      const fallback = opts?.back && validSpine(ch.spine?.back) ? ch.spine.back : ch.spine?.front;
+      // Missing CDN skin bytes should degrade to the original model, not an indefinite placeholder.
+      return src !== ch.spine && validSpine(fallback) ? { ...sp, fallback } : sp;
+    }
   }
   const tk = get(get(m, 'tokens'), s);
   if (tk) {
@@ -198,7 +226,8 @@ export function localSpineEntry(sl, local, web) {
   const skel = url(sl.skel), atlas = url(sl.atlas);
   const textures = Array.isArray(sl.textures) ? sl.textures.map(url) : [];
   let entry = null;
-  if (skel && atlas && skel.replace(/\.skel$/, '.atlas') === atlas && textures.length && textures.every(Boolean)) {
+  const pairedAtlas = skel && [skel.replace(/\.skel$/, '.atlas'), skel.replace(/\.skel$/, '.webp.atlas')].includes(atlas);
+  if (skel && atlas && pairedAtlas && textures.length && textures.every(Boolean)) {
     entry = { skel, atlas, textures, pma: !!sl.pma, anims: sl.anims, animations: sl.animations, events: sl.events, hits: sl.hits, bounds: sl.bounds, local: true, fallback: web || null };
     if (!validSpine(entry)) entry = null;
   }
@@ -206,10 +235,13 @@ export function localSpineEntry(sl, local, web) {
   return entry;
 }
 
-/** Whether an operator/token/enemy has a Back model. */
-export function hasBackSpine(m, id) {
+/** Whether an operator/token/enemy has a Back model. `skinId` asks about an installed skin (docs/SKINS.md). */
+export function hasBackSpine(m, id, skinId) {
   const ch = get(get(m, 'chars'), str(id) || '') || get(get(m, 'chars'), baseCharId(id) || '');
-  return !!(ch && isObj(ch.spine) && validSpine(ch.spine.back));
+  if (!ch) return false;
+  const skin = str(skinId) ? get(get(ch, 'skins'), skinId) : null;
+  const src = validSpine(skin?.spine?.front) ? skin.spine : ch.spine;
+  return !!(isObj(src) && validSpine(src.back));
 }
 
 /**
@@ -229,8 +261,8 @@ export function validSpine(sp) {
 }
 
 /** Best 2D picture for a unit asset id (operator avatar, token avatar, enemy icon, item icon). */
-export function unitPictureUrl(m, id) {
-  return avatarUrl(m, id) || tokenAvatarUrl(m, id) || enemyIconUrl(m, id) || itemIconUrl(m, id) || null;
+export function unitPictureUrl(m, id, opts) {
+  return avatarUrl(m, id, opts) || tokenAvatarUrl(m, id) || enemyIconUrl(m, id) || itemIconUrl(m, id) || null;
 }
 
 // ---- audio ---------------------------------------------------------------------------------------------------
@@ -264,6 +296,12 @@ export function unitSfxUrl(m, id, kind, skillIndex) {
   }
   return str(u[kind]);
 }
+
+// ---- cosmetic plugins (DESIGN §32 P1a) ---------------------------------------------------------------------------
+
+// The layers live in public/js/cosmetics.js (small: the title page loads it, not this store); re-exported for the code
+// and the tests that read them from here.
+export { createCosmeticLayers, cosmetics };
 
 // ---- generic caches ----------------------------------------------------------------------------------------
 
@@ -567,6 +605,9 @@ export function localAssetUrl(m, group, name) {
 
 /** Default browser image loader. */
 export function loadImageElement(url) {
+  if (typeof Image !== 'undefined' && typeof fetch === 'function' && typeof URL.createObjectURL === 'function') {
+    return loadRuntimeImage(url);
+  }
   return new Promise((resolve, reject) => {
     if (typeof Image === 'undefined') { reject(new Error('no Image in this environment')); return; }
     const img = new Image();
@@ -578,15 +619,31 @@ export function loadImageElement(url) {
   });
 }
 
+const pendingSpines = new Map();
 /** Default Spine loader: PIXI.Assets.load(skel) → spineData (needs globalThis.PIXI + PIXI.spine). */
 export async function loadSpineData(entry, opts) {
   const PIXI = globalThis.PIXI;
   if (!PIXI || !PIXI.Assets || !PIXI.spine) throw new Error('PIXI / pixi-spine not loaded');
-  if (opts && opts.fresh) forgetPendingSpine(entry, opts.keep);
-  const res = await PIXI.Assets.load(entry.skel);
-  const data = res && (res.spineData || res);
-  if (!data || !Array.isArray(data.animations)) throw new Error(`bad spine data: ${entry.skel}`);
-  return data;
+  // A resumed view must not abandon a healthy slow transfer and duplicate all
+  // of its skeleton/atlas/page requests.
+  if (pendingSpines.has(entry.skel)) return pendingSpines.get(entry.skel);
+  const pending = load().finally(() => {
+    if (pendingSpines.get(entry.skel) === pending) pendingSpines.delete(entry.skel);
+  });
+  pendingSpines.set(entry.skel, pending);
+  return pending;
+  async function load() {
+    installArtParsers(PIXI);
+    if (opts && opts.fresh) forgetPendingSpine(entry, opts.keep);
+    // A dual-format release retains the original .atlas/.png for old tabs. The
+    // skeleton bytes stay unchanged, while new manifests select a .webp.atlas.
+    const inferredAtlas = entry.skel.replace(/\.skel$/, '.atlas');
+    const res = await PIXI.Assets.load(entry.atlas && entry.atlas !== inferredAtlas
+      ? { src: entry.skel, data: { spineAtlasFile: entry.atlas } } : entry.skel);
+    const data = res && (res.spineData || res);
+    if (!data || !Array.isArray(data.animations)) throw new Error(`bad spine data: ${entry.skel}`);
+    return data;
+  }
 }
 
 /**
@@ -733,19 +790,25 @@ const transientFetch = (err) => {
  * after MANIFEST_BACKOFF_MS (bounded; a 404 or a body that is no JSON only on the next `ready()`). `onChange(fn)` is told
  * when the manifest (`'manifest'`) or the optional local-client manifest (`'local'`) arrives, so views built without it
  * resolve their models then (render/app.js → UnitView.retryAssets).
+ * Cosmetic plugins (`opts.cosmetics`, createCosmeticLayers; the browser singleton has the page's `cosmetics`): every
+ * helper reads the manifest with the layers laid over it, `manifest` is that one, and a layer change is told as
+ * 'manifest' (the views re-resolve what they draw next).
  * @param {{ url?: string, assetsCdn?: string, dataCdn?: string, fetch?: typeof fetch, manifest?: object, localManifest?: object, loadImage?: (url) => Promise<any>,
  *           loadSpine?: (entry) => Promise<any>, unloadSpine?: (entry, value, keepPages:Set<string>) => (Promise<void>|void),
  *           spineMax?: number, spineTimeout?: number, spineWeigh?: (key, spineData) => number, spineIdleBytes?: number,
  *           spineQuietBytes?: number, spineIdleGrace?: number, spineEvictDelay?: number, spineQuietDelay?: number,
  *           spineTimers?: { set, clear }, spineNow?: () => number, retryDelays?: number[], backoff?: number[],
- *           wait?: (ms: number) => Promise<void>, timers?: { set, clear } }} [opts]
+ *           wait?: (ms: number) => Promise<void>, timers?: { set, clear },
+ *           cosmetics?: ReturnType<typeof createCosmeticLayers> | null }} [opts]
  */
 export function createAssets(options) {
   const opts = options && typeof options === 'object' ? options : {};
+  const layers = opts.cosmetics && typeof opts.cosmetics.apply === 'function' ? opts.cosmetics : null;
   const url = opts.url || dataUrl('/data/assets.json', opts.dataCdn ?? DATA_CDN);
-  const localUrl = opts.localUrl || '/data/local-assets.json';
+  const localUrl = opts.localUrl || dataUrl('/data/local-assets.json', opts.dataCdn ?? DATA_CDN);
   let localPromise = isObj(opts.localManifest) ? Promise.resolve(opts.localManifest) : null;
   let localManifest = isObj(opts.localManifest) ? opts.localManifest : null;
+  let localLoading = false;
   const doFetch = opts.fetch || ((...a) => globalThis.fetch(...a));
   let manifest = isObj(opts.manifest) ? opts.manifest : null;
   let readyPromise = manifest ? Promise.resolve(manifest) : null;
@@ -759,6 +822,7 @@ export function createAssets(options) {
     clear: (t) => clearTimeout(t),
   };
   const listeners = new Set();
+  let offRecovery = null;
   let warned = false;
   let backoffN = 0;          // background tries used since the last success
   let backoffTimer = null;
@@ -842,8 +906,10 @@ export function createAssets(options) {
       return (opts.unloadSpine || unloadSpineData)(e, value, keep);
     },
     max: opts.spineMax ?? 60,
-    timeout: opts.spineTimeout ?? 20000,
-    concurrency: opts.spineConcurrency ?? 6,
+    // The real loader now owns per-request idle/absolute deadlines. Do not
+    // detach its Promise at 20 s while useful bytes are still arriving.
+    timeout: opts.spineTimeout ?? (opts.loadSpine ? ART_REQUEST_MS : 0),
+    concurrency: opts.spineConcurrency ?? 4,
     // memory budget (a parsed skeleton holds ~0.1–12 MB): idle skeletons beyond SPINE_IDLE_BYTES go, and all of
     // them once no scene has referenced or held any for SPINE_QUIET_DELAY_MS (lobby / room / result; a field view in
     // battle mode holds the cache — see the header), each after a grace that covers a prep ⇄ battle switch; evictions
@@ -858,26 +924,46 @@ export function createAssets(options) {
     now: opts.spineNow,
   });
 
-  /** Image element (cached; failures resolve to null). */
+  /**
+   * A file of a cosmetic layer failed to load (DESIGN §32 P1a): its entry falls back to the art beneath it from now on
+   * (createCosmeticLayers fail — the listeners re-resolve their art). Whether it was a layer's file.
+   */
+  const failed = (u) => { try { return !!layers?.fail?.(u); } catch { return false; } };
+
+  /** Image element (cached; failures resolve to null — a cosmetic plugin's image that failed falls back: `failed`). */
   function image(u, { retry = false } = {}) {
     const s = str(u);
     if (!s) return Promise.resolve(null);
     let e = images.get(s);
-    if (retry && e?.done && !e.value) { images.delete(s); e = null; }
+    if (e?.done && !e.value && (retry || Date.now() - e.failedAt >= 60000)) { images.delete(s); e = null; }
     if (!e) {
-      e = { value: null, done: false, promise: null };
+      e = { value: null, done: false, promise: null, failedAt: 0 };
       e.promise = Promise.resolve().then(() => loadImage(s)).then(
-        (img) => { e.value = img; e.done = true; return img; },
-        () => { e.done = true; return null; },
+        (img) => { e.value = img; e.done = true; e.failedAt = Date.now(); if (!img) failed(s); return img; },
+        () => { e.done = true; e.failedAt = Date.now(); failed(s); return null; },
       );
       images.set(s, e);
     }
     return e.promise;
   }
 
+  let lastRecovery = -Infinity;
+  const recover = () => {
+    if (globalThis.document?.hidden || Date.now() - lastRecovery < 1000) return;
+    lastRecovery = Date.now();
+    for (const [url, entry] of images) {
+      if (!entry.done || entry.value) continue;
+      image(url, { retry: true }).then((value) => { if (value && listeners.size) notify('image'); });
+    }
+    if (!manifest) void ready();
+    if (!localManifest && !localLoading) { localPromise = null; void local(); }
+    notify('recover');
+  };
+
   /** Optional local-client art manifest (null when absent: every consumer falls back). Fetched once (or seeded). */
   function local() {
     if (!localPromise) {
+      localLoading = true;
       localPromise = (async () => {
         try {
           const res = await doFetch(localUrl, { cache: 'no-cache' });
@@ -886,12 +972,14 @@ export function createAssets(options) {
           if (!localManifest && isObj(json) && isObj(json.groups)) { localManifest = json; notify('local'); }
         } catch { /* optional art: absent */ }
         return localManifest;
-      })();
+      })().finally(() => { localLoading = false; });
     }
     return localPromise;
   }
 
-  const m = () => manifest || {};
+  const m = () => (layers ? layers.apply(manifest || EMPTY_MANIFEST) : manifest || {});
+  // a layer switched on or off draws like a manifest that arrived: the views re-resolve their art (render/app.js)
+  if (layers) layers.subscribe(() => notify('manifest'));
   return {
     ready,
     local,
@@ -912,10 +1000,18 @@ export function createAssets(options) {
     onChange(fn) {
       if (typeof fn !== 'function') return () => {};
       listeners.add(fn);
-      return () => listeners.delete(fn);
+      if (listeners.size === 1) offRecovery = subscribeArtRecovery(recover);
+      return () => {
+        listeners.delete(fn);
+        if (!listeners.size) {
+          offRecovery?.();
+          offRecovery = null;
+        }
+      };
     },
     localUrl: (group, name) => localAssetUrl(localManifest, group, name),
-    get manifest() { return manifest; },
+    /** The manifest the helpers read (the cosmetic layers over the loaded one), null until one is loaded. */
+    get manifest() { return manifest ? m() : null; },
     get loaded() { return !!manifest; },
     avatar: (id, o) => avatarUrl(m(), id, o),
     portrait: (id, o) => portraitUrl(m(), id, o),
@@ -928,9 +1024,9 @@ export function createAssets(options) {
     profIcon: (p, kind) => profIconUrl(m(), p, kind),
     subProfIcon: (s) => subProfIconUrl(m(), s),
     ui: (name) => uiUrl(m(), name),
-    picture: (id) => unitPictureUrl(m(), id),
+    picture: (id, o) => unitPictureUrl(m(), id, o),
     spineEntry: (id, o) => spineEntry(m(), id, localManifest ? { ...o, local: localManifest } : o),
-    hasBack: (id) => hasBackSpine(m(), id),
+    hasBack: (id, skinId) => hasBackSpine(m(), id, skinId),
     audio: {
       bgm: (kind) => bgmEntry(m(), kind),
       sfx: (group, key) => sfxUrl(m(), group, key),
@@ -938,6 +1034,12 @@ export function createAssets(options) {
     },
     /** Cached image element promise (null on failure). */
     image,
+    /**
+     * Report a file that failed to load outside this store (a texture another loader made — render/app.js's shadow, an
+     * `<img>` of the interface: public/js/content.js): a cosmetic plugin's file falls back. Whether it was one.
+     * @param {string} u
+     */
+    failed,
     /** Already-loaded image element or null (sync). */
     imageNow(u) { const e = images.get(str(u) || ''); return e && e.done ? e.value : null; },
     /**
@@ -959,8 +1061,14 @@ export function createAssets(options) {
      * hold() → release function (a scene that will need its skeletons again: RefLru).
      */
     spine: {
-      acquire: (entry, o) => (validSpine(entry) ? spine.acquire(entry.skel, entry, o) : Promise.reject(new Error('no spine entry'))),
-      restart: (entry) => (validSpine(entry) ? spine.restart(entry.skel, entry) : false),
+      // a cosmetic plugin's model that fails to load (any of its files) falls back to the installation's: its view loads
+      // that one (render/units.js retryAssets) — not while the tab is hidden (a load the hidden tab left hanging times out
+      // without the file being at fault: GitHub #68; the view tries again when it is shown)
+      acquire: (entry, o) => (validSpine(entry) ? spine.acquire(entry.skel, entry, o).catch((err) => {
+        if (!globalThis.document?.hidden) failed(entry.skel);
+        throw err;
+      }) : Promise.reject(new Error('no spine entry'))),
+      restart: (entry) => (validSpine(entry) && (opts.loadSpine || !pendingSpines.has(entry.skel)) ? spine.restart(entry.skel, entry) : false),
       release: (entry) => { if (entry && entry.skel) spine.release(entry.skel); },
       peek: (entry) => (entry && entry.skel ? spine.peek(entry.skel) : null),
       hold: () => spine.hold(),
@@ -971,5 +1079,5 @@ export function createAssets(options) {
   };
 }
 
-/** Browser singleton. */
-export const assets = createAssets();
+/** Browser singleton (with the page's cosmetic layers). */
+export const assets = createAssets({ cosmetics });

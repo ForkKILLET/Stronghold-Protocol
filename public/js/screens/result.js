@@ -17,7 +17,8 @@
 
 import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, MicroLabel, DifficultyTag } from '../ui/components.js';
-import { useGameData, Img, UnitThumb, BandIcon, PlayerAvatar, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
+import { useGameData, Img, UnitThumb, BandIcon, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
+import { ResultAvatar } from '../ui/resultAvatar.js';
 import { normalizeResult, fmtNum, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
 import { data } from '../data.js';
 import { enemyIconUrl, titleIconUrl, uiUrl } from '../ui/assetUrls.js';
@@ -25,6 +26,7 @@ import { store, useStore, emptyMatch } from '../store.js';
 import { audio } from '../audio.js';
 import { CombatMetricsPanel } from '../ui/combatMetrics.js';
 import { sentText } from '../ui/lang.js';
+import { UnofficialMark } from '../ui/pluginTag.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -76,7 +78,7 @@ function PlayerCard({ p, myId, titles, best, solo = false }) {
   const bonds = resultBonds(p.bonds, (id) => gd.bond(id));
   return html`<article class=${cx('rcard', p.playerId === myId && 'is-self', p.alive === false && 'is-dead')}>
     <header class="rcard__head">
-      <${PlayerAvatar} player=${p} self=${p.playerId === myId} />
+      <${ResultAvatar} player=${p} self=${p.playerId === myId} />
       <div class="rcard__who">
         <b class="rcard__name">${p.name}${p.isBot ? html`<span class="rcard__ai">AI</span>` : null}${p.playerId === myId ? html`<span class="rcard__you">${t('你')}</span>` : null}</b>
         <span class="rcard__band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : '—'}</span>
@@ -110,16 +112,19 @@ export function ResultScreen() {
   const pub = useStore((s) => s.match.public);
   const myId = useStore((s) => s.me.playerId);
   const hasRoom = useStore((s) => !!s.room);
+  const content = useStore((s) => s.room?.content ?? null);
   const back = () => store.set({ match: emptyMatch() });
-  return html`<${ResultView} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} />`;
+  return html`<${ResultView} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} content=${content} />`;
 }
 
 /**
  * The settlement view of one m.result payload — the live screen above, and the stats page's re-view of a stored match
  * (screens/stats.js, which hands it the payload recordToResult rebuilt; `quiet`: no settlement jingle).
- * @param {{ res: any, pub?: any, myId?: string|null, backLabel: string, onBack: () => void, quiet?: boolean }} props
+ * `content`: the room's content (room.state.content, or a stats record's) — gameplay plugins mark the result unofficial
+ * (DESIGN §32.6).
+ * @param {{ res: any, pub?: any, myId?: string|null, backLabel: string, onBack: () => void, quiet?: boolean, content?: any }} props
  */
-export function ResultView({ res, pub = null, myId = null, backLabel, onBack, quiet = false }) {
+export function ResultView({ res, pub = null, myId = null, backLabel, onBack, quiet = false, content = null }) {
   const gd = useGameData();
   const [metricsOpen, setMetricsOpen] = useState(false);
   const r = normalizeResult(res, pub);
@@ -146,6 +151,7 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
         <div class="result__logo"><${Sprite} k="entry/season_logo_settle" class="result__logoimg" fallback=${html`<${MicroLabel} tone="mint">STRONGHOLD PROTOCOL</${MicroLabel}>`} /></div>
         ${r.difficulty ? html`<${DifficultyTag} difficulty=${r.difficulty} size="lg" />` : null}
         <h1 class="result__headline">${r.victory ? t('模拟完成') : t('模拟失败')}</h1>
+        <${UnofficialMark} room=${content ? { content } : null} class="result__modmark" />
         <p class="result__sub">${r.victory ? t('成功卫戍 · 敌方领袖已被击败') : t('防线已被突破')}</p>
         <div class="result__rounds">
           <span class="result__rlabel">${t('通过回合')}</span>
@@ -171,6 +177,7 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
         ${r.players.length ? r.players.map((p) => html`<${PlayerCard} key=${p.playerId} p=${p} myId=${myId} titles=${titles} best=${best} solo=${r.players.length < 2} />`)
           : html`<p class="t-dim">${t('暂无结算数据')}</p>`}
       </section>
+      <div class="ui-slot" data-ui-slot="result.tab" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
     </main>
     ${r.players.some(p => p.playerId === myId && !p.isBot) ? html`<div class="gm__corner result__metrics">
       ${metricsOpen ? html`<${CombatMetricsPanel} myId=${myId} initialScope="round" onClose=${() => setMetricsOpen(false)} />` : null}
@@ -179,4 +186,3 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
     </div>` : null}
   </div>`;
 }
-

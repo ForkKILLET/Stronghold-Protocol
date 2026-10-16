@@ -267,7 +267,7 @@
 .dorder__preview-icon { opacity:.65; padding:3px; }
 
 .communication-activity { display:flex; flex-direction:column; align-items:flex-start; gap:4px; min-width:0; padding:8px; border-left:2px solid var(--mint-700); background:rgba(0,0,0,.24); }
-.communication-activity > b { color:var(--text-lo); font-size:max(.12rem,10px); }
+.communication-activity > b { color:var(--text-lo); font-size:max(calc(.12 * var(--t)),10px); }
 .communication-activity .communication-bubble { position:relative; max-width:100%; box-sizing:border-box; }
 .communication-activity .ebubble:not(.ebubble--chat) { width:1rem; height:.8rem; }
 .communication-activity .ebubble:not(.ebubble--chat) .ebubble__icon { inset:0; width:100%; height:100%; padding:.1rem; }

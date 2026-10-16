@@ -123,7 +123,7 @@ export class TestClient {
    * @param {object} msg @param {number} [timeout]
    * @returns {Promise<any>}
    */
-  request(msg, timeout = 2000) {
+  request(msg, timeout = msg?.t === 'room.setPlugins' ? 15000 : 2000) {
     const rid = this.send({ ...msg, rid: this.nextRid++ });
     return this.waitFor(null, (m) => REPLY_TYPES.has(m.t) && m.rid === rid, timeout);
   }

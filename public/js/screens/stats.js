@@ -1,4 +1,6 @@
 import {profileStore,ProfileEditor,ProfileRecovery,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
+import {AchievementContent} from '../ui/achievements.js';
+import {achievementStats} from '../../../shared/achievementStats.js';
 import {mergeAccountHistory} from '../../../shared/userStats.js';
 // Unified doctor archive, using the original full-screen statistics layout (PR #323 by @2321Robin).
 // Account totals come from all private server settlements. Paginated history combines those rows
@@ -19,7 +21,7 @@ import { store, useStore, selectRoute, loadPref, savePref } from '../store.js';
 import { ResultView } from './result.js';
 import { toast, toastError } from '../ui/toasts.js';
 import {
-  loadStats, saveStats, cachedAccountStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf,
+  loadStats, saveStats, cachedAccountStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf, isModdedRecord,
   recordToResult, IMPORT_MAX_CHARS,
 } from '../ui/stats.js';
 import { t, N_ } from '../../../shared/i18n.js';
@@ -33,16 +35,17 @@ export const HISTORY_PAGE = 50;
 const statsStore = profileStore;
 
 /** Open the stats viewer (title screen / lobby / room entry points). */
-export function openStats() {
+export function openStats(tab = 'overview') {
   data.load('config');
   data.load('bands');
   data.load('assets');
-  openProfile();
+  openProfile(typeof tab === 'string' ? tab : 'overview');
 }
 export const closeStats = () => statsStore.set({ open: false });
 
 const TABS = [
   { id: 'overview', name: N_('总览'), micro: 'OVERVIEW' },
+  { id: 'achievements', name: N_('成就'), micro: 'ACHIEVEMENTS' },
   { id: 'bands', name: N_('策略'), micro: 'STRATEGIES' },
   { id: 'totals', name: N_('战斗累计'), micro: 'COMBAT TOTALS' },
   { id: 'history', name: N_('对局记录'), micro: 'HISTORY' },
@@ -125,7 +128,7 @@ function Overview({ agg, gd, account }) {
       <${StatCard} micro="BEST ROUND" value=${fmtNum(agg.rounds.max)} label=${t('最远回合')} />
       <${StatCard} micro="TIME PLAYED" value=${agg.missingFrame?'—':playedText(agg.duration.totalMs)} label=${t('累计时长')} />
     </div>
-    <p class="st-split"><span>${t('单人')} <b class="num">${fmtNum(agg.byMode.solo)}</b></span><span>${t('同盟')} <b class="num">${fmtNum(agg.byMode.coop)}</b></span></p>
+    <p class="st-split"><span>${t('单人')} <b class="num">${fmtNum(agg.byMode.solo.games)}</b></span><span>${t('同盟')} <b class="num">${fmtNum(agg.byMode.coop.games)}</b></span></p>
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table">
       <thead><tr><th>${t('难度')}</th><th class="num">${t('局数')}</th><th class="num">${t('胜场')}</th><th class="num">${t('胜率')}</th><th class="num">${t('隐秘核心通关')}</th></tr></thead>
       <tbody>
@@ -212,7 +215,7 @@ function HistoryRow({ rec, gd, onOpen }) {
     <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : self?.bandId || '—'}</span></td>
     <td class="st-res">${quit ? html`<span class="t-quit">${t('中途退出')}</span>` : html`<span class=${won ? 't-win' : 't-lose'}>${won ? t('胜') : t('负')}</span>`}
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}</td>
-    <td class="num">${known ? fmtNum(rounds) : '—'}</td>
+    <td>${isModdedRecord(rec) ? t('非官方') : ''}</td><td class="num">${known ? fmtNum(rounds) : '—'}</td>
     <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
   </tr>`;
 }
@@ -241,18 +244,19 @@ function Replay({ rec, onBack }) {
   const gd = useGameData();
   const res = useMemo(() => recordToResult(rec), [rec]);
   if (!gd.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;
-  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} backLabel=${t('返回统计')} onBack=${onBack} quiet=${true} />`;
+  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} backLabel=${t('返回统计')} onBack=${onBack} quiet=${true} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
 }
 
 /** The overlay, rendered while open (its data hooks run only then). */
 function StatsScreen({ tab }) {
-  const ready = useData('config', 'bands', 'assets');
+  const ready = useData('config', 'bands', 'assets', 'chess', 'bonds', 'items', 'backups');
   const gd = useMemo(() => makeLookups(ready), [ready, data.locale()]);
   const [stats, setStats] = useState(() => loadStats());
   const [replay, setReplay] = useState(null);
   const profile=useStore(s=>s,Object.is,profileStore);
-  const [account,setAccount]=useState(()=>cachedAccountStats(loadPref('doctorStats',null),profile.user?.id));
+  const [account,setAccount]=useState(()=>(()=>{const c=cachedAccountStats(loadPref('doctorStats',null),profile.user?.id);return c?.withModded?null:c;})());
   const [loading,setLoading]=useState(false);
+  const [withModded,setWithModded]=useState(false);
   const [offline,setOffline]=useState(profile.status==='offline');
   const requestRef=useRef(false);
   const accountRef=useRef(account);accountRef.current=account;
@@ -260,15 +264,15 @@ function StatsScreen({ tab }) {
     if(!profile.enabled||!profile.user||requestRef.current)return;
     requestRef.current=true;setLoading(true);
     try{
-      const page=await userRequest('/api/user/stats'+(more?'?before='+accountRef.current.next:''));
+      const page=await userRequest('/api/user/stats?modded='+(withModded?'1':'0')+(more?'&before='+accountRef.current.next:''));
       if(page.userId!==profile.user.id){await initProfile();throw new Error('Profile changed');}
-      const next=more?{...accountRef.current,...page,records:[...accountRef.current.records,...page.records]}:page;
+      const next={...(more?{...accountRef.current,...page,records:[...accountRef.current.records,...page.records]}:page),withModded};
       setAccount(next);setOffline(false);profileStore.set({status:'saved'});
       savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200),next:next.records.length>200?null:next.next}});
     }catch{setOffline(true);}
     finally{requestRef.current=false;setLoading(false);}
   };
-  useEffect(()=>{fetchAccount();},[]);
+  useEffect(()=>{fetchAccount();},[withModded]);
   const boxRef = useRef(null);
   const fileRef = useRef(null);
   const replayRef = useRef(null);
@@ -291,7 +295,8 @@ function StatsScreen({ tab }) {
   }, []);
 
   const records=useMemo(()=>profile.enabled?mergeAccountHistory(stats.newer?[]:stats.records,account?.records||[],account?.matchIds||[]):stats.records,[stats,account,profile.enabled]);
-  const agg = profile.enabled?(account?.aggregate || aggregateStats([])):aggregateStats(stats.records);
+  const agg = profile.enabled?(account?.aggregate || aggregateStats([])):aggregateStats(stats.records,{modded:withModded});
+  const achievement = profile.enabled ? account?.achievements : achievementStats(stats.records,{hiddenLayers:id=>!!gd.bond(id)?.noStack,modded:withModded});
   const reload = () => setStats(loadStats());
 
   const doExport = () => {
@@ -352,6 +357,7 @@ function StatsScreen({ tab }) {
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}
     ${stats.dropped ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('有 {n} 条记录已损坏，已忽略。', { n: stats.dropped })}</p>` : null}
     <main class="st-body" data-tab=${tab}>
+      ${!['profile','manage'].includes(tab)?html`<label class="resource-choice doctor-modded"><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>`:null}
       ${!ready ? html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : tab==='profile'&&profile.user ? html`<${ProfileEditor} user=${profile.user} />`
         : tab==='manage' ? html`<div class="doctor-management">${profile.enabled?html`<${ProfileRecovery} />`:null}
@@ -360,6 +366,7 @@ function StatsScreen({ tab }) {
           <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
         : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} />`
         : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
+        : tab==='achievements' ? achievement?html`<${AchievementContent} s=${achievement} gd=${gd} />`:html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : !agg.count ? html`<div class="st-empty"><p>${loading?t('正在读取…'):offline&&!account?t('此设备尚无档案缓存，请稍后刷新；已有本机记录仍可查看。'):t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>${!empty?html`<${Button} variant="secondary" onClick=${()=>statsStore.set({tab:'history'})}>${t('查看此设备的旧记录')}<//>`:null}</div>`
         : tab==='bands' ? html`<${Bands} agg=${agg} gd=${gd} />`
         : tab==='totals' ? html`<${CombatSums} agg=${agg} />`

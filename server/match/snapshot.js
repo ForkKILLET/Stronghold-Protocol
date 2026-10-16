@@ -1,4 +1,5 @@
 import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prepTime.js';
+import { freezeSkins } from '../../shared/skins.js';
 // server/match/snapshot.js — checkpoints of a running match (Redis persistence, docs/DEPLOY.md「断点续玩」).
 //
 // WHY A CHECKPOINT AND NOT A REPLAY: the match engine is deterministic in virtual time (tests run whole matches on a
@@ -184,13 +185,13 @@ const MATCH_FIELDS = Object.freeze([
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'aiPicksLast', 'setupRevision', '_setupVoteSeq',
   'round', 'uidSeq', 'loneHuman', 'hiddenLayerSum', 'hiddenReached', 'errors', 'errorCount', 'simErrors',
-  'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves',
+  'cs', 'vs', 'requireCs', 'hostId', 'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves', 'bossPairs',
 ]);
 
 /** PlayerState fields of a checkpoint (bonds/deploy map are recomputed on restore). */
 const PLAYER_FIELDS = Object.freeze([
   'userId', 'avatarId', 'playerId', 'seat', 'name', 'isBot', 'connected', 'left', 'autoplay', 'consoleRoundUses', 'consoleTotalUses', 'alive', 'lp', 'bandId', 'funds',
-  'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
+  'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'skins', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
   '_tempDue', 'board', 'layers', 'pendingLayerGains', 'bondCountBonus', 'effects', 'bounties', 'counters', 'round',
   'deployCapBonus', 'deployCapMin', 'deviceOverrides', 'tileOverrides', 'stats', 'eliminatedRound', 'lpAtFinal',
   'ops', 'personalChoice', 'lastResult', 'standIns', 'diy', 'diyStock', 'diyBanned',
@@ -241,6 +242,7 @@ export function captureMatch(m) {
   if (m.setupVote && m.phase === PHASE.INFO_CHECK) doc.deadlineRemainingMs = m.setupVote.remainingMs || 0;
   doc.startedAtAgoMs = Math.max(0, Math.round(now - (Number(m.startedAt) || now)));
   // the shared pool: only the remaining copies live in the checkpoint (cap/tier are data-derived)
+  doc.itemDebt = Object.fromEntries(m.itemPool?.debt || []);
   doc.poolLeft = {};
   for (const [id, e] of m.pool.entries) doc.poolLeft[id] = e.left;
   // RNG positions: keeps the continuation of a restored match identical to the run it replaces
@@ -324,6 +326,16 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
   for (const k of MATCH_FIELDS) if (k !== 'round') field(m, doc, k, k);
   m.prepSeconds = normalizePrepSeconds(m.prepSeconds);
   m.prepMultiplier = normalizePrepMultiplier(m.prepMultiplier);
+  // A pre-0.2.5 checkpoint can already contain boss preparation waves with authoritative partners/sides.
+  // Keep those instead of drawing again after a restart.
+  const validPairs = pairs => Array.isArray(pairs) && pairs.length > 0
+    && pairs.every(ids => Array.isArray(ids) && ids.length >= 1 && ids.length <= 2
+      && ids.every(id => typeof id === 'string' && m.players.has(id)))
+    && new Set(pairs.flat()).size === pairs.flat().length;
+  if (!validPairs(m.bossPairs)) {
+    const previous = Array.isArray(m.bossWaves) ? m.bossWaves.map(w => w?.players) : null;
+    m.bossPairs = validPairs(previous) ? previous.map(ids => ids.slice()) : null;
+  }
   m.round = Number(doc.round) || 0;
   if (bestEffort && (!Number.isInteger(m.round) || m.round < 0
     || (m.round === 0 && [PHASE.PREP, PHASE.ROUND_START, PHASE.SP_DRAFT].includes(doc.phase)))) {
@@ -354,6 +366,10 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
       const balance = Number(left);
       if (e) e.left = Math.min(e.cap, Math.trunc(Number.isFinite(balance) ? balance : 0));
     }
+  }
+  m.itemPool.debt.clear();
+  for (const [id, n] of Object.entries(doc.itemDebt || {})) {
+    if (Number.isSafeInteger(n) && n > 0 && m.itemPool.cap(id) != null) m.itemPool.debt.set(id, n);
   }
   for (const name of RNG_NAMES) {
     const state = doc.rng && doc.rng[name];
@@ -401,6 +417,7 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     const stockEntries = ps.diyStock?.entries;
     ps.setNotOwned(ps.standIns || []);
     ps.setDiy(ps.diy || {});
+    ps.skins = freezeSkins(ps.isBot ? null : ps.skins, (id) => ps.gd.chess(id)); // old checkpoints: defaults
     ps.initDiyStock(new Set([...(m.disabledBonds || []), ...(m.staticInactiveBonds || [])]));
     if (stockEntries instanceof Map) for (const [id, saved] of stockEntries) {
       const entry = ps.diyStock.entries.get(id);
