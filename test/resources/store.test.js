@@ -44,7 +44,7 @@ function manifest(files, over = {}) {
  */
 async function seed(caches, url, body, hash) {
   const cache = await caches.open(CACHE_NAME);
-  await cache.put(url, new Response(body));
+  await cache.put(url, new Response(body, { headers: { 'Content-Length': String(Buffer.byteLength(body)) } }));
   if (hash) {
     const res = await cache.match(indexUrl(ORIGIN));
     const doc = res ? await res.json() : { version: 1, manifest: '', files: {} };
@@ -80,6 +80,79 @@ function fetcherFor({ bodies = {}, fail = [], opaque = [], gzip = [], onCall } =
 const store = (m, extra = {}) => new ResourceStore(m, { caches: extra.caches ?? new MemoryCaches(), fetcher: extra.fetch, origin: ORIGIN, smallLanes: extra.smallLanes ?? 4, bigLanes: extra.bigLanes ?? 1, now: extra.now });
 
 describe('ResourceStore', () => {
+  test('saved-resource inspection trusts existence and length headers without reading or hashing any asset body', async (t) => {
+    const files = Array.from({ length: 20 }, (_, i) => ({ url: `/assets/headers/${i}.png`, tier: 1,
+      size: 100, hash: '0123456789ab' }));
+    const caches = new MemoryCaches();
+    for (const file of files) await seed(caches, ORIGIN + file.url, 'damaged', file.hash);
+    const cache = await caches.open(CACHE_NAME);
+    const match = cache.match.bind(cache);
+    let active = 0, maximum = 0, reads = 0;
+    cache.match = async key => {
+      if (!key.includes('/assets/')) return match(key);
+      active++; maximum = Math.max(maximum, active); reads++;
+      await new Promise(resolve => setImmediate(resolve));
+      active--;
+      const response = await match(key);
+      for (const method of ['arrayBuffer', 'blob', 'text', 'json', 'clone']) {
+        response[method] = () => { throw new Error('asset body must not be inspected'); };
+      }
+      return response;
+    };
+    t.mock.method(crypto.subtle, 'digest', () => { throw new Error('saved resources must not be hashed'); });
+    const s = store(manifest(files), { caches, fetch: async () => { throw new Error('no download expected'); } });
+    assert.equal((await s.status({ verifyCache: false })).count, files.length);
+    assert.equal(reads, 0, 'startup index fast path has no asset-header lookups');
+    const status = await s.status();
+    assert.equal(status.count, files.length, 'a short or corrupted body is deliberately accepted');
+    assert.equal(status.complete, true, 'length header need not match manifest size');
+    assert.equal(reads, files.length);
+    assert.ok(maximum > 1 && maximum <= 8, `header reads use bounded concurrency (${maximum})`);
+    assert.ok(status.checkTimings.headerCheckMs >= 0);
+    await s.download();
+  });
+
+  test('missing, empty or invalid length headers are not accepted, while a zero-length file is valid', async () => {
+    const values = [null, '', 'unknown', '-1', '1.5', '9007199254740992', '0', '7'];
+    const files = values.map((_, i) => ({ url: `/assets/length/${i}.png`, tier: 1, size: 1 }));
+    const caches = new MemoryCaches(), cache = await caches.open(CACHE_NAME);
+    for (let i = 0; i < values.length; i++) {
+      await cache.put(ORIGIN + files[i].url, new Response('x', { headers: values[i] == null ? {} : { 'Content-Length': values[i] } }));
+    }
+    const s = store(manifest(files), { caches });
+    const status = await s.status();
+    assert.deepEqual([...status.present].sort(), files.slice(-2).map(f => ORIGIN + f.url));
+    await s.reconcileRuntimeIndex(status);
+    assert.equal((await s.status({ verifyCache: false })).count, 2);
+    assert.equal(s.storable(new Response('missing')).headers.get('content-length'), null, 'do not invent zero for a missing header');
+  });
+
+  test('new downloads without a length header store their actual byte length and do not loop on future inspections', async () => {
+    const caches = new MemoryCaches();
+    let calls = 0;
+    const s = store(manifest([{ url: '/assets/unknown-length.png', tier: 1, size: 8 }]), {
+      caches, fetch: async () => { calls++; return new Response('xxxxxxxx'); },
+    });
+    assert.equal((await s.download()).complete, true);
+    const response = await (await caches.open(CACHE_NAME)).match(ORIGIN + '/assets/unknown-length.png');
+    assert.equal(response.headers.get('content-length'), '8');
+    await s.download();
+    assert.equal(calls, 1);
+  });
+
+  test('legacy cache migration accepts a length header without hashing corrupt or stale saved bytes', async (t) => {
+    const caches = new MemoryCaches(), key = ORIGIN + '/assets/legacy.png';
+    await (await caches.open(cacheName('old-layout'))).put(key, new Response('stale', { headers: { 'Content-Length': '5' } }));
+    t.mock.method(crypto.subtle, 'digest', () => { throw new Error('legacy migration must not hash'); });
+    const s = store(manifest([{ url: '/assets/legacy.png', tier: 1, size: 99, hash: '0123456789ab' }]), {
+      caches, fetch: async () => { throw new Error('no download expected'); },
+    });
+    const result = await s.download();
+    assert.equal(result.adopted, 1);
+    assert.equal(result.complete, true);
+    assert.equal(await (await (await caches.open(CACHE_NAME)).match(key)).text(), 'stale');
+  });
+
   test('fast status reads indexes without enumerating keys; full verification repairs evicted records', async () => {
     const caches = new MemoryCaches();
     const key = `${ORIGIN}/assets/a.png`;
@@ -158,7 +231,7 @@ describe('ResourceStore', () => {
   test('full inspection migrates legacy unindexed runtime entries to the fast metadata index', async () => {
     const caches = new MemoryCaches();
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(`${ORIGIN}/assets/a.png`, new Response('a'));
+    await cache.put(`${ORIGIN}/assets/a.png`, new Response('a', { headers: { 'Content-Length': '1' } }));
     const s = store(manifest([{ url: '/assets/a.png', tier: 1, size: 1 }]), { caches });
     assert.equal((await s.status({ verifyCache: false })).count, 0);
     await s.reconcileRuntimeIndex(await s.status());
@@ -208,7 +281,7 @@ describe('ResourceStore', () => {
     assert.equal(b.groups[0].present, 1);
     await cache.delete(`${ORIGIN}/assets/a.png`);
     assert.equal((await s.status()).count, 0, 'status results are not permanently cached');
-    assert.deepEqual([keyReads, indexReads], [2, 4]);
+    assert.deepEqual([keyReads, indexReads], [2, 5], 'one shared header read plus two index reads per inspection');
   });
 
   test('a failed metadata check does not leave a rejected status promise cached', async () => {
@@ -244,8 +317,8 @@ describe('ResourceStore', () => {
     ]);
     const caches = new MemoryCaches();
     const cache = await caches.open(CACHE_NAME);
-    await cache.put(`${ORIGIN}/assets/char/runtime.png`, new Response('runtime-image'));
-    await cache.put(`${ORIGIN}/assets/audio/runtime.mp3`, new Response('runtime-audio'));
+    await cache.put(`${ORIGIN}/assets/char/runtime.png`, new Response('runtime-image', { headers: { 'Content-Length': '13' } }));
+    await cache.put(`${ORIGIN}/assets/audio/runtime.mp3`, new Response('runtime-audio', { headers: { 'Content-Length': '13' } }));
     const status = await store(m, { caches }).status();
     assert.deepEqual([status.count, status.tier1Present, status.tier2Present, status.complete], [2, 1, 1, true]);
   });
@@ -283,7 +356,7 @@ describe('ResourceStore', () => {
     assert.equal(cached.headers.get('content-length'), '8', 'an uncompressed response keeps its exact length');
   });
 
-  test('a gzip response never keeps the compressed Content-Length (it would truncate the stored body)', async () => {
+  test('a gzip response records its decoded Content-Length for subsequent header-only inspections', async () => {
     const m = manifest([{ url: '/assets/spine/a.skel', tier: 1, size: 8 }]);
     const caches = new MemoryCaches();
     const { fetch } = fetcherFor({ gzip: [`${ORIGIN}/assets/spine/a.skel`] });
@@ -291,7 +364,7 @@ describe('ResourceStore', () => {
     const res = await s.download();
     assert.equal(res.failed, 0);
     const cached = await (await caches.open(CACHE_NAME)).match(`${ORIGIN}/assets/spine/a.skel`);
-    assert.equal(cached.headers.get('content-length'), null, 'fetch reports the compressed size (42) for a longer body');
+    assert.equal(cached.headers.get('content-length'), '8', 'use decoded bytes, never compressed wire size 42');
     assert.equal(cached.headers.get('content-encoding'), null, 'the stored body is already decoded');
     assert.equal(cached.headers.get('content-type'), 'application/octet-stream', 'the type still follows the file');
     assert.equal(await cached.text(), 'x'.repeat(8));
@@ -498,11 +571,11 @@ describe('ResourceStore', () => {
     const m = manifest(files);
     const caches = new MemoryCaches();
     const legacy = await caches.open(cacheName('v1')); // the pre-hash layout: no index, no recorded hashes
-    for (const [url, body] of Object.entries(bodies)) await legacy.put(`${ORIGIN}${url}`, new Response(body));
+    for (const [url, body] of Object.entries(bodies)) await legacy.put(`${ORIGIN}${url}`, new Response(body, { headers: { 'Content-Length': String(body.length) } }));
     const { fetch, calls } = fetcherFor();
     const s = store(m, { caches, fetch });
     const res = await s.download();
-    assert.deepEqual(calls, [], 'every file was verified against its hash and moved: no network at all');
+    assert.deepEqual(calls, [], 'every file has a length header and is moved without body verification');
     assert.equal(res.adopted, 2);
     assert.equal(res.downloaded, 0);
     assert.equal(res.complete, true);
@@ -514,7 +587,7 @@ describe('ResourceStore', () => {
     assert.equal(again.adopted, 0);
   });
 
-  test('a stale entry in an old cache is dropped and fetched, never left to shadow the new file', async () => {
+  test('a legacy entry without a Content-Length is not accepted and is fetched again', async () => {
     const fresh = 'new-bytes';
     const m = manifest([{ url: '/assets/a.png', tier: 1, size: fresh.length, hash: await digest(fresh) }]);
     const caches = new MemoryCaches();
@@ -522,7 +595,7 @@ describe('ResourceStore', () => {
     const { fetch, calls } = fetcherFor({ bodies: { [`${ORIGIN}/assets/a.png`]: fresh } });
     const s = store(m, { caches, fetch });
     const res = await s.download();
-    assert.deepEqual(calls, [`${ORIGIN}/assets/a.png`], 'the stored bytes do not match the manifest hash');
+    assert.deepEqual(calls, [`${ORIGIN}/assets/a.png`], 'missing length header requires a fresh download');
     assert.deepEqual([res.adopted, res.downloaded], [0, 1]);
     assert.deepEqual(await caches.keys(), [CACHE_NAME], 'the stale copy went with the old cache');
     assert.equal(await (await (await caches.open(CACHE_NAME)).match(`${ORIGIN}/assets/a.png`)).text(), fresh);

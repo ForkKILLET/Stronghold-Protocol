@@ -432,7 +432,7 @@ test('cancellation keeps only already imported verified entries; quota errors fl
 test('export rejects corrupted cached bytes instead of endorsing them in a package', async () => {
   const target = store([file('/assets/a.png', 'correct')]);
   await target.store.download();
-  await (await target.caches.open(CACHE_NAME)).put(target.store.keyOf('/assets/a.png'), new Response('incorrect'));
+  await (await target.caches.open(CACHE_NAME)).put(target.store.keyOf('/assets/a.png'), new Response('incorrect', { headers: { 'Content-Length': '9' } }));
   await assert.rejects(exportResourceZip(target.store), /缓存资源校验失败/);
 });
 
@@ -564,7 +564,7 @@ test('checking an existing cache copy hashes those distinct bytes once and reuse
   const target = store(files);
   await target.store.download();
   const cache = await target.caches.open(CACHE_NAME);
-  await cache.put(target.store.keyOf(files[1].url), new Response('damaged'));
+  await cache.put(target.store.keyOf(files[1].url), new Response('damaged', { headers: { 'Content-Length': '7' } }));
   const calls = [];
   const digest = crypto.subtle.digest.bind(crypto.subtle);
   t.mock.method(crypto.subtle, 'digest', (algorithm, bytes) => {
@@ -753,7 +753,7 @@ test('ZIP verifies an unindexed runtime cache and records its fingerprint withou
   const files = [file('/assets/char/runtime.png', 'runtime'), file('/assets/audio/bgm/runtime.mp3', 'music', 2)];
   const target = store(files);
   const cache = await target.caches.open(CACHE_NAME);
-  for (const resource of files) await cache.put(target.store.keyOf(resource.url), new Response(resource.body));
+  for (const resource of files) await cache.put(target.store.keyOf(resource.url), new Response(resource.body, { headers: { 'Content-Length': String(resource.size) } }));
   assert.equal((await target.store.status({ verifyCache: false })).count, 0);
   const puts = [];
   const put = cache.put.bind(cache);

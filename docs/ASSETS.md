@@ -131,16 +131,25 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
 - **Updating is incremental.** All the files live in one cache (`stronghold-resources-v1-all`) and each entry's hash is
   recorded in an index entry inside it, so a new manifest re-downloads the files whose hash changed and keeps the rest:
   adding the local-client art to an install that already preloaded costs the new files, not the whole set. A cache of
-  the older layout (named after a version, no hashes) is **migrated instead of discarded**: the store hashes the bytes
-  it finds there (`crypto.subtle.digest('SHA-1', …)`), moves the entries that are still current into the new cache,
-  drops the ones that are not, and only then fetches what is missing — the panel says 「正在整理已保存的资源（无需重新下载）」
-  while that runs. The worker prefers the current cache when a URL exists in both, so a stale copy can never shadow a
-  fresh file.
+  the older layout (named after a version, no hashes) is **migrated instead of discarded**: an existing entry with a
+  valid non-negative integer `Content-Length` is moved into the new cache without reading or hashing its body.
+  Entries without that header are fetched again. The panel says 「正在整理已保存的资源（无需重新下载）」 while that runs.
+  The worker prefers the current cache when a URL exists in both. This is an explicit speed trade-off: a stale or corrupt
+  legacy entry can be reused, and its length need not match the manifest or actual body. The ordinary indexed cache
+  still rejects recorded fingerprints from another revision, so manifest updates remain incremental.
   With preload enabled, each page load revalidates the server resource manifest (ETag/304 unchanged), then reads
   the preload fingerprint index and the separate runtime URL index. A complete indexed selection avoids cache key
   enumeration and pruning during startup. This is a provisional snapshot (`cacheVerified: false`), not proof that
   the browser retained every file. Five seconds later a background full check repairs evicted metadata, discovers
   older unindexed runtime entries, performs normal complete-set cleanup and downloads only selected missing files.
+  Saved-resource inspection is **header-only**, not an integrity check: at most eight concurrent `Cache.match` reads
+  require the entry to exist and carry a valid `Content-Length`. No asset body is read, cloned or hashed, and header
+  lengths are not compared with body or manifest sizes. Missing/invalid length headers are treated as missing files;
+  a valid zero is accepted. This deliberately cannot detect corrupted/truncated saved bodies. The startup index-only
+  path stays unchanged; `cacheVerified: true` means presence/headers were checked, not content integrity.
+  Fresh downloads without a length header, or with content encoding, record their actual decoded byte length before
+  storing; compressed wire lengths must never be reused. This reads only new downloads, not saved resources. Normal
+  fresh-download fingerprint verification and ZIP import/export body/CRC/digest checks remain intact.
   Opening resource management or clicking 检查资源 performs an authoritative check too. Missing indexes fall back
   to the download's real-cache inspection rather than assuming completeness. No startup/check path hashes or reads
   asset bodies. Full scans read cache keys and both metadata indexes in parallel; only in-flight checks of the same

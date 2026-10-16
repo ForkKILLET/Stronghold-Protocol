@@ -273,7 +273,7 @@ test('complete indexed startup skips scans; deferred verification detects evicti
   const files = {};
   for (const file of FILES) {
     const key = ORIGIN + file.url;
-    await cache.put(key, new Response('b'.repeat(file.size)));
+    await cache.put(key, new Response('b'.repeat(file.size), { headers: { 'Content-Length': String(file.size) } }));
     files[key] = null;
   }
   await cache.put(indexUrl(ORIGIN), new Response(JSON.stringify({ version: 1, manifest: MANIFEST.version, files })));
