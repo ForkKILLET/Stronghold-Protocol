@@ -92,7 +92,7 @@ import { EmoteWheel } from '../ui/emotes.js';
 import { EffectsList } from '../ui/effectsList.js';
 import { CombatHud } from '../ui/combatHud.js';
 import { CombatMetricsPanel } from '../ui/combatMetrics.js';
-import { SettingsModal, shortcutsStore } from '../ui/settings.js';
+import { SettingsModal, shortcutsStore, useSettings } from '../ui/settings.js';
 import { ConsoleModal } from '../ui/console.js';
 import { ExitModal, AwayOverlay, awayStore } from '../ui/matchChrome.js';
 import { openGuide } from '../ui/guide.js';
@@ -196,6 +196,7 @@ export function GameScreen() {
 const inBattleCard = (d) => d?.kind === 'unit' || (d?.kind === 'device' && d.device?.unitId != null);
 
 function MatchScreen() {
+  const settings = useSettings();
   useDocClass('sp-in-match');
   const pub = useStore((s) => s.match.public);
   const priv = useStore((s) => s.match.private);
@@ -449,8 +450,9 @@ function MatchScreen() {
   // public issue #602: while a piece is picked up on the own prep board — a deploy / equip / reposition drag, or the
   // direction wheel a legal drop opens — the official client folds the shop and zooms to the shop-collapsed prep
   // camera (the same framing as 收起, left_prepare_camera_param), then gives the player's own shop state back. It is
-  // derived from the interaction state only: `collapsed` (the 收起/展开 state) is never set by it.
+  // opt-in via deploymentZoom and derived from the interaction state only: `collapsed` (the 收起/展开 state) is never set by it.
   const deployFold = deployFoldsShop({
+    enabled: settings.deploymentZoom,
     ownPrep: !!view && viewModeRef.current === 'prep' && showPrep, editable, pen, drag: !!drag, facing: !!facing,
   });
   // the shop bar is shown folded (收起; the pen folds it for itself: the player's own state is the one it returns to) —

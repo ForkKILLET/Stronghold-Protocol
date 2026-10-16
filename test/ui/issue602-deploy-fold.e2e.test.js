@@ -35,6 +35,10 @@ describe('the shop folds while deploying a piece and restores afterwards (#602)'
   /** Open the mock PREP match with a free deploy slot (one board operator sold, like facing.e2e.test.js). */
   async function openPage(viewport) {
     const page = await browser.newPage();
+    await page.evaluateOnNewDocument(() => {
+      const key = 'sp.pref.settings';
+      localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) || '{}'), deploymentZoom: true }));
+    });
     if (viewport) await page.setViewport(viewport);
     const problems = [];
     page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
@@ -118,6 +122,10 @@ describe('the shop folds while deploying a piece and restores afterwards (#602)'
   // Touch input: a resting mouse gets Chrome's synthetic moves when the layout changes (the shop bar folding), a finger not.
   test('engine (touch): the pickup zooms at once, a resting finger keeps the tile under it as the target, the end restores the exact shop camera', async () => {
     const page = await browser.newPage();
+    await page.evaluateOnNewDocument(() => {
+      const key = 'sp.pref.settings';
+      localStorage.setItem(key, JSON.stringify({ ...JSON.parse(localStorage.getItem(key) || '{}'), deploymentZoom: true }));
+    });
     await page.setViewport({ width: 1280, height: 720, hasTouch: true });
     const problems = [];
     page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));

@@ -46,7 +46,7 @@ import { resolveOfficialFx } from '../render/vfx/tier.js';
 import { AnnouncementButton } from './announcement.js';
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 
-/** Settings store: volumes, voices, damageNumbers, officialDamageNumbers, ammoCount, quality, textSize, fpsLimit and preload options. Shortcuts persist separately. */
+/** Settings store: volumes, voices, damageNumbers, officialDamageNumbers, ammoCount, deploymentZoom, quality, textSize, fpsLimit and preload options. Shortcuts persist separately. */
 export const settingsStore = createStore(sanitizeSettings(loadPref('settings', null)));
 export const shortcutsStore = createStore(sanitizeShortcuts(loadPref('shortcuts', DEFAULT_SHORTCUTS)));
 
@@ -301,6 +301,8 @@ export function SettingsModal({ open, onClose }) {
       <p class="set-hint">${t('只显示达到官方暴击条件的红色数字。关闭时仍显示每一次命中。')}</p>
       <${Toggle} label=${t('弹药数量')} micro="AMMO COUNT" value=${s.ammoCount} onChange=${(v) => updateSettings({ ammoCount: v })} />
       <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）。官方界面没有这个数字。')}</p>
+      <${Toggle} label=${t('部署时镜头缩放')} micro="DEPLOYMENT ZOOM" value=${s.deploymentZoom} onChange=${(v) => updateSettings({ deploymentZoom: v })} />
+      <p class="set-hint">${t('放置或移动干员、装备时临时收起商店并放大棋盘，结束后恢复。默认关闭，不影响手动收起商店。')}</p>
       <${ResourceRow} enabled=${s.preload} onChange=${(v) => updateSettings({ preload: v })} />
       <${Toggle} label=${t('启用皮肤')} micro="SKINS" value=${s.skinsEnabled} onChange=${(v) => updateSettings({ skinsEnabled: v })} />
       <p class="set-hint">${t('开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。')}</p>

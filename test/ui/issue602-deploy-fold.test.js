@@ -24,7 +24,7 @@ const { FOLD_CAMERA_MS, CAMERA_MS } = await import('../../public/js/render/app/t
 // ---- the choice (gameLogic deployFoldsShop) -----------------------------------------------------------------------
 
 describe('deployFoldsShop: the deploy interaction temporarily folds the shop', () => {
-  const own = { ownPrep: true, editable: true, pen: false };
+  const own = { enabled: true, ownPrep: true, editable: true, pen: false };
 
   test('a dragged piece or the open direction wheel on the editable own prep board folds it', () => {
     assert.equal(deployFoldsShop({ ...own, drag: true }), true, 'piece picked up (operator / equipment / summon)');
@@ -46,6 +46,15 @@ describe('deployFoldsShop: the deploy interaction temporarily folds the shop', (
     assert.equal(deployFoldsShop(null), false);
   });
 
+  test('dragging operators or equipment and choosing a direction do not zoom unless explicitly enabled', () => {
+    for (const state of [{ drag: true }, { facing: true }, { drag: true, facing: true }]) {
+      for (const enabled of [undefined, false, null, 0, 1, 'true']) {
+        assert.equal(deployFoldsShop({ ...own, ...state, enabled }), false);
+      }
+      assert.equal(deployFoldsShop({ ...own, ...state, enabled: true }), true);
+    }
+  });
+
   test('the zoom it causes is exactly issue #5\'s folded-shop camera, on the boss prep half too', () => {
     const pl = (id, seat) => ({ playerId: id, seat, alive: true });
     const pub = { round: 6, bossRound: 14, hiddenRound: 15, players: [pl('a', 0), pl('b', 1)] };
@@ -61,7 +70,7 @@ describe('game.js wiring', () => {
   const game = read('public/js/screens/game.js');
 
   test('deployFold is derived from the interaction state on the own editable prep board, never written into `collapsed`', () => {
-    assert.match(game, /const deployFold = deployFoldsShop\(\{\n\s+ownPrep: !!view && viewModeRef\.current === 'prep' && showPrep, editable, pen, drag: !!drag, facing: !!facing,\n\s+\}\);/);
+    assert.match(game, /const deployFold = deployFoldsShop\(\{\n\s+enabled: settings\.deploymentZoom,\n\s+ownPrep: !!view && viewModeRef\.current === 'prep' && showPrep, editable, pen, drag: !!drag, facing: !!facing,\n\s+\}\);/);
     // the player's own state feeds the camera state only ORed with the temporary fold (pen behavior untouched)
     assert.match(game, /const shopFolded = showShop && \(pen \? penRef\.current\.collapsed : \(collapsed \|\| deployFold\)\);/);
     assert.match(game, /const barCollapsed = collapsed \|\| deployFold;/);

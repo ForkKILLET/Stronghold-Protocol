@@ -7,6 +7,9 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
 ## 9. Client rendering contract (public/js/render)
 
+Branch preference (2026-10-16): `deploymentZoom` / 设置“部署时镜头缩放” is off by default, including legacy or invalid preferences. It persists in `sp.pref.settings`. Only explicit true enables temporary shop folding and camera zoom while placing operators, equipment or summons and choosing facing. Manual shop folding, ready-state camera changes, pen/scouting and battle framing retain their behavior. Placement and simulation rules are unchanged.
+
+
 Bond-layer audio (#482): live own preparation gains arrive as `m.layer`; the displayed battle's `layer` tuples
 play the same `bondUp` cue. A gain of several layers plays once, including gains to inactive bonds. The official
 `ON_ACT1AUTOCHESS_ADD_BOND` bank allows one sound and replaces the oldest; there is no added cooldown. Existing
