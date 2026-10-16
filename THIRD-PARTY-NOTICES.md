@@ -56,6 +56,13 @@ source) and [Kengxxiao/ArknightsGameData_YoStar](https://github.com/Kengxxiao/Ar
 Quotations of PRTS Wiki, BWIKI, NGA, 巴哈姆特 and other community pages in `docs/` stay under the terms of their
 sources (the wikis' texts are CC BY-NC-SA).
 
+The personal-profile avatar catalog (`data/profile-avatars.json`) is derived from
+[PRTS 个人头像一览](https://prts.wiki/w/个人头像一览), revision 441454.
+It records avatar names/categories and original image provenance, not article prose.
+PRTS's compilation is subject to its CC BY-NC-SA terms; the original game images remain
+© Hypergryph and their respective rightsholders, not GPL. Images are downloaded locally,
+not committed, and the browser does not hotlink PRTS.
+
 ## Translations
 
 The English UI strings (`public/i18n/en.json`) and the fallback game-text translations (`tools/i18n/fallback-pr70.json`)

@@ -766,3 +766,15 @@ test('a late invalid digest cannot write its bytes or discard a valid file alrea
   assert.equal(await (await cache.match(target.store.keyOf(files[0].url))).text(), 'a');
   assert.equal(await cache.match(target.store.keyOf(files[1].url)), undefined);
 });
+
+test('personal avatars join optional preload and survive ZIP export/import without network access',async()=>{
+ const url='/assets/profile-avatars/Avatar_def_01.png';
+ const files=[file(url,'personal-avatar',2)];const source=store(files);
+ await source.store.download({tiers:[1]});assert.equal(source.calls.length,0,'essential preload does not fetch avatars');
+ await source.store.download({tiers:[2]});assert.equal(source.calls.length,1);
+ const exported=await exportResourceZip(source.store);assert.equal(exported.count,1);
+ const target=store(files,{origin:'https://other.example'});
+ assert.equal((await importResourceZip(target.store,exported.blob)).imported,1);assert.deepEqual(target.calls,[]);
+ const response=await handleResourceRequest(new Request('https://other.example'+url),{caches:target.caches});
+ assert.equal(response.headers.get('content-type'),'image/png');assert.equal(await response.text(),'personal-avatar');
+});

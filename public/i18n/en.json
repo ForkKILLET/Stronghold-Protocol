@@ -1529,5 +1529,20 @@
   "保存资料": "Save profile",
   "在其他设备使用": "Use on another device",
   "保存恢复码": "Save recovery code",
-  "找回已有档案": "Restore an existing profile"
+  "找回已有档案": "Restore an existing profile",
+  "个人头像": "Profile avatars",
+  "默认头像": "Default avatars",
+  "特殊头像": "Special avatars",
+  "活动头像": "Event avatars",
+  "动态头像（静态）": "Animated avatars (still images)",
+  "使用默认头像": "Use default avatar",
+  "搜索头像": "Search avatars",
+  "头像分类": "Avatar categories",
+  "共 {n} 个头像": "{n} avatars",
+  "显示更多": "Show more",
+  "头像来源：PRTS": "Avatars: PRTS",
+  "可在资源管理中随可选资源预载。": "Preload with optional resources in Resource Manager.",
+  "个人头像、角色语音、音效、背景音乐与玩法说明图片": "Profile avatars, operator voices, sound effects, music and guide illustrations",
+  "头像库暂不可用，请刷新后重试。": "Avatar catalog is unavailable. Refresh to retry.",
+  "正在读取头像库…": "Loading avatars…"
 }

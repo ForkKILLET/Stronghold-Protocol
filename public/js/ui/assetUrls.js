@@ -106,6 +106,11 @@ export function bandIconUrl(m, bandId) {
   return bandId ? str(obj(obj(m)?.bands)?.[bandId]) : null;
 }
 
+/** Personal avatars use the dedicated original-game catalog; strategy icons are not account avatars. */
+export function profileAvatarUrl(m, id) {
+  return id ? str(obj(obj(m)?.profileAvatars)?.[id]) : null;
+}
+
 /** Item icon for an items.json record (by trapId / iconId) or a raw trap id. */
 export function itemIconUrl(m, item) {
   const items = obj(obj(m)?.items);

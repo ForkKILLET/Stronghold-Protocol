@@ -31,6 +31,7 @@ export const RESOURCE_GROUPS = Object.freeze({
   character: { name: N_('干员与敌人图片'), tier: TIER_ESSENTIAL },
   spine: { name: N_('Spine 模型与特效'), tier: TIER_ESSENTIAL },
   ui: { name: N_('界面、图标与字体'), tier: TIER_ESSENTIAL },
+  avatar: { name: N_('个人头像'), tier: TIER_REST },
   voice_cn: { name: N_('中文语音'), tier: TIER_REST },
   voice_jp: { name: N_('日语语音'), tier: TIER_REST },
   voice: { name: N_('其他角色语音'), tier: TIER_REST },
@@ -42,6 +43,7 @@ export const RESOURCE_GROUPS = Object.freeze({
 export function resourceGroup(file) {
   const path = new URL(file.url, 'https://resources.invalid').pathname;
   if (file.tier === TIER_REST) {
+    if (/\/profile-avatars\//.test(path)) return 'avatar';
     if (/\/voice\/cn\//.test(path)) return 'voice_cn';
     if (/\/voice\/jp\//.test(path)) return 'voice_jp';
     if (/\/voice\//.test(path)) return 'voice';

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {verifyProfileAvatars} from './assets/profile-avatars.mjs';
 // Downloads, post-processes and indexes every art/audio/font asset the game
 // needs, from community dumps of the official client (research 07):
 //   public/assets/**   images, Spine models, audio   (git-ignored)
@@ -312,6 +313,8 @@ function countStats(m, bytes, files) {
   return {
     files,
     bytes,
+    profileAvatars:Object.keys(m.profileAvatars||{}).length,
+    profileAvatarBytes:totalBytes(ASSETS,Object.values(m.profileAvatars||{}).map(url=>url.replace(/^\/assets\//,''))),
     chars: Object.keys(m.chars || {}).length,
     charsWithBack: vals(m.chars).filter((c) => c.spine?.back).length,
     enemies: Object.keys(m.enemies || {}).length,
@@ -397,6 +400,7 @@ async function main() {
   // spawnable enemies/tokens than research lists (e.g. 机变 enemy swaps): cover them too.
   const [dataEnemies, dataTokens, dataBosses, dataBackups, dataChess] = await Promise.all(
     ['data/enemies.json', 'data/tokens.json', 'data/bosses.json', 'data/backups.json', 'data/chess.json'].map((f) => readJson(f).catch(() => null)));
+  const profileCatalog=await readJson('data/profile-avatars.json').catch(()=>null);
   const extras = dataExtras(dataBackups, dataChess);
   const extraHandbook = {};
   for (const b of Object.values(dataBosses || {})) if (b?.enemyKey && typeof b.handbookId === 'string') extraHandbook[b.enemyKey] = b.handbookId;
@@ -404,6 +408,7 @@ async function main() {
   const localTokenSpines = await syncLocalSpines(opts, 'token');
   const plan = buildPlan({
     assets07, ops03, enemies05, maps05, audio, modelsData, charword, voiceLang: opts.voiceLang,
+    profileAvatars:profileCatalog?.avatars || {},
     // default: only the slots a battle can play (plan.mjs VOICE_BATTLE_SLOTS); --voice-all takes the whole official set
     voiceSlots: opts.voiceAll ? null : undefined,
     extraEnemyIds: Object.keys(dataEnemies || {}),
@@ -455,6 +460,8 @@ async function main() {
     root: ASSETS, dl, cachePath: join(CACHE, 'spine-info.json'), download: !opts.offline, log,
     ...(opts.addOnly ? { writable: (rel) => dl.written.has(rel) } : null),
   });
+
+  await verifyProfileAvatars(profileCatalog?.avatars||{},ASSETS,{allowMissing:true});
 
   // Manifest
   const resolved = resolveTemplate(plan.template, { root: ASSETS, spine: spine.entries, sourceOf: (rel) => dl.ledger.files[rel]?.url });

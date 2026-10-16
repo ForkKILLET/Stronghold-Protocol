@@ -95,7 +95,7 @@ function ResourceTier({ st, tier, optional, onOptional, voiceLang, onVoiceLang, 
   return html`<section class="resource-tier">
     <header class="resource-tier__head">
       <div><h3>${tier === 1 ? t('必备资源') : t('可选资源')}</h3>
-        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('角色语音、音效、背景音乐与玩法说明图片')}</p></div>
+        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、音效、背景音乐与玩法说明图片')}</p></div>
       ${tier === 2 ? html`<label class="resource-choice"><input type="checkbox" checked=${optional} disabled=${disabled}
         onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : html`<${MicroLabel}>REQUIRED<//>`}
     </header>

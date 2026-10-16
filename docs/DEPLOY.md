@@ -640,3 +640,11 @@ npm run package:lite -- --out <目录>   # 精简包 Stronghold-Protocol-v<版�
 ## 长期用户存储（可选）
 
 `SP_USER_DB` 指向独立 SQLite 文件，需将父目录作为可写持久化卷挂载（应用根目录仍可只读）。需要 Node 22.13+；schema／备份／身份恢复与 Redis 联动约定见 [USERS.md](USERS.md)。未配置时保持旧的无账号模式。
+
+
+### 扩充原版个人头像库
+
+部署包含 `data/profile-avatars.json` 的版本时，复用旧素材镜像后运行 `npm run assets:avatars`，
+再执行生产构建和资源哈希检查。此快速路径只下载新增／缺失头像，不重下战斗资源；
+头像由游戏容器本地提供，并自动加入可选预载和 ZIP。无需新增数据库卷或 schema 迁移。
+PRTS 来源修订、完整性与更新说明见 [ASSETS.md](ASSETS.md) 的原版个人头像库章节。

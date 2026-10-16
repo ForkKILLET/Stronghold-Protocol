@@ -47,7 +47,7 @@ export function createUserApi({users,registry,lobby,data,moderation,trustProxy,l
    const input=await body(req);
    if(pathname==='/api/user/profile' || pathname==='/api/user/name'){
     const name=sanitizeName(input.name);const avatarId=pathname==='/api/user/name'?user.avatarId:input.avatarId;
-    if(!name || !(avatarId===null || (typeof avatarId==='string' && Object.hasOwn(data.bands||{},avatarId)))){json(req,res,400,{error:'PROFILE'});return true;}
+    if(!name || (pathname==='/api/user/profile' && !(avatarId===null || (typeof avatarId==='string' && Object.hasOwn(data['profile-avatars']?.avatars||{},avatarId))))){json(req,res,400,{error:'PROFILE'});return true;}
     if(moderation){const verdict=await moderation.check(name,limitKeyOf(clientAddress(req,trustProxy)));if(verdict?.allowed!==true&&verdict?.code==='NAME_REJECTED'){json(req,res,400,{error:'NAME_REJECTED'});return true;}}
     if(pathname==='/api/user/name'){await users.call('rename',{id:user.id,name});user=await users.call('profile',{id:user.id});}
     else user=await users.call('update',{id:user.id,name,avatarId});

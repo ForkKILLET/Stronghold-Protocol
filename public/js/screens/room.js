@@ -1,4 +1,4 @@
-import {bandIconUrl} from '../ui/assetUrls.js';
+import {profileAvatarUrl} from '../ui/assetUrls.js';
 import {data as avatarData,useData as useAvatarData} from '../data.js';
 import { CommunicationDock, CommunicationBubble } from '../ui/communication.js';
 import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
@@ -147,7 +147,7 @@ function SeatCard({ seat, index, room, facts, myId, busy, onAddBot, onRemoveBot,
     </header>
     <div class="seat__art">
       <div class="seat__stripes" aria-hidden="true"></div>
-      <${AvatarFrame} size="xl" src=${seat.avatarId?bandIconUrl(avatarData.get('assets'),seat.avatarId):null} name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} ready=${state === 'ready'} offline=${offline} />
+      <${AvatarFrame} size="xl" src=${seat.avatarId?profileAvatarUrl(avatarData.get('assets'),seat.avatarId):null} name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} ready=${state === 'ready'} offline=${offline} />
       <${CommunicationBubble} playerId=${seat.playerId} />
       ${seat.isBot ? html`<span class="seat__bot-label"><${Icon} name="robot" />${t('AI 队友')}</span>` : null}
     </div>

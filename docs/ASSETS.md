@@ -690,3 +690,34 @@ operator's runtime ability graph. Mixed-letter banks are skipped. Preserve `mixO
 an older PR's full JSON, preserving JP voices and current operators. See DESIGN §28.17.
 
 The 40th local token model is the original champagne bomb (`token_10031_swire2_gdtrap`, §29.5), extracted from the official `btl_pfb_tokens_0.ab` through `TOKEN_SPINES`. Its web fallback is retained. Failed board-pack/image requests can retry after connectivity/visibility recovers; a failed three.js module gets at most two fresh-URL retries per page because browser module failures are cached. Successful resources remain cached.
+
+
+## 原版个人头像库
+
+个人头像目录来自 [PRTS 个人头像一览](https://prts.wiki/w/个人头像一览)，固定页面修订 441454；
+196 个静态 PNG，合计 6,271,951 字节，包含默认／特殊／活动及动态头像的静态版本。
+`data/profile-avatars.json` 为可审阅目录与 SHA-256 清单；不复制获取条件、介绍等页面正文。
+游戏图片版权仍归鹰角及相关权利人，PRTS 整理信息遵循其原站条款，参见 THIRD-PARTY-NOTICES.md。
+二进制素材仍不进入 Git。
+
+获取方式：
+
+```sh
+npm run assets                 # 标准 plan 包含头像，和其他素材一起获取／验证
+npm run assets:avatars         # 仅补齐头像，更新 assets.json 和 asset-hashes.json
+node tools/profile-avatars.mjs --refresh --revision 441454  # 维护时显式审阅当前页面修订并更新清单
+```
+
+普通获取只使用清单中的固定 `media.prts.wiki` 原图路径，不重新抓取页面。
+刷新要求实际页面修订与参数一致；文件名／来源域名有白名单，PNG 完整性／尺寸受限，普通获取必须通过已记录的 SHA-256／大小校验。
+下载复用原 Downloader 的代理、重试、并发与原子写入（头像快速路径并发 2）；损坏／改变的图像不静默替换清单。
+
+本地图片位于 `/assets/profile-avatars/`，`assets.json.profileAvatars` 映射头像 ID 到站内 URL。
+既有资源清单会把该根节点分为可选资源（tier 2）；资源管理显示「个人头像」分类。
+勾选「同时预载」即可预载，选择「不预载语音」不影响头像；未勾选时只按页面实际需要请求。
+逐文件哈希、增量替换、暂停／继续、Cache Storage、CDN 路径重写和 ZIP 导入／导出沿用原实现。
+更新 shared preload common 模块时同时改变 resource-sw.js，触发已有浏览器更新 Worker。
+完整资源包也通过 assets.json 收集头像，不额外复制未列入清单的文件。
+
+Docker 复用旧素材镜像时，须在复制旧 assets/fonts 后、生成资源哈希前运行 `npm run assets:avatars`；
+仅复用旧图片无法提供新增头像，不必重下整套游戏素材。本次源码更新未部署。

@@ -6,6 +6,7 @@
 // CDN URLs): code, game data, API calls and WebSocket upgrades pass straight through to the network, so a stale worker
 // can never serve a stale game.
 
+// Avatar library joins optional preload and ZIP resources through the shared manifest.
 import { isResourcePath } from './js/resources/common.js';
 import { handleResourceRequest } from './js/resources/service.js';
 

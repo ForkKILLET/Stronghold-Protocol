@@ -8,3 +8,12 @@
 .profile-code code { overflow-wrap:anywhere; user-select:text; min-width:0; flex:1; }
 .profile-error { color:var(--orange-hi); }
 .profile-avatars button:focus-visible,.doctor-history-tools button:focus-visible { outline:2px solid var(--mint-400); outline-offset:2px; }
+.profile-avatar-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; color:var(--mint-400); }
+.profile-avatar-filters { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.profile-avatar-filters button { padding:8px 12px; background:var(--bg-1); color:var(--text-md); border:1px solid var(--line-2); font:inherit; font-size:max(.14rem,12px); }
+.profile-avatar-filters .is-on { color:var(--mint-400); border-color:var(--mint-400); }
+.doctor-editor .profile-avatars { grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); }
+.profile-avatars button { min-width:0; padding:8px; gap:6px; }
+.profile-avatars button img { width:64px; height:64px; object-fit:contain; }
+.profile-avatars button > span { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+.profile-avatar-filters button:focus-visible { outline:2px solid var(--mint-400); outline-offset:2px; }
