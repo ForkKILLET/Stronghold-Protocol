@@ -1,6 +1,6 @@
 // Interface-plugin navigation browser test (DESIGN §32.8): a plugin page that navigates its own frame after the
-// handshake loses the frame and the feed, and a plugin page opened at the top level has an opaque origin (no site
-// storage). Not part of the default run.
+// handshake loses the frame and the feed. The host iframe still has an opaque origin; no response CSP is added.
+// Not part of the default run.
 //   SP_E2E=1 node --test test/ui/ui-plugins-nav.e2e.test.js
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ function navPlugin(dir) {
 }
 
 describe('an interface plugin that navigates its own frame', { skip: !ENABLED }, () => {
-  test('the frame is destroyed after leaving the entry, and a top-level open has no site storage', { timeout: 4 * 60 * 1000 }, async () => {
+  test('the frame is destroyed after leaving the entry, without response CSP', { timeout: 4 * 60 * 1000 }, async () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-ui-nav-'));
     navPlugin(path.join(tmp, 'nav-meter'));
     const srv = await startRealServer({ fast: { timerScale: 1, combatSpeed: 2, startRound: 1, autoPlace: true }, pluginsDir: tmp });
@@ -57,25 +57,8 @@ describe('an interface plugin that navigates its own frame', { skip: !ENABLED },
       const after = await c.page.evaluate(() => ({ frames: globalThis.__SP_UI_PLUGINS__.frames(), blocked: globalThis.__SP_UI_PLUGINS__.blocked(), iframe: !!document.querySelector('iframe[data-plugin="nav-meter"]') }));
       assert.ok(!after.frames.includes('nav-meter') && !after.iframe, `the navigated frame stays gone (${JSON.stringify(after)})`);
       assert.ok(after.blocked.includes('nav-meter'), 'the plugin is blocked for this page');
-      // the same page opened at the top level runs with an opaque origin: no site storage, no token
-      const entry = await c.page.evaluate(async () => {
-        const idx = await (await fetch('/plugins/index.json')).json();
-        const list = Array.isArray(idx) ? idx : idx.plugins || [];
-        const e = list.find((p) => p.id === 'nav-meter');
-        return e && e.files && e.entry ? `/p/nav-meter/${String(e.files[e.entry] || '').slice(0, 8)}/${e.entry}` : null;
-      });
-      const url = entry && /\/p\/nav-meter\/[0-9a-f]{8}\//.test(entry) ? entry : '/p/nav-meter/00000000/ui/index.html';
-      const top = await c.browser.newPage();
-      const res = await top.goto(srv.base + url, { waitUntil: 'load' });
-      assert.match(res.headers()['content-security-policy'] || '', /(^|;)\s*sandbox allow-scripts\b/);
-      const probe = await top.evaluate(() => {
-        const out = { origin: self.origin };
-        try { out.local = localStorage.getItem('sp.tokens'); } catch (e) { out.local = 'denied:' + e.name; }
-        return out;
-      });
-      assert.equal(probe.origin, 'null');
-      assert.match(String(probe.local), /^denied:/, `site storage is not readable (${JSON.stringify(probe)})`);
-      await top.close();
+      const response = await c.page.goto(srv.base + '/');
+      assert.equal(response.headers()['content-security-policy'], undefined);
     } finally {
       await c.close();
       await srv.stop();

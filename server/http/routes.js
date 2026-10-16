@@ -104,13 +104,12 @@ const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.tes
  * @param {{ serveStatic: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse,
  *             rawPath: string, query: string) => Promise<void>,
  *           health: Parameters<typeof healthReport>[0], log: object, trustProxy?: 'auto' | boolean,
- *           csp?: string | null,
  *           studio?: { handles: (rawPath: string) => boolean, handle: (req: any, res: any, rawPath: string, query: string) => Promise<void> } | null }} deps
  *   trustProxy: whose forwarding headers name the client (net.js clientAddress; the server's TRUST_PROXY); studio: the
  *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, csp = null, trustedRuntime = null }) {
+export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null }) {
   const healthBody = createHealthBody(health);
   function serveHealth(req, res) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -191,7 +190,6 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
 
   return (req, res) => {
     setSecurityHeaders(res);
-    if (csp) res.setHeader('Content-Security-Policy', csp);
     if (health.traffic) health.traffic.meter(res, splitUrl(req.url || '/')?.rawPath || '/');
     const url = req.url || '/';
     if (url.length <= MAX_URL_LENGTH && (url === '/healthz' || url.startsWith('/healthz?') || url.startsWith('/healthz#'))) {

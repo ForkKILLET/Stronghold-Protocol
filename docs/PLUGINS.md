@@ -91,13 +91,13 @@ What this version does with each class:
 | `cosmetic` | art, models (Spine 3.8), audio (fonts and theme colours later) | **loaded** (P1a, §9) — a room's host switches it on for the room, a player for themself; the files its overlay names served at `/p/<id>/<hash8>/<path>` |
 | `content` | data patches and new records: numbers, economy, modes, waves, operators, enemies | **loaded** (P1b, §10; P1c, §11) — a room's host switches it on for the room: a content set of its own, unofficial matches; the set's files served at `/cs/<cs16>/…` |
 | `script` | code the battle or the match runs | **off by default** — valid lock in sandbox mode; owner pin and player consent in trusted modes (§13) |
-| `ui` | an interface widget: an html page in a sandboxed frame | **loaded** (P4, §14) — a player switches it on for this browser; its frame files served at `/p/<id>/<hash8>/<path>` with a frame CSP |
+| `ui` | an interface widget: an html page in a sandboxed frame | **loaded** (P4, §14) — a player switches it on for this browser; its frame files served at `/p/<id>/<hash8>/<path>` with the host iframe sandbox |
 | `trusted` | page or server code with full trust | **off by default** — trusted/trusted-force only; pinning, address gates and room consent (§13) |
 
 Nothing of a plugin folder is served except the files a `lang` manifest names, the files a loaded `cosmetic`
 plugin's overlay names, and the frame files of a loaded `ui` plugin (`.html`, `.js`, `.css`, `.png` under its
 `entry.client`, §14) — never `plugin.json`, the lock file, a document or any other file of the folder. A ui plugin's
-`/p/` responses carry a frame Content-Security-Policy; cosmetic art does not. Content-set snapshots are separate:
+`/p/` responses do not carry CSP; the host mounts UI plugins in sandboxed iframes. Content-set snapshots are separate:
 `/cs/<cs16>/` serves checked data/descriptors and, for native trusted sets, only the retained sim/meta/client script
 entry bytes (§13). It never serves arbitrary files from plugin folders.
 
@@ -841,8 +841,7 @@ runtime SDK, then Node imports the verified source natively. Browsers use the de
 SDK alias linked to `/shared/plugins/sdk.js`; trusted page source unchanged), served verbatim at
 `/cs/<cs16>/scripts/<id>/<entry>` with JavaScript MIME. The page verifies these exact response bytes before native
 import at that same address; simulation Workers receive the checked snapshot and only perform module imports.
-Execution mode and browser source bytes are covered by `@script`. Site CSP keeps script-src self plus importmap
-hashes, without data:, blob: or unsafe-eval; only the simulation Worker permits SES eval. The browser fetches these descriptors only after
+Execution mode and browser source bytes are covered by `@script`. This branch does not send CSP response headers. The browser fetches these descriptors only after
 its own consent. An unconsenting spectator still loads data and reads server results/snapshots, but never receives a
 script execution payload or becomes battle authority [ASSUMED]. Server bot fights, takeovers and SP_VERIFY use the
 same registered extensions in the set's child; script sets always use a process even with SP_MATCH_HOST=worker.
@@ -907,7 +906,7 @@ Residual risks: SES/V8 bugs, deliberate desync, browser-process memory exhaustio
 a Worker escape. Node 22 permissions do not restrict network and are not a malicious-code security boundary; an
 escape can probe the server's network or read its allowed install tree and targets of links inside it.
 Do not put links pointing outside inside the installation root; use a network namespace/container to restrict network. Prefer a low-privilege account/container
-with outbound-network and OS resource limits. Chrome regression coverage includes CSP and sandbox behavior;
+with outbound-network and OS resource limits. Sandbox regression suites are available; removed CSP guarantees are not part of this branch.
 Firefox and Safari have not had dedicated sandbox verification. See [DESIGN §32.11](history/0.3.0.md#3211-p3b--worker-simulation-ses-and-csp)
 and [deployment](DEPLOY.md).
 
@@ -928,14 +927,10 @@ never loads it.
 opaque string `"null"` and it cannot read this site's storage or credentials. The iframe points straight at that plugin's own
 `/p/<id>/<hash8>/<entry>`. Its first load is the entry, and any later load destroys the frame: the host then clears
 `ready` and posts nothing more. `postMessage` to `"null"` cannot tell those documents
-apart. Files at `/p/` for a ui plugin, and not cosmetic art, are sent with
-`Content-Security-Policy: default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; sandbox allow-scripts; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`
-(`UI_FRAME_CSP`), on 200, 206 and 304. The `sandbox` directive is what still applies when that URL is opened at the
-top level; a `<meta>` sandbox does nothing. The header has no `allow-same-origin`. [ASSUMED] `'self'` may not match
-the opaque origin, so an inline script runs and a separate script file may not; that is not repaired by granting the
-iframe the page's origin. [ASSUMED] A snapshot or a private view already posted can leave in the URL of the
-navigation that exits the entry. Later posts stop; that does not recall the copy. `navigate-to` was not measured and
-is not the fix. The rest of the site uses the separate P3b policy (§13).
+apart. This branch sends no CSP on `/p/` responses. The mounted iframe still has an opaque origin, but a direct top-level
+open is not protected by the iframe sandbox and runs with the site's origin. Only install trusted UI plugin files;
+no Worker network blocking or top-level opaque-origin isolation is claimed. A snapshot already posted may leave in a
+navigation URL; stopping later posts does not revoke that copy.
 
 **The feed** is postMessage API v1 (`shared/plugins/ui.js`, `schemas/ui.schema.json`). The host sends the player's
 visible `m.public` (a subset), the player's own `m.private` (a subset), throttled events and snapshots of the battle
@@ -1132,7 +1127,7 @@ GET without the body):
 | `PUT …/manifest` · `POST …/meta` · `POST …/sections` | plugin.json as a whole; the basic fields `{ fields, lang }`; the sections the page shows |
 | `POST …/slot` · `…/ref` · `…/clear` · `…/fix` | files for a slot `{ at, files: [{ name, data (base64), role? }] }`; a reference `{ at, ref }`; a slot emptied `{ at }`; a one-click fix `{ code, at?, file?, params? }` |
 | `POST …/pack` · `GET …/zip` · `GET …/preview` | the lock and the check; the zip (a download, packs nothing); the temporary composition |
-| `GET …/f/<hash8>/<path>`, `…/files/<path>` · `PUT` / `DELETE …/files/<path>` | a file of the folder (a draft's too) — of the types the studio writes only, sandboxed (`Content-Security-Policy: default-src 'none'; sandbox`); write or remove one |
+| `GET …/f/<hash8>/<path>`, `…/files/<path>` · `PUT` / `DELETE …/files/<path>` | a file of the folder (a draft's too) — of the types the studio writes only, without CSP (type allowlists and nosniff remain); write or remove one |
 | `GET /studio/api/trial-options` · `POST /studio/api/trial` | scenarios; a checked child-process battle comparison (key required) |
 | `POST …/authoring` · `POST /studio/api/validate-dsl` | wizard save with revision; structural DSL validation |
 | `POST /studio/api/authors` · `GET /studio/api/events` | name the page's game sessions; the change events |
@@ -1578,7 +1573,7 @@ the panel), `test/ui/plugins-audio.test.js` (a plugin sound without its extensio
 shows on another player's page, a personal plugin on its own page only; a server without plugins is never asked for its
 catalogue; a personal plugin switched during a match changes the piece already on the board). P4:
 `test/plugins/ui.test.js` (message shape and rate, storage quota, slots, a ui manifest accepted or refused, the `/p/`
-CSP, a ui plugin leaving `cs` alone) and `test/ui/ui-plugins.e2e.test.js` (`SP_E2E=1`: the example widget in its slot,
+response headers, a ui plugin leaving `cs` alone) and `test/ui/ui-plugins.e2e.test.js` (`SP_E2E=1`: the example widget in its slot,
 a battle event, a match intent rejected). P1c: `test/lobby-plugins.test.js` (a content plugin's set: served, checked,
 played in its match host; requirements switched on, conflicts, incompatible plugins, another player, a running match,
 un-readying, `room.setMode`, the `room.contentReady` gate, loadouts checked against the room's data, the policy file,

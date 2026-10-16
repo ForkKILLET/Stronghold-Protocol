@@ -10,22 +10,20 @@ import { once } from 'node:events';
 import { CHROME, hasChrome } from '../e2e/client.mjs';
 import { createStaticHandler } from '../../server/http/static.js';
 import { createRequestHandler } from '../../server/http/routes.js';
-import { siteCsp, SIM_WORKER_CSP } from '../../server/http/csp.js';
 import { forkSandbox } from '../../server/match/host/childHost.js';
 import { fixtureSet, fixtureSpec, scriptSet as makeScriptSet, operatorScript } from '../helpers/simHostFixture.js';
 import {scriptUrl} from '../../shared/plugins/scriptLoad.js';
 
 const enabled = process.env.SP_E2E === '1' && hasChrome();
-test('Chrome: CSP, escape corpus, real Worker data/script determinism, 2 s takeover, no page freeze', { skip: !enabled, timeout: 120000 }, async t => {
-  let networkHits = 0;
+test('Chrome: escape corpus, real Worker data/script determinism, 2 s takeover, no page freeze', { skip: !enabled, timeout: 120000 }, async t => {
   const nativeScriptSet = makeScriptSet(operatorScript,'trusted');
   const nativePlugin = nativeScriptSet.scripts[0];
   const root = path.resolve('.');
   const staticFiles = createStaticHandler({ publicDir: path.join(root, 'public'), sharedDir: path.join(root, 'shared'), dataDir: path.join(root, 'data') });
-  const handler = createRequestHandler({ csp: siteCsp(path.join(root, 'public')), health: {}, log: console,
+  const handler = createRequestHandler({ health: {}, log: console,
     serveStatic: async (req, res, url, query) => {
       if (url === '/') { res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<!doctype html><title>Sandbox tests</title>'); return; }
-      if (url === '/probe-network') { networkHits++; res.end('unexpected'); return; }
+      if (url === '/probe-network') { res.end('ok'); return; }
       if (url === scriptUrl(nativeScriptSet.cs,nativePlugin.id,'main.js')) {
         res.writeHead(200,{'Content-Type':'text/javascript'});res.end(nativePlugin.browserSources['main.js']);return;
       }
@@ -33,7 +31,6 @@ test('Chrome: CSP, escape corpus, real Worker data/script determinism, 2 s takeo
       const fixtures = ['simWorkerBrowser.js', 'simSandboxFixture.js', 'sandboxCases.js'];
       const rel = url.replace('/test/helpers/', '');
       if (fixtures.includes(rel) && url === '/test/helpers/' + rel) {
-        res.setHeader('Content-Security-Policy', query === 'no-eval' ? SIM_WORKER_CSP.replace(" 'unsafe-eval'", '') : SIM_WORKER_CSP);
         res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(fs.readFileSync(path.join(root, 'test/helpers', rel))); return;
       }
       await staticFiles(req, res, url.startsWith('/public/') ? url.slice('/public'.length) : url, query);
@@ -47,7 +44,7 @@ test('Chrome: CSP, escape corpus, real Worker data/script determinism, 2 s takeo
   const page = await browser.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   const response = await page.goto(`http://127.0.0.1:${server.address().port}/`);
-  assert.ok(!response.headers()['content-security-policy'].includes('unsafe-eval'));
+  assert.equal(response.headers()['content-security-policy'], undefined);
   await page.evaluate(async () => {
     const { WorkerSimHost, InPageSimHost } = await import('/js/battle/simHost.js');
     window.hostTypes = { WorkerSimHost, InPageSimHost };
@@ -57,12 +54,8 @@ test('Chrome: CSP, escape corpus, real Worker data/script determinism, 2 s takeo
   });
   const escape = await page.evaluate(async () => { const h = window.makeHost(true); try { return await h.rpc('escapes'); } finally { h.stop(); } });
   for (const x of escape) assert.equal(x.value, x.expected, x.label);
-  assert.equal(await page.evaluate(async () => { const h = window.makeHost(true); try { return await h.rpc('network'); } finally { h.stop(); } }), 'blocked');
-  assert.equal(networkHits, 0, 'Worker response CSP blocks even same-origin fetch');
+  // Network isolation is no longer supplied by CSP; retain SES escape and deterministic Worker coverage.
   assert.equal(await page.evaluate(async () => { const h = window.makeHost(true); try { return await h.rpc('evaluate',['1+1']); } finally { h.stop(); } }), 2);
-  assert.equal(await page.evaluate(async () => {
-    const h = window.makeHost(true, '?no-eval'); try { return await h.rpc('evaluate',['1+1']); } catch { return 'blocked'; } finally { h.stop(); }
-  }), 'blocked', 'SES evaluation needs unsafe-eval on Worker response');
 
   const set = fixtureSet(), spec = fixtureSpec();
   const dataComparison = await page.evaluate(async ({ set, spec }) => {

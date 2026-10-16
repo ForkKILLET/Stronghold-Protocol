@@ -319,7 +319,7 @@ https / wss 说明：页面通过 https 打开时客户端自动连接 `wss://�
 
 ### 2.5 本分支素材管理
 
-标题页提供“下载完整素材”；不提供上游新增的“导入素材包”或 `tools/package.mjs --assets`。
+标题页统一使用本分支预载资源面板；不提供上游“下载完整素材”、“导入素材包”或 `tools/package.mjs --assets`。
 已有资源管理窗口的 ZIP 导入/导出、分包预载、缓存指纹和多线路下载继续有效，详见 [RESOURCE_PACKS.md](RESOURCE_PACKS.md)。
 
 ## 3. Docker
@@ -856,16 +856,11 @@ Node 22 权限模型不是恶意代码安全边界，且不限制网络。SES/V8
 [ASSUMED]。不要把启用沙箱等同于可以安全运行任何来源的插件。官方说明见
 [Node 22 permissions](https://nodejs.org/docs/latest-v22.x/api/permissions.html)。
 
-整站默认发送 CSP，覆盖主页、开发页面和 `/studio/`；importmap 用精确内容的 SHA-256 放行，页面没有 unsafe-eval。
-字体保留 Google Fonts 域名，样式允许 unsafe-inline，图片允许 data/blob，WebSocket 与同源连接以及 blob Worker
-保留。Pixi 使用无动态求值的 uniform 适配器。服主可设 `SP_CSP=off` 关闭整站策略 [ASSUMED]；界面插件 `/p/` 和
-模拟 Worker 自己的 CSP 不随此开关关闭。整站 connect-src 仅保留 'self'，现有同源 WebSocket 仍可连接。反向代理应保留 CSP 响应头，不要额外叠加会阻断 importmap 或 Worker 的策略。
-Worker 响应单独允许 unsafe-eval 供 SES evaluate 使用，并设 `connect-src 'none'`。
-受信任页面脚本从同源 `/cs/<cs16>/scripts/<id>/<entry>` 下发，先校验描述符与响应字节，再原生 import；
-无需给页面 script-src 加 data:、blob: 或 unsafe-eval。script 与 trusted 混合组合整体按受信任处理，逐人同意。
-
-CSP 和沙箱在 Chrome 里有浏览器测试（`SP_E2E=1 node --test test/ui/sandbox.e2e.test.js` 及 DESIGN §32.11 列出的套件）；
-Firefox 和 Safari 还没有专门测过，遇到问题请附浏览器版本反馈。
+本分支不发送整站、模拟 Worker、界面插件或工作台的 CSP 响应头，不再使用 `SP_CSP` 开关或 Pixi no-eval 适配器。
+保留 iframe `sandbox="allow-scripts"`（无 allow-same-origin）、SES、Node 权限、插件内容字节校验和工作台密钥/本机网络访问限制；
+工作台仍发送 X-Frame-Options: DENY，其他响应仍有 nosniff 和 Referrer-Policy。
+移除 CSP 后不再保证 Worker 的网络被浏览器策略阻断；直接顶层打开插件页面也不再具有 iframe 的 opaque-origin 隔离。
+只安装可信插件，脚本默认关闭；沙箱不能替代低权限用户、容器和出站网络限制。反向代理如另设 CSP，由部署者独立管理。
 
 ## 10. Trusted script plugins（原生受信任执行，实验接口）
 

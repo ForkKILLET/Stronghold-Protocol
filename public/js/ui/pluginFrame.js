@@ -4,8 +4,8 @@
 // reports none, it does not ask for the catalogue.
 //
 // Each switched-on plugin is one <iframe sandbox="allow-scripts"> (no allow-same-origin: an opaque origin, so it has
-// no site storage and no credentials). The same `sandbox allow-scripts` is on the /p/ response (UI_FRAME_CSP), because
-// the attribute is not there when the URL is opened at the top level. The parent posts with targetOrigin '*' because
+// no site storage and no credentials inside the mounted frame). CSP response headers are not emitted by this branch;
+// opening the file directly is not covered by the iframe sandbox. The parent posts with targetOrigin '*' because
 // that origin is the string "null" — 'null' does not tell the entry document from a later opaque one.
 // Loads: 1 is the entry (the iframe points straight at it), 2+ destroys the frame and stops the feed. A message is applied on
 // the next turn so a load event already queued runs first. A message is accepted only from that iframe's window,

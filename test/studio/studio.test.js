@@ -412,7 +412,7 @@ describe('the studio over HTTP', () => {
     assert.deepEqual(fs.readdirSync(outside).sort(), ['secret.json', 'victim.txt']);
   });
 
-  test('files a plugin folder holds are served sandboxed and only of the types the studio writes (no page or script put there by hand); HEAD answers like GET', async () => {
+  test('files a plugin folder holds are served without CSP and only of the types the studio writes (no page or script put there by hand); HEAD answers like GET', async () => {
     const dir = path.join(plugins, 'lnk-files');
     fs.writeFileSync(path.join(dir, 'page.html'), '<script>alert(1)</script>');
     fs.writeFileSync(path.join(dir, 'pic.svg'), '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
@@ -421,7 +421,7 @@ describe('the studio over HTTP', () => {
     for (const f of ['page.html', 'pic.svg', 'x.js']) assert.equal((await raw('GET', `/studio/api/plugins/lnk-files/files/${f}`)).status, 404, f);
     const ok = await call('GET', '/studio/api/plugins/lnk-files/files/a.png');
     assert.equal(ok.status, 200);
-    assert.equal(ok.headers.get('content-security-policy'), "default-src 'none'; sandbox; frame-ancestors 'none'");
+    assert.equal(ok.headers.get('content-security-policy'), null);
     assert.equal(ok.headers.get('x-content-type-options'), 'nosniff');
     for (const f of ['page.html', 'pic.svg', 'x.js']) fs.rmSync(path.join(dir, f));
     // HEAD: the read routes answer as GET does, without a body; the events stream is not opened
@@ -522,7 +522,7 @@ describe('the studio over HTTP', () => {
     assert.equal((await call('GET', '/studio/api/info')).body.key, 'ok');
     // the studio's page is never framed by another page
     const page = await call('GET', '/studio/', undefined, {});
-    assert.deepEqual([page.headers.get('x-frame-options'), page.headers.get('content-security-policy')], ['DENY', "frame-ancestors 'none'"]);
+    assert.deepEqual([page.headers.get('x-frame-options'), page.headers.get('content-security-policy')], ['DENY', null]);
     // the same key after a restart; the boot banner prints the studio's address with it
     const again = await startServer({ port: 0, host: '127.0.0.1', quiet: true, pluginsDir: plugins, assetIndex: false });
     try {

@@ -5,14 +5,14 @@ import {Client,hasChrome,sleep} from '../e2e/client.mjs';
 import {scriptFixture} from '../helpers/scriptFixtures.js';
 import {startServer} from '../../server/index.js';
 const enabled=process.env.SP_E2E==='1' && hasChrome();
-test('two sandbox-script players start without consent and Worker battles verify under site CSP', {skip:!enabled,timeout:300000},async t=>{
+test('two sandbox-script players start without consent and Worker battles verify without site CSP', {skip:!enabled,timeout:300000},async t=>{
  const f=scriptFixture(t,{mode:'sandbox'});f.put('training',`export default sp => sp.content.register({install(b){b.on('battleStart',()=>{for(const u of b.allyUnits)b.addBuff(u,{key:'training',mods:{atkFlat:2}});});}});`);
  const previous=process.env.SP_PLUGIN_SCRIPTS;process.env.SP_PLUGIN_SCRIPTS='sandbox';
  t.after(()=>{if(previous===undefined)delete process.env.SP_PLUGIN_SCRIPTS;else process.env.SP_PLUGIN_SCRIPTS=previous;});
  const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,pluginsDir:f.pluginsDir,assetIndex:false,matchHost:{matchOptions:{verify:'all',timerScale:0.1,combatSpeed:16,botRehearsal:0}}});
  t.after(()=>srv.close());
  const policy=(await fetch(srv.url)).headers.get('content-security-policy');
- assert.match(policy,/connect-src 'self';/);assert.ok(!/script-src[^;]*(?:data:|blob:|unsafe-eval)/.test(policy));
+ assert.equal(policy,null);
  const P=(await import('puppeteer-core')).default;
  const host=new Client(P,srv.url,'host',{prefix:'plugins-sandbox',w:1600,h:900}), guest=new Client(P,srv.url,'guest',{prefix:'plugins-sandbox',w:1600,h:900});
  t.after(async()=>{await host.close();await guest.close();});

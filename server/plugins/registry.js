@@ -17,7 +17,6 @@
 //     manifest.js buildPluginIndex; the vanilla content hash beside it — server/plugins/identity.js);
 //   * the files of a loaded cosmetic plugin, and the frame files of a loaded ui plugin (pluginFile) — served at
 //     /p/<id>/<hash8>/<path> (server/http/static.js; the visual sets that use cosmetic files: server/plugins/visualSet.js).
-//     A ui file's response also carries the frame Content-Security-Policy (shared/plugins/ui.js UI_FRAME_CSP).
 // The classes lang, cosmetic (P1a) and ui (P4) load. A cosmetic plugin's asset overlay is read when it is scanned
 // (shared/plugins/visual.js readAssetOverlay: its shape, files, references to data/assets.json, permissions; plugin.lock.json
 // for its Spine models) and the files that shape it are hashed — SHA-256, kept by path while the file keeps its size,
@@ -848,7 +847,7 @@ export function createPluginRegistry(dirs, { log = { info: noop, warn: noop }, a
     /**
      * A file of a loaded cosmetic plugin that its overlay names, or a frame file of a loaded ui plugin (served at
      * /p/<id>/<hash8>/<rel>), with its plugin folder, or null — the only files of plugins/ ever served beside a lang
-     * plugin's. `frame` is true for a ui file (the response then carries the frame CSP).
+     * plugin's. `frame` is true for a ui file (the host mounts it in a sandboxed iframe).
      * @param {string} id
      * @param {string} rel
      * @returns {(ServedFile & { dir: string, frame: boolean }) | null}

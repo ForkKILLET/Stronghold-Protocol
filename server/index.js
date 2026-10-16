@@ -49,7 +49,6 @@ export { rewriteAssetPaths } from '../shared/cdn.js';
 import { getData, loadData } from './data.js';
 import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustProxy } from './http/config.js';
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
-import { siteCsp } from './http/csp.js';
 import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
 import { parseResourcePackRoutes } from '../shared/resourcePackRoutes.js';
 import { createPluginRegistry } from './plugins/registry.js';
@@ -217,7 +216,7 @@ export async function startServer(opts = {}) {
   buildTag(ROOT, { clientBuild });
 
   const traffic = createTrafficCounter();
-  const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health }, serveApi,
+  const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, health: { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health }, serveApi,
     diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log, trustProxy: network.opts.trustProxy }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic });

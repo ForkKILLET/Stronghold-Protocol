@@ -5,13 +5,9 @@ import path from 'node:path';
 import os from 'node:os';
 import { Writable } from 'node:stream';
 import { once } from 'node:events';
-import { createHash } from 'node:crypto';
-import { siteCsp, SIM_WORKER_CSP } from '../../server/http/csp.js';
 import { createRequestHandler } from '../../server/http/routes.js';
 import { createStaticHandler } from '../../server/http/static.js';
-import { installPixiNoEval } from '../../public/js/render/app/pixiNoEval.js';
 import { createPluginRegistry } from '../../server/plugins/registry.js';
-import { UI_FRAME_CSP } from '../../shared/plugins/ui.js';
 import {scriptFixture} from '../helpers/scriptFixtures.js';
 import {createContentSets} from '../../server/plugins/contentSets.js';
 import {getData} from '../../server/data.js';
@@ -27,25 +23,23 @@ function request(handler, url, headers = {}) {
   handler({ url, method: 'GET', headers }, res);
   return done;
 }
-function handler(csp = siteCsp(publicDir)) {
+function handler() {
   const serveStatic = createStaticHandler({ publicDir, dataDir: path.resolve('data'), sharedDir: path.resolve('shared') });
-  return createRequestHandler({ serveStatic, health: {}, log: console, csp });
+  return createRequestHandler({ serveStatic, health: {}, log: console });
 }
-test('page import maps hash exact bytes; no inline executable script/events; page forbids eval', () => {
-  const csp = siteCsp(publicDir);
-  assert.ok(!csp.includes('unsafe-eval')); assert.match(csp, /worker-src 'self' blob:/);
-  assert.match(csp,/connect-src 'self';/);assert.ok(!/script-src[^;]*(?:data:|blob:)/.test(csp));
-  for (const file of ['index.html', 'studio/index.html', 'dev/game-mock.html', 'dev/render-demo.html', 'dev/battle-perf.html', 'dev/uikit.html']) {
-    const html = fs.readFileSync(path.join(publicDir, file), 'utf8');
-    assert.ok(!/<[^>]+\son(?:load|error|click)=/i.test(html), file);
-    for (const m of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
-      if (m[1].includes('importmap')) assert.ok(csp.includes(createHash('sha256').update(m[2]).digest('base64')), file);
-      else assert.ok(!m[2].trim(), file);
-    }
+test('pages, health, errors and simulation Workers do not send CSP', async () => {
+  const serve = handler();
+  for (const url of ['/', '/index.html', '/healthz', '/missing-csp-check', '/js/battle/simWorker.js']) {
+    const response = await request(serve, url);
+    assert.equal(response.headers['content-security-policy'], undefined, url);
+    assert.equal(response.headers['x-content-type-options'], 'nosniff', url);
+    assert.equal(response.headers['referrer-policy'], 'same-origin', url);
   }
+  const source = fs.readFileSync(path.resolve('server/index.js'), 'utf8');
+  assert.doesNotMatch(source, /SP_CSP|siteCsp/);
 });
 
-test('native script HTTP routes serve exact descriptor bytes and JavaScript MIME under site CSP',async t=>{
+test('native script HTTP routes serve exact descriptor bytes and JavaScript MIME without CSP',async t=>{
   const f=scriptFixture(t);
   f.put('native',"import {kit} from 'sp:sdk@1'; export default sp => {};",
     {class:'trusted',permissions:['sim.code','trusted.page'],entry:{sim:'index.js',client:'page.js'}},{'page.js':'globalThis.nativeTest = true;'});
@@ -53,11 +47,11 @@ test('native script HTTP routes serve exact descriptor bytes and JavaScript MIME
   const r=contents.resolve(['native']);assert.ok(r.ok,JSON.stringify(r));
   const set=r.set,cs16=set.cs.slice(0,16);
   const serveStatic=createStaticHandler({publicDir,dataDir:path.resolve('data'),sharedDir:path.resolve('shared'),contents});
-  const serve=createRequestHandler({serveStatic,csp:siteCsp(publicDir),health:{},log:console});
+  const serve=createRequestHandler({serveStatic,health:{},log:console});
   for(const rel of ['index.js','page.js']) {
     const url=`/cs/${cs16}/scripts/native/${rel}`,a=await request(serve,url);
     assert.equal(a.status,200);assert.match(a.headers['content-type'],/^text\/javascript/);
-    assert.equal(a.body,set.scripts[0].browserSources[rel]);assert.equal(a.headers['content-security-policy'],siteCsp(publicDir));
+    assert.equal(a.body,set.scripts[0].browserSources[rel]);assert.equal(a.headers['content-security-policy'],undefined);
     assert.equal((await request(serve,url,{'if-none-match':a.headers.etag})).status,304);
   }
   assert.match(set.scripts[0].browserSources['index.js'],/\/shared\/plugins\/sdk.js/);
@@ -65,34 +59,19 @@ test('native script HTTP routes serve exact descriptor bytes and JavaScript MIME
   fs.writeFileSync(f.pluginsDir+'/native/page.js','globalThis.nativeTest = false;');
   assert.equal((await request(serve,`/cs/${cs16}/scripts/native/page.js`)).body,'globalThis.nativeTest = true;','immutable held bytes');
 });
-test('actual static responses: Worker CSP on 200/206/304 and encoded aliases, independent of site switch', async () => {
-  for (const csp of [siteCsp(publicDir), null]) {
-    const serve = handler(csp);
-    const page = await request(serve, '/');
-    assert.equal(page.headers['content-security-policy'], csp || undefined);
-    const a = await request(serve, '/js/battle/simWorker.js');
-    assert.equal(a.status, 200); assert.equal(a.headers['content-security-policy'], SIM_WORKER_CSP);
-    for (const headers of [{ range: 'bytes=0-20' }, { 'if-none-match': a.headers.etag }]) {
-      const b = await request(serve, '/js/battle/sim%57orker.js', headers);
-      assert.equal(b.status, headers.range ? 206 : 304); assert.equal(b.headers['content-security-policy'], SIM_WORKER_CSP);
-    }
-    assert.match(SIM_WORKER_CSP, /connect-src 'none'/);
+test('Worker ranges and encoded aliases keep cache behavior without CSP', async () => {
+  const serve = handler();
+  const a = await request(serve, '/js/battle/simWorker.js');
+  assert.equal(a.status, 200);
+  assert.equal(a.headers['content-security-policy'], undefined);
+  for (const headers of [{ range: 'bytes=0-20' }, { 'if-none-match': a.headers.etag }]) {
+    const b = await request(serve, '/js/battle/sim%57orker.js', headers);
+    assert.equal(b.status, headers.range ? 206 : 304);
+    assert.equal(b.headers['content-security-policy'], undefined);
   }
 });
-test('Pixi CSP adapter uploads matrices, samplers, arrays and scalars without code generation', () => {
-  class ShaderSystem {}
-  installPixiNoEval({ ShaderSystem });
-  const calls = [], gl = new Proxy({}, { get: (_, key) => (...args) => calls.push([key, ...args]) });
-  const s = new ShaderSystem();
-  s.renderer = { gl, texture: { bind: () => {} } };
-  const data = { f: { type: 'float', size: 1 }, m: { type: 'mat3', size: 1 }, t: { type: 'sampler2D', size: 1 }, a: { type: 'vec3', size: 2, isArray: true } };
-  s.shader = { program: { uniformData: data } };
-  s.systemCheck(); s.syncUniforms({ uniforms: { f: 7, m: [1,0,0,0,1,0,0,0,1], t: {}, a: [1,2,3,4,5,6] } },
-    { uniformData: Object.fromEntries(Object.keys(data).map(k => [k, { location: k, value: -1 }])) });
-  assert.deepEqual(calls.map(c => c[0]), ['uniform1f', 'uniformMatrix3fv', 'uniform1i', 'uniform3fv']);
-});
 
-test('site CSP never changes the UI frame policy (200/206/304)', async t => {
+test('UI plugin responses omit CSP on 200/206/304', async t => {
   const pluginsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sp-p3b-frame-csp-'));
   t.after(() => fs.rmSync(pluginsDir, { recursive: true, force: true }));
   fs.cpSync(path.resolve('plugins/_template/ui'), path.join(pluginsDir, 'damage-meter'), { recursive: true });
@@ -100,13 +79,13 @@ test('site CSP never changes the UI frame policy (200/206/304)', async t => {
   const registry = createPluginRegistry(dirs); registry.refresh(true);
   const file = registry.plugin('damage-meter').ui.served.get('ui/index.html');
   const url = `/p/damage-meter/${file.sha256.slice(0, 8)}/ui/index.html`;
-  for (const csp of [siteCsp(publicDir), null]) {
-    const serve = createRequestHandler({ serveStatic: createStaticHandler({ ...dirs, packs: registry }), health: {}, log: console, csp });
+  {
+    const serve = createRequestHandler({ serveStatic: createStaticHandler({ ...dirs, packs: registry }), health: {}, log: console });
     const first = await request(serve, url);
-    assert.equal(first.status, 200); assert.equal(first.headers['content-security-policy'], UI_FRAME_CSP);
+    assert.equal(first.status, 200); assert.equal(first.headers['content-security-policy'], undefined);
     for (const headers of [{ range: 'bytes=0-20' }, { 'if-none-match': first.headers.etag }]) {
       const next = await request(serve, url, headers);
-      assert.equal(next.status, headers.range ? 206 : 304); assert.equal(next.headers['content-security-policy'], UI_FRAME_CSP);
+      assert.equal(next.status, headers.range ? 206 : 304); assert.equal(next.headers['content-security-policy'], undefined);
     }
   }
 });

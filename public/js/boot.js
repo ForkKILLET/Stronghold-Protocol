@@ -1,4 +1,4 @@
-// Static boot diagnostics: CSP allows external scripts, never inline event handlers.
+// Static boot diagnostics in a separately loaded script.
 // i18n-ignore-file: pre-module legacy-browser fallback, as public/index.html.
 // Boot diagnostics (plain ES5: runs everywhere). A browser too old for the app says so instead of spinning forever:
     // no ES modules (nomodule below), a module graph that cannot load (e.g. import maps: Safari / iOS < 16.4), or no

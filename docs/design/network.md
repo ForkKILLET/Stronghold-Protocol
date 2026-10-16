@@ -207,7 +207,7 @@ browser can test **AI teammates'** layouts during prep (META §1.5). Human seats
 The server builds the candidate list from the 0.3.0 preview inputs (normal field seed, start effects, layer gains,
 detached board — the live board, funds, layers and the room's script budget are not touched) and keeps the board.
 The host runs the same `/sim/rehearsal.js` in a same-origin module Worker (`/js/battle/rehearsalWorker.js`; the site
-CSP stays `script-src 'self'`, and this worker is not given `eval` or a `blob:` URL), using the supplied battle
+the worker uses an explicit same-origin entry without a CSP response policy), using the supplied battle
 specs and seeds, and returns its choice. Only the current connected human host may answer a live task. The server
 accepts that index once and applies the layout without simulating it again. An answer never changes another player's state.
 

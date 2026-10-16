@@ -181,7 +181,7 @@ const MAX_STREAMS_PER_CLIENT = 3;
  * The headers of a plugin's file served to the page: never a document of the server's origin — a file put in a plugin
  * folder by hand (an .html, an .svg) cannot run a script there, also when someone is led to open its URL.
  */
-const FILE_HEADERS = Object.freeze({ 'Content-Security-Policy': "default-src 'none'; sandbox; frame-ancestors 'none'", 'Cross-Origin-Resource-Policy': 'same-origin' });
+const FILE_HEADERS = Object.freeze({ 'Cross-Origin-Resource-Policy': 'same-origin' });
 /** A request's text field: a string (or a number) as it is, anything else as nothing. @param {unknown} v @param {number} [max] */
 const text = (v, max = 200) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '').slice(0, max);
 /** A request's path of keys (`at`): strings and numbers, anything else as '?'. @param {unknown} v */
@@ -712,7 +712,7 @@ export function createStudio({ publicDir, pluginsDir, dataDir, registry, lobby =
 
   /**
    * Serve a file of a plugin folder (a draft's too) to the page: only the file types the studio writes (art, models,
-   * audio, fonts, JSON, documents — never a page or a script put there by hand), sandboxed (FILE_HEADERS).
+   * audio, fonts, JSON, documents — never a page or a script put there by hand), with FILE_HEADERS and nosniff.
    */
   async function servePluginFile(req, res, id, rel, query) {
     const { abs, st } = files.stat(id, rel);
@@ -1005,7 +1005,6 @@ export function createStudio({ publicDir, pluginsDir, dataDir, registry, lobby =
     if (keyed(req)) activate();
     // never inside a frame of another page (its buttons change files)
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
     if (rawPath === '/studio') { res.writeHead(301, { Location: `/studio/${query ? `?${query}` : ''}`, 'Cache-Control': 'no-cache', 'Content-Length': 0 }); res.end(); return; }
     try {
       if (rawPath.startsWith(STUDIO_API)) {

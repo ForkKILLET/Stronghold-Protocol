@@ -1,4 +1,4 @@
-// A module Worker with its own response CSP. No fetch: checked content bytes/data arrive from the page.
+// A module Worker with SES compartment isolation. No fetch: checked content bytes/data arrive from the page.
 import { createSimWorker } from './simWorkerRuntime.js';
 
 const dispatch = createSimWorker();

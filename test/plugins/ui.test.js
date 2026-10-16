@@ -1,6 +1,6 @@
 import { testLink } from '../helpers/links.js';
 // Interface plugins (DESIGN §32.8): message shape and rate, storage quota, slot allocation, the registry accepting
-// and refusing a ui manifest, the /p/ CSP header, and a ui plugin leaving `cs` alone (it does count toward `vs`).
+// and refusing a ui manifest, the /p/ response headers, and a ui plugin leaving `cs` alone (it does count toward `vs`).
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { C2S } from '../../shared/protocol.js';
 import { UI_SLOT_IDS, readPluginManifest, classStatus } from '../../shared/plugins/manifest.js';
 import {
-  UI_ERRORS, UI_FRAME_CSP, UI_LIMITS, UI_SLOTS, battlePayload, checkStorageWrite, clampHeight, clampNotice,
+  UI_ERRORS, UI_LIMITS, UI_SLOTS, battlePayload, checkStorageWrite, clampHeight, clampNotice,
   createNoticeLimiter, createRateLimiter, createSlotTable, frameEntryAllowed, frameLoadDecision, framePageUrl,
   isIntentType, isMatchIntent, namespacedStorageKey, sanitizeEvent, subsetPrivate, subsetPublic, validatePluginMessage,
 } from '../../shared/plugins/ui.js';
@@ -256,11 +256,6 @@ describe('the postMessage contract', () => {
     assert.equal(frameLoadDecision(2), 'destroy');
     assert.equal(frameLoadDecision(3), 'destroy');
     assert.equal(frameLoadDecision(0), 'destroy');
-    assert.match(UI_FRAME_CSP, /(^|; )sandbox allow-scripts(;|$)/);
-    assert.doesNotMatch(UI_FRAME_CSP, /allow-same-origin/);
-    assert.match(UI_FRAME_CSP, /frame-ancestors 'self'/);
-    assert.match(UI_FRAME_CSP, /base-uri 'none'/);
-    assert.match(UI_FRAME_CSP, /form-action 'none'/);
     // plainClone caps each string at 120 characters, so one long string still fits; a wide tree does not.
     const row = {};
     for (let i = 0; i < 24; i++) row['k' + i] = 'x'.repeat(200);
@@ -376,21 +371,21 @@ describe('the registry and /p/', () => {
     assert.equal(scan.plugins.some((p) => p.where.includes('_template')), false);
   });
 
-  test('/p/ sends the frame CSP for a ui file, and not for cosmetic art', async () => {
+  test('/p/ serves UI and cosmetic files without CSP while preserving cache and file allowlists', async () => {
     const ui = registry.plugin('damage-meter');
     const file = ui.ui.served.get('ui/index.html');
     const hash = file.sha256.slice(0, 8);
     const url = `/p/damage-meter/${hash}/ui/index.html`;
     const first = await get(url);
     assert.equal(first.status, 200);
-    assert.equal(first.headers['content-security-policy'], UI_FRAME_CSP);
+    assert.equal(first.headers['content-security-policy'], undefined);
     assert.match(first.headers['cache-control'], /immutable/);
     const again = await get(url, { 'if-none-match': first.headers.etag });
     assert.equal(again.status, 304);
-    assert.equal(again.headers['content-security-policy'], UI_FRAME_CSP);
+    assert.equal(again.headers['content-security-policy'], undefined);
     const png = await get(`/p/damage-meter/${ui.ui.served.get('ui/icon.png').sha256.slice(0, 8)}/ui/icon.png`);
     assert.equal(png.status, 200);
-    assert.equal(png.headers['content-security-policy'], UI_FRAME_CSP);
+    assert.equal(png.headers['content-security-policy'], undefined);
     const skin = registry.plugin('skin');
     const art = skin.visual.served.get('art/a.png');
     const cosmeticRes = await get(`/p/skin/${art.sha256.slice(0, 8)}/art/a.png`);
@@ -403,12 +398,10 @@ describe('the registry and /p/', () => {
     const wrong = await get(`/p/damage-meter/${'0'.repeat(8)}/ui/index.html`);
     assert.equal(wrong.status, 200);
     assert.equal(wrong.headers['cache-control'], 'no-cache');
-    assert.equal(wrong.headers['content-security-policy'], UI_FRAME_CSP);
+    assert.equal(wrong.headers['content-security-policy'], undefined);
     const partial = await get(url, { Range: 'bytes=0-3' });
     assert.equal(partial.status, 206);
-    assert.match(partial.headers['content-security-policy'], /(^|; )sandbox allow-scripts(;|$)/);
-    assert.doesNotMatch(partial.headers['content-security-policy'], /allow-same-origin/);
-    assert.equal(partial.headers['content-security-policy'], UI_FRAME_CSP);
+    assert.equal(partial.headers['content-security-policy'], undefined);
     assert.equal(registry.pluginFile('damage-meter', 'ui/index.html').frame, true);
     assert.equal(registry.pluginFile('skin', 'art/a.png').frame, false);
   });

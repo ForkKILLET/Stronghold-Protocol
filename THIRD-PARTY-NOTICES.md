@@ -2,7 +2,7 @@
 
 Stronghold Protocol's own code is licensed under **GPL-3.0-or-later** (see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)).
 The components below are **not** part of that grant: each stays under its own licence, reproduced at the end of this
-file. The only third-party source committed here is `tools/local-extract/aklz4.py` and the transpiled Pixi no-eval adapter `public/js/render/app/pixiNoEval.js`; the client libraries are
+file. The only third-party source committed here is `tools/local-extract/aklz4.py`; the client libraries are
 installed by npm and copied into `public/vendor/` by `tools/vendor.mjs` (postinstall), and the release bundle carries
 them (with `node_modules/`, which keeps each package's own licence file).
 
@@ -20,7 +20,6 @@ them (with `node_modules/`, which keeps each package's own licence file).
 | [three.js](https://github.com/mrdoob/three.js) | 0.186.1 | MIT | official 3D board — `public/vendor/three.core.js`, `three.module.js` | no (npm) | yes |
 | [SES](https://github.com/endojs/endo/tree/master/packages/ses) | 2.3.0 | Apache-2.0 (full text below, shared with htm) | script plugin compartments in isolated Workers/children — `public/vendor/ses.umd.js`; dependencies @endo/cache-map 1.1.0, @endo/env-options 1.1.11, @endo/immutable-arraybuffer 2.0.0, also Apache-2.0 | no (npm) | yes |
 | [Acorn](https://github.com/acornjs/acorn) | 8.18.0 | MIT | parsed sandbox module adapter — `public/vendor/acorn.mjs`, server | no (npm) | yes |
-| [@pixi/unsafe-eval](https://github.com/pixijs/pixijs/tree/v7.4.2/packages/unsafe-eval/src) | 7.4.2 | MIT (PixiJS notice below) | CSP-compatible shader uniform uploads; upstream syncUniforms transpiled, install adapted to lazy global PIXI | **yes**, `public/js/render/app/pixiNoEval.js` | yes |
 | [ws](https://github.com/websockets/ws) | 8.22.0 | MIT | WebSocket server (`server/`) | no (npm) | yes (`node_modules/`) |
 | [Node.js](https://nodejs.org/) | v22.23.3 (pinned in `scripts/make-windows-bundle.mjs`) | MIT | the portable `node\node.exe` (**Windows portable package only** — the integration bundle in [Releases](../../releases/latest) ships no `node.exe`) | no (downloaded from nodejs.org at package time, sha256 verified) | **Windows portable package only** (`node\node.exe`, with `node\LICENSE-node.txt`) |
 | [puppeteer-core](https://github.com/puppeteer/puppeteer) | 25.12.0 | Apache-2.0 | optional browser tests (dev dependency) | no (npm) | no |

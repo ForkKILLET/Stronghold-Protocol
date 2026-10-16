@@ -18,10 +18,6 @@
 //   * one slot per plugin, one plugin per slot, at most 8 plugins mounted; slots are the four UI_SLOT_IDS
 //   * the private subset is the allowlist in subsetPrivate (never loadout, ops, diy, effects, tokens, other hands)
 //   * the public subset is the allowlist in subsetPublic
-//   * CSP UI_FRAME_CSP is on every ui /p/ response that carries the file headers (200, 206, 304), not on cosmetic
-//     art, not site-wide. It includes `sandbox allow-scripts` (never `allow-same-origin`) so a top-level open of the
-//     same URL is still an opaque origin. A <meta> sandbox is ignored by browsers; the response header is the one
-//     that counts. 'self' may not match that opaque origin; inline scripts still run. Not measured in a browser.
 //   * [ASSUMED] once a snapshot or a private view has been posted, the plugin can put it in the URL of the navigation
 //     that leaves the entry. Nothing after that load gets another post. navigate-to was not measured and is not the fix.
 //
@@ -34,15 +30,6 @@ export { UI_SLOT_IDS as UI_SLOTS };
 
 /** postMessage API version. */
 export const UI_API = 1;
-
-/**
- * Content-Security-Policy on a ui plugin's files at /p/ (not on cosmetic art, not site-wide).
- * `sandbox allow-scripts` is a response directive: the document is opaque even when opened at the top level.
- * Do not add `allow-same-origin` — that would hand the plugin the game origin (and the reconnect tokens).
- * [ASSUMED] see the header — inline scripts run; a separate script file may not, under an opaque origin.
- * `navigate-to` is intentionally absent: it was not measured here, and it is not the navigation fix.
- */
-export const UI_FRAME_CSP = "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; sandbox allow-scripts; frame-ancestors 'self'; base-uri 'none'; form-action 'none'";
 
 /** [ASSUMED] see the header. */
 export const UI_LIMITS = Object.freeze({
@@ -493,7 +480,7 @@ export function battlePayload({ fieldId, gt, events, snap }) {
 }
 
 /**
- * The iframe's `src` for one plugin file: its own `/p/<id>/<hash8>/<entry>` (the response carries the frame CSP,
+ * The iframe's `src` for one plugin file: its own `/p/<id>/<hash8>/<entry>` (the host mounts it in a sandboxed iframe,
  * `sandbox allow-scripts` included). `sha256` is the file's hash (the URL carries the first 8 hex digits). No redirect
  * page: a page that navigates away from inside its own load handler gets no iframe `load` event in Chrome, which
  * made a redirect step uncountable.
