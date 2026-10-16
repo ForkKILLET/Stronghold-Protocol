@@ -805,7 +805,7 @@ export function createAssets(options) {
   const opts = options && typeof options === 'object' ? options : {};
   const layers = opts.cosmetics && typeof opts.cosmetics.apply === 'function' ? opts.cosmetics : null;
   const url = opts.url || dataUrl('/data/assets.json', opts.dataCdn ?? DATA_CDN);
-  const localUrl = opts.localUrl || '/data/local-assets.json';
+  const localUrl = opts.localUrl || dataUrl('/data/local-assets.json', opts.dataCdn ?? DATA_CDN);
   let localPromise = isObj(opts.localManifest) ? Promise.resolve(opts.localManifest) : null;
   let localManifest = isObj(opts.localManifest) ? opts.localManifest : null;
   let localLoading = false;

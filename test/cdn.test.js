@@ -199,7 +199,8 @@ test('browser loaders read original assets from the data CDN and rewrite with th
     assert.deepEqual(await data.load('config'), { note: '/assets/not-a-manifest.json' }, 'other data is untouched');
     assert.deepEqual(await data.load('asset-hashes'), { files: { '/assets/x.png': 'abcd1234' } });
     assert.deepEqual(requests, [`${base}/data/assets.json`, `${base}/data/assets.json`,
-      '/data/local-assets.json', '/data/local-assets.json', `${base}/data/config.json`, `${base}/data/asset-hashes.json`]);
+      `${dataCdn}/data/local-assets.json`, `${dataCdn}/data/local-assets.json`,
+      `${base}/data/config.json`, `${base}/data/asset-hashes.json`]);
     assert.equal(doc.hash, 'deadbeef');
     const hashes = await fetch(`http://127.0.0.1:${srv.address().port}/data/asset-hashes.json`);
     assert.equal(hashes.redirected, false);
@@ -209,7 +210,7 @@ test('browser loaders read original assets from the data CDN and rewrite with th
     assert.equal((await get(srv, '/data/local-assets.json')).status, 200);
     assert.equal(fs.readFileSync(path.join(dir, 'assets.json'), 'utf8'), source);
     const noArtCdn = createDataStore({ fetch: fetchFn, assetsCdn: '', dataCdn });
-    assert.deepEqual(await noArtCdn.load('assets'), manifest(), 'data CDN alone retains game-origin asset URLs');
+    assert.deepEqual(await noArtCdn.load('assets'), manifest(), 'data CDN alone retains root-relative asset URLs');
   } finally {
     srv?.close();
     cdn?.close();
@@ -222,15 +223,19 @@ test('direct data URLs preserve origin-only manifests, query strings, and explic
     const normalized = base.replace(/\/+$/, '');
     assert.equal(dataUrl('/data/chess.json?v=1', base), `${normalized}/data/chess.json?v=1`);
     assert.equal(dataUrl('/data/assets.json', base), `${normalized}/data/assets.json`);
-    for (const url of ['/data/local-assets.json', '/data/resource-manifest.json', '/api/ping',
-      '/data/nested/x.json', 'https://other.example.com/data/chess.json']) assert.equal(dataUrl(url, base), url);
+    for (const url of ['/data/local-assets.json', '/data/local-fx.json', '/data/resource-manifest.json',
+      '/data/resource-packs.json', '/data/nested/x.json']) assert.equal(dataUrl(url, base), `${normalized}${url}`);
+    for (const url of ['/api/ping', '/data/../secrets.json', 'https://other.example.com/data/chess.json']) {
+      assert.equal(dataUrl(url, base), url);
+    }
     const calls = [];
     const fetchFn = async (url) => { calls.push(url); return { ok: true, json: async () => ({}) }; };
     const data = createDataStore({ fetch: fetchFn, dataCdn: base });
     await data.load('chess');
     await data.load('local');
     await data.load('resource-manifest');
-    assert.deepEqual(calls, [`${normalized}/data/chess.json`, '/data/local-assets.json', '/data/resource-manifest.json']);
+    assert.deepEqual(calls, [`${normalized}/data/chess.json`, `${normalized}/data/local-assets.json`,
+      `${normalized}/data/resource-manifest.json`]);
     calls.length = 0;
     await createDataStore({ fetch: fetchFn, base: '/custom/', dataCdn: base }).load('chess');
     await createAssets({ fetch: fetchFn, url: '/custom/assets.json', dataCdn: base }).ready();
@@ -239,15 +244,14 @@ test('direct data URLs preserve origin-only manifests, query strings, and explic
   assert.equal(dataUrl('/data/chess.json', ''), '/data/chess.json');
 });
 
-test('language JSON uses the assets CDN and leaves the live index and custom URLs unchanged', () => {
-  for (const base of ['https://art.example.com/sp/', '/cdn/']) {
-    const prefix = base.replace(/\/+$/, '');
-    for (const url of ['/i18n/en.json', '/i18n/zh-TW.json?v=2', '/data/i18n/ja.json', '/packs/qaa/texts/game.json']) {
-      assert.equal(i18nUrl(url, base), prefix + url);
-    }
+test('UI language JSON uses the assets CDN and game text JSON uses the data CDN', () => {
+  for (const [assetsBase, dataBase] of [['https://art.example.com/sp/', 'https://data.example.com/game/'], ['/cdn/', '/data-cdn/']]) {
+    const art = assetsBase.replace(/\/+$/, ''), data = dataBase.replace(/\/+$/, '');
+    for (const url of ['/i18n/en.json', '/i18n/zh-TW.json?v=2']) assert.equal(i18nUrl(url, assetsBase, dataBase), art + url);
+    for (const url of ['/data/i18n/ja.json', '/packs/qaa/texts/game.json']) assert.equal(i18nUrl(url, assetsBase, dataBase), data + url);
     for (const url of ['/packs/index.json', '/data/chess.json', '/custom/en.json', '/i18n/font.woff2',
       'https://custom.example.com/i18n/en.json', '//custom.example.com/i18n/en.json', 'i18n/en.json']) {
-      assert.equal(i18nUrl(url, base), url);
+      assert.equal(i18nUrl(url, assetsBase, dataBase), url);
     }
   }
   assert.equal(i18nUrl('/i18n/en.json', ''), '/i18n/en.json');
@@ -277,7 +281,7 @@ test('UI language loader routes file and folder packs to the assets CDN, while i
   ]);
 });
 
-test('game-text language overlays use the assets CDN independently of DATA_CDN and preserve explicit bases', async () => {
+test('game-text language overlays use the data CDN and preserve explicit bases', async () => {
   const calls = [];
   const fetchFn = async (url) => {
     calls.push(url);
@@ -293,11 +297,11 @@ test('game-text language overlays use the assets CDN independently of DATA_CDN a
   await make({ base: '/custom/' }).setLocale('en');
   await make({ assetsCdn: '' }).setLocale('en');
   assert.deepEqual(calls, [
-    'https://art.example.com/sp/data/i18n/en.json',
-    'https://art.example.com/sp/packs/qcd/texts/game.json',
+    'https://data.example.com/sp/data/i18n/en.json',
+    'https://data.example.com/sp/packs/qcd/texts/game.json',
     'https://custom.example.com/text.json',
     '/custom/i18n/en.json',
-    '/data/i18n/en.json',
+    'https://data.example.com/sp/data/i18n/en.json',
   ]);
 });
 

@@ -58,6 +58,7 @@ logs/
 scripts/service.env.cmd
 .env
 .env.*
+config/r2-sync.json
 deploy/monitoring/monitoring.env
 deploy/monitoring/exporter/targets.json
 deploy/monitoring/network.override.yml

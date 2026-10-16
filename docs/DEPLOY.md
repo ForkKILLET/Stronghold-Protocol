@@ -452,24 +452,24 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
 ```
 
 - 页面数据加载器、浏览器战斗模拟和独立素材加载器通过运行时 `/js/asset-cdn.js` 的 `DATA_CDN`，直接请求 `<SP_DATA_CDN>/data/chess.json` 等静态 JSON，无需先请求游戏源站。也支持同源前缀，例如 `/cdn`；移除变量并重启后恢复同源加载。Node 的 `/data/*.json` 始终读取本地数据，保持 GET/HEAD、ETag/304 和原有缓存策略，不再跳转到数据 CDN。
-- `assets.json`、`asset-hashes.json` 也直接从数据 CDN 读取，**直接上传原始 JSON**，无需执行导出命令或提前改写地址。浏览器读取素材清单后，根据服务器通过 `/js/asset-cdn.js` 提供的 `ASSETS_CDN` 改写 `/assets/…`；已有的绝对地址保持原样。素材 CDN 与数据 CDN 可以使用不同域名。
-- `local-assets.json` 保留在游戏服务器上，继续支持本地素材地址改写和未提取时的空清单；动态 `resource-manifest.json` 也保留在服务器上，并使用本地素材清单和哈希表生成。
-- **服务器的本地 `data/` 必须保留**，游戏逻辑与战斗计算仍从本地读取。CDN 侧允许 JSON 跨域读取（例如 `Access-Control-Allow-Origin: *`），并设置 `Cache-Control: no-cache` 配合 ETag / Last-Modified；更新时同步上传并刷新 CDN 缓存，或者使用带版本号的 CDN 根目录，避免客户端与服务器数值不一致。
+- `data/` 中全部 JSON 都从 `DATA_CDN` 加载，包括 `assets.json`、`asset-hashes.json`、`local-assets.json`、`local-fx.json`、`resource-manifest.json`、`resource-packs.json`、游戏数据和 `data/i18n/` 文本。游戏文本语言包 `/packs/<id>/texts/*.json` 也使用 `DATA_CDN`；UI 语言 `/i18n/*.json` 仍使用 `ASSETS_CDN`。浏览器读取素材清单后，按 `/js/asset-cdn.js` 提供的 `ASSETS_CDN` 改写 `/assets/…`。
+- **服务器本地 `data/` 必须保留**，游戏逻辑、插件验证和战斗计算仍从本地读取。数据 CDN 同步使用 `bash scripts/sync-to-r2.sh`：上传完整 data、assets、fonts、语言和可选 resource packs，并在临时目录生成预载 resource manifest，不覆盖本机清单。先将 `config/r2-sync.example.json` 复制为已忽略的 `config/r2-sync.json`，填写 R2 和 CDN 配置；默认预演，加 `--apply` 才上传并清缓存。JSON 配置默认按 CDN 路径前缀清缓存，兼容环境变量模式仍清整个 Zone；均需要 Zone Cache Purge 权限。详见 [R2_SYNC.md](R2_SYNC.md)。CDN 允许 JSON 跨域读取，并设置 `Cache-Control: no-cache` 配合验证器；也可使用带版本号的 CDN 根目录。
 - 两个 CDN 变量可以独立配置。`GET /metrics` 的 `dataCdn` 显示当前数据 CDN 根目录；未配置时为 `null`。
 
-更新资源后同步上传原始 JSON，并刷新 CDN 缓存。`/js/asset-cdn.js` 由游戏服务器提供，使用 `no-cache` 和 ETag 校验；代理应保留此缓存策略，以便切换素材或数据 CDN 后浏览器取得新地址。首次升级到浏览器直连数据 CDN 的版本需要重新构建前端并重启服务；之后仅切换 CDN 环境变量无需重新构建，刷新页面即可读取启动时的新配置。
+更新资源后运行 R2 同步脚本。`/js/asset-cdn.js` 由游戏服务器提供，使用 `no-cache` 和 ETag 校验；代理应保留此缓存策略，以便切换素材或数据 CDN 后浏览器取得新地址。首次升级到所有 data JSON 直连 CDN 的版本需要重新构建前端并重启服务；之后仅切换 CDN 环境变量无需重新构建，刷新页面即可读取启动时的新配置。
 
-CDN 的 `/data/` 回源可使用 Nginx 的 `alias` 指向复制的数据目录，也可代理到 Node 的本地数据响应；Node 不再进行数据 CDN 跳转。静态域名要允许跨域 JSON，发布时与游戏服务器同步数据版本。游戏域名的 `/data/local-assets.json`、`/data/resource-manifest.json` 和 `/js/asset-cdn.js` 应继续代理到 Node；预载清单动态生成，不能通过复制 `data/` 得到。
+R2 CDN 的 `/data/` 映射到上传的 data 目录；游戏域名的 `/data/*.json` 源站接口仍保留，由 Node 读本机 data，`/data/resource-manifest.json` 仍动态生成。玩家客户端通过 DATA_CDN 读取上传的快照；游戏服务器自身不会改为从 CDN 读数据。
 
-界面和游戏文本的语言 JSON 也使用 `SP_ASSETS_CDN`，无需放到数据 CDN。保留原路径分别同步：
+界面和游戏文本 JSON 按用途分 CDN，保持原 URL 路径：
 
-| 本机目录 | 素材 CDN 路径 |
+| 本机目录 | CDN 路径 |
 |---|---|
 | `public/i18n/` | `<SP_ASSETS_CDN>/i18n/` |
-| `data/i18n/` | `<SP_ASSETS_CDN>/data/i18n/` |
-| 目录式语言包 `packs/<id>/` 的声明文件 | `<SP_ASSETS_CDN>/packs/<id>/` |
+| `data/i18n/` | `<SP_DATA_CDN>/data/i18n/` |
+| `packs/<id>/texts/` 游戏文本 | `<SP_DATA_CDN>/packs/<id>/texts/` |
+| `packs/<id>/` UI 语言文件 | `<SP_ASSETS_CDN>/packs/<id>/` |
 
-`/packs/index.json` 继续由游戏源站动态生成，不复制到 CDN；语言 JSON 保持 `Cache-Control: no-cache`、ETag 和允许跨域读取。发布时同步语言文件并刷新 CDN 缓存。未设置素材 CDN 时照常同源读取，显式外部 URL 和自定义加载器 `base` 优先。首次升级此加载逻辑需要重新构建并重启服务。
+`/packs/index.json` 继续由游戏源站动态生成，不复制到 CDN；语言 JSON 保持 `Cache-Control: no-cache`、ETag 和允许跨域读取。发布时同步对应文件并清理 CDN 缓存。显式外部 URL 和自定义加载器 `base` 优先。首次升级此加载逻辑需要重新构建并重启服务。
 
 ### 3.3 资源预载（可选，客户端开关）
 

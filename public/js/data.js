@@ -319,7 +319,7 @@ export function createDataStore(opts = {}) {
    * the set's i18n/<lang>.json through its `overlay` loader; resolves to it, or null when unavailable.
    */
   function loadOverlay(lang, url = `${base}i18n/${lang}.json`) {
-    if (opts.base == null) url = i18nUrl(url, assetsCdn);
+    if (opts.base == null) url = i18nUrl(url, assetsCdn, dataCdn);
     const own = content && content.overlay && content.langs.has(lang) ? content : null;
     const key = own ? `${own.id}|${lang}` : lang;
     if (overlayLoads.has(key)) return overlayLoads.get(key);

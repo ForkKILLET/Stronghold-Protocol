@@ -82,25 +82,24 @@ client fetches Spine `.skel` / `.atlas` files with `fetch` and loads images with
 so a long `Cache-Control` is safe only if you invalidate on update — the server itself uses `max-age=86400` for
 `/assets/`.
 
-Game data can also use a CDN: set `SP_DATA_CDN=https://cdn.example.com/stronghold` and upload the matching release's
-`data/` directory under that base. Page, simulation and standalone asset loaders read the runtime `DATA_CDN` from
-`/js/asset-cdn.js` and request `<SP_DATA_CDN>/data/<file>.json` directly. Origin `/data/*.json` requests always read
-local data without a CDN redirect, retaining GET/HEAD and HTTP cache validators. The CDN must allow CORS for JSON and should use
-`Cache-Control: no-cache` with validators, or a release-specific base URL, to keep browser and server data in sync.
-Keep the local data directory: the server still reads it for game logic. `assets.json` and `asset-hashes.json` also
-come directly from the data CDN. Upload the original JSON files as-is: browser data and asset loaders rewrite `/assets/…`
-after reading the JSON, using the server's `SP_ASSETS_CDN` supplied by `/js/asset-cdn.js` (a small runtime module with
-`no-cache` and an ETag). Absolute URLs already present in a manifest are preserved. With no assets CDN configured,
-root-relative asset URLs continue to use the game origin. No export command or preprocessing is needed;
-hash-map keys and server-side source files stay unchanged.
-`local-assets.json` and the generated `resource-manifest.json` stay on the game server for optional art and preloading.
-The two CDN settings are independent; `/metrics.dataCdn` reports the data base, and unsetting `SP_DATA_CDN` restores
-local data responses. See [DEPLOY.md §3.2](DEPLOY.md#32-素材放-cdn).
+Game data can use a CDN: set `SP_DATA_CDN=https://cdn.example.com/stronghold` and upload the full `data/` directory.
+All same-origin `/data/**/*.json` requests use runtime `DATA_CDN`, including game tables, `assets.json`,
+`asset-hashes.json`, `local-assets.json`, `local-fx.json`, `resource-packs.json`, `resource-manifest.json`,
+and `data/i18n/`. Game text files under `/packs/<id>/texts/` also use the data CDN; UI strings under `/i18n/`
+and `/packs/<id>/` use `ASSETS_CDN`. `/packs/index.json`, `/js/asset-cdn.js`, and game-server API responses stay
+on the origin. The server continues reading local `data/` for game logic and generated APIs; only browser requests move.
 
-The CDN's data origin can serve static files or proxy to Node's local data responses; Node no longer redirects data
-requests. Configure CORS on the CDN. Keep `/data/local-assets.json`, `/data/resource-manifest.json` and `/js/asset-cdn.js` on the game
-origin backed by Node. Rebuild the client for this upgrade; subsequent CDN configuration changes only require a server
-restart and page refresh.
+`bash scripts/sync-to-r2.sh` uploads assets, optional fonts/resource packs and data to an `rclone` R2 remote. It prepares
+the generated `resource-manifest.json` in a temporary data tree, routes asset and pack URLs to the configured CDN bases,
+then uploads it with the other JSON. Copy `config/r2-sync.example.json` to the ignored `config/r2-sync.json` and fill in
+deployment credentials. With `--apply`, successful uploads are followed by a Cloudflare cache purge, scoped to CDN prefixes
+by default in JSON config mode. Legacy environment mode purges the entire Zone. The API token needs Zone Cache Purge
+permission. Without `--mirror` or `sync.mirror: true`, uploading never deletes remote files. See [R2_SYNC.md](R2_SYNC.md)
+and [DEPLOY.md §3.2](DEPLOY.md#32-素材放-cdn).
+
+The data CDN serves the uploaded static JSON while game-origin `/data/*.json` endpoints remain available for server and
+legacy clients; Node does not redirect those responses. Configure CORS on the CDN. Rebuild the client for this upgrade;
+subsequent CDN configuration changes only require a server restart and page refresh.
 
 ## Preload (optional asset preloading)
 

@@ -3,7 +3,10 @@
 // when effects were extracted). The served view answers `{ groups: {} }` on an install without effects; a server
 // without the view (an older one, a static host) may answer 404 — both mean "none".
 
-export const FX_LIST_URL = '/data/local-fx.json';
+import { dataUrl } from '../../../../shared/cdn.js';
+import { DATA_CDN } from '../../asset-cdn.js';
+
+export const FX_LIST_URL = dataUrl('/data/local-fx.json', DATA_CDN);
 
 let listPromise = null;
 

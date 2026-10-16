@@ -1,6 +1,8 @@
 import { N_ } from '../../../shared/i18n.js';
 import { canonicalResourceUrl, isBoardResourceJson } from '../../../shared/resourcePaths.js';
 import { isResourcePackUrl } from '../../../shared/resourcePackRoutes.js';
+import { dataUrl } from '../../../shared/cdn.js';
+import { DATA_CDN } from '../asset-cdn.js';
 // public/js/resources/common.js — shared pieces of the optional asset preload (docs/ASSETS.md「Preload」).
 //
 // No DOM and no Preact: the page (store.js / index.js), the Service Worker (service.js) and the Node tests all import
@@ -24,8 +26,8 @@ export const MAX_FILE_BYTES = 24 * 1024 * 1024;
 export const TIER_ESSENTIAL = 1;
 /** Optional: voices, official battle effects, sound effects, music and tutorial illustrations. */
 export const TIER_REST = 2;
-export const MANIFEST_URL = '/data/resource-manifest.json';
-export const PACK_MANIFEST_URL = '/data/resource-packs.json';
+export const MANIFEST_URL = dataUrl('/data/resource-manifest.json', DATA_CDN);
+export const PACK_MANIFEST_URL = dataUrl('/data/resource-packs.json', DATA_CDN);
 export const SW_URL = '/resource-sw.js';
 /** A pack is a transport optimization, never a cache identity or a second hash authority. */
 export const RESOURCE_PACK_MAX_BYTES = 16_000_000;
