@@ -4,11 +4,11 @@ import { useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js'
 import { html, Icon } from './components.js';
 
 let nextId = 0;
-export function selectPlacement(rect, viewport, count) {
+export function selectPlacement(rect, viewport, count, contentHeight = count * 38 + 10) {
   const margin = 8, gap = 4;
   const below = viewport.height - rect.bottom - margin - gap;
   const above = rect.top - margin - gap;
-  const height = Math.min(count * 38 + 8, 280, Math.max(0, Math.max(below, above)));
+  const height = Math.min(contentHeight, 280, Math.max(0, Math.max(below, above)));
   const up = below < height && above > below;
   const width = Math.min(Math.max(rect.width, 160), viewport.width - margin * 2);
   return { left: Math.max(margin, Math.min(rect.left, viewport.width - width - margin)),
@@ -20,7 +20,7 @@ export function Select({ value, options = [], onChange, disabled = false, label,
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const trigger = useRef(null), popup = useRef(null), search = useRef({text: '', at: 0});
-  const id = useRef(null);
+  const id = useRef(null), position = useRef(null);
   if (!id.current) id.current = `game-select-${++nextId}`;
   const selected = options.findIndex(o => String(o.value) === String(value));
   const close = () => setOpen(false);
@@ -31,10 +31,10 @@ export function Select({ value, options = [], onChange, disabled = false, label,
     const host = document.createElement('div');
     host.className = 'game-select-popover'; popup.current = host; document.body.append(host);
     const place = () => {
-      const p = selectPlacement(trigger.current.getBoundingClientRect(), {width: innerWidth, height: innerHeight}, options.length);
+      const p = selectPlacement(trigger.current.getBoundingClientRect(), {width: innerWidth, height: innerHeight}, options.length, host.querySelector('.game-select__list')?.scrollHeight + 10 || undefined);
       Object.assign(host.style, {left: `${p.left}px`, top: `${p.top}px`, width: `${p.width}px`, maxHeight: `${p.height}px`});
     };
-    place();
+    position.current = place; place();
     const outside = e => { if (!host.contains(e.target) && !trigger.current?.contains(e.target)) close(); };
     const key = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); close(); } };
     const scroll = e => { if (!host.contains(e.target)) close(); };
@@ -45,7 +45,7 @@ export function Select({ value, options = [], onChange, disabled = false, label,
     return () => {
       window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', key, true);
       window.removeEventListener('resize', place); document.removeEventListener('scroll', scroll, true);
-      render(null, host); host.remove(); popup.current = null;
+      render(null, host); host.remove(); popup.current = null; position.current = null;
     };
   }, [open, disabled]);
   useLayoutEffect(() => {
@@ -58,6 +58,7 @@ export function Select({ value, options = [], onChange, disabled = false, label,
         <span>${o.label}</span>${i === selected ? html`<${Icon} name="check" />` : null}
       </button>`)}
     </div>`, host);
+    position.current?.();
     const item = host.querySelector(`#${id.current}-${active}`);
     if (item && (item.offsetTop < host.scrollTop || item.offsetTop + item.offsetHeight > host.scrollTop + host.clientHeight)) host.scrollTop = item.offsetTop - host.clientHeight / 2;
   }, [open, active, selected, options]);

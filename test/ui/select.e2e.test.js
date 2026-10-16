@@ -17,7 +17,7 @@ try {
   function Demo(){const[v,setV]=useState('0');return html`<${Modal} open=${true} title="Select check" onClose=${()=>globalThis.__selectClosed++}>
    <div style="height:70px;overflow:auto"><${Select} label="Pick" value=${v} onChange=${v=>{globalThis.__selectPicked=v;setV(v);}}
     options=${Array.from({length:24},(_,i)=>({value:String(i),label:`Choice ${i}`,disabled:i===2}))} /></div>
-   <button type="button" class="outside-select">Outside</button><//>`;}
+   <${Select} label="Short list" value="a" options=${[{value:"a",label:"跟随全局"},{value:"b",label:"中文"},{value:"c",label:"日本語"}]} onChange=${()=>{}} /><button type="button" class="outside-select">Outside</button><//>`;}
   render(html`<${Demo} />`,root);
  });
  await page.waitForSelector('[role=combobox][aria-label=Pick]');await page.click('[role=combobox][aria-label=Pick]');
@@ -40,7 +40,11 @@ try {
  await page.screenshot({path:new URL('../e2e/out/select-short.png',import.meta.url).pathname});
  await page.click('.outside-select');assert.equal(await page.$('[role=listbox]'),null);
  await page.click('[role=combobox][aria-label=Pick]');await page.keyboard.press('Tab');assert.equal(await page.$('[role=listbox]'),null);
- console.log(JSON.stringify({keyboard:true,disabledRow:true,escapeKeepsModal:true,focus:true,outside:true,tab:true,bounds}));
+ await page.click('[role=combobox][aria-label="Short list"]');
+ const short=await page.$eval('.game-select-popover',e=>({height:e.clientHeight,contentHeight:e.scrollHeight,width:e.clientWidth,contentWidth:e.scrollWidth}));
+ assert.equal(short.contentHeight,short.height,'short menus have no phantom vertical scrollbar');
+ assert.equal(short.contentWidth,short.width,'menus have no horizontal scrollbar');
+ console.log(JSON.stringify({short,keyboard:true,disabledRow:true,escapeKeepsModal:true,focus:true,outside:true,tab:true,bounds}));
 }finally{await browser?.close();await srv.close();}
 
 });

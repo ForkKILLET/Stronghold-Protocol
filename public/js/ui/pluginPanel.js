@@ -97,7 +97,7 @@ function ModePicker({ room, f, busy, onPick }) {
 }
 
 /** The room's 插件 panel (see the header). */
-export function PluginPanel({ open, room, myId, onClose }) {
+export function PluginPanel({ open, room, myId, onClose, embedded=false }) {
   const cat = useStore((s) => s, Object.is, catalog);
   const installed = useStore(installedCount);
   const [busy, setBusy] = useState(null);
@@ -143,12 +143,13 @@ export function PluginPanel({ open, room, myId, onClose }) {
   };
   // the same choice again (without a plugin the server no longer offers): the set of the files as they are now
   const reapply = () => send(f.chosen.filter((x) => !offeredIds || offeredIds.has(x)), 'reapply');
-  return html`<${Modal} open=${open} onClose=${onClose} title=${t('插件')} micro="PLUGINS" width="7.4rem"
+  const Frame=embedded?InlinePluginPanel:Modal;
+  return html`<${Frame} open=${open} onClose=${onClose} title=${t('插件')} micro="PLUGINS" width="7.4rem"
       actions=${html`<${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <div class="plugpanel" data-testid="plugin-panel">
       <p class="plugpanel__lead">
         <span class=${cx('plugtag plugtag--static', f.count && 'is-modded', f.modded && 'is-unofficial')}>${f.count ? t('插件 ×{n}', { n: f.count }) : t('原版')}</span>
-        ${t('房间的外观插件只改变画面和声音，不影响战斗；插件为非官方制作。')}
+        ${t('外观插件只改变画面和声音；玩法插件会改变规则，且不计入默认统计。')}
       </p>
       ${anyContent ? html`<p class="set-hint">${t('改变玩法的插件会改变本房间的数据与规则；这样的对局为非官方对局，不计入统计总览。')}</p>` : null}
       <${ContentState} cs=${f.modded ? f.cs : null} />
@@ -217,6 +218,8 @@ export function PluginPanel({ open, room, myId, onClose }) {
     </div>
   <//>`;
 }
+
+function InlinePluginPanel({children}) { return html`<section class="room-plugin-content">${children}</section>`; }
 
 /** What a class is called in the list (msgids). */
 const CLASS_NAMES = { cosmetic: N_('外观'), content: N_('改变玩法'), script: N_('代码'), trusted: N_('代码'), ui: N_('界面'), lang: N_('语言') };

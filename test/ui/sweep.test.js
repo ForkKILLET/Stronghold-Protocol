@@ -236,7 +236,7 @@ test('report has an explicit lazy lobby entry, no extra service/assets, readable
   assert.doesNotMatch(css + mobile, /sweep-(?:codex-)?modal/);
   assert.match(lobby, /if \(panel === 'sweep'\) return sweepModule/);
   assert.match(lobby, /<\$\{SweepLoadingPage\}/, 'the loading view is non-modal too');
-  const loading = lobby.slice(lobby.indexOf('export function SweepLoadingPage'), lobby.indexOf('function StampRing'));
+  const loading = lobby.slice(lobby.indexOf('export function SweepLoadingPage'), lobby.indexOf('export function ProtoCard'));
   assert.doesNotMatch(loading, /\bModal\b|aria-modal|role="dialog"/);
   assert.match(lobby, /previousPanel\.current === 'sweep'.*sweepEntry\.current\?\.focus\(\)/, 'return focus to the lobby entry');
 });

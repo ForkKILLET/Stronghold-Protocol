@@ -2352,5 +2352,19 @@
   "在未开启插件的原版中也能复现的游戏规则问题，可反馈给主线。": "Report gameplay issues reproducible without plugins to mainline.",
   "调配视图": "Loadout view",
   "经典列表": "Classic list",
-  "顶部可切换卡片或经典列表；「筛选」按职业、盟约、名字查找；「更多」里导入、导出或恢复默认。": "Switch between cards and the classic list at the top. Filter by profession, bond or name; import, export or reset through More."
+  "顶部可切换卡片或经典列表；「筛选」按职业、盟约、名字查找；「更多」里导入、导出或恢复默认。": "Switch between cards and the classic list at the top. Filter by profession, bond or name; import, export or reset through More.",
+  "公共匹配规则": "Public matchmaking rules",
+  "休整期按回合默认时长，战斗倍速为 2×，使用原版规则。": "Default round preparation times, 2× battle speed and vanilla rules.",
+  "所有队友使用一致的公共规则；自定义配置请创建同盟模拟。": "All teammates use the same public rules. Create an alliance simulation for custom settings.",
+  "玩法：原版规则。创建后，房主可在模拟配置中选择插件。": "Vanilla rules. After creation, the host can select plugins in Simulation settings.",
+  "基础配置": "Basic settings",
+  "玩法插件": "Gameplay plugins",
+  "返回房间": "Return to room",
+  "玩法：原版规则": "Rules: vanilla",
+  "玩法：自定义 · {n} 个插件": "Rules: custom · {n} plugins",
+  "玩法：原版规则 · {n} 个外观插件": "Rules: vanilla · {n} cosmetic plugins",
+  "外观插件只改变画面和声音；玩法插件会改变规则，且不计入默认统计。": "Cosmetic plugins change visuals and audio. Gameplay plugins change rules and are excluded from default statistics.",
+  "配置并创建": "Configure and create",
+  "配置并匹配": "Configure matchmaking",
+  "输入同盟密钥": "Enter alliance key"
 }

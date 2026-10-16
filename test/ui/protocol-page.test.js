@@ -101,7 +101,7 @@ test('lobby navigation replaces its body and restores focus without losing mode/
   assert.match(source, /matchQueue \? html`<\$\{MatchQueuePanel\} queue=\$\{matchQueue\}/);
 });
 
-test('page fills the visible viewport and keeps safe areas, normal rem and an independently scrollable difficulty list', () => {
+test('page fills the visible viewport and keeps safe areas, normal rem and one page scroll area without a difficulty scroller', () => {
   const css = read('public/css/screens/lobby.css');
   const sheet = postcss.parse(css);
   const prop = (selector, name) => {
@@ -115,10 +115,11 @@ test('page fills the visible viewport and keeps safe areas, normal rem and an in
   assert.equal(prop('.screen.protocol-screen', 'height'), 'calc(var(--sp-vh, 1vh) * 100)');
   assert.equal(prop('.proto', 'position'), 'relative');
   assert.equal(prop('.proto', 'z-index'), undefined, 'content is not raised above other pages/overlays');
-  assert.equal(prop('.proto', 'min-height'), '0');
+  assert.equal(prop('.proto', 'min-height'), '100%');
   assert.equal(prop('.proto', 'box-sizing'), 'border-box');
   assert.match(prop('.proto', 'padding'), /var\(--sa-t.*var\(--sa-r.*var\(--sa-b.*var\(--sa-l/);
-  assert.equal(prop('.proto-list', 'overflow-y'), 'auto');
+  assert.equal(prop('.proto-list', 'overflow'), 'visible');
+  assert.equal(prop('.screen.protocol-screen', 'overflow-y'), 'auto');
   assert.equal(prop('.proto-list', 'min-height'), '0');
   assert.equal(prop('.proto-foot', 'flex'), 'none');
   assert.doesNotMatch(css, /protocol-modal/);

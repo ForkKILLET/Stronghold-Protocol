@@ -1013,3 +1013,13 @@
 .lo .lo-cult .game-select { min-height:26px; height:auto; padding:3px 4px; gap:4px; font-size:max(calc(.14 * var(--utility-text,var(--t))),10px); }
 .lo .lo-cult .game-select__arrow { width:10px; height:10px; }
 .lo .lo-cult__pot { flex:0 0 58px; }
+
+/* One frame owns each field; embedded themed triggers must not outgrow it. */
+.lo .lo-select, .diy-pick .lo-select { box-sizing:border-box; min-width:0; height:34px; padding-inline:6px 0; }
+.lo .lo-select__k { flex:none; }
+.lo .lo-select > .game-select { box-sizing:border-box; padding-block:2px; }
+.lo .lo-cult .lo-select { height:28px; }
+.lo .lo-voice { gap:10px; }
+.lo .lo-voice > span:first-child { flex:none; }
+.lo .lo-voice .lo-select { flex:0 1 210px; min-width:140px; height:36px; padding:0; }
+.lo .lo-voice__preview { height:36px; box-sizing:border-box; }

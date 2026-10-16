@@ -14,7 +14,7 @@ import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // Spectator seats (community report #26, a remake feature): a co-op room with spectators shows the 观战席 strip under
 // the seats — names, offline marks, the host's ✕ (room.removeSpectator) — and a spectator's own view swaps the ready
 // button for 观战中 and offers 入座 (room.join of the room) while a player seat is free.
-// Plugins (DESIGN §32 P1a): the tag under the title — 「原版」 or 「插件 ×N」 — opens the 插件 panel (ui/pluginPanel.js:
+// Plugins (DESIGN §32 P1a): the configuration summary opens the gameplay tab (ui/pluginPanel.js:
 // the host switches the room's plugins, everybody else reads them). With gameplay plugins (§32.6: a content set of its
 // own — the tag reads 「非官方」 too) every seat shows whether its page has loaded and checked the room's content
 // (seats[].content: 载入中 / 就绪 / 校验失败), 准备就绪 and 开始模拟 wait for it (the server refuses them before:
@@ -33,7 +33,7 @@ import { AnnouncementButton } from '../ui/announcement.js';
 import { openStats } from './stats.js';
 import { SettingsButton } from '../ui/settings.js';
 import { LoadoutButton } from './loadout.js';
-import { PluginTag, isModdedRoom } from '../ui/pluginTag.js';
+import { roomRulesLabel, isModdedRoom } from '../ui/pluginTag.js';
 import { hasScriptConsent, rememberScriptConsent } from '../content.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
@@ -281,6 +281,27 @@ export function RoomScreen() {
   const conn = useStore((s) => s.connection, shallowEqual);
   const presence = useStore((s) => s.presence, shallowEqual);
   const [configDraft, setConfigDraft] = useState(null);
+  const [PluginView,setPluginView]=useState(null);
+  const seatsRef=useRef(null);
+  useEffect(()=>{
+    if(configDraft?.tab!=='plugins'||PluginView)return undefined;
+    let live=true;import('../ui/pluginPanel.js').then(m=>{if(live)setPluginView(()=>m.PluginPanel);},toastError);
+    return()=>{live=false;};
+  },[configDraft?.tab,PluginView]);
+  useEffect(()=>{
+    const el=seatsRef.current;if(!el)return undefined;
+    const fit=()=>{
+      const cs=getComputedStyle(el), cards=[...el.querySelectorAll('.rseat')];if(!cards.length)return;
+      const px=v=>parseFloat(v)||0;
+      const overhead=Math.max(...cards.map(card=>[...card.children].filter(n=>n.classList.contains('rseat__strip')||n.classList.contains('rseat__plate')).reduce((sum,n)=>{const s=getComputedStyle(n);return sum+n.offsetHeight+px(s.marginTop)+px(s.marginBottom);},0)));
+      const width=el.clientWidth-px(cs.paddingLeft)-px(cs.paddingRight), height=el.clientHeight-px(cs.paddingTop)-px(cs.paddingBottom);
+      const w=Math.max(48,Math.floor(Math.min(240,(width-px(cs.columnGap)*(cards.length-1))/cards.length,(height-overhead-8)/2)));
+      if(el.style.getPropertyValue('--room-seat-width')!==w+'px')el.style.setProperty('--room-seat-width',w+'px');
+    };
+    fit();const observer=typeof ResizeObserver!=='undefined'?new ResizeObserver(fit):null;
+    observer?.observe(el);el.querySelectorAll('.rseat__strip,.rseat__plate').forEach(n=>observer?.observe(n));window.addEventListener('resize',fit);
+    return()=>{observer?.disconnect();window.removeEventListener('resize',fit);};
+  },[!!room,!!configDraft,room?.mode,room?.seats?.filter(Boolean).length]);
   const artReady = useData('chess', 'assets');
   const portraits = useMemo(() => ({ pool: cardOperators(data.list('chess')), m: data.get('assets') }), [artReady, data.locale()]);
   const myCard = useMyCard();
@@ -388,10 +409,17 @@ export function RoomScreen() {
         ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
+  const currentDraft=(tab='basic')=>({difficulty:room.difficulty,prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier),battleSpeed:room.battleSpeed??2,tab});
   if (configDraft) {
     const readOnly = !facts.isHost || !!room.matching;
     const change = (key, value) => setConfigDraft(d => ({...d, [key]:value}));
-    return html`<${RoomOptionsPage} mode=${room.mode} difficulty=${readOnly?room.difficulty:configDraft.difficulty} onDifficultyChange=${v=>change('difficulty',v)}
+    const switchTab=tab=>{
+      if(tab===(configDraft.tab||'basic'))return;
+      if(tab==='plugins'&&!readOnly)return run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(d=>({...d,tab}));});
+      setConfigDraft(currentDraft(tab));
+    };
+    return html`<${RoomOptionsPage} tab=${configDraft.tab||'basic'} onTabChange=${switchTab}
+      pluginContent=${PluginView?html`<${PluginView} open=${true} room=${room} myId=${me.playerId} embedded=${true} />`:html`<p>${t('正在读取插件列表…')}</p>`} mode=${room.mode} difficulty=${readOnly?room.difficulty:configDraft.difficulty} onDifficultyChange=${v=>change('difficulty',v)}
       prepChoice=${readOnly?(room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier)):configDraft.prepChoice} onPrepChange=${v=>change('prepChoice',v)}
       battleSpeed=${readOnly?room.battleSpeed:configDraft.battleSpeed} onSpeedChange=${v=>change('battleSpeed',v)} readOnly=${readOnly} disabled=${!!busy || !online}
       onBack=${()=>setConfigDraft(null)} onSave=${()=>run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(null);})}>
@@ -402,7 +430,7 @@ export function RoomScreen() {
     <header class="topbar">
       <div class="topbar__left">
         <${Tooltip} text=${t('离开同盟')} placement="bottom">
-          <${Button} variant="danger" size="lg" square=${true} icon="exit" loading=${busy === 'leave'} onClick=${leave} aria-label=${t('离开同盟')} />
+          <${Button} variant="ghost" size="sm" icon="chevronLeft" loading=${busy === 'leave'} onClick=${leave} aria-label=${t('离开同盟')}>${t('返回')}<//>
         <//>
         <div class="room-ping">
           <div class="connection-status">
@@ -410,7 +438,6 @@ export function RoomScreen() {
             <${OnlineCount} online=${presence.online} />
             <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
           </div>
-          <${MicroLabel}>${t('连接状态')}<//>
         </div>
         <${RoomTools} coop=${coop} />
       </div>
@@ -418,14 +445,14 @@ export function RoomScreen() {
         <${MicroLabel} tone="mint">${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}<//>
         <h1 class="topbar__title">${coop ? t('同盟模拟') : t('独立模拟')}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" />
           ${room.content?.modeId ? html`<span class="room-mode" data-testid="room-mode">${(room.content.modes || []).find((m) => m.id === room.content.modeId)?.name || room.content.modeId}</span>` : null}</h1>
-        <${PluginTag} room=${room} myId=${me.playerId} />
+
       </div>
       <div class="topbar__right">
         ${coop ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>${t('仅限 1 名博士')}</span></div>`}
       </div>
     </header>
 
-    <main class=${`seats${coop ? '' : ' seats--solo'}`}>
+    <main ref=${seatsRef} class=${`seats${coop ? '' : ' seats--solo'}`}>
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
         myId=${me.playerId} busy=${busy} onAddBot=${addBot} onRemoveBot=${removeBot} onKick=${kick} searching=${!!room.matching} portraits=${portraits}
         onPickCard=${artReady ? () => setPicking('op') : null} onPickAvatar=${openStats} />`)}
@@ -445,12 +472,17 @@ export function RoomScreen() {
     <footer class="room-bar">
       <div class="room-bar__left">
         <${RoomConfigSummary} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
-          editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft({difficulty:room.difficulty, prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier), battleSpeed:room.battleSpeed??2})} />
+          contentLabel=${roomRulesLabel(room)} onPlugins=${()=>setConfigDraft(currentDraft('plugins'))}
+          editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft(currentDraft())} />
         <div class="room-bar__tools"><${CommunicationDock} room=${true} disabled=${facts.spectating} />${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
           class="room-console-btn" disabled=${(!room.consoleEnabled && !!room.matching) || !online} onClick=${room.consoleEnabled ? disableConsole : openConsole}
           title=${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}>${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}<//>`
           : room.consoleEnabled ? html`<span class="room-console-status"><${Icon} name="terminal" />${t('控制台已启用')}</span>` : null}
-          <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} /></div>
+          <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} />
+          ${facts.isHost && coop && !room.matching ? html`<div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}>
+                  <label class="room-match-toggle"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || facts.modded || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
+                    onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
+                </div>` : null}</div>
       </div>
       <div class="room-bar__center">
         <div class="ready-count" hidden=${!coop}>
@@ -469,10 +501,6 @@ export function RoomScreen() {
             ? room.matching
               ? html`<div class="room-match-actions room-match-actions--active"><span class="room-match-state"><${Icon} name="signal" />${t('正在寻找同盟队友')} <b class="num">${room.matching.count}/${room.matching.capacity}</b></span><${Button} variant="danger" size="lg" icon="close" loading=${busy === 'cancel-match'} onClick=${cancelQueue}>${t('取消匹配')}<//></div>`
               : html`<div class="room-match-actions">
-                <div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}>
-                  <label class="room-match-toggle"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || facts.modded || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
-                    onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
-                </div>
                 <${Tooltip} text=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) && matchTeammates ? t('自定义配置的房间仅支持邀请好友或添加 AI') : facts.modded ? t('插件房间不能参加公共匹配') : room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : matchTeammates && hasBots ? t('请先移除 AI 队友，再匹配真人队友') : matchTeammates || facts.canStart ? null : t('仍有博士未准备就绪')}>
                   <${Button} variant="primary" size="xl" icon=${matchTeammates ? 'users' : 'play'} loading=${busy === (matchTeammates ? 'match' : 'start')}
                     disabled=${((room.consoleEnabled || facts.modded || hasBots || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)) && matchTeammates) || (!matchTeammates && !facts.canStart) || !online} onClick=${start}>${t('立即开始')}<//>

@@ -2,7 +2,7 @@
    screens/room.css — room/waiting screen: invite key, 4 seat cards, bottom action bar.
    ========================================================================================== */
 
-.room-screen .topbar { height: 1.36rem; }
+.room-screen .topbar { height: 1.1rem; }
 .room-topbar__tools { display: contents; }
 .room-screen--coop .room-topbar__tools .btn--square { width: max(.42rem, 36px); height: max(.42rem, 36px); min-width: max(.42rem, 36px); }
 .room-match-actions { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; gap: .06rem; min-width: 3.2rem; }
@@ -385,3 +385,81 @@
 .trusted-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 90; padding: 5px 16px; background: #9b202b; color: #fff; display: flex; justify-content: space-between; gap: 12px; }
 .trusted-banner button { color: inherit; text-decoration: underline; }
 .trusted-hash { overflow-wrap: anywhere; font-family: monospace; }
+
+/* Cards fit the space left by header/configuration/actions; artwork retains its full 1:2 ratio. */
+.room-screen .seats { grid-template-columns:repeat(4,minmax(0,var(--room-seat-width,180px))); grid-template-rows:auto; align-content:center; align-items:start; gap:clamp(8px,2vw,28px); padding:16px 24px; overflow:visible; }
+.room-screen .seats--solo { grid-template-columns:minmax(0,var(--room-seat-width,180px)) minmax(0,480px); }
+.room-screen .rseat { min-height:0; width:100%; height:auto; }
+.room-screen .rseat__art { flex:none; box-sizing:border-box; aspect-ratio:1/2; width:100%; height:auto; }
+.room-screen .rseat__plate { min-width:0; }
+.room-screen .room-bar { min-height:0; gap:10px 20px; padding:14px 28px; }
+.room-screen .room-bar__left { gap:8px; }
+.room-screen .room-bar__right { align-items:center; gap:12px; }
+.room-screen .room-bar__center { gap:6px 14px; }
+@media (max-height:520px) {
+ .room-screen .seats { padding:8px 16px; gap:12px; }
+ .room-screen .room-bar { padding:8px 16px; gap:6px 12px; }
+ .room-screen .rseat__plate { padding:4px; column-gap:4px; }
+ .room-screen .rseat__plate .avatar { --av:22px; width:22px; height:22px; }
+ .room-screen .rseat__doc { display:none; }
+ .room-screen .rseat__host { top:4px; padding:2px 4px; font-size:10px; }
+ .room-screen .rseat__pick { top:28px; }
+ .room-screen .rseat__state { bottom:4px; gap:4px; font-size:10px; }
+ .room-screen .rseat__box { width:16px; height:16px; }
+}
+
+@media (max-height: 520px) {
+  .room-screen .rseat__invite small { display: none; }
+  .room-screen .rseat__actions .btn { padding-inline: 4px; gap: 3px; }
+  .room-screen .rseat__actions .btn__label { white-space: nowrap; }
+}
+
+/* Equal nameplate rows and a stable three-row footer: rules, controls, readiness. */
+.room-screen .rseat__plate { box-sizing:border-box; height:56px; min-height:56px; padding:6px 10px; }
+.room-screen .rseat__actions { align-items:center; }
+.room-screen .rseat__actions .btn { width:100%; height:100%; min-height:0; }
+.room-screen .rseat__pick, .room-screen .rseat__host, .room-screen .rseat__box, .room-screen .rseat__me, .room-screen .rseat__kick { border-radius:0; }
+.room-screen .room-bar { grid-template-areas:"summary summary" "tools actions" "status actions"; grid-template-columns:minmax(0,1fr) auto; align-items:center; padding:12px 28px; gap:8px 20px; }
+.room-screen .room-bar__left { display:contents; }
+.room-screen .room-config-summary { grid-area:summary; min-height:40px; padding:8px 12px; }
+.room-screen .room-bar__tools { grid-area:tools; gap:8px 12px; }
+.room-screen .room-bar__tools .btn { box-sizing:border-box; min-height:34px; height:34px; padding:6px 10px; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); }
+.room-screen .room-bar__center { grid-area:status; min-height:22px; }
+.room-screen .room-bar__right { grid-area:actions; align-self:start; flex-wrap:nowrap; gap:12px; }
+.room-screen .room-bar__right .btn { box-sizing:border-box; height:48px; min-height:48px; padding:10px 18px; }
+.room-screen .room-bar .btn--xl { min-width:220px; font-size:max(18px,calc(.25 * var(--utility-text,var(--t)))); letter-spacing:.12em; }
+.room-screen .room-match-actions { min-width:0; }
+.room-screen .room-match-options { display:flex; align-items:center; min-height:34px; }
+.room-screen .room-match-toggle { min-height:34px; gap:6px; font-size:max(12px,calc(.14 * var(--utility-text,var(--t)))); }
+.room-screen .room-match-toggle input { width:16px; height:16px; flex:none; }
+.room-screen .topbar__left { gap:12px; }
+.room-screen .room-topbar__tools .btn--square { width:36px; height:36px; min-width:36px; }
+.room-screen .room-ping { display:flex; align-items:center; }
+@media (max-width:1100px) {
+ .room-screen .room-bar { padding:8px 16px; gap:6px 12px; }
+ .room-screen .room-bar__right .btn { height:40px; min-height:40px; padding:8px 12px; }
+ .room-screen .room-bar .btn--xl { min-width:150px; font-size:16px; }
+ .room-screen .room-bar__tools { gap:4px 8px; }
+ .room-screen .room-bar__tools .btn { height:30px; min-height:30px; padding:4px 8px; }
+}
+@media (max-height:520px) {
+ .room-screen .rseat__plate { height:36px; min-height:36px; padding:4px; }
+ .room-screen .room-config-summary { min-height:32px; padding:4px 8px; }
+}
+@media (max-width:650px) {
+ .room-screen .room-bar { grid-template-areas:"summary" "tools" "status" "actions"; grid-template-columns:minmax(0,1fr); }
+ .room-screen .room-bar__right { justify-self:stretch; justify-content:space-between; }
+}
+
+.room-screen .room-bar__tools .ailast__opt { box-sizing:border-box; display:flex; align-items:center; gap:6px; height:34px; min-height:34px; padding:6px 10px; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); letter-spacing:0; }
+.room-screen .room-bar__tools .room-match-options { padding-inline:4px; }
+
+.room-screen .room-bar__tools .btn, .room-screen .room-bar__tools .ewheel__btn, .room-screen .room-bar__tools .ailast__opt { box-sizing:border-box; height:36px; min-height:36px; }
+
+@media (min-width:1001px) and (min-height:601px) {
+ .room-screen .invite { padding:6px 10px; gap:4px 12px; }
+ .room-screen .invite__label { font-size:10px; line-height:1; }
+ .room-screen .invite__code span { width:.8em; height:1em; font-size:max(24px,calc(.3 * var(--utility-text,var(--t)))); }
+ .room-screen .invite__btns { gap:4px; }
+ .room-screen .invite__btns .btn { height:22px; min-height:22px; padding:2px 8px; font-size:10px; }
+}

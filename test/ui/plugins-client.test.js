@@ -434,9 +434,10 @@ describe('the 插件 panel (ui/pluginPanel.js) and the room screen', () => {
     }
   });
 
-  test('the room screen shows the tag under its title; the settings show 外观插件; the texts are in every pack', () => {
+  test('the room groups gameplay with its configuration; the settings retain cosmetic plugins', () => {
     const roomSrc = readFileSync(path.join(ROOT, 'public/js/screens/room.js'), 'utf8');
-    assert.match(roomSrc, /<\$\{PluginTag\} room=\$\{room\} myId=\$\{me\.playerId\} \/>/);
+    assert.match(roomSrc, /contentLabel=\$\{roomRulesLabel\(room\)\}/);
+    assert.match(roomSrc, /onPlugins=\$\{\(\)=>setConfigDraft\(currentDraft\('plugins'\)\)\}/);
     const settingsSrc = readFileSync(path.join(ROOT, 'public/js/ui/settings.js'), 'utf8');
     assert.match(settingsSrc, /<\$\{CosmeticSection\} \/>/);
     for (const lang of ['en', 'ja', 'ko', 'zh-TW']) {

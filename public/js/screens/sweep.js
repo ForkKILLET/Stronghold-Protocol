@@ -366,7 +366,7 @@ export function codexSelection(all, { scope = null, rank = 'all', query = '', se
 export function EnemyCodexView({ model: { list, cur, counts }, scope, rank, query, open, m, onClose, onScope, onQuery, onRank, onSelect }) {
   return html`<section class="sw-codex" aria-label=${t('敌方图鉴')}>
     <div class="sw-codex__top">
-      <button type="button" class="sw-back" onClick=${onClose} aria-label=${t('返回')} title=${t('返回 (Esc)')}><${Icon} name="chevronLeft" /></button>
+      <button type="button" class="sw-back proto-back" onClick=${onClose} aria-label=${t('返回')} title=${t('返回 (Esc)')}><${Icon} name="chevronLeft" /></button>
       <span class="sw-codex__title">${t('敌方图鉴')}</span>
       ${scope ? html`<button type="button" class="sw-scope" onClick=${() => onScope(null)} title=${t('显示全部敌人')}>${open.title || t('筛选')}<${Icon} name="close" /></button>` : null}
       <label class="sw-search"><${Icon} name="search" /><input type="search" value=${query} aria-label=${t('名称或编号')} placeholder=${t('名称或编号')} onInput=${(ev) => onQuery(ev.currentTarget.value)} /></label>
@@ -484,8 +484,8 @@ export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, on
     <div class="sw__bg" aria-hidden="true"><i class="sw__mist"></i><i class="sw__lines"></i></div>
     <header class="sw-top">
       <div class="sw-top__left">
-        <button type="button" class="sw-back" onClick=${onClose} aria-label=${t('返回大厅')} title=${t('返回 (Esc)')}>
-          <${Icon} name="chevronLeft" /><span class="sw-back__mark" aria-hidden="true">S.W.E.E.P.</span>
+        <button type="button" class="sw-back proto-back" onClick=${onClose} aria-label=${t('返回大厅')} title=${t('返回 (Esc)')}>
+          <${Icon} name="chevronLeft" /><span class="proto-back__home" aria-hidden="true"><${Icon} name="rook" /></span>
         </button>
         <button type="button" class="sw-info" onClick=${() => openGuide(handbookPage())} aria-label=${t('进阶图鉴')} title=${t('进阶图鉴：敌人类型、盟约、策略与轮选')}><${Icon} name="info" /></button>
       </div>

@@ -34,14 +34,14 @@ function property(selectors, name, width, height) {
   return chosen;
 }
 
-test('room artwork frames grow to 1:2 and images fill them without side gutters across desktop and mobile CSS layers', () => {
+test('room artwork preserves 1:2 while the seat container fits available height', () => {
   const selectors = ['.rseat__art img', '.room-screen .rseat__art img'];
   for (const [width, height] of [[1920, 1080], [844, 390], [560, 320], [390, 844]]) {
     const frame = ['.rseat__art', '.room-screen .rseat__art'];
-    assert.equal(property(frame, 'aspect-ratio', width, height), '1 / 2');
+    assert.equal(property(frame, 'aspect-ratio', width, height).replaceAll(' ', ''), '1/2');
     assert.equal(property(frame, 'flex', width, height), 'none', 'row space cannot flatten or stretch the portrait frame');
     assert.equal(property(frame, 'min-height', width, height), '0');
-    assert.equal(property(frame, 'box-sizing', width, height), 'content-box', 'the image area keeps 1:2 inside its border');
+    assert.equal(property(frame, 'box-sizing', width, height), 'border-box', 'the entire artwork frame fits the available seat height');
     assert.equal(property(selectors, 'aspect-ratio', width, height), '1 / 2');
     assert.equal(property(selectors, 'width', width, height), '100%');
     assert.equal(property(selectors, 'height', width, height), '100%');
@@ -51,7 +51,7 @@ test('room artwork frames grow to 1:2 and images fill them without side gutters 
     assert.equal(property(selectors, 'inset', width, height), '0');
     assert.equal(property(selectors, 'transform', width, height), 'none');
     if (width > 560) assert.equal(property(['.seats', '.room-screen .seats'], 'grid-template-rows', width, height), 'auto', 'the row grows with the taller artwork and nameplate');
-    assert.equal(property(['.seats', '.room-screen .seats'], 'overflow-y', width, height), 'auto');
+    assert.equal(property(['.seats', '.room-screen .seats'], 'overflow', width, height), 'visible');
   }
 });
 
@@ -110,19 +110,19 @@ for (const [width, height] of [[320, 568], [390, 844], [560, 320], [640, 360], [
     assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', width, height), 'auto',
       'footer contents may grow without spilling over the seats');
     assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', width, height),
-      width <= 560 ? '"options" "status" "actions"' : '"options actions" "status actions"');
+      width <= 650 ? '"summary" "tools" "status" "actions"' : '"summary summary" "tools actions" "status actions"');
     const buttons = ['.btn--square.btn--sm', '.room-screen--coop .room-topbar__tools .btn--square', '.room-screen .room-topbar__tools .btn--square'];
   assert.equal(property(buttons, 'width', width, height), '.75rem');
   });
 }
 
 test('desktop footer separates options/status from actions and grows with wrapped controls', () => {
-  assert.equal(property(['.topbar', '.room-screen .topbar'], 'height', 1920, 1080), '1.36rem');
+  assert.equal(property(['.topbar', '.room-screen .topbar'], 'height', 1920, 1080), '1.1rem');
   assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-columns', 1920, 1080),
     'minmax(0, 1fr) auto minmax(0, 1fr)');
   assert.equal(property(['.room-bar'], 'grid-template-columns', 1920, 1080), 'minmax(0, 1fr) auto');
-  assert.equal(property(['.room-bar'], 'grid-template-areas', 1920, 1080), '"options actions" "status actions"');
-  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'min-height', 1920, 1080), '1.5rem');
+  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', 1920, 1080), '"summary summary" "tools actions" "status actions"');
+  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'min-height', 1920, 1080), '0');
 });
 
 test('the room title remains on the same row as controls and invitation at phone widths', () => {

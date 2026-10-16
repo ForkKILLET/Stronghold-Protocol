@@ -33,7 +33,7 @@ export function roomPluginFacts(room, myId) {
     on: new Set(list.map((p) => p.id)),
     auto: new Set(list.filter((p) => p.auto).map((p) => p.id)),
     chosen: list.filter((p) => !p.auto).map((p) => p.id),
-    editable: room?.hostId != null && room.hostId === myId && !room.inMatch,
+    editable: room?.hostId != null && room.hostId === myId && !room.inMatch && !room.matching,
     inMatch: !!room?.inMatch,
     warnings: Array.isArray(c?.warnings) ? c.warnings.filter((w) => w && typeof w.code === 'string') : [],
     vs: typeof c?.vs === 'string' ? c.vs : null,
@@ -82,4 +82,10 @@ export function PluginTag({ room, myId }) {
     <${Icon} name=${f.count ? 'edit' : 'check'} />${f.count ? t('插件 ×{n}', { n: f.count }) : t('原版')}${f.modded ? html`<b class="plugtag__mod">${t('非官方')}</b>` : null}
   </button>
   ${Panel ? html`<${Panel} open=${true} room=${room} myId=${myId} onClose=${() => setPanel(null)} />` : null}`;
+}
+
+/** A plain-language room configuration summary, separate from compact legacy badges. */
+export function roomRulesLabel(room) {
+ const f=roomPluginFacts(room,null);
+ return f.modded?t('玩法：自定义 · {n} 个插件',{n:f.count}):f.count?t('玩法：原版规则 · {n} 个外观插件',{n:f.count}):t('玩法：原版规则');
 }

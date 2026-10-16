@@ -20,7 +20,7 @@ import { ProtocolScene } from '../ui/protocolScene.js';
 // Texts go through t() (docs/I18N.md); the module-level tables hold msgids (N_) translated where they are shown, the
 // config.json mode texts come localized from data.js.
 
-import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
+import { RoomOptionsPage, RoomPacingControls } from '../ui/roomOptions.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
@@ -212,11 +212,11 @@ function TipsPanel() {
   return html`<div class="tips brackets">
     <div class="tips__head">
       <${Icon} name="info" />
-      <span>${t('作战提示')}</span>
+      <span class="tips__title">${t('作战提示')}</span>
       <${MicroLabel}>TACTICAL TIPS<//>
-      <span class="tips__idx num">${String(i + 1).padStart(2, '0')}<span class="t-dim">/${String(list.length).padStart(2, '0')}</span></span>
+      <div class="tips__controls"><span class="tips__idx num">${String(i + 1).padStart(2, '0')}<span class="t-dim">/${String(list.length).padStart(2, '0')}</span></span>
       <button type="button" class="tips__nav" onClick=${() => setIdx(i - 1 + list.length)} aria-label=${t('上一条')}><${Icon} name="chevronLeft" /></button>
-      <button type="button" class="tips__nav" onClick=${() => setIdx(i + 1)} aria-label=${t('下一条')}><${Icon} name="chevronRight" /></button>
+      <button type="button" class="tips__nav" onClick=${() => setIdx(i + 1)} aria-label=${t('下一条')}><${Icon} name="chevronRight" /></button></div>
     </div>
     <p key=${i} class="tips__text">${list[i]}</p>
   </div>`;
@@ -232,25 +232,17 @@ function MatchQueuePanel({ queue, onCancel }) {
   </section>`;
 }
 
-function HubEntry({ group, name, en, icon, badge, tone = 'mint', onClick, disabled = false, entryRef }) {
+function HubEntry({ group, name, en, icon, badge, hint, tone = 'mint', onClick, disabled = false, entryRef }) {
   return html`<div class="hub-entry-wrap">
     ${group ? html`<span class="hub-entry__group"><${Icon} name=${group.icon} />${group.label}</span>` : html`<span class="hub-entry__group hub-entry__group--blank"></span>`}
     <button ref=${entryRef} type="button" class=${`hub-entry hub-entry--${tone}`} onClick=${onClick} disabled=${disabled}>
       <span class="hub-entry__icon"><${Icon} name=${icon} /></span>
       <span class="hub-entry__en">${en}</span>
       <span class="hub-entry__name">${name}${badge ? html`<span class="mode-beta">${badge}</span>` : null}</span>
+      <span class="hub-entry__hint">${hint}<${Icon} name="chevronRight" /></span>
       <span class="hub-entry__corner" aria-hidden="true"></span>
     </button>
   </div>`;
-}
-
-/** A small tile of the side column. */
-function HubTile({ icon, label, en, onClick, children }) {
-  return html`<button type="button" class="hub-tile" onClick=${onClick}>
-    <span class="hub-tile__icon"><${Icon} name=${icon} /></span>
-    <span class="hub-tile__text"><span class="hub-tile__label">${label}</span><span class="hub-tile__en">${en}</span></span>
-    ${children}
-  </button>`;
 }
 
 /** Loading is a page too; opening S.W.E.E.P. must never briefly create a modal. */
@@ -260,17 +252,10 @@ export function SweepLoadingPage({ onClose }) {
   return html`<main class="screen sweep-host" aria-label=${t('S.W.E.E.P.报告')} onKeyDown=${(e) => {
     if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.modal, .guide')) { e.preventDefault(); onClose(); }
   }}>
-    <div class="sw"><header class="sw-top"><button ref=${back} type="button" class="sw-back" onClick=${onClose}
-      aria-label=${t('返回大厅')}><${Icon} name="chevronLeft" /><span>S.W.E.E.P.</span></button></header>
+    <div class="sw"><header class="sw-top"><button ref=${back} type="button" class="sw-back proto-back" onClick=${onClose}
+      aria-label=${t('返回大厅')}><${Icon} name="chevronLeft" /><span class="proto-back__home"><${Icon} name="rook" /></span></button></header>
       <p class="sw-loading" role="status">${t('正在读取报告…')}</p></div>
   </main>`;
-}
-
-function StampRing() {
-  return html`<svg class="pcard__ring" viewBox="0 0 120 100" aria-hidden="true" focusable="false">
-    <path pathLength="1" d="M18 62C6 34 34 8 70 10c34 2 48 30 38 54-10 24-46 32-72 22C20 80 10 66 16 50" />
-    <path pathLength="1" d="M30 20c22-14 62-12 78 10 12 18 4 44-16 54" />
-  </svg>`;
 }
 
 /** One difficulty of 选择模拟协议: name, text, effects; the extras (code, rounds, 隐秘核心, battlefields, queue) below. */
@@ -278,19 +263,8 @@ export function ProtoCard({ roomMode, difficulty, selected, onSelect, disabled =
   const info = difficultyInfo(roomMode, difficulty);
   return html`<button type="button" class=${`pcard${selected ? ' is-on' : ''}`} style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}
       disabled=${disabled} onClick=${() => onSelect(difficulty)} aria-pressed=${selected ? 'true' : 'false'}>
-    <span class="pcard__glow" aria-hidden="true"></span>
-    <span class="pcard__head">
-      <${DifficultyIcon} difficulty=${difficulty} class="pcard__glyph" />
-      <span class="pcard__name">${t(DIFFICULTY_NAMES[difficulty])}</span>
-    </span>
-    <span class="pcard__desc">${info.desc}</span>
-    <span class="pcard__effects">${info.effects.map((e) => html`<span key=${e}>${e}</span>`)}</span>
-    <span class="pcard__meta">
-      ${info.code ? html`<span class="num">${info.code}</span>` : null}
-      <span><b class="num">${info.rounds}</b> ${tc('rounds', '回合')}${info.hidden ? t(' + 隐秘核心') : ''}</span>
-      ${info.stageNote ? html`<span>${info.stageNote}</span>` : null}
-    </span>
-    <span class="pcard__stamp" aria-hidden="true"><${StampRing} /><span class="pcard__tick"><${Icon} name="check" /></span><span class="pcard__ok">${t('已选定')}</span></span>
+    <span class="pcard__head"><${DifficultyIcon} difficulty=${difficulty} class="pcard__glyph" /><span class="pcard__name">${t(DIFFICULTY_NAMES[difficulty])}</span></span>
+    <span class="pcard__code num">${info.code}</span>
   </button>`;
 }
 
@@ -321,7 +295,7 @@ function ProtocolPage(props) {
 }
 
 /** Full secondary page with the fork's visual treatment and this branch's protocol. */
-export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepMultiplier = null, battleSpeed = 2, onOptions }) {
+export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{} }) {
   const info = difficultyInfo(roomMode, difficulty);
   return html`<main ref=${pageRef} class="screen protocol-screen" aria-label=${`${t(card.name)} · ${t('选择模拟协议')}`}>
     <div class="proto" style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}>
@@ -337,14 +311,21 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
           <div class="proto-brief"><span class="proto-brief__code num">${info.code}</span><b class="proto-brief__name">${t(DIFFICULTY_NAMES[difficulty])}</b><p>${t(card.desc, card.params)}</p></div>
         </section>
         <section class="proto-side">
+          <section class="prep-setting proto-difficulty" aria-label=${t('模拟难度')}><div class="prep-setting__title"><${Icon} name="rook" /><span>${t('模拟难度')}</span><${MicroLabel}>DIFFICULTY<//></div>
           <div class="proto-list" aria-label=${t('模拟难度')}>
             ${DIFFICULTIES.map((d) => html`<${ProtoCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} disabled=${!!queue || !!busy} onSelect=${onDifficulty} />`)}
           </div>
+          <section class="proto-details" aria-live="polite"><strong>${info.desc}</strong>
+            <div class="proto-facts"><span>${t('共')} <b class="num">${info.rounds}</b> ${tc('rounds','回合')}${info.hidden?t(' + 隐秘核心'):''}</span><span>${info.stageNote}</span></div>
+            <ul>${info.effects.map(e=>html`<li key=${e}>${e}</li>`)}</ul>
+          </section></section>
+          <div class="proto-settings"><${RoomPacingControls} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${!!queue || !!busy} />
+            ${roomMode!=='match'?html`<p class="proto-plugin-note">${t('玩法：原版规则。创建后，房主可在模拟配置中选择插件。')}</p>`:null}
+          </div>
           <div class="proto-foot">
-            ${roomMode !== 'match' && onOptions ? html`<${RoomConfigSummary} mode=${roomMode} difficulty=${difficulty} prepMultiplier=${prepMultiplier} battleSpeed=${battleSpeed} disabled=${!!busy} onOpen=${onOptions} />` : null}
             ${queue ? html`<${MatchQueuePanel} queue=${queue} onCancel=${onCancel} />` : html`
               <p class="proto-hint">${!online ? t('正在连接服务器…') : roomMode === 'match' ? t('仅匹配真人 · 满四人后开始') : roomMode === 'solo' ? t('创建后即可开始模拟') : t('创建后可邀请好友或匹配队友')}</p>
-              <button type="button" class="proto-start" disabled=${!online || !!busy} onClick=${onStart}>
+              <button type="button" class="proto-start" disabled=${!online || !!busy || (roomMode==='coop' && !validPrepChoice(prepChoice))} onClick=${onStart}>
                 <span class="proto-start__mark" aria-hidden="true"><span class="proto-start__rook"><i>[</i><${Icon} name="rook" /><i>]</i></span><small>STRONGHOLD<br />PROTOCOL</small></span>
                 <span class="proto-start__label">${busy ? html`<${Spinner} size="sm" />` : null}${roomMode === 'solo' ? t('开始独立模拟') : roomMode === 'match' ? t('开始同盟匹配') : t('创建同盟')}</span>
                 <span class="proto-start__deco" aria-hidden="true"></span>
@@ -472,7 +453,7 @@ export function LobbyScreen() {
     : html`<${SweepLoadingPage} onClose=${() => setPanel(null)} />`;
   if (panel === 'protocol') return html`<${ProtocolPage} card=${card} roomMode=${roomMode} difficulty=${difficulty} onDifficulty=${pickDifficulty}
     online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
-    queue=${matchQueue} onCancel=${cancelMatchmaking} prepMultiplier=${prepChoiceMultiplier(prepChoice)} battleSpeed=${battleSpeed} onOptions=${()=>setOptionsOpen(true)} />`;
+    queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} />`;
   return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
     <${HubBackdrop} bg=${bg} />
     <header class="topbar hub-topbar">
@@ -512,23 +493,20 @@ export function LobbyScreen() {
       </div>
       <aside class="hub-side">
         <${AchievementEntry} onOpen=${() => { openStats('achievements'); }} />
-        <${HubTile} icon="key" label=${t('加入同盟')} en="ALLIANCE KEY" onClick=${() => setPanel('join')} />
-        <${TipsPanel} />
-      </aside>
-      <aside class="hub-right">
         <button ref=${sweepEntry} type="button" class="hub-plate hub-plate--sweep" onClick=${() => setPanel('sweep')}>
           <span class="hub-plate__glyph"><${Icon} name="book" /></span>
-          <span class="hub-plate__label">${t('S.W.E.E.P.报告')}</span><span class="hub-plate__tag">REPORT</span>
+          <span class="hub-plate__label">${t('S.W.E.E.P.报告')}</span>
         </button>
         <${LoadoutButton} from="lobby" size="lg" class="lobby-loadout hub-plate hub-plate--loadout" label=${t('干员调配')} />
-        <${HubTile} icon="chart" label=${t('博士档案')} en="DOCTOR ARCHIVE" onClick=${openStats} />
+        <${TipsPanel} />
       </aside>
       <section class="hub-entries" aria-label=${t('模拟方式')}>
         ${matchQueue ? html`<${MatchQueuePanel} queue=${matchQueue} onCancel=${cancelMatchmaking} prepMultiplier=${prepChoiceMultiplier(prepChoice)} battleSpeed=${battleSpeed} onOptions=${()=>setOptionsOpen(true)} />` : null}
         <div class="hub-entries__row">
-          ${MODE_CARDS.map((c) => html`<${HubEntry} key=${c.id} name=${t(c.name)} en=${c.en} icon=${c.icon}
+          ${MODE_CARDS.map((c) => html`<${HubEntry} key=${c.id} name=${c.id === 'coop' ? t('创建同盟') : t(c.name)} en=${c.en} icon=${c.icon}
             entryRef=${(el) => { modeEntries.current[c.id] = el; }}
-            tone=${c.id === 'match' ? 'amber' : 'mint'} disabled=${!!matchQueue} onClick=${() => openMode(c.id)} />`)}
+            hint=${c.id === 'match' ? t('配置并匹配') : t('配置并创建')} tone=${c.id === 'match' ? 'amber' : 'mint'} disabled=${!!matchQueue} onClick=${() => openMode(c.id)} />`)}
+          <${HubEntry} name=${t('加入同盟')} en="JOIN ALLIANCE" icon="key" hint=${t('输入同盟密钥')} disabled=${!!matchQueue} onClick=${() => setPanel('join')} />
         </div>
       </section>
     </main>
