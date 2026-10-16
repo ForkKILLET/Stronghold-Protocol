@@ -1002,3 +1002,14 @@
 @media (prefers-reduced-motion: reduce) {
   .lo, .lo *, .own *, .diy * { animation-delay: 0ms !important; }
 }
+/* Always visible: returning users can choose the original practical list without opening a filter menu. */
+.lo-viewbar { flex:none; display:flex; align-items:center; gap:12px; padding:6px max(.26rem,12px); border-bottom:1px solid var(--line-2); color:var(--text-lo); font-size:max(calc(.14 * var(--t)),12px); background:var(--bg-1); }
+.lo-view-switch { display:flex; border:1px solid var(--line-2); }
+.lo-view-switch button { min-height:30px; padding:4px 14px; border:0; border-radius:0; background:transparent; color:var(--text-md); font:inherit; cursor:pointer; }
+.lo-view-switch button + button { border-left:1px solid var(--line-2); }
+.lo-view-switch .is-on { background:var(--mint-a15); color:var(--mint-400); box-shadow:inset 0 -2px var(--mint-400); }
+@media (any-pointer:coarse) { .lo-view-switch button { min-height:36px; } }
+/* Fit both quick settings without truncating the selected cultivation tier. */
+.lo .lo-cult .game-select { min-height:26px; height:auto; padding:3px 4px; gap:4px; font-size:max(calc(.14 * var(--utility-text,var(--t))),10px); }
+.lo .lo-cult .game-select__arrow { width:10px; height:10px; }
+.lo .lo-cult__pot { flex:0 0 58px; }

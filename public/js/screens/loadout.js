@@ -457,10 +457,7 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
     <div class="lo-op__card" onClick=${(e) => { if (!e.target.closest?.('button, select, input')) onPick(chess.chessId); }}>
       <div class="lo-op__rail">
         <${TierChip} tier=${chess.tier} size="sm" class="lo-op__tier" />
-        <span class="lo-op__lv" title=${t('普通 / 精锐等级')}>
-          <span class="lo-op__lvrow"><i class="lo-op__chev"></i><b class="num">${chess.status?.level ?? '—'}</b></span>
-          ${golden ? html`<span class="lo-op__lvrow is-elite"><i class="lo-op__chev"></i><b class="num">${golden.status?.level ?? '—'}</b></span>` : null}
-        </span>
+
         ${changed ? html`<span class="lo-op__mark" title=${t('已调整')} aria-label=${t('已调整')}></span>` : null}
       </div>
       <button type="button" class="lo-op__pick" aria-pressed=${selected ? 'true' : 'false'} title=${chess.name} onClick=${() => onPick(chess.chessId)}>
@@ -609,7 +606,7 @@ function DeckHelp({ onClose }) {
     [N_('快速配置'), N_('在每张卡旁直接切换技能、模组，或潜能·练度；改动即时保存，点「确认配置」收起。')],
     [N_('干员持有'), N_('标记未持有的干员，开局时由官方替补干员上场；局外设置，下一局生效。')],
     [N_('甄选干员'), N_('5阶、6阶末尾的卡片即自选编队：持有的 6★ 干员或原型干员，只出现在你自己的商店。')],
-    [N_('筛选与导入导出'), N_('「筛选」按职业、盟约、名字查找，或切换为列表视图；「更多」里导出 / 导入调配、全部恢复默认。')],
+    [N_('筛选与导入导出'), N_('顶部可切换卡片或经典列表；「筛选」按职业、盟约、名字查找；「更多」里导入、导出或恢复默认。')],
   ];
   return html`<${Modal} open=${true} onClose=${onClose} title=${t('调度手册')} micro="DISPATCH MANUAL" utility=${true}
       actions=${html`<${Button} variant="primary" onClick=${onClose}>${t('知道了')}<//>`}>
@@ -986,11 +983,6 @@ function LoadoutScreen({ st, leaving = false }) {
             ${menu === 'filter' ? html`<div class="lo-pop lo-pop--filter">
               <${Filters} m=${m} filters=${st.filters} bonds=${bonds} onFilters=${(filters) => loadoutStore.set({ filters })} />
               <div class="lo-pop__row">
-                <span class="lo-pop__k">${t('显示方式')}</span>
-                <div class="lo-seg" role="tablist">
-                  <button type="button" role="tab" aria-selected="true" class="is-on">${t('卡片')}</button>
-                  <button type="button" role="tab" aria-selected="false" onClick=${() => { setMenu(null); setDrawer(false); setView('list'); }}>${t('列表')}</button>
-                </div>
                 ${nFilters ? html`<button type="button" class="lo-tbtn" onClick=${clearFilters}>${t('清除筛选')}</button>` : null}
               </div>
             </div>` : null}
@@ -1020,12 +1012,15 @@ function LoadoutScreen({ st, leaving = false }) {
         ${inMatch && hasDeadline(infoDeadline) ? html`<${Countdown} deadline=${infoDeadline} size="sm" gauge=${false} label=${t('调配截止')} class="lo-deadline" />` : null}
         ${syncText ? html`<span class=${cx('lo-sync', syncCls)} role="status">${t(syncText)}</span>` : null}
         <span class="lo-count">${t('已调整')} <b class="num">${nChanged}</b><span class="num t-dim">/${roster.length}</span></span>
-        <${Button} variant="ghost" size="sm" onClick=${() => setView('deck')} title=${t('切换为卡片视图（物资调配处）')}>${t('卡片视图')}<//>
         <${Button} variant="ghost" size="sm" data-testid="loadout-export" disabled=${!nChanged && !Object.keys(st.ops || {}).length} onClick=${openExport} title=${t('导出当前调配（可复制或下载）')}>${t('导出')}<//>
         <${Button} variant="ghost" size="sm" data-testid="loadout-import" disabled=${!ready} onClick=${openImport} title=${t('导入调配（粘贴或选择文件）')}>${t('导入')}<//>
         <${Button} variant="secondary" size="sm" icon="refresh" disabled=${!nChanged} onClick=${resetAll}>${t('全部恢复默认')}<//>
       </div>`}
     </header>
+    <div class="lo-viewbar"><span>${t('调配视图')}</span><div class="lo-view-switch" role="group" aria-label=${t('调配视图')}>
+      ${[['deck',N_('卡片')],['list',N_('经典列表')]].map(([id,name])=>html`<button type="button" key=${id} data-loadout-view=${id} aria-pressed=${view===id} class=${view===id?'is-on':''}
+        onClick=${()=>{setMenu(null);setDrawer(false);setView(id);}}>${t(name)}</button>`)}
+    </div></div>
     ${tab === 'diy'
       ? html`<p class=${cx('lo-note', ownLocked && 'is-locked')}><${Icon} name="info" />${diyText}</p>`
       : tab === 'ownership'

@@ -2349,5 +2349,8 @@
   "本分支问题反馈": "Report a fork issue",
   "主线问题反馈": "Report a mainline issue",
   "本站界面、博士档案和部署问题优先在这里反馈；不确定时也可先报这里。": "Report this server’s UI, doctor archive and deployment issues here. Start here if unsure.",
-  "在未开启插件的原版中也能复现的游戏规则问题，可反馈给主线。": "Report gameplay issues reproducible without plugins to mainline."
+  "在未开启插件的原版中也能复现的游戏规则问题，可反馈给主线。": "Report gameplay issues reproducible without plugins to mainline.",
+  "调配视图": "Loadout view",
+  "经典列表": "Classic list",
+  "顶部可切换卡片或经典列表；「筛选」按职业、盟约、名字查找；「更多」里导入、导出或恢复默认。": "Switch between cards and the classic list at the top. Filter by profession, bond or name; import, export or reset through More."
 }
