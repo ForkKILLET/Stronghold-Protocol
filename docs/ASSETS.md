@@ -121,8 +121,8 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   `hash` — the first 12 hex of the SHA-1 of the file's bytes, written by `tools/asset-hashes.mjs` (fetched assets) and
   `tools/local-extract/extract.py` (local-client art) — plus a `tier`:
   **tier 1 (`essential`, 必备)** — maps and board meshes, operator/enemy/token pictures (including portraits), every
-  Spine model (skel/atlas/textures), local visual effects, fonts, UI and icons; **tier 2 (`optional`, 可选)** — character
-  voices, sound effects, background music and tutorial illustrations. Required files are preloaded by default; the
+  base Spine model (skel/atlas/textures), board effects, fonts, UI and icons; **tier 2 (`optional`, 可选)** — character
+  voices, official battle effects (`/assets/local/fx/`), sound effects, background music and tutorial illustrations. Required files are preloaded by default; the
   同时预载 checkbox opts into optional files, persisted as `settings.preloadOptional` (default false, including old
   settings). Unselected optional files still load normally on demand. Sizes are included
   for the files this install has on disk; a CDN-only install omits them and the client reports progress in files
@@ -178,12 +178,14 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   If the browser rejects aggregate `Cache.keys()` with `Operation too large`, full checks probe exact known
   manifest/index URLs with at most eight in-flight key lookups, without reading bodies or weakening fingerprint
   matching. Unenumerable unknown stale entries are retained rather than blocking resume or deleting valid art.
-- **Voice preload scope.** The resource manager splits Chinese and Japanese voice categories and offers
-  中文语音 / 日语语音 / 两种语言 / 不预载语音. `settings.preloadVoiceLang` (`cn`, `jp`, `all`, `none`) is
-  persisted independently of playback `voiceLang` and per-operator overrides. Old profiles without a valid scope
-  use their saved playback dub once (Chinese by default). The 同时预载 checkbox must still be enabled for any
-  optional downloads; SFX, music and guide images retain their existing behaviour. Language detection uses
-  `/voice/cn/` or `/voice/jp/` directory names, including CDN prefixes, not filenames (Japanese files may be
+- **Voice preload scope.** The resource manager splits Chinese, Japanese, English and Korean voice categories and
+  offers four independent checkboxes; unchecking all disables voice preload. `settings.preloadVoiceLang` is an ordered
+  array of `cn`, `jp`, `en`, `kr`, persisted independently of playback `voiceLang` and per-operator overrides.
+  Old `cn`/`jp` strings migrate to one-element arrays, `all` to `["cn", "jp"]` (its original scope), and `none` to `[]`.
+  Old profiles without a valid scope use their saved playback dub once (Chinese by default).
+  The 同时预载 checkbox must still be enabled for voice and official battle-effect downloads; SFX, music and guide
+  images retain their existing behaviour. Language detection uses `/voice/cn/`, `/voice/jp/`, `/voice/en/` or
+  `/voice/kr/` directory names, including CDN prefixes, not filenames (Japanese files may be
   named `cn_019.mp3`). Legacy/shared voice paths without a dub directory are shown separately and selected
   unless voice preload is disabled entirely. A language switch cancels the previous download scope, waits for
   in-flight work, and incrementally fills the latest selection; cached voices are never deleted by a switch.
@@ -194,6 +196,12 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   with other cached files; only missing network downloads after import are filtered by the selected dub.
   This touches standalone Service Worker dependencies: rebuild/restart and update SW on deployment. If UI language
   JSON is served from the assets CDN, sync `public/i18n/` and refresh the corresponding cache; `data/` is unchanged.
+- **Official battle effects.** Files from `data/local-fx.json` appear as the separate optional 官方特效 group, including
+  index/textures JSON, prefab/mesh JSON and textures. They are not required for essential-only completion, do not depend
+  on selected voice languages or the playback/display settings, and still load on demand when unselected. Existing
+  board `/assets/local/map/fx/` remains essential. ZIP JSON allowlists and per-file integrity checks are unchanged;
+  the pack builder now separates `voice_en`, `voice_kr` and `fx`. Regenerate deployment manifests/ZIP packs after upgrading
+  so the new categories and optional effect tier are reflected (old mismatched-tier packs safely fall back to files).
 - The client (`public/js/resources/*`) downloads tier 1 first, then tier 2 only when selected: four lanes for small files
   and one for files above 4 MiB, skipping whatever is already cached. Two tabs of the same browser never download the
   same file twice: a Web Lock (`stronghold-resources-preload`, `ifAvailable`) makes one tab do the work while the others

@@ -42,7 +42,7 @@ const state = {
   archiveGroup: '',
   packProgress: null,
   optional: false,
-  voiceLang: 'cn',
+  voiceLang: ['cn'],
   skins: false,
   selectionComplete: false,
   combatPaused: false,
@@ -58,7 +58,7 @@ let activeRun = null;
 let transferPromise = null;
 let archiveController = null;
 let optional = false;
-let voiceLang = 'cn';
+let voiceLang = ['cn'];
 let skins = false;
 let syncRevision = 0;
 let workerPromise = null;
@@ -82,7 +82,7 @@ export function subscribeResources(fn) {
 
 /** A copy of the current preload state (safe to hand to Preact). */
 export function resourceState() {
-  return { ...state };
+  return { ...state, voiceLang: [...state.voiceLang] };
 }
 
 function set(patch) {
@@ -185,7 +185,7 @@ async function ensureWorker() {
 export async function syncResources(enabled, includeOptional = optional, preloadVoiceLang = voiceLang, preloadSkins = skins) {
   enabled = !!enabled;
   const nextVoiceLang = normalizePreloadVoiceLang(preloadVoiceLang);
-  const changed = optional !== !!includeOptional || voiceLang !== nextVoiceLang || skins !== !!preloadSkins;
+  const changed = optional !== !!includeOptional || voiceLang.join(',') !== nextVoiceLang.join(',') || skins !== !!preloadSkins;
   if (enabled === current && !changed) {
     if (!enabled) {
       await ensureWorker().catch((err) => {

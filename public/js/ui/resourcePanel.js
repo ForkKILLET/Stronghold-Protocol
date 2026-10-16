@@ -2,12 +2,12 @@
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Button, MicroLabel, Modal, ProgressBar } from './components.js';
 import { createStore, useStore } from '../store.js';
-import { formatBytes, PRELOAD_VOICE_LANGS, resourcePackPercent } from '../resources/common.js';
+import { formatBytes, normalizePreloadVoiceLang, PRELOAD_VOICE_LANGS, resourcePackPercent } from '../resources/common.js';
 import { clearResources, exportResources, importResources, inspectResources, pauseResources,
   resourceState, startResources, subscribeResources } from '../resources/index.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
-const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), all: N_('两种语言'), none: N_('不预载语音') };
+const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), en: N_('英语语音'), kr: N_('韩语语音') };
 
 const RESOURCE_DOWNLOAD_URL = 'https://t.bilibili.com/1256354225629167619';
 
@@ -98,7 +98,7 @@ function ResourceTier({ st, tier, optional, onOptional, disabled }) {
   return html`<section class="resource-tier">
     <header class="resource-tier__head">
       <div><h3>${tier === 1 ? t('必备资源') : t('可选资源')}</h3>
-        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('角色语音、音效、背景音乐与玩法说明图片')}</p></div>
+        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('角色语音、官方特效、音效、背景音乐与玩法说明图片')}</p></div>
       ${tier === 2 ? html`<label class="resource-choice"><input type="checkbox" checked=${optional} disabled=${disabled}
         onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : html`<${MicroLabel}>REQUIRED<//>`}
     </header>
@@ -117,14 +117,17 @@ function ResourceTier({ st, tier, optional, onOptional, disabled }) {
 }
 
 function ResourceOptions({ optional, voiceLang, onVoiceLang, skins, onSkins, disabled }) {
+  const selected = normalizePreloadVoiceLang(voiceLang);
   return html`<div class="resource-manager__options">
     <fieldset class="resource-voice-choice" disabled=${disabled}>
       <legend>${t('预载语音语言')}</legend>
-      <div class="resource-voice-choice__options" role="radiogroup" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
+      <div class="resource-voice-choice__options" role="group" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
         ${PRELOAD_VOICE_LANGS.map((lang) => html`<label class="resource-choice" key=${lang}>
-          <input type="radio" name="preload-voice-lang" value=${lang} checked=${voiceLang === lang}
-            onChange=${() => onVoiceLang(lang)} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
+          <input type="checkbox" name="preload-voice-lang" value=${lang} checked=${selected.includes(lang)}
+            onChange=${(e) => onVoiceLang(normalizePreloadVoiceLang(e.currentTarget.checked
+              ? [...selected, lang] : selected.filter((id) => id !== lang)))} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
       </div>
+      <p>${t('可多选；全部取消勾选则不预载语音。')}</p>
       <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
       ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
     </fieldset>

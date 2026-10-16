@@ -22,7 +22,7 @@ export const RESOURCES_FORMAT = 1;
 export const MAX_FILE_BYTES = 24 * 1024 * 1024;
 /** Required visuals: maps, portraits, Spine, fonts, UI and icons. */
 export const TIER_ESSENTIAL = 1;
-/** Optional: voices, sound effects, music and tutorial illustrations. */
+/** Optional: voices, official battle effects, sound effects, music and tutorial illustrations. */
 export const TIER_REST = 2;
 export const MANIFEST_URL = '/data/resource-manifest.json';
 export const PACK_MANIFEST_URL = '/data/resource-packs.json';
@@ -37,7 +37,10 @@ export const RESOURCE_GROUPS = Object.freeze({
   ui: { name: N_('界面、图标与字体'), tier: TIER_ESSENTIAL },
   voice_cn: { name: N_('中文语音'), tier: TIER_REST },
   voice_jp: { name: N_('日语语音'), tier: TIER_REST },
+  voice_en: { name: N_('英语语音'), tier: TIER_REST },
+  voice_kr: { name: N_('韩语语音'), tier: TIER_REST },
   voice: { name: N_('其他角色语音'), tier: TIER_REST },
+  fx: { name: N_('官方特效'), tier: TIER_REST },
   sfx: { name: N_('音效'), tier: TIER_REST },
   music: { name: N_('背景音乐'), tier: TIER_REST },
   skins: { name: N_('干员皮肤'), tier: TIER_REST },
@@ -51,7 +54,10 @@ export function resourceGroup(file) {
     if (/\/char\/(?:avatar|portrait)\/skin\//.test(path) || /\/spine\/op\/[^/]+\/[^/]+\/(?:front|back)\//.test(path)) return 'skins';
     if (/\/voice\/cn\//.test(path)) return 'voice_cn';
     if (/\/voice\/jp\//.test(path)) return 'voice_jp';
+    if (/\/voice\/en\//.test(path)) return 'voice_en';
+    if (/\/voice\/kr\//.test(path)) return 'voice_kr';
     if (/\/voice\//.test(path)) return 'voice';
+    if (/\/assets\/local\/fx\//.test(path)) return 'fx';
     if (/\/sfx\//.test(path)) return 'sfx';
     if (/\/bgm\//.test(path)) return 'music';
     return 'other';
@@ -63,9 +69,14 @@ export function resourceGroup(file) {
 }
 
 /** Preload scope is independent of playback's global/individual operator dub settings. */
-export const PRELOAD_VOICE_LANGS = Object.freeze(['cn', 'jp', 'all', 'none']);
+export const PRELOAD_VOICE_LANGS = Object.freeze(['cn', 'jp', 'en', 'kr']);
+/** Canonical ordered array; migrate the old cn/jp/all/none radio preference without expanding its scope. */
 export function normalizePreloadVoiceLang(value, fallback = 'cn') {
-  return PRELOAD_VOICE_LANGS.includes(value) ? value : PRELOAD_VOICE_LANGS.includes(fallback) ? fallback : 'cn';
+  if (Array.isArray(value)) return PRELOAD_VOICE_LANGS.filter((lang) => value.includes(lang));
+  if (value === 'all') return ['cn', 'jp']; // the old choice meant "both", not future dubs
+  if (value === 'none') return [];
+  if (PRELOAD_VOICE_LANGS.includes(value)) return [value];
+  return PRELOAD_VOICE_LANGS.includes(fallback) ? [fallback] : ['cn'];
 }
 
 export function selectedResourceGroup(id, includeOptional, voiceLang = 'cn', preloadSkins = false) {
@@ -74,10 +85,9 @@ export function selectedResourceGroup(id, includeOptional, voiceLang = 'cn', pre
   if (group.tier === TIER_ESSENTIAL) return true;
   if (id === 'skins') return preloadSkins === true;
   if (!includeOptional) return false;
-  const lang = normalizePreloadVoiceLang(voiceLang);
-  if (id === 'voice_cn') return lang === 'cn' || lang === 'all';
-  if (id === 'voice_jp') return lang === 'jp' || lang === 'all';
-  if (id === 'voice') return lang !== 'none'; // legacy/shared voice URLs without a known dub
+  const langs = normalizePreloadVoiceLang(voiceLang);
+  if (id.startsWith('voice_')) return langs.includes(id.slice('voice_'.length));
+  if (id === 'voice') return langs.length > 0; // legacy/shared voice URLs without a known dub
   return true;
 }
 

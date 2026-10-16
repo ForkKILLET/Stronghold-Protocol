@@ -141,6 +141,13 @@ describe('resource manifest building', () => {
     for (const group of ['map/autochess', 'mesh/map_autochess_bkg', 'spine/enemy/x', 'projectiles']) {
       assert.equal(tierForPath(`local.groups.${group}.x.path`), TIER_ESSENTIAL);
     }
+    for (const group of ['fx', 'fx/prefabs', 'fx/mesh', 'fx/tex']) {
+      assert.equal(tierForPath(`local.groups.${group}.x.path`), TIER_REST);
+    }
+    const effects = collectResourceFiles({ ui: { fx: '/assets/local/fx/index.json' },
+      chars: { c: { fx: 'https://cdn.example/prefix/assets/local/fx/tex/a.webp' } } });
+    assert.equal(effects.length, 2);
+    assert.ok(effects.every(f => f.tier === TIER_REST), 'official FX remain optional even via essential aliases');
     assert.equal(tierForPath('chars.c.voice.attack'), TIER_REST);
     assert.equal(tierForPath('audio.voice.c.1'), TIER_REST);
     const nested = collectResourceFiles({ chars: { c: { sound: '/assets/audio/unknown.mp3' } } }, null);
@@ -600,7 +607,7 @@ describe('the resource index cache', () => {
     cdnBase: 'https://cdn.example.com', rewrite: v => rewriteAssetPaths(v, 'https://cdn.example.com') });
   const a = await index.get();
   assert.equal(a.manifest.files.length, paths.length);
-  assert.ok(a.manifest.files.every(f => f.url.startsWith('https://cdn.example.com/assets/local/fx/') && f.tier === TIER_ESSENTIAL && f.size > 0 && f.hash === 'aaaaaaaaaaaa'));
+  assert.ok(a.manifest.files.every(f => f.url.startsWith('https://cdn.example.com/assets/local/fx/') && f.tier === TIER_REST && f.size > 0 && f.hash === 'aaaaaaaaaaaa'));
   for (const p of paths) assert.equal(isResourcePath(p), true, p);
   for (const p of ['/assets/local/fx/secrets.json', '/assets/local/fx/prefabs/nested/config.json', '/assets/local/fx/../config.json']) assert.equal(validateResourceUrl(p), false, p);
   await new Promise(resolve => setTimeout(resolve, 20));

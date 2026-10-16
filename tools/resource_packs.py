@@ -41,7 +41,9 @@ def canonical(url):
 def group(row):
     path = row["url"]
     if row["tier"] == 2:
-        for key in ("voice/cn", "voice/jp", "voice", "sfx", "bgm"):
+        if "/assets/local/fx/" in path:
+            return "fx"
+        for key in ("voice/cn", "voice/jp", "voice/en", "voice/kr", "voice", "sfx", "bgm"):
             if f"/audio/{key}/" in path:
                 return key.replace("/", "_")
         return "other"

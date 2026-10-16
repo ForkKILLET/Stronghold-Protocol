@@ -428,11 +428,13 @@ pack publication. Two requests may overlap streaming unpack with cache import; t
 
 ### Branch resource-management extension: voice preload language
 
-The shared resource manager persists `preloadVoiceLang` separately from playback settings. It selects Chinese,
-Japanese, both, or no operator voice downloads within the optional tier. Files are classified by dub directories,
+The shared resource manager persists `preloadVoiceLang` as an ordered language array separately from playback settings.
+Four checkboxes select any combination of Chinese, Japanese, English and Korean operator voices (or none) within the
+optional tier; old `cn`/`jp`/`all`/`none` choices migrate without expanding their scope. Files are classified by dub directories,
 including CDN-prefixed URLs. Switching aborts/waits for the previous run and fills only the latest selection; cached
 files and ZIP import/export integrity rules remain unchanged. Completion and progress use selected category counters,
-not all optional files. Details: [ASSETS.md](../ASSETS.md#preload-optional-asset-preloading).
+not all optional files. Official `/assets/local/fx/` battle effects form their own optional category; board
+`/assets/local/map/fx/` stays essential. Details: [ASSETS.md](../ASSETS.md#preload-optional-asset-preloading).
 
 §30.4: the HP tower retains current HP until settlement and shows pending loss separately. Shop refresh is single
 flight per client until its promise settles (success or error); the button and R key share that state. DIY-only

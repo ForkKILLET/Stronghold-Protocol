@@ -27,7 +27,7 @@ export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
 
 /** Shortcuts persist separately in ui/shortcuts.js; voiceLang: VOICE_LANGS.
  *  textSize: TEXT_SIZES (css/theme.css `--t`, applied by ui/settings.js applyTextSize). */
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, mysticEnergy: false, officialFx: 'auto', voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoCount: false, deploymentZoom: false, quality: 'high', textSize: 'sm', fpsLimit: 0, skinsEnabled: false, preload: false, preloadOptional: false, preloadVoiceLang: 'cn', preloadSkins: false });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, mysticEnergy: false, officialFx: 'auto', voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoCount: false, deploymentZoom: false, quality: 'high', textSize: 'sm', fpsLimit: 0, skinsEnabled: false, preload: false, preloadOptional: false, preloadVoiceLang: Object.freeze(['cn']), preloadSkins: false });
 const QUALITIES = ['high', 'medium', 'low'];
 /** The values of 设置「官方特效」 (render/vfx/tier.js OFFICIAL_FX). */
 export const OFFICIAL_FX_MODES = Object.freeze(['auto', 'off', 'lite', 'full']);

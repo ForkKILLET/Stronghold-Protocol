@@ -44,6 +44,45 @@ test('transport pack progress covers both streamed download bytes and import fil
   assert.equal(resourcePackPercent({ phase: 'import', done: 0, totalFiles: 0 }), 0);
 });
 
+test('Python packs separate English/Korean voices and optional official FX without changing required board FX', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'sp-resource-pack-scope-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const assets = path.join(root, 'public');
+  const { createHash } = await import('node:crypto');
+  const entries = [
+    ['/assets/audio/voice/en/char_test/cn_019.mp3', 2, 'voice_en'],
+    ['/assets/audio/voice/kr/char_test/cn_019.mp3', 2, 'voice_kr'],
+    ['/assets/local/fx/index.json', 2, 'fx'],
+    ['/assets/local/fx/textures.json', 2, 'fx'],
+    ['/assets/local/fx/prefabs/probe.json', 2, 'fx'],
+    ['/assets/local/fx/mesh/probe.json', 2, 'fx'],
+    ['/assets/local/fx/tex/half/probe.webp', 2, 'fx'],
+    ['/assets/local/map/fx/materials.json', 1, 'map'],
+  ];
+  const files = [];
+  for (const [url, tier] of entries) {
+    const file = path.join(assets, url.slice(1));
+    const body = Buffer.from('{}');
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, body);
+    files.push({ url, tier, size: body.length, hash: createHash('sha1').update(body).digest('hex').slice(0, 12) });
+  }
+  const manifestPath = path.join(root, 'manifest.json');
+  const indexPath = path.join(root, 'resource-packs.json');
+  await writeFile(manifestPath, JSON.stringify({ version: 'scope', files }));
+  const result = spawnSync(process.env.PYTHON || 'python', [path.resolve('tools/resource_packs.py'),
+    '--manifest', manifestPath, '--assets-root', assets, '--output', path.join(root, 'packs'), '--index', indexPath], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const index = JSON.parse(await readFile(indexPath, 'utf8'));
+  assert.equal(index.packs.length, 4);
+  for (const [url, tier, group] of entries) {
+    const pack = index.packs.find(p => p.files.some(f => f.url === url));
+    assert.ok(pack, url);
+    assert.equal(pack.group, group);
+    assert.equal(pack.tier, tier);
+  }
+});
+
 test('Python pack builder keeps every pack below 16 MB and records verified resource hashes', async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), 'sp-resource-packs-'));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -223,10 +262,11 @@ test('Python pack builder decodes canonical bracket URLs when reading local file
   const manifestPath = path.join(root,'manifest.json'), indexPath = path.join(root,'resource-packs.json');
   const run = () => spawnSync(process.env.PYTHON || 'python', [path.resolve('tools/resource_packs.py'), '--manifest', manifestPath,
     '--assets-root', path.join(root,'public'), '--output', path.join(root,'packs'), '--index', indexPath], {encoding:'utf8'});
-  await writeFile(manifestPath, JSON.stringify({version:'fixture',files:urls.map(url => ({url,tier:1,size:body.length,hash}))}));
+  await writeFile(manifestPath, JSON.stringify({version:'fixture',files:urls.map(url => ({url,tier:2,size:body.length,hash}))}));
   const result = run(); assert.equal(result.status,0,result.stderr);
   const doc = JSON.parse(await readFile(indexPath,'utf8'));
   assert.equal(validateResourcePacks(doc).length,doc.packs.length);
+  assert.ok(doc.packs.every(pack => pack.tier === 2 && pack.group === 'fx'));
   const seen = [];
   for (const pack of doc.packs) {
     const entries = await readTransportPack(new Response(await readFile(path.join(root,'packs',path.basename(pack.url)))),pack);
