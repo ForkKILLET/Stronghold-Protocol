@@ -106,7 +106,8 @@
 .diybanned__tag { display: inline-block; margin-right: .06rem; padding: .01rem .06rem; font-size: calc(.12 * var(--t)); font-weight: 700;
   letter-spacing: .08em; background: var(--mint-500); color: var(--text-on-mint); vertical-align: .01rem; }
 
-.brief__foot { position: relative; z-index: 2; flex: none; display: flex; align-items: center; justify-content: flex-end; gap: .4rem; padding: .18rem .5rem .3rem; }
+.brief__foot { position: relative; z-index: 2; flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .18rem .3rem; padding: .18rem .5rem .3rem; }
+.brief__tools { display: flex; flex-wrap: wrap; align-items: center; gap: .18rem; margin-right: auto; min-width: 0; }
 .brief-ready { display: flex; align-items: center; gap: .16rem; }
 .brief-ready__txt { font-size: calc(.2 * var(--t)); color: var(--text-lo); }
 .brief-ready__txt b { font-size: calc(.4 * var(--t)); color: var(--mint-400); margin: 0 .02rem; }

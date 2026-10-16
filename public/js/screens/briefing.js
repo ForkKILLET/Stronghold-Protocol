@@ -13,6 +13,7 @@ import { MatchInfo, matchInfoModel } from '../ui/matchInfo.js';
 import { LoadoutButton } from './loadout.js';
 import { UnofficialMark } from '../ui/pluginTag.js';
 import { SetupReroll } from '../ui/setupReroll.js';
+import { CommunicationDock, CommunicationActivity } from '../ui/communication.js';
 import { actions } from '../ui/gameActions.js';
 import { factionTypes, sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
 import { enemyIconUrl, factionIconUrl } from '../ui/assetUrls.js';
@@ -91,6 +92,7 @@ export function BriefingScreen() {
             <span class="brief-faction__text"><b>${factions[t]?.name || t}</b><span>${factions[t]?.desc || ''}</span></span>
           </div>`) : html`<p class="t-dim">${t('本局没有特训敌人')}</p>`}
         </div>
+        <${CommunicationActivity} players=${players} />
       </section>
       <section class="brief__right">
         <${MatchInfo} model=${info} />
@@ -98,7 +100,10 @@ export function BriefingScreen() {
     </main>
     <${SetupReroll} pub=${pub} />
     <footer class="brief__foot">
-      <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />
+      <div class="brief__tools">
+        <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />
+        <${CommunicationDock} disabled=${!me} />
+      </div>
       <div class="brief-ready">
         <span class="brief-ready__txt">${t('已就绪')} <b class="num">${readyN}</b><span class="num">/${players.length}</span></span>
         <span class="brief-ready__pips">${players.map((p) => html`<i key=${p.playerId} class=${cx(p.ready && 'on', p.playerId === myId && 'me')} title=${p.name}><${Icon} name="user" /></i>`)}</span>

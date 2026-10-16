@@ -358,6 +358,8 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 等待室和策略选择页交流／预选
 
+- INFO_CHECK 确认页同样复用交流组件：底栏调配旁显示入口，左侧信息栏显示最新消息；使用对局 `g.chat`／`g.emote`，已就绪不禁用交流，观战不可发送。底栏窄屏可换行，不挤压就绪按钮。
+
 - 等待室和 BAND_DRAFT 复用 `ui/communication.js` 与战斗 `EmoteWheel`／`EmoteBubble`，保留 20 字、1 秒冷却、输入法、纯文本和本地历史语义。等待室 `room.chat`／`room.emote` 只发给本房间，观战只读；审核结果绑定原会话、连接及房间，开局／离开／换房后不转发。换房／新局清空客户端历史。
 - `g.bandFocus` 实际变化时发布 `draft.focus`；未确认的队友显示预选名称／半透明图标，不提前占用策略。非计时多人也报告预选，确认／清除后移除；不修改既有超时兜底规则。策略页交流放在左栏，最新气泡不能遮盖预选和选卡，桌面／窄屏截图验证。回归 `test/room-communication.test.js` 与聊天／策略用例。
 

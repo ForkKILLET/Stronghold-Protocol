@@ -21,6 +21,15 @@ test('waiting-room chat/emotes are isolated, rate-limited and spectator read-onl
   assert.equal((await b.request({t:'room.emote',id:EMOTES[0]})).t,'ok');await a.waitFor('m.emote');
   assert.ok(!other.inbox.some(m=>m.t==='m.chat'||m.t==='m.emote'));
   await b.request({t:'room.ready',ready:true});await a.request({t:'room.start'});
+  await a.waitFor('m.public',m=>m.phase==='INFO_CHECK');
+  assert.equal((await a.request({t:'g.chat',text:'确认阵容'})).t,'ok');
+  assert.equal((await b.waitFor('m.chat',m=>m.text==='确认阵容')).playerId,a.id);
+  assert.equal((await spectator.waitFor('m.chat',m=>m.text==='确认阵容')).playerId,a.id);
+  assert.equal((await a.request({t:'g.emote',id:EMOTES[0]})).code,'RATE');
+  assert.equal((await b.request({t:'g.emote',id:EMOTES[0]})).t,'ok');
+  await a.waitFor('m.emote',m=>m.playerId===b.id);
+  assert.equal((await spectator.request({t:'g.chat',text:'hi'})).code,'SPECTATOR');
+  assert.ok(!other.inbox.some(m=>m.t==='m.chat'&&m.text==='确认阵容'));
   await a.request({t:'g.infoReady'});await b.request({t:'g.infoReady'});
   const draft=await a.waitFor('m.public',m=>m.phase==='BAND_DRAFT');
   const match=srv.lobby.rooms.get(room.code).match;
