@@ -44,6 +44,67 @@ test('transport pack progress covers both streamed download bytes and import fil
   assert.equal(resourcePackPercent({ phase: 'import', done: 0, totalFiles: 0 }), 0);
 });
 
+test('Python packs are byte-stable across clocks, global versions, input ordering and unrelated content changes', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'sp-resource-packs-stable-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const assets = path.join(root, 'public');
+  const manifestPath = path.join(root, 'manifest.json');
+  const indexPath = path.join(root, 'index.json');
+  const output = path.join(root, 'packs');
+  const { createHash } = await import('node:crypto');
+  const data = [
+    { url: '/assets/ui/a.png', tier: 1, body: 'unchanged UI' },
+    { url: '/assets/audio/voice/en/a.mp3', tier: 2, body: 'unchanged voice' },
+    { url: '/assets/local/fx/index.json', tier: 2, body: '{"fx":1}' },
+  ];
+  const build = async (version, clock, reverse = false) => {
+    const files = [];
+    for (const row of data) {
+      const body = Buffer.from(row.body);
+      const file = path.join(assets, row.url.slice(1));
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, body);
+      files.push({ url: row.url, tier: row.tier, size: body.length, hash: createHash('sha1').update(body).digest('hex').slice(0, 12) });
+    }
+    await writeFile(manifestPath, JSON.stringify({ version, files: reverse ? files.reverse() : files }));
+    const wrapper = 'import runpy,sys; from unittest.mock import patch; '
+      + 'clock=int(sys.argv.pop(1)); script=sys.argv[1]; sys.argv=sys.argv[1:]; '
+      + 'p=patch("zipfile.time.localtime",return_value=(2026,10,16,10,0,clock,4,289,-1)); '
+      + 'p.start(); runpy.run_path(script,run_name="__main__")';
+    const result = spawnSync(process.env.PYTHON || 'python', ['-c', wrapper, String(clock), path.resolve('tools/resource_packs.py'),
+      '--manifest', manifestPath, '--assets-root', assets, '--output', output, '--index', indexPath], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const index = JSON.parse(await readFile(indexPath, 'utf8'));
+    const bytes = new Map();
+    for (const pack of index.packs) bytes.set(pack.id, await readFile(path.join(output, path.basename(pack.url))));
+    return { index, bytes };
+  };
+  const first = await build('global-v1', 0);
+  const clockOnly = await build('global-v1', 8);
+  assert.deepEqual(clockOnly.index, first.index, 'clock changes must not change ZIP names, bytes or hashes');
+  const versionOnly = await build('global-v2', 16, true);
+  assert.equal(versionOnly.index.resourceVersion, 'global-v2', 'outer index still tracks the current global manifest');
+  assert.deepEqual(versionOnly.index.packs, first.index.packs, 'global version and input order do not invalidate unchanged packages');
+  for (const pack of first.index.packs) {
+    assert.deepEqual(clockOnly.bytes.get(pack.id), first.bytes.get(pack.id));
+    assert.deepEqual(versionOnly.bytes.get(pack.id), first.bytes.get(pack.id));
+    assert.ok((await readTransportPack(new Response(versionOnly.bytes.get(pack.id)), pack)).length > 0,
+      'stable per-package resourceVersion remains compatible with the browser importer');
+  }
+  data[0].body = 'updated UI';
+  const changed = await build('global-v3', 24);
+  for (const pack of first.index.packs) {
+    const updated = changed.index.packs.find(p => p.id === pack.id);
+    if (pack.group === 'ui') {
+      assert.notEqual(updated.sha1, pack.sha1);
+      assert.notEqual(updated.url, pack.url);
+    } else {
+      assert.deepEqual(updated, pack, 'unrelated voice and FX packages stay byte-identical');
+      assert.deepEqual(changed.bytes.get(pack.id), first.bytes.get(pack.id));
+    }
+  }
+});
+
 test('Python packs separate English/Korean voices and optional official FX without changing required board FX', async t => {
   const root = await mkdtemp(path.join(tmpdir(), 'sp-resource-pack-scope-'));
   t.after(() => rm(root, { recursive: true, force: true }));

@@ -314,6 +314,8 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 预载语音范围
 
+- 2026-10-16 预载传输 ZIP 必须可复现：固定条目时间、创建系统和文件权限，包内 resourceVersion 只由本包有序资源列表与内容摘要派生，不能写入全局清单版本。外层索引仍记录全局版本；输入素材及分包成员不变时 ZIP 字节/URL/SHA-1 不变，其他分类更新不连带刷新。保留整包 SHA-1、16MB 上限、JSON 白名单及按 URL 排序的既有边界规则；同分类增删/尺寸变化可使后续包重排。验证 test/resources/resource-packs.test.js 的跨时间/版本/输入顺序与局部修改回归。生成物不提交，先上传 ZIP 再发布索引。
+
 - 2026-10-16 资源管理的语音范围改为中文、日语、英语、韩语四个多选框，任意组合或全部取消；浏览器持久化 preloadVoiceLang 为有序去重的 cn/jp/en/kr 数组，独立于播放 voiceLang 和干员个人语音覆盖。旧 cn/jp 单选迁移为单项，all 仅迁移为原中日两项，none 迁移为空数组；缺省以已保存的播放语言迁移，默认中文。语音及官方特效等可选资源仍需同时预载开关。
 - 按 /voice/cn/、/voice/jp/、/voice/en/ 与 /voice/kr/ 目录识别（兼容 CDN 前缀），不能按 cn_019 等文件名判语言。保留旧未分语言语音组及不预载时的排除。切换中止旧范围、等待已开始操作，只增量下载最新选择，不删除已有缓存；完成与进度只计算所选可缓存资源。ZIP 分包同步拆分 voice_en、voice_kr、fx，升级后重建部署清单和分包，旧分层不匹配时按既有机制逐文件补缺。
 - ZIP 内未选择但有效的资源仍须校验并保留，导出仍包含全部有效缓存；仅导入后的缺失下载按范围过滤。分类计数增量维护，不在每个进度更新重扫全清单。更新 common.js 等独立 SW 依赖后部署需更新 SW，并同步 CDN 的 UI 语言 JSON。验证 test/ui/preload-voice.test.js 和现有资源/ZIP/构建测试。
