@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {accountRecord,mergeAccountHistory,aggregateStats} from '../../shared/userStats.js';
-import {buildRecord,buildQuitRecord,normalizeRecord,compactRecord} from '../../public/js/ui/stats.js';
+import {buildRecord,buildQuitRecord,normalizeRecord,compactRecord,cachedAccountStats} from '../../public/js/ui/stats.js';
 import {openUserStore} from '../../server/users/store.js';
 
 const own={playerId:'p1',bandId:'band_amiya',name:'doctor',alive:true,victory:true,roundsPassed:9,stats:{dmgDealt:120}};
@@ -37,4 +37,17 @@ test('server aggregates cover all pages and preserve compatibility with pre-fram
   await db.call('record',{id:'legacy',endedAt:100,mode:'mode_single_funny',difficulty:'FUNNY',source:'server',rows:[{userId:user.id,playerId:'p1',victory:true,rounds:9,payload:own}]});
   const legacy=await db.call('stats',{id:user.id});assert.equal(legacy.aggregate.missingFrame,true);assert.equal(legacy.aggregate.count,56);
  }finally{await db.close();}
+});
+
+test('opening an archive without storage or an account never reads a null cache',()=>{
+ const data={records:[],matchIds:[],aggregate:aggregateStats([])};
+ for(const cached of [null,undefined,{}, {data}]) {
+  for(const userId of [undefined,null,''])assert.equal(cachedAccountStats(cached,userId),null);
+ }
+ assert.equal(cachedAccountStats(null,'known'),null);
+ assert.equal(cachedAccountStats({userId:'known'},'known'),null);
+ assert.equal(cachedAccountStats({userId:'known',data:null},'known'),null);
+ assert.equal(cachedAccountStats({userId:'known',data:{}},'known'),null);
+ assert.equal(cachedAccountStats({userId:'other',data},'known'),null);
+ assert.equal(cachedAccountStats({userId:'known',data},'known'),data);
 });

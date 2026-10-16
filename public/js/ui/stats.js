@@ -255,6 +255,13 @@ export function migrateStats(raw) {
   return { stats: { v: STATS_VERSION, records: kept }, changed, newer: false, dropped };
 }
 
+/** Read only usable statistics cached for a known account. Missing identities never match. */
+export function cachedAccountStats(cached, userId) {
+  if (typeof userId !== 'string' || !userId || !cached || cached.userId !== userId) return null;
+  const data = cached.data;
+  return Array.isArray(data?.records) && Array.isArray(data?.matchIds) && data?.aggregate?.byMode ? data : null;
+}
+
 /** Read the raw stored string (null when absent or unreadable). */
 function readRaw() {
   try { return globalThis.localStorage?.getItem(FULL_KEY) ?? null; } catch { return null; }

@@ -19,7 +19,7 @@ import { store, useStore, selectRoute, loadPref, savePref } from '../store.js';
 import { ResultView } from './result.js';
 import { toast, toastError } from '../ui/toasts.js';
 import {
-  loadStats, saveStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf,
+  loadStats, saveStats, cachedAccountStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf,
   recordToResult, IMPORT_MAX_CHARS,
 } from '../ui/stats.js';
 import { t, N_ } from '../../../shared/i18n.js';
@@ -251,7 +251,7 @@ function StatsScreen({ tab }) {
   const [stats, setStats] = useState(() => loadStats());
   const [replay, setReplay] = useState(null);
   const profile=useStore(s=>s,Object.is,profileStore);
-  const [account,setAccount]=useState(()=>{const cached=loadPref('doctorStats',null);return cached?.userId===profile.user?.id&&Array.isArray(cached.data?.records)&&Array.isArray(cached.data?.matchIds)&&cached.data?.aggregate?.byMode?cached.data:null;});
+  const [account,setAccount]=useState(()=>cachedAccountStats(loadPref('doctorStats',null),profile.user?.id));
   const [loading,setLoading]=useState(false);
   const [offline,setOffline]=useState(profile.status==='offline');
   const requestRef=useRef(false);
