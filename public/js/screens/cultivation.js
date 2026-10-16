@@ -1,3 +1,4 @@
+import { Select } from '../ui/select.js';
 // 潜能 / 练度 controls of the 干员调配 overlay (0.2.2, the owner's decision of 2026-10-08: 「调配干员里自己设置吧，默认满潜
 // 满加成」): per operator (by charId — the normal, elite and 自选 forms share them), 潜能 1–6 and the 自持有 练度 tier
 // (effects.json CHAR_MAP aceffect_char_1…4: 未精英化 / 精英阶段1 / 精英阶段2 / 精英阶段2-60级 — their official names and
@@ -73,16 +74,12 @@ export function CultivationSelects({ charId, ops, onSet, note = null }) {
   // a setting off the default stands out (mint); the default stays quiet — it is the same on every row
   return html`<span class=${cx('lo-cult', cur.changed && 'is-changed', note && 'is-moot')} data-char=${charId} title=${note || undefined}>
     ${cur.potentialOn ? html`<span class=${cx('lo-select', 'lo-cult__sel', 'lo-cult__pot', cur.potential !== POTENTIAL_DEFAULT && 'is-off')}>
-      <select value=${String(cur.potential)} aria-label=${t('潜能')} data-cult="potential"
-        onChange=${(e) => set({ potential: Number(e.currentTarget.value) })}>
-        ${POTENTIALS.map((n) => html`<option key=${n} value=${String(n)}>${t('潜能 {n}', { n })}</option>`)}
-      </select>
+      <${Select} value=${String(cur.potential)} label=${t('潜能')} data-cult="potential"
+        onChange=${value => set({ potential: Number(value) })} options=${POTENTIALS.map(n=>({value:String(n),label:t('潜能 {n}',{n})}))} />
     </span>` : null}
     <span class=${cx('lo-select', 'lo-cult__sel', 'lo-cult__tier', cur.cultivate !== TIERS.length - 1 && 'is-off')} title=${note ? undefined : cultivateName(cur.cultivate)}>
-      <select value=${String(cur.cultivate)} aria-label=${t('练度')} data-cult="cultivate"
-        onChange=${(e) => set({ cultivate: Number(e.currentTarget.value) })}>
-        ${TIERS.map((n) => html`<option key=${n} value=${String(n)}>${t(SHORT_NAMES[n])}</option>`)}
-      </select>
+      <${Select} value=${String(cur.cultivate)} label=${t('练度')} data-cult="cultivate"
+        onChange=${value => set({ cultivate: Number(value) })} options=${TIERS.map(n=>({value:String(n),label:t(SHORT_NAMES[n])}))} />
     </span>
   </span>`;
 }

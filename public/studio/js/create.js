@@ -1,3 +1,4 @@
+import { Select } from '../../js/ui/select.js';
 // public/studio/js/create.js — 新建插件 (DESIGN §32.9): pick a template (换头像 / 立绘, 换 Spine 模型, 换语音, 换音乐 / 音效),
 // pick what it changes by its official name, give it a name — the id is made from it (GET /studio/api/suggest-id: a
 // legal id nobody has; editable), an author and a licence if wanted — and the server makes the folder from the template
@@ -89,9 +90,8 @@ export function CreateDialog({ open, templates, onClose, onCreated }) {
       <label class="st-field-row"><span>${t('作者（可选）')}</span>
         <input class="st-input" value=${author} maxLength="200" onInput=${(e) => setAuthor(e.currentTarget.value)} /></label>
       <label class="st-field-row"><span>${t('许可证（可选）')}</span>
-        <select class="st-input" value=${license} onChange=${(e) => setLicense(e.currentTarget.value)}>
-          ${LICENSES.map((l) => html`<option value=${l}>${l || t('暂不选')}</option>`)}
-        </select>
+        <${Select} class="st-input" label=${t('许可证（可选）')} value=${license} onChange=${setLicense}
+          options=${LICENSES.map(l=>({value:l,label:l||t('暂不选')}))} />
         <small>${t('别人能不能转发、修改你的素材；以后在「信息」里也能改')}</small></label>
       ${error ? html`<pre class="st-error">${error}</pre>` : null}
     </div>` : null}

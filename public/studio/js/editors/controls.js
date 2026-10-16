@@ -1,3 +1,4 @@
+import { Select as GameSelect } from '../../../js/ui/select.js';
 import { useLayoutEffect, useRef } from '../../../vendor/hooks.module.js';
 import { html } from '../../../js/ui/components.js';
 import { inputNumber, syncNumberInput } from '../../../js/ui/numberInput.js';
@@ -7,9 +8,8 @@ const LABELS = { maxHp: N_('生命值'), atk: N_('攻击力'), def: N_('防御�
 export const fieldLabel = key => LABELS[key] ? t(LABELS[key]) : key;
 export function Field({ label, children }) { return html`<label class="st-field-row"><span>${label}</span>${children}</label>`; }
 export function Select({ value, options, onChange, label, disabled = false }) {
-  return html`<${Field} label=${label}><select class="st-input" value=${value} disabled=${disabled} onChange=${e => onChange(e.currentTarget.value)}>
-    ${options.map(o => html`<option value=${typeof o === 'string' ? o : o.id}>${typeof o === 'string' ? o : o.name}</option>`)}
-  </select><//>`;
+  return html`<${Field} label=${label}><${GameSelect} class="st-input" label=${label} value=${value} disabled=${disabled} onChange=${onChange}
+    options=${options.map(o=>({value:typeof o==='string'?o:o.id,label:typeof o==='string'?o:o.name}))} /><//>`;
 }
 // Not a controlled value (js/ui/numberInput.js): a partial entry such as "0." is left alone while it is typed.
 export function NumberField({ label, value, onChange, min = -1e9, max = 1e9, step = 'any' }) {

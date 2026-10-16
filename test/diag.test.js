@@ -93,8 +93,10 @@ describe('the report', () => {
     assert.equal(lines[0], '```text');
     assert.equal(lines[1], 'Stronghold-Protocol diagnostics');
     assert.equal(lines[2], `version: ${APP_VERSION}`);
-    assert.equal(lines[3], 'content: unknown', 'no welcome.content, no room.state.content in this state');
-    assert.equal(lines[4], 'time: 2026-10-08T12:01:00.000Z | page open 12m 30s');
+    assert.match(lines[3], /fork issues .*https:\/\/github\.com\/ForkKILLET\/Stronghold-Protocol\/issues/);
+    assert.match(lines[4], /mainline issues .*https:\/\/github\.com\/sganggs\/Stronghold-Protocol\/issues/);
+    assert.equal(lines[5], 'content: unknown', 'no welcome.content, no room.state.content in this state');
+    assert.equal(lines[6], 'time: 2026-10-08T12:01:00.000Z | page open 12m 30s');
     assert.ok(lines.includes('browser: Mozilla/5.0 Test'));
     assert.ok(lines.includes('gpu: ANGLE (Test GPU)'));
     assert.ok(lines.includes('device: 844x390 | @2x | touch | 8 threads | lang zh-CN | ui zh'));
@@ -180,7 +182,7 @@ describe('the report', () => {
     const many = Array.from({ length: 40 }, (_, i) => ({ id: `p${i}`, version: '1.0.0' }));
     assert.match(contentLine({ room: { content: { cs, vanilla: false, plugins: many } } }), /,p31@1\.0\.0 \+8$/);
     const text = buildDiagnostics({ state: { content: { vanilla: cs } }, now: 0, pageStart: 0 });
-    assert.equal(text.split('\n')[3], `content: vanilla cs=${cs}`, 'the line under the version');
+    assert.equal(text.split('\n').find(line=>line.startsWith('content:')), `content: vanilla cs=${cs}`, 'the content identity remains in the report');
   });
 
   test('the content line with cosmetic plugins (P1a): still vanilla — the cs and the art\'s vs and plugins; the player\'s own after them', () => {
@@ -193,7 +195,7 @@ describe('the report', () => {
     assert.equal(contentLine({ room: { content: cosmetic } }, [{ id: 'mine' }]), `vanilla cs=${cs} cosmetic vs=${vs} plugins=texas-red@1.0.0(01234567) personal=mine`);
     assert.equal(contentLine({ room: { content: { cs, vanilla: true, plugins: [] } } }, []), `vanilla cs=${cs}`, 'nothing: the line of P0');
     const text = buildDiagnostics({ state: { room: { content: cosmetic } }, personal: [{ id: 'mine' }], now: 0, pageStart: 0 });
-    assert.equal(text.split('\n')[3], `content: vanilla cs=${cs} cosmetic vs=${vs} plugins=texas-red@1.0.0(01234567) personal=mine`);
+    assert.equal(text.split('\n').find(line=>line.startsWith('content:')), `content: vanilla cs=${cs} cosmetic vs=${vs} plugins=texas-red@1.0.0(01234567) personal=mine`);
   });
 
   test('an empty page: the title screen, nothing recorded, unknown fields left out', () => {

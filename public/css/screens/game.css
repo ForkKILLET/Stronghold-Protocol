@@ -1356,3 +1356,8 @@
   .fa__line { stroke-dashoffset: 0; }
   .fa__comet, .fa__pulse, .fa__burst, .core__ghost, .downpl__line { display: none; }
 }
+.set-voice > .game-select { flex:1 1 140px; }
+.set-diag__targets { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:10px 16px; margin-top:12px; }
+.set-diag__targets a { color:var(--mint-400); font-size:calc(.15 * var(--t)); text-decoration:underline; text-underline-offset:3px; }
+.set-diag__targets p { margin:0; color:var(--text-lo); font-size:calc(.13 * var(--t)); line-height:1.6; }
+@media (max-width:600px) { .set-diag__targets { grid-template-columns:1fr; gap:6px; } }

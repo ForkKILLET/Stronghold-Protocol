@@ -1,3 +1,4 @@
+import { Select } from './select.js';
 // Language switch of the client (docs/I18N.md): lists the language packs — the "lang" entries of the pack index
 // /packs/index.json (shared/packs.js; the server's registry, server/packs.js, scans the language folders and the pack
 // folders; a static host serves the file `node tools/packs.mjs index` writes) — picks the language at boot, loads the UI
@@ -312,9 +313,8 @@ export function LangToggle({ class: cls }) {
   };
   if (menu.kind === 'select') {
     return html`<label class=${`set-seg lang-toggle lang-select${cls ? ` ${cls}` : ''}`} data-testid="lang-toggle">
-      <select aria-label=${SWITCH_LABEL} value=${lang} onChange=${(e) => pick(e.currentTarget.value, e.currentTarget)}>
-        ${menu.items.map((it) => html`<option key=${it.code} value=${it.code} lang=${it.htmlLang} title=${it.title || undefined} selected=${it.on}>${it.label}</option>`)}
-      </select>
+      <${Select} label=${SWITCH_LABEL} value=${lang} onChange=${code => pick(code)}
+        options=${menu.items.map(it=>({value:it.code,label:it.label,lang:it.htmlLang,title:it.title}))} />
     </label>`;
   }
   return html`<div class=${`set-seg lang-toggle${cls ? ` ${cls}` : ''}`} role="radiogroup" aria-label=${SWITCH_LABEL} data-testid="lang-toggle">

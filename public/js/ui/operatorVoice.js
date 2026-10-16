@@ -1,3 +1,4 @@
+import { Select } from './select.js';
 // Local listening preference, shared by roster and DIY details; deliberately absent from room.loadout.
 // Options are the dubs this server actually has for this operator (data/assets.json audio trees), plus 跟随全局.
 // A saved choice whose tree is absent stays in the list, marked unavailable; playback falls back in voiceLangFor.
@@ -71,9 +72,7 @@ export function OperatorVoice({ charId }) {
   };
   return html`<label class="lo-voice" data-voice-char=${charId}>
     <span>${t('此干员语音')}</span>
-    <span class="lo-select"><select aria-label=${t('此干员语音')} value=${value} onChange=${(e) => change(e.currentTarget.value)}>
-      ${options.map((o) => html`<option key=${o.value} value=${o.value}>${o.label}</option>`)}
-    </select></span>
+    <span class="lo-select"><${Select} label=${t('此干员语音')} value=${value} onChange=${change} options=${options} /></span>
     <button type="button" class="lo-voice__preview" onClick=${preview}>${t('试听')}</button>
     <small>${t('仅保存在此浏览器，缺失的配音会回退到中文。')}</small>
   </label>`;

@@ -1,3 +1,4 @@
+import { Select } from '../ui/select.js';
 import { OperatorPortrait } from '../ui/operatorPortrait.js';
 import { SkinSection } from '../ui/skinPicker.js';
 // 干员调配 (Operator loadout, DESIGN §16): choose the equipped skill of every chess and the module of its elite before a
@@ -410,10 +411,8 @@ function Filters({ m, filters, onFilters, bonds }) {
       </div>
       <label class="lo-select">
         <span class="lo-select__k">${t('盟约')}</span>
-        <select value=${filters.bond || ''} onChange=${(e) => set({ bond: e.currentTarget.value || null })} aria-label=${t('按盟约筛选')}>
-          <option value="">${t('全部盟约')}</option>
-          ${bonds.map((b) => html`<option key=${b.bondId} value=${b.bondId}>${b.name}</option>`)}
-        </select>
+        <${Select} value=${filters.bond || ''} onChange=${value => set({ bond: value || null })} label=${t('按盟约筛选')}
+          options=${[{value:'',label:t('全部盟约')},...bonds.map(b=>({value:b.bondId,label:b.name}))]} />
       </label>
       <button type="button" class=${cx('lo-toggle', filters.changedOnly && 'is-on')} aria-pressed=${filters.changedOnly ? 'true' : 'false'}
         onClick=${() => set({ changedOnly: !filters.changedOnly })}><i class="lo-toggle__box"><${Icon} name="check" /></i>${t('仅看已调整')}</button>

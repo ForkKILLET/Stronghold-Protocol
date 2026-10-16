@@ -1,3 +1,4 @@
+import { Select } from './select.js';
 import {ProfileButton} from './profile.js';
 // Player settings (BGM/SFX/voice volume, the voice dub 语音语言, mute, damage numbers, the optional 弹药数量 under an ammo
 // skill's bar — not in the official HUD, off by default, PR #552 —, the optional 作战统计 panel — off by default,
@@ -34,7 +35,7 @@ import { ResourceRow } from './resourcePanel.js';
 import { FRAME_RATES } from '../frameRate.js';
 import { LangToggle, machineTranslationNote } from './lang.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
-import { errorCount, currentBattle, diagnosticsText } from '../diag.js';
+import { errorCount, currentBattle, diagnosticsText, ISSUE_TRACKERS } from '../diag.js';
 import { copyText } from './clipboard.js';
 import { catalog, loadCatalog, cosmeticPlugins, installedCount, personal, personalApplied, personalSet, pluginName, setPersonalPlugin } from '../content.js';
 import { setUiPlugin, uiPluginEntries, uiPlugins } from './uiPlugins.js';
@@ -133,7 +134,7 @@ const TEXT_SCALES = [['sm', N_('小')], ['md', N_('中')], ['lg', N_('大')], ['
 const VOICE_LANG_NAMES = { cn: '中文', jp: '日本語', en: 'English', kr: '한국어' }; // i18n-ignore
 const VOICE_LANG_TAGS = { cn: 'zh', jp: 'ja', en: 'en', kr: 'ko' };
 /** Where a report goes: the upstream issue tracker (shown as text the player can select; a link may open nothing). */
-export const ISSUES_URL = 'https://github.com/sganggs/Stronghold-Protocol/issues';
+export const ISSUES_URL = ISSUE_TRACKERS.mainline;
 
 /**
  * 问题反馈: copy the diagnostics of this page (diag.js) for a GitHub issue — the errors recorded since the page opened,
@@ -171,7 +172,11 @@ function DiagSection() {
     <p class="set-hint">${t('遇到问题时，复制诊断信息并粘贴到 GitHub issue 中，开发者就能看到出错时的情况。诊断信息只在本机生成，不会自动上传；玩家名和房间号会被替换。')}</p>
     <div class="set-diag__meta">
       <span class="set-diag__stat">${t('已记录的错误')}<b class=${cx('set-diag__count num', n > 0 && 'is-warn')} data-testid="diag-count">${n}</b></span>
-      <span class="set-diag__url">${ISSUES_URL.replace(/^https:\/\//, '')}</span>
+
+    </div>
+    <div class="set-diag__targets">
+      <a href=${ISSUE_TRACKERS.fork} target="_blank" rel="noopener noreferrer">${t('本分支问题反馈')}</a><p>${t('本站界面、博士档案和部署问题优先在这里反馈；不确定时也可先报这里。')}</p>
+      <a href=${ISSUE_TRACKERS.mainline} target="_blank" rel="noopener noreferrer">${t('主线问题反馈')}</a><p>${t('在未开启插件的原版中也能复现的游戏规则问题，可反馈给主线。')}</p>
     </div>
     ${battle ? html`<${Toggle} label=${t('附上本场战斗')} micro="BATTLE DATA" value=${attach} onChange=${setAttach} />
       <p class="set-hint set-diag__battle-hint">${t('开发者可以用附上的战斗数据重现这场战斗。')}</p>` : null}
@@ -277,7 +282,7 @@ export function SettingsModal({ open, onClose }) {
       <${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <div class="set-list">
       <div class="set-row">
-        <span class="set-row__label">${t('语言')}<${MicroLabel}>LANGUAGE<//></span>
+        <span class="set-row__label">${t('界面语言')}<${MicroLabel}>LANGUAGE<//></span>
         <${LangToggle} class="set-lang" />
       </div>
       ${mtNote ? html`<p class="set-hint set-lang-note" data-testid="lang-mt-note">${mtNote}</p>` : null}
@@ -286,14 +291,13 @@ export function SettingsModal({ open, onClose }) {
       <div class="set-row">
         <span class="set-row__label">${t('语音语言')}<${MicroLabel}>VOICE LANGUAGE<//></span>
         <div class="set-voice">
-          <div class="set-seg" role="radiogroup" aria-label=${t('语音语言')} data-testid="voice-lang">
-            ${VOICE_LANGS.map((id) => html`<button key=${id} type="button" role="radio" aria-checked=${s.voiceLang === id ? 'true' : 'false'}
-              lang=${VOICE_LANG_TAGS[id]} class=${s.voiceLang === id ? 'is-on' : ''} onClick=${() => updateSettings({ voiceLang: id })}>${VOICE_LANG_NAMES[id]}</button>`)}
-          </div>
-          <button type="button" class=${s.voiceNative ? 'set-native is-on' : 'set-native'} data-testid="voice-native" aria-pressed=${s.voiceNative ? 'true' : 'false'}
-            title=${t('有本土语言配音时使用')} onClick=${() => updateSettings({ voiceNative: !s.voiceNative })}>${tc('voice-lang', '本土语言')}</button>
+          <${Select} label=${t('语音语言')} data-testid="voice-lang" value=${s.voiceLang}
+            options=${VOICE_LANGS.map(id=>({value:id,label:VOICE_LANG_NAMES[id],lang:VOICE_LANG_TAGS[id]}))} onChange=${voiceLang=>updateSettings({voiceLang})} />
+          <button type="button" class=${s.voiceNative ? 'set-native is-on' : 'set-native'} data-testid="voice-native" role="switch" aria-checked=${s.voiceNative}
+            title=${t('有本土配音时优先使用；没有时回退到所选语音。')} onClick=${() => updateSettings({ voiceNative: !s.voiceNative })}>${t('优先本土配音')}</button>
         </div>
       </div>
+      <p class="set-hint">${t('本土配音由干员决定，不是界面语言；单独指定的干员配音优先于全局设置。')}</p>
       <${Slider} label=${t('音效')} micro="SFX" icon="signal" value=${s.sfx}
                  onInput=${(v) => { updateSettings({ sfx: v }); if (!tested) { setTested(true); setTimeout(() => setTested(false), 400); audio.sfx('click'); } }} />
       <${Toggle} label=${t('静音')} micro="MUTE" value=${s.muted} onChange=${(v) => updateSettings({ muted: v })} />

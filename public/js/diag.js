@@ -1,3 +1,4 @@
+export const ISSUE_TRACKERS = Object.freeze({mainline:'https://github.com/sganggs/Stronghold-Protocol/issues',fork:'https://github.com/ForkKILLET/Stronghold-Protocol/issues'});
 // public/js/diag.js — the client's error log and the diagnostics a player copies into a bug report (设置 → 问题反馈).
 //
 // Nothing leaves the browser. The log is kept in memory (the last LOG_MAX entries, an identical error in a row counted
@@ -298,6 +299,8 @@ export function buildDiagnostics(input) {
   const lines = [];
   lines.push('Stronghold-Protocol diagnostics');
   lines.push(`version: ${input.version ?? APP_VERSION}`);
+  lines.push(`fork issues (custom UI / accounts / deployment): ${ISSUE_TRACKERS.fork}`);
+  lines.push(`mainline issues (reproducible vanilla gameplay): ${ISSUE_TRACKERS.mainline}`);
   lines.push(`content: ${contentLine(state, input.personal)}`);
   lines.push(`time: ${new Date(now).toISOString()} | page open ${spanOf(now - (input.pageStart ?? pageStart))}`);
   if (env.ua) lines.push(`browser: ${env.ua}`);

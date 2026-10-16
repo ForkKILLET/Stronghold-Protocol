@@ -22,3 +22,10 @@
 .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
 .doctor-modded { justify-content: flex-end; margin-bottom: .15rem; }
 @media (max-width: 760px) { .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1fr); } }
+.doctor-modded { display:inline-flex; align-items:center; gap:10px; width:max-content; max-width:100%; padding:8px 12px; border:1px solid var(--line-2); border-radius:0; background:var(--bg-1); color:var(--text-md); font:inherit; font-size:max(calc(.15 * var(--t)),12px); cursor:pointer; }
+.doctor-modded i { display:grid; place-items:center; width:18px; height:18px; border:1px solid var(--text-dim); }
+.doctor-modded i .icon { width:14px; height:14px; opacity:0; }
+.doctor-modded.is-on { color:var(--mint-400); border-color:var(--mint-700); }
+.doctor-modded.is-on i { background:var(--mint-500); border-color:var(--mint-500); color:var(--text-on-mint); }
+.doctor-modded.is-on i .icon { opacity:1; }
+.doctor-modded:disabled { opacity:.5; cursor:default; }
