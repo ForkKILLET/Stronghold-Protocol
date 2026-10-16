@@ -313,6 +313,10 @@ export function TitleScreen() {
           <dt>${t('本服务器使用的 GitHub 仓库')}</dt>
           <dd><a href="https://github.com/xinhai-ai/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">https://github.com/xinhai-ai/Stronghold-Protocol</a></dd>
         </div>
+        <div>
+          <dt>${t('UI 制作')}</dt>
+          <dd><a href="https://space.bilibili.com/27675079" target="_blank" rel="noopener noreferrer">B站雨千代Chiyo</a></dd>
+        </div>
       </dl>
       <div class="title-about__disclaimer">
         <h3>${t('版权与免责声明')}</h3>

@@ -60,3 +60,13 @@ test('the title page excludes the upstream footer link while retaining server-ab
   assert.match(src, /rel="noopener noreferrer"/);
   for (const lang of ['en', 'ja', 'ko', 'zh-TW']) assert.equal(JSON.parse(read(`public/i18n/${lang}.json`))['项目仓库'], undefined);
 });
+
+test('server-about credits the UI creator with the requested Bilibili profile', () => {
+  const src = read('public/js/screens/title.js');
+  const about = src.slice(src.indexOf('<dl class="title-about__links">'), src.indexOf('</dl>'));
+  assert.match(about, /t\('UI 制作'\)/);
+  assert.match(about, /href="https:\/\/space\.bilibili\.com\/27675079" target="_blank" rel="noopener noreferrer">B站雨千代Chiyo<\/a>/);
+  for (const lang of ['en', 'ja', 'ko', 'zh-TW']) {
+    assert.ok(JSON.parse(read(`public/i18n/${lang}.json`))['UI 制作'], lang);
+  }
+});
