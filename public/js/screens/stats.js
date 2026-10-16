@@ -1,19 +1,11 @@
-// The local stats viewer (统计数据): this browser's record of the matches the player took part in — see ui/stats.js for
-// what is recorded, what counts and how the storage is bounded. A full-screen overlay opened imperatively from the
-// title screen / lobby / room (`openStats()`); <StatsHost/> is mounted once by main.js. Ported from PR #323 by
-// @2321Robin; reworked for 0.2.2 in the grammar of 干员调配 (top bar with tabs, a note line, a scrolling body).
-//
-//   总览      – games, wins, win rate, hidden-core reaches / clears, best round, time played; the difficulties; the six
-//               评语 (titles) with their counts; what counts and what was left out
-//   策略      – per strategy (band): games used / passed (self alive on a winning team) / pass rate
-//   战斗累计  – the player's summed combat bookkeeping of the settled matches
-//   对局记录  – every stored match, newest first. A settled row re-views that match's settlement screen (the record is
-//               inverted into an m.result payload for <ResultView/>); a match given up early is marked 中途退出 and,
-//               when it did not count, 不计入统计
-// Everything is 本机数据 (localStorage, `sp.pref.stats`) and the page says so, teammates' names included. 导出 / 导入 (a
-// JSON file, merged by record id on the way in) moves it between devices; 清空 resets it after a confirm dialog.
-// The host renders nothing until opened and the game data files the replay needs load only then (the lobby alone never
-// downloads them): the overview reads config / bands / assets only.
+import {profileStore,ProfileEditor,ProfileRecovery,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
+import {mergeAccountHistory} from '../../../shared/userStats.js';
+// Unified doctor archive, using the original full-screen statistics layout (PR #323 by @2321Robin).
+// Account totals come from all private server settlements. Paginated history combines those rows
+// with device records by matchId; local details supplement the authoritative own-player result.
+// Old/unmatched device rows stay visible but never silently enter account totals. Profile editing,
+// recovery and local import/export share the same overlay. Legacy statistics remain available when
+// account storage is disabled. Game data and replay assets load only while the archive is open.
 
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
@@ -23,28 +15,29 @@ import { data, useData } from '../data.js';
 import { fmtNum } from '../ui/gameLogic.js';
 import { titleIconUrl } from '../ui/assetUrls.js';
 import { useDocClass } from '../ui/device.js';
-import { createStore, useStore, selectRoute } from '../store.js';
+import { store, useStore, selectRoute, loadPref, savePref } from '../store.js';
 import { ResultView } from './result.js';
 import { toast, toastError } from '../ui/toasts.js';
 import {
   loadStats, saveStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf,
-  recordToResult, MAX_RECORDS, FULL_KEEP, IMPORT_MAX_CHARS,
+  recordToResult, IMPORT_MAX_CHARS,
 } from '../ui/stats.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
+const identityName=()=>store.get().me.name;
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** Rows of 对局记录 shown at first and added by each 显示更多. */
 export const HISTORY_PAGE = 50;
 
-const statsStore = createStore({ open: false, tab: 'overview' });
+const statsStore = profileStore;
 
 /** Open the stats viewer (title screen / lobby / room entry points). */
 export function openStats() {
   data.load('config');
   data.load('bands');
   data.load('assets');
-  statsStore.set({ open: true, tab: 'overview' });
+  openProfile();
 }
 export const closeStats = () => statsStore.set({ open: false });
 
@@ -53,6 +46,8 @@ const TABS = [
   { id: 'bands', name: N_('策略'), micro: 'STRATEGIES' },
   { id: 'totals', name: N_('战斗累计'), micro: 'COMBAT TOTALS' },
   { id: 'history', name: N_('对局记录'), micro: 'HISTORY' },
+  { id: 'profile', name: N_('个人资料'), micro: 'IDENTITY' },
+  { id: 'manage', name: N_('档案管理'), micro: 'ARCHIVE' },
 ];
 
 const pct = (n, d) => (d > 0 ? `${Math.round((n / d) * 100)}%` : '—');
@@ -117,7 +112,7 @@ function Section({ title, micro, children, class: cls }) {
 }
 
 /** 总览: cards, the per-difficulty table, the six titles, and the line about what counts. */
-function Overview({ agg, gd }) {
+function Overview({ agg, gd, account }) {
   const rows = DIFFICULTIES.filter((d) => agg.byDifficulty[d]).concat(Object.keys(agg.byDifficulty).filter((d) => !DIFFICULTIES.includes(d)));
   const titles = (Array.isArray(gd.config?.titles) ? gd.config.titles : []).map((x) => ({ ...x, count: agg.titles[x.id]?.count || 0 }));
   return html`<${Section} title=${t('总览')} micro="OVERVIEW">
@@ -125,10 +120,10 @@ function Overview({ agg, gd }) {
       <${StatCard} micro="GAMES" value=${fmtNum(agg.count)} label=${t('总局数')} />
       <${StatCard} micro="WINS" value=${fmtNum(agg.wins)} label=${t('胜场')} tone="mint" />
       <${StatCard} micro="WIN RATE" value=${pct(agg.wins, agg.count)} label=${t('胜率')} tone="gold" />
-      <${StatCard} micro="HIDDEN CORE" value=${fmtNum(agg.hidden.reached)} label=${t('到达隐秘核心')} />
-      <${StatCard} micro="HIDDEN CLEAR" value=${fmtNum(agg.hidden.cleared)} label=${t('通关隐秘核心')} />
+      <${StatCard} micro="HIDDEN CORE" value=${agg.missingFrame?'—':fmtNum(agg.hidden.reached)} label=${t('到达隐秘核心')} />
+      <${StatCard} micro="HIDDEN CLEAR" value=${agg.missingFrame?'—':fmtNum(agg.hidden.cleared)} label=${t('通关隐秘核心')} />
       <${StatCard} micro="BEST ROUND" value=${fmtNum(agg.rounds.max)} label=${t('最远回合')} />
-      <${StatCard} micro="TIME PLAYED" value=${playedText(agg.duration.totalMs)} label=${t('累计时长')} />
+      <${StatCard} micro="TIME PLAYED" value=${agg.missingFrame?'—':playedText(agg.duration.totalMs)} label=${t('累计时长')} />
     </div>
     <p class="st-split"><span>${t('单人')} <b class="num">${fmtNum(agg.byMode.solo)}</b></span><span>${t('同盟')} <b class="num">${fmtNum(agg.byMode.coop)}</b></span></p>
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table">
@@ -141,7 +136,7 @@ function Overview({ agg, gd }) {
             <td class="num">${fmtNum(v.games)}</td>
             <td class="num">${fmtNum(v.wins)}</td>
             <td class="num">${pct(v.wins, v.games)}</td>
-            <td class="num">${fmtNum(v.hiddenCleared)}</td>
+            <td class="num">${agg.missingFrame?'—':fmtNum(v.hiddenCleared)}</td>
           </tr>`;
         })}
       </tbody>
@@ -153,7 +148,7 @@ function Overview({ agg, gd }) {
           <div class="st-title__text"><span>${x.name}</span><b class="num">${fmtNum(x.count)}</b></div>
         </div>`)}
       </div>` : null}
-    <p class="st-rule"><${Icon} name="info" />${t('计入统计：打到结算的对局，以及中途退出前至少清完 1 个回合的对局；更早退出的对局只留在对局记录里。')}${agg.excluded
+    <p class="st-rule"><${Icon} name="info" />${account?t('累计统计仅包含已保存的本人结算，旧记录与中途退出记录可在对局记录查看。'):t('计入统计：打到结算的对局，以及中途退出前至少清完 1 个回合的对局；更早退出的对局只留在对局记录里。')}${agg.excluded
       ? html` <b>${t('另有 {n} 局未计入统计', { n: agg.excluded })}</b>` : null}</p>
   <//>`;
 }
@@ -211,7 +206,7 @@ function HistoryRow({ rec, gd, onOpen }) {
       title=${view ? t('点击查看该局结算') : !counted ? t('没有清完第一个回合就退出，不计入统计') : quit ? t('中途退出的对局没有结算可看') : t('较早的对局只保留汇总，不能回看结算')}
       tabIndex=${view ? 0 : undefined}
       onClick=${view ? open : undefined} onKeyDown=${view ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}>
-    <td class="st-t">${dateTime(rec.t)}</td>
+    <td class="st-t">${dateTime(rec.t)}${rec.deviceOnly?html`<em class="st-chip">${t('仅此设备')}</em>`:null}</td>
     <td>${difficultyName(rec.difficulty)}</td>
     <td>${rec.roomMode === 'solo' ? t('单人') : rec.roomMode === 'coop' ? t('同盟') : '—'}</td>
     <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : self?.bandId || '—'}</span></td>
@@ -223,16 +218,20 @@ function HistoryRow({ rec, gd, onOpen }) {
 }
 
 /** 对局记录: every stored match, newest first, HISTORY_PAGE rows at a time. */
-function History({ records, gd, onOpen }) {
+function History({ records, gd, onOpen, more, loading, onMore }) {
   const [shown, setShown] = useState(HISTORY_PAGE);
-  const rows = records.slice(0, shown);
-  return html`<${Section} title=${t('对局记录')} micro=${`HISTORY · ${records.length}`}>
+  const [deviceOnly,setDeviceOnly]=useState(false);
+  const filtered=deviceOnly?records.filter(r=>r.deviceOnly):records;
+  const rows = filtered.slice(0, shown);
+  return html`<${Section} title=${t('对局记录')} micro=${`HISTORY · ${filtered.length}`}>
+    <div class="doctor-history-tools"><button type="button" class=${deviceOnly?'is-on':''} aria-pressed=${deviceOnly} onClick=${()=>{setDeviceOnly(!deviceOnly);setShown(HISTORY_PAGE);}}>${t('仅看此设备记录')}</button></div>
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history">
       <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num">${t('回合')}</th><th aria-hidden="true"></th></tr></thead>
       <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} />`)}</tbody>
     </table></div>
-    ${records.length > shown ? html`<div class="st-more"><${Button} size="sm" variant="secondary" onClick=${() => setShown(shown + HISTORY_PAGE)}>${t('显示更多（还有 {n} 局）', { n: records.length - shown })}<//></div>` : null}
-    <p class="st-hint">${t('点击一行，回看该局结算；中途退出的对局只留记录。')} ${t('最多保留最近 {max} 局，只有最新的 {full} 局能回看结算。', { max: MAX_RECORDS, full: FULL_KEEP })}</p>`
+    ${filtered.length > shown ? html`<div class="st-more"><${Button} size="sm" variant="secondary" onClick=${() => setShown(shown + HISTORY_PAGE)}>${t('显示更多（还有 {n} 局）', { n: filtered.length - shown })}<//></div>` : null}
+    ${more&&!deviceOnly?html`<div class="st-more"><${Button} size="sm" variant="secondary" disabled=${loading} onClick=${onMore}>${t('加载更早的对局')}<//></div>`:null}
+    <p class="st-hint">${t('点击一行，回看该局结算；中途退出的对局只留记录。')}</p>`
       : html`<p class="st-empty">${t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>`}
   <//>`;
 }
@@ -251,6 +250,25 @@ function StatsScreen({ tab }) {
   const gd = useMemo(() => makeLookups(ready), [ready, data.locale()]);
   const [stats, setStats] = useState(() => loadStats());
   const [replay, setReplay] = useState(null);
+  const profile=useStore(s=>s,Object.is,profileStore);
+  const [account,setAccount]=useState(()=>{const cached=loadPref('doctorStats',null);return cached?.userId===profile.user?.id&&Array.isArray(cached.data?.records)&&Array.isArray(cached.data?.matchIds)&&cached.data?.aggregate?.byMode?cached.data:null;});
+  const [loading,setLoading]=useState(false);
+  const [offline,setOffline]=useState(profile.status==='offline');
+  const requestRef=useRef(false);
+  const accountRef=useRef(account);accountRef.current=account;
+  const fetchAccount=async(more=false)=>{
+    if(!profile.enabled||!profile.user||requestRef.current)return;
+    requestRef.current=true;setLoading(true);
+    try{
+      const page=await userRequest('/api/user/stats'+(more?'?before='+accountRef.current.next:''));
+      if(page.userId!==profile.user.id){await initProfile();throw new Error('Profile changed');}
+      const next=more?{...accountRef.current,...page,records:[...accountRef.current.records,...page.records]}:page;
+      setAccount(next);setOffline(false);profileStore.set({status:'saved'});
+      savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200),next:next.records.length>200?null:next.next}});
+    }catch{setOffline(true);}
+    finally{requestRef.current=false;setLoading(false);}
+  };
+  useEffect(()=>{fetchAccount();},[]);
   const boxRef = useRef(null);
   const fileRef = useRef(null);
   const replayRef = useRef(null);
@@ -259,7 +277,8 @@ function StatsScreen({ tab }) {
   useDocClass('sp-stats-open');
 
   // a match starting (the host pressed 开始) takes the player to its briefing: the overlay must not sit on top of it
-  useEffect(() => { if (inMatch) closeStats(); }, [inMatch]);
+  const matchAtOpen=useRef(inMatch);
+  useEffect(() => { if (!matchAtOpen.current && inMatch) closeStats();matchAtOpen.current=inMatch; }, [inMatch]);
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== 'Escape' || document.querySelector('.modal')) return; // a confirm dialog on top takes the Esc
@@ -271,7 +290,8 @@ function StatsScreen({ tab }) {
     return () => { window.removeEventListener('keydown', onKey, true); clearTimeout(timer); };
   }, []);
 
-  const agg = useMemo(() => aggregateStats(stats.records), [stats]);
+  const records=useMemo(()=>profile.enabled?mergeAccountHistory(stats.newer?[]:stats.records,account?.records||[],account?.matchIds||[]):stats.records,[stats,account,profile.enabled]);
+  const agg = profile.enabled?(account?.aggregate || aggregateStats([])):aggregateStats(stats.records);
   const reload = () => setStats(loadStats());
 
   const doExport = () => {
@@ -311,50 +331,47 @@ function StatsScreen({ tab }) {
     toast(t('已清空本机统计数据'), 'success');
   };
 
-  if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('统计数据')}>
+  if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
     <${Replay} rec=${replay} onBack=${() => setReplay(null)} />
   </div>`;
 
-  const tabInfo = TABS.find((x) => x.id === tab) || TABS[0];
-  const empty = !stats.records.length;
-  return html`<div class="st" role="dialog" aria-modal="true" aria-label=${t('统计数据')} tabindex="-1" ref=${boxRef}>
+  const empty = !records.length;
+  const tabs=profile.enabled?TABS:TABS.filter(x=>x.id!=='profile');
+  return html`<div class="st" role="dialog" aria-modal="true" aria-label=${t('博士档案')} tabindex="-1" ref=${boxRef}>
     <div class="st__bg" aria-hidden="true"></div>
-    <header class="st-top">
-      <div class="st-top__left">
-        <${Button} variant="ghost" size="md" icon="chevronLeft" class="st-back" onClick=${closeStats} aria-label=${t('返回')} title=${t('返回 (Esc)')}>${t('返回')}<//>
-      </div>
-      <div class="st-top__center">
-        <${MicroLabel} tone="mint">STATISTICS // ${tabInfo.micro}<//>
-        <div class="st-tabs" role="tablist" aria-label=${t('统计数据')}>
-          ${TABS.map((x) => html`<button key=${x.id} type="button" role="tab" aria-selected=${x.id === tab ? 'true' : 'false'} data-tab=${x.id}
-            class=${cx('st-tab', x.id === tab && 'is-on')} onClick=${() => statsStore.set({ tab: x.id })}>${t(x.name)}</button>`)}
-        </div>
-      </div>
-      <div class="st-top__right">
-        <${Button} variant="ghost" size="sm" data-testid="stats-export" disabled=${empty || stats.newer} onClick=${doExport} title=${t('导出为文件（可在别的设备上导入）')}>${t('导出')}<//>
-        <${Button} variant="ghost" size="sm" data-testid="stats-import" disabled=${stats.newer} onClick=${() => fileRef.current?.click()} title=${t('从导出的文件导入（与现有记录合并）')}>${t('导入')}<//>
-        <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} />
-        <${Button} variant="secondary" size="sm" data-testid="stats-clear" disabled=${empty || stats.newer} onClick=${doClear} title=${t('清空本机的统计数据')}>${t('清空')}<//>
-      </div>
+    <header class="st-top doctor-top">
+      <div class="st-top__left"><${Button} variant="ghost" size="md" icon="chevronLeft" class="st-back" onClick=${closeStats} aria-label=${t('返回')} title=${t('返回 (Esc)')}>${t('返回')}<//></div>
+      <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><${MicroLabel} tone="mint">DOCTOR ARCHIVE<//><h2>${profile.user?.name || identityName() || t('博士')}</h2><span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
+      ${profile.enabled?html`<${Button} variant="ghost" size="sm" icon="edit" onClick=${()=>statsStore.set({tab:'profile'})}>${t('编辑资料')}<//>`:null}</div>
+      <div class="st-top__right">${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>fetchAccount()}>${t('刷新')}<//>`:null}</div>
+      <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${tabs.map(x=>html`<button key=${x.id} type="button" role="tab" aria-selected=${x.id===tab} data-tab=${x.id} class=${cx('st-tab',x.id===tab&&'is-on')} onClick=${()=>statsStore.set({tab:x.id})}>${t(x.name)}</button>`)}</nav>
     </header>
-    <p class="st-note"><${Icon} name="info" />${t('本机数据：只保存在这个浏览器里，不会上传到服务器；同盟对局里队友的代号也会存在本机（导出文件里也有）。')}</p>
+    <p class="st-note"><${Icon} name="info" />${profile.enabled?t('累计统计以已保存的结算为准；此设备的旧记录与未同步记录保留在对局记录中，不重复累计。'):t('本机数据：只保存在这个浏览器里，不会上传到服务器；同盟对局里队友的代号也会存在本机（导出文件里也有）。')}</p>
+    ${offline?html`<p class="st-note is-warn">${t('暂时无法同步，正在显示已缓存的档案与此设备记录，不影响开始游戏。')}</p>`:null}
+    ${agg.missingFrame?html`<p class="st-note">${t('部分早期结算缺少时长与隐秘核心信息，相关汇总暂不显示。')}</p>`:null}
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}
     ${stats.dropped ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('有 {n} 条记录已损坏，已忽略。', { n: stats.dropped })}</p>` : null}
     <main class="st-body" data-tab=${tab}>
       ${!ready ? html`<div class="st-loading"><${Spinner} size="md" /></div>`
-        : stats.newer ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
-          : empty ? html`<p class="st-empty">${t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>`
-            : tab === 'bands' ? html`<${Bands} agg=${agg} gd=${gd} />`
-              : tab === 'totals' ? html`<${CombatSums} agg=${agg} />`
-                : tab === 'history' ? html`<${History} records=${stats.records} gd=${gd} onOpen=${setReplay} />`
-                  : html`<${Overview} agg=${agg} gd=${gd} />`}
+        : tab==='profile'&&profile.user ? html`<${ProfileEditor} user=${profile.user} />`
+        : tab==='manage' ? html`<div class="doctor-management">${profile.enabled?html`<${ProfileRecovery} />`:null}
+          <section><h3 class="st-sec__h">${t('此设备的记录')}</h3><p class="profile-note">${t('导入、导出和清空只影响此设备，不修改已保存的档案战绩。')}</p>
+          <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="ghost" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
+          <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
+        : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} />`
+        : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
+        : !agg.count ? html`<div class="st-empty"><p>${loading?t('正在读取…'):offline&&!account?t('此设备尚无档案缓存，请稍后刷新；已有本机记录仍可查看。'):t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>${!empty?html`<${Button} variant="secondary" onClick=${()=>statsStore.set({tab:'history'})}>${t('查看此设备的旧记录')}<//>`:null}</div>`
+        : tab==='bands' ? html`<${Bands} agg=${agg} gd=${gd} />`
+        : tab==='totals' ? html`<${CombatSums} agg=${agg} />`
+        : html`<${Overview} agg=${agg} gd=${gd} account=${profile.enabled} />`}
     </main>
   </div>`;
 }
 
 /** Global stats viewer host — mounted once by main.js; renders nothing (and loads nothing) until opened. */
 export function StatsHost() {
+  useEffect(()=>{if(document.querySelector('link[data-profile-css]'))return;const link=document.createElement('link');link.rel='stylesheet';link.href='/css/profile.css';link.dataset.profileCss='';document.head.append(link);},[]);
   const { open, tab } = useStore((s) => s, Object.is, statsStore);
   if (!open) return null;
-  return html`<${StatsScreen} tab=${tab} />`;
+  return html`<${StatsScreen} key=${profileStore.get().user?.id||'device'} tab=${tab} />`;
 }

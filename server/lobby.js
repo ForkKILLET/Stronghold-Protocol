@@ -1754,7 +1754,7 @@ export class Lobby {
   recordUserResult(ctx,summary){
     if(!this.users || !summary?.matchId || !Array.isArray(summary.players))return;
     const rows=summary.players.filter(p=>!p.isBot).map(p=>({userId:ctx.profileUsers?.[p.playerId] || this.registry.byId(p.playerId)?.userId,
-      playerId:p.playerId,victory:!!p.victory,rounds:Number(p.roundsPassed)||0,payload:p})).filter(p=>p.userId);
+      playerId:p.playerId,victory:!!p.victory,rounds:Number(p.roundsPassed)||0,payload:{...p,frame:Object.fromEntries(Object.entries(summary).filter(([key])=>key!=='players'))}})).filter(p=>p.userId);
     if(!rows.length)return;
     if(!this.userOutbox.has(summary.matchId)){
       this.userOutbox.set(summary.matchId,{id:summary.matchId,endedAt:Date.now(),mode:summary.modeId || '',difficulty:summary.difficulty || '',source:'server',rows});

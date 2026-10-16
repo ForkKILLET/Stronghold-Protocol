@@ -966,4 +966,4 @@ item selection probabilities and explicit grant weights remain unchanged.
 
 ### 长期个人档案
 
-`SP_USER_DB` 开启后自动建立匿名用户，不改变免登录开始流程。设置中的个人档案提供头像／昵称、服务器战绩和一次性恢复码；原本的本机统计仍保留。用户身份独立于会话，Redis 只负责对局恢复。API、数据迁移与备份约定见 [USERS.md](USERS.md)。
+`SP_USER_DB` 开启后自动建立匿名用户，不改变免登录开始流程。右上角头像打开统一博士档案，包含资料、累计统计、统一对局历史和恢复码；本机旧记录仅作带标注的历史补充，不自动上传或加入档案累计。设置保留同一入口。用户身份独立于会话，Redis 只负责对局恢复。API、数据迁移与备份约定见 [USERS.md](USERS.md)。

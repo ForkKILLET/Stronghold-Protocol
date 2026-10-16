@@ -53,10 +53,10 @@ test('HTTP anonymous identity, cross-device recovery, WS separation and authorit
   assert.equal(srv.registry.byId(staleWelcome.playerId).name,'新博士','stale reconnect names cannot overwrite the canonical profile');
   const stranger=await TestClient.connect(wsUrl,{wsOptions:{headers:{Cookie:b.cookie}}});clients.push(stranger);const sw=await stranger.hello('other',cw.token);assert.notEqual(sw.playerId,cw.playerId,'game token cannot switch account');
   await c.request({t:'room.create',mode:'solo',difficulty:'FUNNY'});const state=await c.waitFor('room.state');assert.equal(state.seats[0].avatarId,'band_amiya');assert.equal(state.seats[0].userId,undefined);
-  await c.request({t:'room.start'});const m=srv.lobby.rooms.get(state.code).match;assert.ok(m.userMatchId);
+  await c.request({t:'room.start'});const m=srv.lobby.rooms.get(state.code).match;assert.ok(m.userMatchId);assert.equal(m.publicView().matchId,m.userMatchId);assert.equal(m.publicView().userId,undefined);
   assert.equal((await api(srv.url,'/api/user/recover',{cookie:a.cookie,body:{code:'SP-'+'a'.repeat(43)}})).status,409);
   m.finish({victory:true});await Promise.all([...srv.lobby.userWrites]);
-  const stats=await api(srv.url,'/api/user/stats',{cookie:recovered.cookie});assert.equal(stats.data.summary.matches,1);assert.equal(stats.data.records[0].source,'server');
+  const stats=await api(srv.url,'/api/user/stats',{cookie:recovered.cookie});assert.equal(stats.data.summary.matches,1);assert.equal(stats.data.records[0].source,'server');assert.equal(stats.data.aggregate.count,1);assert.equal(stats.data.records[0].payload.frame.matchId,m.userMatchId);assert.equal(stats.data.aggregate.missingFrame,false);
   assert.equal((await api(srv.url,'/api/user/stats',{cookie:b.cookie})).data.summary.matches,0);
   assert.equal((await api(srv.url,'/api/user/stats')).status,401);
   await Promise.all(clients.map(x=>x.close()));clients.length=0;await srv.close();srv=await startServer({port:0,workers:0,quiet:true,userFile:file});

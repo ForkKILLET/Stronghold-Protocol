@@ -1,7 +1,7 @@
+import {selfRowOf} from '../../../shared/userStats.js';
 // Local match statistics: every match the local player took part in is appended as one record to localStorage
-// (`sp.pref.stats`). Per-browser only — the server keeps matches in memory and has no identity, so there is nowhere
-// else for cross-match numbers to live; nothing here is ever sent anywhere. The stats page labels itself 本机数据 and
-// offers JSON export / import for moving between devices. (Ported from PR #323 by @2321Robin, reworked for 0.2.2.)
+// (`sp.pref.stats`). Local records remain on this device. The doctor archive overlays private server
+// settlements by matchId without uploading local records or double-counting the account totals.
 //
 // Two kinds of record (`end`):
 //   'settled'  the match reached its settlement: m.result arrived (server/match/results.js buildResult). The record
@@ -37,7 +37,7 @@
 import { PHASE } from '../../../shared/constants.js';
 
 /** Current record-envelope version (bump + add a MIGRATIONS step when the record shape changes). */
-export const STATS_VERSION = 1;
+export const STATS_VERSION = 2;
 /** localStorage key under the app's `sp.pref.` prefix (store.js loadPref). */
 export const STATS_PREF_KEY = 'stats';
 /** Oldest records are dropped beyond this many matches. */
@@ -181,6 +181,7 @@ export function normalizeRecord(raw) {
   if (!players.length) return null;
   const rec = {
     id: str(r.id),
+    matchId: str(r.matchId),
     v: STATS_VERSION,
     t: int(r.t, 0),
     end: quit ? 'quit' : 'settled',
@@ -210,11 +211,11 @@ export function normalizeRecord(raw) {
 
 /**
  * The MIGRATIONS chain: `MIGRATIONS[v]` upgrades a v-envelope to v+1, for v = STATS_VERSION and down.
- * Empty at v1 — the steps exist so the next format change lands as one function here and every stored /
+ * v1 → v2 preserves old records and adds optional matchId during normalization; every stored /
  * imported envelope walks the whole chain.
  * @type {Record<number, (stats: any) => any>}
  */
-export const MIGRATIONS = {};
+export const MIGRATIONS = {1: ({records}) => ({v:2,records})};
 
 /** Newest first (the stored order): by time, then id. */
 const newestFirst = (a, b) => (b.t - a.t) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -281,7 +282,7 @@ export function loadStats() {
 
 // ---- compaction + the storage budget ---------------------------------------------------------------------------
 
-const COMPACT_FRAME = ['id', 'v', 't', 'end', 'victory', 'roundsPassed', 'lastRound', 'hiddenReached', 'hiddenCleared', 'reason', 'modeId',
+const COMPACT_FRAME = ['matchId', 'id', 'v', 't', 'end', 'victory', 'roundsPassed', 'lastRound', 'hiddenReached', 'hiddenCleared', 'reason', 'modeId',
   'difficulty', 'roomMode', 'durationMs', 'selfId'];
 
 /**
@@ -375,6 +376,7 @@ export function buildRecord(res, ctx = {}) {
     v: STATS_VERSION,
     t: int(ctx.now, 0),
     id: recordId(r, myId),
+    matchId: str(r.matchId),
     end: 'settled',
     victory: bool(r.victory),
     roundsPassed: int(r.roundsPassed, 0),
@@ -471,6 +473,7 @@ export function buildQuitRecord(state, ctx = {}) {
   return normalizeRecord({
     v: STATS_VERSION,
     t: now,
+    matchId: str(pub.matchId),
     id: `q.${fnv1a([myId, live.startedAt, pub.modeId ?? '-', state.room?.code ?? '-'].join('|'))}`,
     end: 'quit',
     victory: false,
@@ -638,107 +641,4 @@ export function exportStats(stats) {
 
 // ---- aggregation (what the page shows; records may hold more than any view uses) ------------------------------------
 
-const SELF_STATS = ['dmgDealt', 'kills', 'bossDamage', 'activatedLayers', 'merges', 'itemsEquipped', 'gold', 'perfectRounds', 'refreshes', 'leaks', 'lpLost'];
-
-/**
- * The row that "is me" in a record: selfId, else the only human, else seat 0 — records written by
- * recordResult always have selfId; the fallbacks only serve imported / hand-made data.
- * @param {any} rec
- * @returns {any|null}
- */
-export function selfRowOf(rec) {
-  const ps = Array.isArray(rec?.players) ? rec.players : [];
-  return ps.find((p) => p.playerId && p.playerId === rec.selfId)
-    || ps.find((p) => !p.isBot)
-    || ps[0]
-    || null;
-}
-
-/** Whether this record counts as a win for its self player (per-row victory = team won AND still in). */
-const selfWon = (rec, self) => (self ? !!self.victory : !!rec.victory);
-
-/**
- * The rounds the player passed in a record: its own row's (the table the settlement prints per player), else the
- * team's; 0 when the record does not know.
- * @param {any} rec
- */
-export function roundsOf(rec) {
-  const self = selfRowOf(rec);
-  const v = self && Number.isFinite(self.roundsPassed) ? self.roundsPassed : rec?.roundsPassed;
-  return Number.isFinite(v) ? v : 0;
-}
-
-/**
- * Whether a record enters the aggregates (see the header). A settled record always does. A quit record does once the
- * player had finished at least one battle: cleared a round, or was already eliminated; a match given up before that —
- * entered and left right away — is history only.
- * @param {any} rec a normalized record
- * @returns {boolean}
- */
-export function countsTowardStats(rec) {
-  if (!isObj(rec)) return false;
-  if (rec.end !== 'quit') return true;
-  const self = selfRowOf(rec);
-  if (!self) return false;
-  return self.alive === false || (Number.isFinite(self.roundsPassed) && self.roundsPassed >= 1);
-}
-
-/**
- * Aggregate records for the stats page — over the records that count; `total` / `excluded` say how many did not.
- * Everything is keyed by ids (bandId / titleId / difficulty); the page maps them to names and icons through the game
- * data. The combat totals read the settled records' stat blocks (a quit record has none).
- * @param {any[]} records
- * @returns {any}
- */
-export function aggregateStats(records) {
-  const all = Array.isArray(records) ? records : [];
-  const rs = all.filter(countsTowardStats);
-  const out = {
-    total: all.length, count: rs.length, excluded: all.length - rs.length, wins: 0,
-    rounds: { total: 0, max: 0 },
-    duration: { totalMs: 0 },
-    hidden: { reached: 0, cleared: 0 },
-    byDifficulty: {}, byMode: { solo: 0, coop: 0 },
-    titles: {}, bands: {}, sums: {},
-  };
-  for (const rec of rs) {
-    const self = selfRowOf(rec);
-    const won = selfWon(rec, self);
-    if (won) out.wins++;
-    const rounds = roundsOf(rec);
-    out.rounds.total += rounds;
-    out.rounds.max = Math.max(out.rounds.max, rounds);
-    out.duration.totalMs += num(rec.durationMs) || 0;
-    if (rec.hiddenReached) out.hidden.reached++;
-    if (rec.hiddenCleared) out.hidden.cleared++;
-
-    const d = rec.difficulty || 'UNKNOWN';
-    const bd = (out.byDifficulty[d] ||= { games: 0, wins: 0, hiddenCleared: 0 });
-    bd.games++;
-    if (won) bd.wins++;
-    if (rec.hiddenCleared) bd.hiddenCleared++;
-
-    if (rec.roomMode === 'solo' || rec.roomMode === 'coop') out.byMode[rec.roomMode]++;
-
-    const titleId = self?.title?.id;
-    if (titleId) {
-      const t = (out.titles[titleId] ||= { count: 0 });
-      t.count++;
-    }
-
-    const bandId = self?.bandId;
-    if (bandId) {
-      const b = (out.bands[bandId] ||= { games: 0, wins: 0 });
-      b.games++;
-      if (won) b.wins++;
-    }
-
-    if (rec.end !== 'quit' && self && isObj(self.stats)) {
-      for (const k of SELF_STATS) {
-        const v = self.stats[k];
-        if (Number.isFinite(v)) out.sums[k] = (out.sums[k] || 0) + v;
-      }
-    }
-  }
-  return out;
-}
+export {selfRowOf, roundsOf, countsTowardStats, aggregateStats} from '../../../shared/userStats.js';

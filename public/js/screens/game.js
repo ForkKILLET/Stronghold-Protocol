@@ -159,7 +159,7 @@ function DraftPause({ pub, standalone }) {
   useEffect(() => {
     const onKey = e => {
       if (!standalone || e.repeat || !participant?.alive || shortcutFor(e, shortcutsStore.get()) !== 'pause'
-        || document.querySelector('.modal, .guide')) return;
+        || document.querySelector('.modal, .guide, .st')) return;
       e.preventDefault(); toggle();
     };
     window.addEventListener('keydown', onKey);
@@ -1276,7 +1276,7 @@ function MatchScreen() {
       const act = shortcutFor(e, shortcutsStore.get());
       const L = live.current;
       // dialogs / the guide own the keyboard; behind the 本局信息 / 敌方情报 drawer only Esc (closing it) acts
-      if (shortcutBlocked(act, { modal: !!document.querySelector('.modal, .guide'), drawer: !!L.drawer })) return;
+      if (shortcutBlocked(act, { modal: !!document.querySelector('.modal, .guide, .st'), drawer: !!L.drawer })) return;
       if (L.hasPersonalChoice) {
         if (act !== 'escape') e.preventDefault();
         if (act === 'ready') {

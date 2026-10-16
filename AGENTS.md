@@ -297,4 +297,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - `SP_USER_DB` 启用独立 SQLite 用户存储（`server/users/`），不替代 Redis 对局恢复。用户 ID 独立于会话／重连令牌；Cookie 只存随机凭证，数据库存哈希。头像／昵称／结算为长期数据，设备设置仍在本机。Cookie 关联不允许跨档案复用游戏令牌。
 - 同源 HTTP 写操作须限制 JSON 大小、校验昵称和预设头像、保留恢复码限流和一次性事务语义；不得记录 Cookie／恢复码原文。自动重连不能覆盖服务器昵称。恢复到另一档案不合并数据，当前用户有对局时不能切换。
 - SQLite 只在独立 Worker 中读写，schema 有版本，WAL／备份目录随数据卷保留。每局 UUID、玩家内部 userId 随检查点和完整 Match Worker 保存，公开视图不得暴露 userId；结算按对局／用户唯一键去重，正常关停等待写入。
+- 右上角头像、设置和旧统计入口统一打开博士档案；档案累计覆盖全部服务器本人结算，统一历史按 matchId 去重，以服务器本人行优先、本机详情补充。旧本机记录不猜测匹配、不累计到账号；本机 v2 保留 matchId，旧数据迁移不得丢弃。跨账号缓存按 userId 隔离，缺少旧 frame 的时长／隐秘核心不当作零。资料／恢复码与本机导入导出均在同一全屏页内。
 - 本机旧统计不自动上报；服务器个人战绩不冒充防作弊榜。验证 `test/users/persistence.test.js`、原有会话／Redis／Worker／匹配回归，部署要求见 `docs/USERS.md`。

@@ -89,7 +89,7 @@ describe('统计数据 page (real server, headless Chrome)', { skip: !ENABLED &&
   const texts = (c, sel) => c.page.$$eval(sel, (els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
   const stored = (c) => c.page.evaluate(() => { const r = localStorage.getItem('sp.pref.stats'); return r ? JSON.parse(r) : null; });
   const openStats = async (c, from = '.lobby-screen .stats-entry') => {
-    await c.click(from, from.includes('stats-entry') ? null : '统计');
+    await c.click(from, from.includes('stats-entry') ? null : '博士档案');
     await c.page.waitForSelector('.st .st-tab', { visible: true, timeout: 15000 });
   };
   const toast = (c) => c.page.waitForFunction(() => document.querySelector('.toast')?.textContent || false, { timeout: 8000 }).then((h) => h.jsonValue());
@@ -175,6 +175,7 @@ describe('统计数据 page (real server, headless Chrome)', { skip: !ENABLED &&
     const c = await open({ stored: JSON.stringify(seed(6)) });
     await c.page.waitForSelector('.lobby-screen');
     await openStats(c);
+    await c.click('.st-tab[data-tab="manage"]');
     // 导出: capture the blob the page hands to the browser
     await c.page.evaluate(() => {
       HTMLAnchorElement.prototype.click = function click() { globalThis.__dl = { name: this.download, href: this.href }; };
@@ -243,6 +244,7 @@ describe('统计数据 page (real server, headless Chrome)', { skip: !ENABLED &&
     await n.page.waitForSelector('.lobby-screen');
     await openStats(n);
     assert.match(await n.page.$eval('.st-body', (e) => e.textContent), /更新版本的统计数据/);
+    await n.click('.st-tab[data-tab="manage"]');
     assert.ok(await n.page.$eval('[data-testid="stats-clear"]', (b) => b.disabled), 'no 清空 over data this build cannot read');
     assert.equal(await n.page.evaluate(() => localStorage.getItem('sp.pref.stats')), newer);
     noProblems(n);

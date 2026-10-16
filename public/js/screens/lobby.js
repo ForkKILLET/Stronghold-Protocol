@@ -1,3 +1,4 @@
+import {DoctorAvatar,profileStore} from '../ui/profile.js';
 import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 / 同盟匹配 and a difficulty (标准/险境/绝境/终极), create a room,
 // join the public alliance queue, or join a private room with a 同盟密钥 (recent codes remembered).
@@ -16,7 +17,7 @@ import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
-import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, OnlineCount, AvatarFrame, Tooltip, Spinner, DifficultyIcon, doctorNo } from '../ui/components.js';
+import { html, Button, Icon, MicroLabel, Panel, TextField, PingPill, OnlineCount, Tooltip, Spinner, DifficultyIcon } from '../ui/components.js';
 import { AnnouncementButton } from '../ui/announcement.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { GuideButton } from '../ui/guide.js';
@@ -259,6 +260,7 @@ function MatchQueuePanel({ queue, onCancel }) {
 
 /** Lobby screen component. */
 export function LobbyScreen() {
+  const doctor = useStore(s=>s.user,Object.is,profileStore);
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
   const presence = useStore((s) => s.presence, shallowEqual);
@@ -360,13 +362,13 @@ export function LobbyScreen() {
       <div class="topbar__right">
         <${ResumeMatchButton} />
         <${LoadoutButton} from="lobby" size="sm" class="lobby-loadout" label=${t('干员调配')} />
-        <button type="button" class="me-chip me-chip--btn stats-entry" onClick=${openStats} title=${t('统计数据')} aria-label=${t('统计数据')}>
-          <${AvatarFrame} size="sm" name=${me.name} seat=${0} self=${true} />
+        <button type="button" class="me-chip me-chip--btn stats-entry" onClick=${openStats} title=${t('博士档案')} aria-label=${t('博士档案')}>
+          <${DoctorAvatar} name=${me.name} />
           <span class="me-chip__text">
-            <span class="me-chip__name">${me.name || t('博士')}</span>
-            <${MicroLabel}>${me.playerId != null ? `DOCTOR #${doctorNo(me.playerId)}` : 'DOCTOR'}<//>
+            <span class="me-chip__name">${doctor?.name || me.name || t('博士')}</span>
+            <${MicroLabel}>DOCTOR ARCHIVE<//>
           </span>
-          <${Icon} name="chart" class="me-chip__stats" />
+          <${Icon} name="user" class="me-chip__stats" />
         </button>
       </div>
     </header>

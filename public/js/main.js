@@ -1,4 +1,4 @@
-import {initProfile,ProfileHost} from './ui/profile.js';
+import {initProfile} from './ui/profile.js';
 // Client entry: boot (fonts, identity, socket), net → store wiring, router, global overlays.
 //
 // Router (derived from the store, no URL routes):
@@ -352,7 +352,6 @@ function App() {
     <${LoadoutHost} />
     <${ResourceManagerHost} />
     <${StatsHost} />
-    <${ProfileHost} />
   </div>`;
 }
 

@@ -191,3 +191,34 @@
 }
 .sp-coarse .st-tab, .sp-coarse .st-table tr.is-clickable td { min-height: 30px; }
 @media (prefers-reduced-motion: reduce) { .st { animation: none; } }
+
+/* The archive reuses the statistics canvas; identity and navigation have their own rows. */
+.doctor-top { height:auto; min-height:max(1.5rem,110px); grid-template-columns:auto minmax(0,1fr) auto; padding-block:.16rem; row-gap:.14rem; }
+.doctor-top > .st-top__left { grid-column:1; grid-row:1; }
+.st .doctor-top > .st-top__right { grid-column:3; grid-row:1; }
+.doctor-identity { grid-column:2; grid-row:1; display:flex; align-items:center; gap:.16rem; min-width:0; }
+.doctor-identity > div { min-width:0; }
+.doctor-identity h2 { margin:0; font-size:max(.26rem,18px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.doctor-status { color:var(--mint-400); font-size:max(.13rem,11px); }
+.doctor-status.is-offline { color:var(--gold-500,var(--text-lo)); }
+.doctor-tabs { grid-row:2; grid-column:1/-1; justify-self:center; }
+.doctor-editor,.doctor-recovery { max-width:900px; }
+.doctor-management { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:.4rem; }
+.doctor-management > section { min-width:0; }
+.doctor-actions { display:flex; flex-wrap:wrap; gap:.12rem; margin-top:.24rem; }
+.doctor-section { margin-top:.4rem; }
+.doctor-history-tools { display:flex; margin-bottom:.15rem; }
+.doctor-history-tools button { border:1px solid var(--line-2); padding:.08rem .14rem; background:var(--bg-1); color:var(--text-md); font:inherit; font-size:max(.14rem,12px); }
+.doctor-history-tools .is-on { border-color:var(--mint-400); color:var(--mint-400); }
+.doctor-editor .profile-summary .field { flex:1; min-width:0; }
+.doctor-editor .profile-avatars { grid-template-columns:repeat(auto-fill,minmax(64px,1fr)); }
+@media (max-width:700px) {
+  .st .doctor-top { display:grid; grid-template-columns:auto minmax(0,1fr) auto; height:auto; padding:12px; gap:10px; }
+  .doctor-identity { gap:10px; }
+  .doctor-identity > .btn { font-size:0; padding:8px; }
+  .doctor-identity > .btn .icon { font-size:16px; }
+  .doctor-tabs { width:100%; justify-content:flex-start; }
+  .doctor-tabs .st-tab { flex:none; padding:8px 12px; }
+  .doctor-management { grid-template-columns:minmax(0,1fr); gap:28px; }
+  .doctor-counters { flex-wrap:wrap; }
+}

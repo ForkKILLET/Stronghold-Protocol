@@ -63,6 +63,7 @@ export class MatchViews {
   publicView() {
     const v = {
       t: 'm.public',
+      ...(this.userMatchId?{matchId:this.userMatchId}:{}),
       phase: this.phase,
       round: this.round,
       lastRound: this.gd.lastRound,
