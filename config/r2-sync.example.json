@@ -16,8 +16,8 @@
     "purgeMode": "prefixes"
   },
   "sync": {
-    "transfers": 8,
-    "checkers": 16,
+    "transfers": 32,
+    "checkers": 64,
     "mirror": false,
     "packRoutes": []
   }

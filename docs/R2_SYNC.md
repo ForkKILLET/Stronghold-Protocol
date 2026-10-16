@@ -36,7 +36,7 @@ chmod 600 config/r2-sync.json
 也支持 `hosts`（整个 CDN 主机）或 `everything`（整个 Zone）。API 权限/套餐不支持所选方式时，
 脚本报错退出；不会自动扩大清理范围。两个 CDN 主机应属于配置的同一 Zone。
 
-`sync.transfers` / `sync.checkers` 默认 8 / 16；`sync.packRoutes` 沿用
+`sync.transfers` / `sync.checkers` 默认 32 / 64；`sync.packRoutes` 沿用
 `SP_RESOURCE_PACK_ROUTES` 的有序线路数组格式。`sync.mirror` 默认 false。
 
 `config/r2-sync.json` 已被 Git 和 Docker 构建上下文忽略。脚本在权限受限的临时目录生成
@@ -118,10 +118,14 @@ R2_TARGET=r2:stronghold/releases/2026-10-16 \
 `/js/asset-cdn.js` 与服务端自己的数据读取仍留在游戏源站；服务器仍以本地 `data/`
 启动、校验和运行。UI 语言 `/i18n/*.json` 仍跟随 `ASSETS_CDN`。
 
-脚本使用 `--check-first`、默认 8 路传输和 16 路检查；可通过
+脚本移除 `--check-first`，边检查边上传，并使用 `--fast-list` 减少远端列目录请求，
+代价是增加目录清单的内存占用。默认 32 路传输和 64 路检查；可通过
 `R2_TRANSFERS`、`R2_CHECKERS` 调整。生成的 `resource-manifest.json` 位于临时工作目录，
 不会覆盖本机数据清单；同步过程中不会修改本地文件。
 只有 `--mirror` 会额外使用 `--delete-after`。
+
+已有 JSON 配置中的 `sync.transfers` / `sync.checkers` 优先于默认值；若仍填写 8 / 16，
+请在部署机改为 32 / 64 后重新运行脚本。若超时或重试增多，可降低并发。
 
 上传的 data 和 packs 使用 `Cache-Control: no-cache`，其他素材使用一天缓存；
 为 R2 自定义域配置 CORS，允许游戏源站跨域 GET/HEAD。游戏服务器仍需保留完整本地 data。

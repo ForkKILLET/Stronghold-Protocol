@@ -58,8 +58,8 @@ else
   target="${R2_TARGET:?Set R2_TARGET or use --config}"
   data_base="${DATA_CDN_BASE_URL:?Set DATA_CDN_BASE_URL or use --config}"
   assets_base="${ASSETS_CDN_BASE_URL:?Set ASSETS_CDN_BASE_URL or use --config}"
-  transfers="${R2_TRANSFERS:-8}"
-  checkers="${R2_CHECKERS:-16}"
+  transfers="${R2_TRANSFERS:-32}"
+  checkers="${R2_CHECKERS:-64}"
   routes="${SP_RESOURCE_PACK_ROUTES:-[]}"
   zone_id="${CF_ZONE_ID:-}"
   # Legacy environment mode retains the documented whole-zone purge.
@@ -76,7 +76,7 @@ mkdir -- "$work_dir/data"
 cp -a -- "$repo_root/data/." "$work_dir/data/"
 "$node_bin" "$script_dir/prepare-r2-data.mjs" "$work_dir/data" "$repo_root/public" "$assets_base" "$routes"
 operation=copy
-flags=(--checksum --check-first --transfers "$transfers" --checkers "$checkers" --retries 3 --stats 10s)
+flags=(--checksum --fast-list --transfers "$transfers" --checkers "$checkers" --retries 3 --stats 10s)
 if $mirror; then operation=sync; flags+=(--delete-after); fi
 if ! $apply; then flags+=(--dry-run); echo 'DRY RUN: no uploads, deletions or cache purge.'; fi
 upload() {
