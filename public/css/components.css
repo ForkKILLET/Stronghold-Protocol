@@ -1234,3 +1234,10 @@
   --bk-c: var(--red-premium);
 }
 .crash__box h2 { font-size: calc(.3 * var(--utility-text, var(--t))); }
+
+/* Settings footer actions share a single size, including the announcement entry. */
+.settings-modal .modal__actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; }
+.settings-modal .modal__actions > .btn { width:100%; height:auto; min-width:0; min-height:max(.48rem,40px); padding:.1rem; font-size:max(.18rem,12px); }
+@media (max-width:600px) {
+  .settings-modal .modal__actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
