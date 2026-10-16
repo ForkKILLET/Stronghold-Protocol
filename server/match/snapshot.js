@@ -184,7 +184,7 @@ const MATCH_FIELDS = Object.freeze([
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'aiPicksLast', 'setupRevision', '_setupVoteSeq',
   'round', 'uidSeq', 'loneHuman', 'hiddenLayerSum', 'hiddenReached', 'errors', 'errorCount', 'simErrors',
-  'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves', 'bossPairs',
+  'cs', 'vs', 'requireCs', 'hostId', 'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves', 'bossPairs',
 ]);
 
 /** PlayerState fields of a checkpoint (bonds/deploy map are recomputed on restore). */
@@ -241,6 +241,7 @@ export function captureMatch(m) {
   if (m.setupVote && m.phase === PHASE.INFO_CHECK) doc.deadlineRemainingMs = m.setupVote.remainingMs || 0;
   doc.startedAtAgoMs = Math.max(0, Math.round(now - (Number(m.startedAt) || now)));
   // the shared pool: only the remaining copies live in the checkpoint (cap/tier are data-derived)
+  doc.itemDebt = Object.fromEntries(m.itemPool?.debt || []);
   doc.poolLeft = {};
   for (const [id, e] of m.pool.entries) doc.poolLeft[id] = e.left;
   // RNG positions: keeps the continuation of a restored match identical to the run it replaces
@@ -362,6 +363,10 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
       const balance = Number(left);
       if (e) e.left = Math.min(e.cap, Math.trunc(Number.isFinite(balance) ? balance : 0));
     }
+  }
+  m.itemPool.debt.clear();
+  for (const [id, n] of Object.entries(doc.itemDebt || {})) {
+    if (Number.isSafeInteger(n) && n > 0 && m.itemPool.cap(id) != null) m.itemPool.debt.set(id, n);
   }
   for (const name of RNG_NAMES) {
     const state = doc.rng && doc.rng[name];

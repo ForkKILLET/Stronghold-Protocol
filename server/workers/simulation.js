@@ -4,7 +4,7 @@ import { memorySample } from './memory.js';
 
 // Content imports getData() too: never read a different on-disk version when this thread starts later.
 setData(workerData.data);
-const [{ Battle }, { DataSource }, { createBattleFromSpec }, { HeadlessJob }, { createRehearsalJob }] = await Promise.all([
+const [{ Battle }, { DataSource }, { createBattleFromSpec }, { HeadlessJob }, { createWorkerRehearsalJob: createRehearsalJob }] = await Promise.all([
   import('../sim/Battle.js'), import('../sim/simdata.js'), import('../sim/spec.js'),
   import('../match/fields.js'), import('../match/bot.js'),
 ]);

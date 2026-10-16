@@ -212,3 +212,27 @@ test('Python pack builder decodes canonical bracket URLs when reading local file
   const index = JSON.parse(await readFile(path.join(data, 'resource-packs.json'), 'utf8'));
   assert.equal(index.packs[0].files[0].url, '/assets/local/map/fx/%5Bopt%5Dx.webp');
 });
+
+ test('Python ZIP builder and browser importer accept only the official effect JSON paths', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'sp-fx-pack-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const body = Buffer.from('{"fx":1}'), { createHash } = await import('node:crypto');
+  const hash = createHash('sha1').update(body).digest('hex').slice(0,12);
+  const urls = ['index.json', 'textures.json', 'prefabs/skill_probe.json', 'mesh/probe.json'].map(p => '/assets/local/fx/'+p);
+  for (const url of urls) { const dest = path.join(root, 'public', url); await mkdir(path.dirname(dest), { recursive:true }); await writeFile(dest, body); }
+  const manifestPath = path.join(root,'manifest.json'), indexPath = path.join(root,'resource-packs.json');
+  const run = () => spawnSync(process.env.PYTHON || 'python', [path.resolve('tools/resource_packs.py'), '--manifest', manifestPath,
+    '--assets-root', path.join(root,'public'), '--output', path.join(root,'packs'), '--index', indexPath], {encoding:'utf8'});
+  await writeFile(manifestPath, JSON.stringify({version:'fixture',files:urls.map(url => ({url,tier:1,size:body.length,hash}))}));
+  const result = run(); assert.equal(result.status,0,result.stderr);
+  const doc = JSON.parse(await readFile(indexPath,'utf8'));
+  assert.equal(validateResourcePacks(doc).length,doc.packs.length);
+  const seen = [];
+  for (const pack of doc.packs) {
+    const entries = await readTransportPack(new Response(await readFile(path.join(root,'packs',path.basename(pack.url)))),pack);
+    seen.push(...entries.map(e => e.row.url));
+  }
+  assert.deepEqual(seen.sort(), urls.sort());
+  await writeFile(manifestPath, JSON.stringify({version:'fixture',files:[{url:'/assets/local/fx/private.json',tier:1,size:body.length,hash}]}));
+  assert.notEqual(run().status,0);
+});

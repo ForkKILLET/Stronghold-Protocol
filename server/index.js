@@ -6,11 +6,18 @@
 //   http/websocket.js  session wiring (SessionRegistry → Lobby → Network) and the WebSocket at /ws (maxPayload 64 KB,
 //                      permessage-deflate from 1 KB; refused at upgrade with 404 / 429 per network / 503)
 //   http/static.js     the static mounts (/ → public/, /data/, /shared/, /sim/ `.js` only), the /data.js browser stand-in,
-//                      the content packs (/packs/index.json, /packs/<id>/<file> — the registry is packs.js)
+//                      the language packs (/packs/index.json, /packs/<id>/<file>), the plugin catalogue
+//                      (/plugins/index.json — the registry is plugins/registry.js), the vanilla content set's manifest
+//                      (/cs/<cs16>/index.json — plugins/identity.js: the content hash `cs`, DESIGN §32), the visual sets
+//                      of cosmetic plugins (/vs/<vs16>/…, plugins/visualSet.js) and their files (/p/<id>/<hash8>/…),
+//                      the content sets of gameplay plugins (/cs/<cs16>/…, plugins/contentSets.js — DESIGN §32.6; the
+//                      server owner's plugins/config.json: plugins/policy.js; a room's plugins: plugins/roomSets.js; its
+//                      match then runs in that set's worker: match/host/)
 //   http/media.js      /media/bgm/act1 → public/assets/audio/bgm/act1.mp3 (audio addressed without its extension)
 //   http/files.js      one file → response: MIME, brotli / gzip + memory cache, ETag / Last-Modified / 304, Cache-Control, ranges
 //   http/buildTag.js   the build tag of the served browser runtime (/healthz `build`, public/js/ui/buildGuard.js)
-//   http/routes.js     the request listener: security headers, 414 / 400 / 405, GET /healthz → JSON status, else static
+//   http/routes.js     the request listener: security headers, 414 / 400, the plugin studio (/studio/, studio/index.js —
+//                      this machine and the local network only), 405, GET /healthz → JSON status, else static
 //   http/traffic.js    the traffic counters: bytes sent per category (assets / audio / code / data) and on the
 //                      WebSocket, since the start (GET /healthz?traffic=1)
 //   http/common.js     what every answer shares: security headers, URL split, error page, JSON replies, bare 400
@@ -42,9 +49,19 @@ export { rewriteAssetPaths } from '../shared/cdn.js';
 import { getData, loadData } from './data.js';
 import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustProxy } from './http/config.js';
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
+import { siteCsp } from './http/csp.js';
 import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
 import { parseResourcePackRoutes } from '../shared/resourcePackRoutes.js';
-import { createPackRegistry } from './packs.js';
+import { createPluginRegistry } from './plugins/registry.js';
+import { computeVanillaContent } from './plugins/identity.js';
+import { createVisualSets } from './plugins/visualSet.js';
+import { createContentSets } from './plugins/contentSets.js';
+import { createPluginPolicy } from './plugins/policy.js';
+import { createRoomSets } from './plugins/roomSets.js';
+import { createMatchHosts } from './match/host/index.js';
+import { createTrustedRuntime } from './plugins/trustedRuntime.js';
+import { trustedHostAllowed } from './plugins/trusted.js';
+import { createStudio } from './studio/index.js';
 import { MIME, COMPRESSIBLE, acceptsGzip, pickEncoding, parseRange } from './http/files.js';
 import { BUILD_INPUTS, computeBuildTag, buildTag, resetBuildTag } from './http/buildTag.js';
 import { createRequestHandler } from './http/routes.js';
@@ -63,26 +80,27 @@ export {
  * @param {{
  *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
- *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string,
+ *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string, pluginsDir?: string,
  *   MatchClass?: Function, seedFn?: () => number,
  *   lobbyGraceMs?: number, matchmakingTickMs?: number, reconnectWindowMs?: number, heartbeatMs?: number, helloTimeoutMs?: number,
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
  *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
- *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string,
+ *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
  *   announcementsFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: import('ws').WebSocketServer,
  *                     lobby: import('./lobby.js').Lobby, network: import('./net.js').Network,
- *                     registry: import('./net.js').SessionRegistry, packs: ReturnType<typeof createPackRegistry>,
+ *                     registry: import('./net.js').SessionRegistry, packs: ReturnType<typeof createPluginRegistry>,
  *                     traffic: ReturnType<typeof createTrafficCounter>, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
   const nameModeration = opts.nameModeration !== undefined ? opts.nameModeration : nameModerationFromEnv();
   const { port, host } = listenAddress(opts);
   const log = opts.log || makeLogger(!!opts.quiet);
-  const { publicDir, dataDir, sharedDir, packsDir } = serveDirs(opts);
+  const { publicDir, dataDir, sharedDir, packsDir, pluginsDir } = serveDirs(opts);
+  const simDir = path.join(ROOT, 'server', 'sim');
 
   const clientBuild = opts.clientBuild ?? !process.argv.includes('--source-client');
   const resourcePackRoutes = parseResourcePackRoutes(opts.resourcePackRoutes ?? process.env.SP_RESOURCE_PACK_ROUTES);
@@ -103,6 +121,26 @@ export async function startServer(opts = {}) {
 
   // The process-wide singleton serves the default data dir; a custom dir (tests) gets its own copy.
   const data = opts.dataDir ? loadData(dataDir, { log }) : getData({ dir: dataDir, log });
+  // the vanilla content hash `cs` (DESIGN §32): the bytes of the served sim, shared code and game data, read once now —
+  // like the data the matches use and the build tag below
+  const content = computeVanillaContent({ simDir, sharedDir, dataDir, shim: DATA_SHIM_JS, log });
+  log.info(`[content] vanilla ${content.cs.slice(0, 16)} (${Object.keys(content.simFiles).length} code files, ${Object.keys(content.data).length} data files)`);
+  // language packs and plugins (docs/PACKS.md, docs/PLUGINS.md): scanned now — the start log names them — and again
+  // whenever their folders change
+  const scriptMode = process.env.SP_PLUGIN_SCRIPTS;
+  const packs = createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log, scriptHost:host, scriptMode });
+  packs.refresh(true);
+  // the visual sets of the cosmetic plugins (DESIGN §32 P1a): what a room's host switches on, served at /vs/ and /p/
+  const visual = createVisualSets({ registry: packs, log });
+  // the server owner's policy (plugins/config.json), the content sets of the gameplay plugins (served at /cs/<cs16>/…),
+  // what a room's plugins make of both, and the match hosts a room with gameplay plugins plays in (DESIGN §32.6)
+  const policy = createPluginPolicy({ pluginsDir, log });
+  const contents = createContentSets({ registry: packs, vanillaData: data, log, maxSets: () => policy.get().maxSets });
+  const roomSets = createRoomSets({ registry: packs, visual, contents, policy });
+  // a child process per content set; SP_MATCH_HOST=worker asks for a worker thread instead (match/host/index.js header:
+  // an out-of-memory abort in a worker thread ends the whole server)
+  const transport = String(process.env.SP_MATCH_HOST || '').trim().toLowerCase() === 'worker' ? 'worker' : 'process';
+  const hosts = createMatchHosts({ contents, log, options: { transport, maxWorkers: Math.max(1, policy.get().maxSets), ...(opts.matchHost || {}) } });
   const workerConfig = workerSettings();
   for (const [option, key] of [['workers', 'size'], ['workerQueue', 'maxQueue'], ['workerTimeoutMs', 'timeoutMs']]) {
     if (opts[option] != null) workerConfig[key] = opts[option];
@@ -129,7 +167,7 @@ export async function startServer(opts = {}) {
   const matchWorkerPool = ownsMatchWorkerPool && matchWorkers > 0
     ? new MatchWorkerPool({ data, lanes: matchWorkers, log, timeoutMs: workerConfig.timeoutMs })
     : opts.matchWorkerPool || null;
-  const { registry, lobby, network } = createSessionStack({ ...opts, nameModeration }, { data, log, workerPool, matchWorkerPool });
+  const { registry, lobby, network } = createSessionStack({ ...opts, nameModeration }, { data, log, workerPool, matchWorkerPool, content, plugins: roomSets, hosts });
   // Resume the last state before listening: every reconnecting client is recognized by its token right away.
   const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs }) : null;
   if (store && opts.resume !== false) {
@@ -167,17 +205,19 @@ export async function startServer(opts = {}) {
   const serveNameReview = createNameModerationRoute({ moderation: nameModeration, trustProxy: network.opts.trustProxy });
   const serveApi = async (req, res, pathname) => await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
 
-  // content packs (docs/PACKS.md): scanned now — the start log names them — and again whenever their folders change
-  const packs = createPackRegistry({ publicDir, dataDir, packsDir }, { log });
-  packs.refresh(true);
-  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, packsDir, packs, log, cdnBase: assetsCdn, dataCdnBase: dataCdn, resourcePackRoutes, clientBuild });
+  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, simDir, packsDir, pluginsDir, packs, content, log, visual, contents, cdnBase: assetsCdn, dataCdnBase: dataCdn, resourcePackRoutes, clientBuild });
+  // the plugin studio (DESIGN §32.9): its page and API for this machine and the local network; it watches plugins/ only
+  // once it is used (hot reload), and rooms whose host is the author or alone follow a plugin's changes by themselves
+  const studio = opts.studio === false ? null : createStudio({ publicDir, pluginsDir, dataDir, registry: packs, lobby, sessions: registry, log, fetch: opts.fetch });
+  const trustedRuntime = await createTrustedRuntime({registry:packs,log});
+  lobby.trustedRuntime = trustedRuntime;
   const startedAt = Date.now();
   // The tag is per process (see buildTag): read the browser runtime once, here, not on every /healthz.
   resetBuildTag();
   buildTag(ROOT, { clientBuild });
 
   const traffic = createTrafficCounter();
-  const server = http.createServer(createRequestHandler({ serveStatic, health: { startedAt, network, registry, lobby, traffic }, serveApi,
+  const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, csp: process.env.SP_CSP === 'off' ? null : siteCsp(publicDir), health: { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health }, serveApi,
     diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log, trustProxy: network.opts.trustProxy }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic });
@@ -211,6 +251,14 @@ export async function startServer(opts = {}) {
     }
     if (bound === null) throw lastError;
     boundHost = bound;
+    // Check the kernel's address too: aliases/DNS and bind fallback cannot weaken the owner gate.
+    const actual = server.address();
+    const scriptHost = actual && typeof actual === 'object' ? actual.address : '';
+    packs.setScriptHost(scriptHost);
+    if (!trustedHostAllowed(scriptHost, scriptMode)) {
+      lobby.trustedRuntime = null;
+      await trustedRuntime?.close();
+    }
   } catch (e) {
     await announcements.stop();
     nameModeration?.close?.();
@@ -220,6 +268,8 @@ export async function startServer(opts = {}) {
     lobby.shutdown('shutdown');
     if (ownsWorkerPool) await workerPool?.close();
     if (ownsMatchWorkerPool) await matchWorkerPool?.close();
+    studio?.close();
+    await trustedRuntime?.close();
     throw e;
   }
   server.on('error', (e) => log.error('[http] server error', e));
@@ -244,9 +294,12 @@ export async function startServer(opts = {}) {
         log.info?.(`[persist] final state ${ok ? 'saved' : 'NOT saved (Redis unavailable)'}`);
       }
       try { lobby.shutdown('shutdown'); } catch (e) { log.error('[shutdown] lobby', e); }
+      try { hosts.close(); } catch (e) { log.error('[shutdown] match hosts', e); }
       network.close();
       if (ownsWorkerPool) await workerPool?.close();
       if (ownsMatchWorkerPool) await matchWorkerPool?.close();
+      studio?.close();
+      await trustedRuntime?.close();
       await new Promise((resolve) => {
         server.close(() => resolve());
         server.closeIdleConnections?.();
@@ -259,7 +312,7 @@ export async function startServer(opts = {}) {
   }
 
   return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, store: store || null, persister,
-    workerPool, matchWorkerPool, announcements, traffic, close };
+    workerPool, matchWorkerPool, announcements, content, visual, contents, hosts, studio, traffic, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).

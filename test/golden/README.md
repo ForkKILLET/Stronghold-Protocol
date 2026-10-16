@@ -52,7 +52,7 @@ matches 的变化来自共享干员/装备库存、库存过滤及拟态物质�
 | `roster` | 49 battles: every visible chess record (normal and elite) with every selectable skill and module (DESIGN §16), 12 operators per battle on a real stage (all 11 in turn) against the round's real wave three times over, every non-leader enemy kind of `data/enemies.json` as extra spawns (half of them bounties), placeable summons on the board, every equipment item, band, battle-side 机变 card and stage map card in turn, bonds from the board |
 | `bonds` | 46 battles: every bond at its activation threshold (1 layer) and at its top tier (999 layers) |
 | `fields` | 22 battles: every Final Assault / Hidden Core leader on a pair and a solo template (shared pool, 200 s cap) and the 联防 field with 1 and 2 helpers on the round's stage, both halves (carried HP / SP, a knocked-out operator, two leakers' enemies) |
-| `matches` | 20 matches to the end in virtual time: 16 bot-only (solo 标准 / 险境 / 绝境 / 终极 × 2 seeds, co-op 2 / 3 / 4, one server-run combat match, two runs boosted to the Hidden Core), one co-op match whose human seat (AI 托管, offline) does not own 9 NORMAL chess — they fight as their 补位 stand-ins (its digest lists them per round, `standIns`) — and one whose human seat slots 自选 picks (推进之王 and prototypes) with its 调度中心 at level 5 from the first prep: its own shop draws them and its AI fields 推进之王 (its digest lists per round the 自选 shop draws and the fielded pieces, `diy`) |
+| `matches` | Full matches in virtual time: bot-only solo and co-op, server-run combat, boosted Hidden Core runs, partially owned human rosters and a human with no NORMAL operators (AI 托管, offline; `standIns` records the fielded stand-ins per round), and human 自选 picks with 调度中心 level 5 from the first prep (`diy` records shop draws and deployed pieces). `matchScenarios()` lists every configuration. |
 | `standins` | 10 battles: every NORMAL chess record (normal and elite, 110) fielded as its 补位 stand-in (`standIn: true`: the stand-in's body, backup skill / module and kit — all 17 stand-ins, every skill a chess names for them), 12 per battle by strength band, laid out by the stand-in's position on a real stage, against the round's real wave three times over plus 8 ground enemy kinds (melee stand-ins always meet an enemy), an item each, bonds from the board |
 | `diy` | battles of 自选 pieces (a DIY slot with its `diy` pick, `shared/diy.js`): every owned 6★ with an operator kit (`kits/index.js OPERATOR_KITS`) in each form of tiers 5 and 6 (normal; elite with no module and with each module) under each skill, then every prototype pick with a kit at its locked selection, normal and elite, 12 per battle against the round's real wave; a new operator kit adds its scenarios (the battle count grows with the kits) |
 
@@ -131,3 +131,42 @@ The scenario set is unchanged. Relative to the tag, the preserved branch differe
 The 8 roster / 3 matches / 2 standins differences have the same scenario identities as the v0.2.4 branch comparison;
 bonds, fields and diy match v0.2.5. The independent rule-reversal comparison validates their attribution, not browser/Docker deployment.
 Built-vs-Node checks now additionally cover both Rockrock/Kjera/Vulpis forms, comparing results, final snapshots and events.
+The original stand-in / DIY seeds remain as outcome regressions even when they field no such operator. The
+`coop2-NORMAL-1-unowned-roster` scenario supplies no owned NORMAL operators, so stand-in coverage does not depend on
+the bot choosing one of a small set of missing operators. `coop2-NORMAL-5-coverage-diy` covers the DIY path.
+
+## 2026-10-16 merge of v0.3.0
+
+Target tag: `c24e17eec3af1e6dedfa9935a6d15245cf2f4586`; previous branch HEAD: `dbc1ddb5`.
+Both the merged branch and the tag now have 288 scenarios (49 roster, 46 bonds, 22 fields, 21 matches,
+10 standins, 140 diy). The tag includes `coop2-NORMAL-1-unowned-roster`; it was also already present on this branch.
+No new scenarios are added merely to make the comparison pass.
+
+The independent `.cache/merge030/upstream-rules` copy reverses only documented branch gameplay differences:
+Boss HP scaling, mode bond activation and AI policy, equipment gift / console provenance, and retained reflection
+fixes. It retains the merged Worker / scheduling implementation and uses the tag's unchanged harness and corpus.
+After correcting the independent harness integration, all 288 scenarios match the tag (`upstream-matches3.log`).
+The branch's complete golden comparison also matches its checked-in baselines (`golden-final.log`).
+
+Changes relative to the previous branch HEAD, reviewed by scenario id:
+
+| family | changed scenarios | reason |
+|---|---|---|
+| roster (49/49) | `roster-001` through `roster-049` | upstream combat timing, hit / collision, targeting, kit and event changes across the full operator mix |
+| bonds (45/46) | every bond scenario except `bond-yanShip-high` | upstream combat / proc changes exercised at bond thresholds; all results match the tag |
+| fields (22/22) | all `boss-*`, `hidden-*`, `unite-1`, `unite-2` | upstream combat, enemy and leader changes; all results match the tag |
+| matches (21/21) | every match scenario in `matches.json` | upstream economy / inventory, AI rehearsal, shop and combat changes, retaining branch-specific rules |
+| standins (10/10) | `standin-01` through `standin-10` | upstream combat and kit changes across both forms and their stand-ins |
+| diy (136/140) | every DIY scenario except `diy-010`, `diy-012`, `diy-093`, `diy-134` | upstream combat and selected kit / module changes; all results match the tag |
+
+Broad movement is not treated as refactor noise or approved solely by regenerating baselines: the independent
+rule-reversal check above is the evidence separating upstream changes from preserved branch differences.
+Relative to the tag, the remaining branch differences are exactly:
+
+- roster: `roster-005`, `roster-011`, `roster-017`, `roster-023`, `roster-029`, `roster-035`, `roster-041`, `roster-047`.
+- matches: `solo-FUNNY-1`, `solo-FUNNY-2`, `coop4-FUNNY-6`.
+- standins: `standin-03`, `standin-09`.
+- bonds, fields and diy: identical.
+
+These 8 / 3 / 2 scenario identities are unchanged from the preceding branch-to-tag comparison. This evidence
+does not validate browser rendering, Docker deployment, or cross-version recovery of live matches.

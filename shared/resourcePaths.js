@@ -4,6 +4,7 @@ export function isBoardResourceJson(url) {
   try { pathname = new URL(String(url), 'https://resources.invalid').pathname; } catch { return false; }
   if (pathname.startsWith('/build/')) return false;
   return /\/assets\/local\/map\/(?:fx\/(?:materials|prefab)|autochess\/(?:materials|tiles))\.json$/.test(pathname)
+    || /\/assets\/local\/fx\/(?:(?:index|textures)|prefabs\/[A-Za-z0-9_.-]+|mesh\/[A-Za-z0-9_.-]+)\.json$/.test(pathname)
     || /\/assets\/local\/scene\/(?:act1autochess_m0[1-7]|act2autochess_m0[1-4])\/scene\.json$/.test(pathname);
 }
 

@@ -6,7 +6,7 @@ This is the **single source of truth** for every implementer. Research lives in 
 
 Language: player-facing text is **Simplified Chinese** by default, with an English switch since 0.2.0 (§25.2, docs/I18N.md: UI strings through `t('中文')`, game texts from the official Chinese data or the official EN client's). Code, comments and identifiers are English.
 
-Versions: the first public release was **0.1.0** (2026-10-02, the state of §0–§20.15); the releases after it add the player feedback and GitHub reports — 0.1.1 §21, 0.1.2 §22, 0.1.3 §23, 0.1.4 §24 — and **0.2.0** (2026-10-07; `CHANGELOG.md`) the maintainability refactor, two languages, 补位, 自选编队 and their fidelity work — §25 — **0.2.1** (2026-10-07) the 联防 battlefield restored, full potential and the GitHub fixes after it — §26 — and **0.2.2** (2026-10-09) per-operator 潜能 / 练度, Japanese voices, the statistics page, 失衡, whole-frame attack timing and the GitHub fixes after 0.2.1 — §27. **0.2.3** (2026-10-10; `package.json`, `shared/constants.js APP_VERSION`) 克莱门莎 and new modules, community fixes, text size, per-operator voices, installation, the opening reroll and local match recovery — §28. **0.2.4** (2026-10-11) the official shared card pool and item stock, Raid revival and #475, and the community fixes after 0.2.3 — §29. **0.2.5** (2026-10-12) fixed gifts and already displayed operator offers under the shared stock, random boss pairing, the official battlefield scenes on the 3D board (optional local art: the full bundle includes them when extracted, a missing scene keeps the metal board; §15, §30.21), the official damage-number option, the 驭械术师 / hit-tile / bot ports and the community fixes after 0.2.4 — §30; its rules supersede the corresponding 0.2.4 ones. **0.2.6** (2026-10-13) the host-bandwidth layers 0 and 1 (no BGM download while the music is silent, WebSocket compression, brotli, WebP guide pages), the official scene light gains, the impostor bounds, the deploy-animation replays, the optional ammo count and the community fixes after 0.2.5 — §31, the state described by this document; its rules supersede the corresponding 0.2.5 ones. The labels v1 / v2 / v2.1–v2.5.2 in §0, §14–§20 and in the BALANCE / SIM comparisons name the design generations and the private playtest builds that came before it; they are kept as history.
+Versions: the first public release was **0.1.0** (2026-10-02, the state of §0–§20.15); the releases after it add the player feedback and GitHub reports — 0.1.1 §21, 0.1.2 §22, 0.1.3 §23, 0.1.4 §24 — and **0.2.0** (2026-10-07; `CHANGELOG.md`) the maintainability refactor, two languages, 补位, 自选编队 and their fidelity work — §25 — **0.2.1** (2026-10-07) the 联防 battlefield restored, full potential and the GitHub fixes after it — §26 — and **0.2.2** (2026-10-09) per-operator 潜能 / 练度, Japanese voices, the statistics page, 失衡, whole-frame attack timing and the GitHub fixes after 0.2.1 — §27. **0.2.3** (2026-10-10; `package.json`, `shared/constants.js APP_VERSION`) 克莱门莎 and new modules, community fixes, text size, per-operator voices, installation, the opening reroll and local match recovery — §28. **0.2.4** (2026-10-11) the official shared card pool and item stock, Raid revival and #475, and the community fixes after 0.2.3 — §29. **0.2.5** (2026-10-12) fixed gifts and already displayed operator offers under the shared stock, random boss pairing, the official battlefield scenes on the 3D board (optional local art: the full bundle includes them when extracted, a missing scene keeps the metal board; §15, §30.21), the official damage-number option, the 驭械术师 / hit-tile / bot ports and the community fixes after 0.2.4 — §30; its rules supersede the corresponding 0.2.4 ones. **0.2.6** (2026-10-13) the host-bandwidth layers 0 and 1 (no BGM download while the music is silent, WebSocket compression, content-hashed asset URLs with long caching, brotli, WebP guide pages), the official scene light gains, the impostor bounds, the deploy-animation replays, the optional ammo count and the community fixes after 0.2.5 — §31; its rules supersede the corresponding 0.2.5 ones. **0.3.0** (2026-10-14) the plugin system (插件) and the fixes after 0.2.6 — §32, the state this document describes. The labels v1 / v2 / v2.1–v2.5.2 in §0, §14–§20 and in the BALANCE / SIM comparisons name the design generations and the private playtest builds that came before it; they are kept as history.
 
 ---
 
@@ -40,6 +40,8 @@ normative lines it rewrote).
 | §29 | [history/0.2.4.md](history/0.2.4.md) | 0.2.4 — after the 0.2.3 release (2026-10-11) |
 | §30 | [history/0.2.5.md](history/0.2.5.md) | 0.2.5 — after the 0.2.4 release (2026-10-12) |
 | §31 | [history/0.2.6.md](history/0.2.6.md) | 0.2.6 — after the 0.2.5 release (2026-10-13) |
+| §32 | [history/0.3.0.md](history/0.3.0.md) | 0.3.0 — the plugin system (插件) and the fixes after 0.2.6 (2026-10-14) |
+| §33 | [design/vfx-format.md](design/vfx-format.md) | Official battle effects (特效): the extracted format the runtime reads |
 
 ## 本分支规则与合并约定
 
@@ -48,3 +50,10 @@ normative lines it rewrote).
 教程 WebP、场景光照与设备高台、模型缓存和玩法更新正常合入，详见 `AGENTS.md`。
 
 模式及随机盟约禁用仅限制干员池；保留干员和装备的盟约照常激活。Boss 共用血量池：单人 `bloodPoint × 1`，多人 `bloodPoint × 4 × min(alive, 4) / 4`；模式配置优先、未提供人数按满队计算。快捷键使用本仓库独立的浏览器设置，默认 W/S/R/C/X/Q/G/Space，排除上游的另一套配置和绑定。2026-10-12 用户调整：本次 0.2.5 合并纳入上游棋盘 WebP，颜色贴图有损、法线/数据贴图无损，保留 PNG 原件及旧清单兼容、CDN 改写和内容指纹；其他渲染修复、新增召唤物模型、多语言和自选编队继续保留。
+
+## 本分支 0.3.0 合并补充
+
+自选库存按上游 #650 调整为单人每人 8/5、同盟每人 16/10，仍是个人池。显示装备允许上游规则的超额获取；
+被动/控制台赠送继续记录零占用，合成按实际来源计数。Boss 血量、模式盟约激活、联防地图及服务端所有权沿用 AGENTS.md。
+插件房间使用独立内容 Host，原版房间保留完整 Match Worker；公共匹配仍只接受原版真人。
+房间内容 cs 和检查点绑定，缺失/变化时保留 recovery；恢复相同插件后可接续。实际合并记录见 MERGE_0.3.0.md。

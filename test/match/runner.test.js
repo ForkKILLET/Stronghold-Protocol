@@ -5,7 +5,9 @@
 // leak count of normal fields (state().leaks, user playtest #3 item 2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createBattleRunner, ticksPerFrameCap } from '../../public/js/battle/runner.js';
+import { buildDiagnostics } from '../../public/js/diag.js';
 import { createStore, initialState } from '../../public/js/store.js';
 import * as specMod from '../../server/sim/spec.js';
 import { DataSource } from '../../server/sim/simdata.js';
@@ -28,14 +30,16 @@ function fakeNet() {
   return n;
 }
 
-function rig({ hidden = false } = {}) {
+function rig({ hidden = false, combatMetrics = true, pinMetrics = true, createHost = null } = {}) {
   let t = 1000;
   const frames = [];
   const intervals = [];
   const doc = { hidden, addEventListener() {} };
   const net = fakeNet();
   const store = createStore(initialState);
-  const runner = createBattleRunner({
+  // Existing cases pin the meter on, which is what the PR asserted. pinMetrics false leaves the production default
+  // (off) so a test can drive setCombatMetrics. createHost stands in for a Worker sim.
+  const deps = {
     net, store, doc,
     now: () => t,
     raf: (fn) => { frames.push(fn); return frames.length; },
@@ -44,7 +48,10 @@ function rig({ hidden = false } = {}) {
     clearInterval: () => {},
     loadSim: async () => ({ spec: specMod, ds: DS }),
     logger: { error() {}, warn() {}, info() {}, debug() {} },
-  });
+  };
+  if (pinMetrics) deps.combatMetrics = combatMetrics;
+  if (createHost) deps.createHost = createHost;
+  const runner = createBattleRunner(deps);
   const feed = { snaps: [], evs: [], fields: [] };
   runner.on('snap', (s) => feed.snaps.push(s));
   runner.on('ev', (e) => feed.evs.push(e));

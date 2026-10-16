@@ -109,9 +109,13 @@ export class CompressCache {
     /** @type {Map<string, Promise<Buffer>>} */ this.inflight = new Map();
   }
 
-  /** @returns {Promise<Buffer>} the file identified by (path, size, mtime) compressed with `encoding` ('gzip' by default) */
+  /**
+   * @returns {Promise<Buffer>} the file identified by (path, size, mtime, inode, ctime) compressed with `encoding` ('gzip'
+   *   by default) — the inode and ctime too: a file rewritten with its old size and mtime put back (rsync -t, touch -r)
+   *   is another file (a cosmetic plugin's served at its new hash must not come out of the cache with the old bytes)
+   */
   get(absPath, stat, encoding = 'gzip') {
-    return this.compressed(`${absPath}\0${stat.size}\0${stat.mtimeMs}`, () => fsp.readFile(absPath), encoding, path.extname(absPath).toLowerCase());
+    return this.compressed(`${absPath}\0${stat.size}\0${stat.mtimeMs}\0${stat.ino}\0${stat.ctimeMs}`, () => fsp.readFile(absPath), encoding, path.extname(absPath).toLowerCase());
   }
 
   /**
@@ -283,17 +287,18 @@ async function compressedSibling(absPath, stat, encoding) {
   }
 }
 
-export async function serveFile(req, res, absPath, stat, mountName, segments, query, gzipCache, log) {
+export async function serveFile(req, res, absPath, stat, mountName, segments, query, gzipCache, log, opts = {}) {
   const ext = path.extname(absPath).toLowerCase();
   const type = MIME[ext] || 'application/octet-stream';
   const compressible = COMPRESSIBLE.has(ext);
-  const rangeHeader = req.headers.range;
+  // RFC 9110 §14.2: Range is defined only for GET; other methods ignore it, including for encoding selection.
+  const rangeHeader = req.method === 'GET' ? req.headers.range : undefined;
   const encoding = compressible && stat.size >= GZIP_MIN_BYTES && !rangeHeader ? pickEncoding(req.headers['accept-encoding']) : null;
   // Code/config/data keep their existing serving contract. Only resource trees
   // can opt into static precompression; nonselected encodings are never served.
   const sibling = encoding && mountName === 'public' && ['assets', 'fonts'].includes(segments[0])
     ? await compressedSibling(absPath, stat, encoding) : null;
-  const baseTag = `${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}`;
+  const baseTag = opts.contentHash || `${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}`;
   const sideTag = sibling ? `-static-${sibling.stat.size.toString(16)}-${sibling.stat.mtimeMs}` : '';
   const etag = `"${baseTag}${encoding === 'br' ? '-br' : encoding === 'gzip' ? '-gz' : ''}${sideTag}"`;
   const lastModified = stat.mtime.toUTCString();
@@ -301,11 +306,12 @@ export async function serveFile(req, res, absPath, stat, mountName, segments, qu
 
   const headers = {
     'Content-Type': type,
-    'Cache-Control': cacheControlFor(ext, mountName, segments, query),
+    'Cache-Control': opts.cacheControl || cacheControlFor(ext, mountName, segments, query),
     ETag: etag,
     'Last-Modified': lastModified,
   };
   if (compressible) headers.Vary = 'Accept-Encoding';
+  if (opts.headers) for (const [k, v] of Object.entries(opts.headers)) if (v != null && v !== '') headers[k] = v;
 
   const modified = sibling && sibling.stat.mtimeMs > stat.mtimeMs ? sibling.stat.mtime : stat.mtime;
   headers['Last-Modified'] = modified.toUTCString();
@@ -368,4 +374,24 @@ async function streamTo(src, res, log, transform) {
     if (e && e.code !== 'ERR_STREAM_PREMATURE_CLOSE') log.debug?.('[http] stream aborted', e.code || e.message);
     res.destroy();
   }
+}
+
+export async function serveBuffer(req, res, { body, hash, type, cacheControl, key, cache }) {
+  const encoding = body.length >= GZIP_MIN_BYTES ? pickEncoding(req.headers['accept-encoding']) : null;
+  const etag = `"${hash}${encoding === 'br' ? '-br' : encoding === 'gzip' ? '-gz' : ''}"`;
+  const headers = { 'Content-Type': type, 'Cache-Control': cacheControl, ETag: etag, Vary: 'Accept-Encoding' };
+  const inm = req.headers['if-none-match'];
+  if (typeof inm === 'string' && (inm.trim() === '*' || inm.split(',').some((t) => stripWeak(t) === etag))) {
+    res.writeHead(304, headers);
+    res.end();
+    return;
+  }
+  let out = body;
+  if (encoding) {
+    out = await cache.compressed(`${key}\0${hash}`, async () => body, encoding, path.extname(key).toLowerCase());
+    headers['Content-Encoding'] = encoding;
+  }
+  headers['Content-Length'] = out.length;
+  res.writeHead(200, headers);
+  res.end(req.method === 'HEAD' ? undefined : out);
 }

@@ -27,7 +27,7 @@ import { createStore, useStore, selectRoute } from '../store.js';
 import { ResultView } from './result.js';
 import { toast, toastError } from '../ui/toasts.js';
 import {
-  loadStats, saveStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf,
+  loadStats, saveStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf, isModdedRecord,
   recordToResult, MAX_RECORDS, FULL_KEEP, IMPORT_MAX_CHARS,
 } from '../ui/stats.js';
 import { t, N_ } from '../../../shared/i18n.js';
@@ -130,7 +130,7 @@ function Overview({ agg, gd }) {
       <${StatCard} micro="BEST ROUND" value=${fmtNum(agg.rounds.max)} label=${t('最远回合')} />
       <${StatCard} micro="TIME PLAYED" value=${playedText(agg.duration.totalMs)} label=${t('累计时长')} />
     </div>
-    <p class="st-split"><span>${t('单人')} <b class="num">${fmtNum(agg.byMode.solo)}</b></span><span>${t('同盟')} <b class="num">${fmtNum(agg.byMode.coop)}</b></span></p>
+    <p class="st-split"><span>${t('单人')} <b class="num">${fmtNum(agg.byMode.solo.games)}</b></span><span>${t('同盟')} <b class="num">${fmtNum(agg.byMode.coop.games)}</b></span></p>
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table">
       <thead><tr><th>${t('难度')}</th><th class="num">${t('局数')}</th><th class="num">${t('胜场')}</th><th class="num">${t('胜率')}</th><th class="num">${t('隐秘核心通关')}</th></tr></thead>
       <tbody>
@@ -217,7 +217,7 @@ function HistoryRow({ rec, gd, onOpen }) {
     <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : self?.bandId || '—'}</span></td>
     <td class="st-res">${quit ? html`<span class="t-quit">${t('中途退出')}</span>` : html`<span class=${won ? 't-win' : 't-lose'}>${won ? t('胜') : t('负')}</span>`}
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}</td>
-    <td class="num">${known ? fmtNum(rounds) : '—'}</td>
+    <td>${isModdedRecord(rec) ? t('非官方') : ''}</td><td class="num">${known ? fmtNum(rounds) : '—'}</td>
     <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
   </tr>`;
 }
@@ -242,7 +242,7 @@ function Replay({ rec, onBack }) {
   const gd = useGameData();
   const res = useMemo(() => recordToResult(rec), [rec]);
   if (!gd.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;
-  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} backLabel=${t('返回统计')} onBack=${onBack} quiet=${true} />`;
+  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} backLabel=${t('返回统计')} onBack=${onBack} quiet=${true} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
 }
 
 /** The overlay, rendered while open (its data hooks run only then). */

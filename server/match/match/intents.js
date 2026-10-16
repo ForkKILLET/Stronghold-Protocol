@@ -54,6 +54,9 @@ export class MatchIntents {
       case 'g.leave': this.onLeave(ps.playerId); return OK;
       case 'b.progress': return this._onProgress(ps, msg);
       case 'b.result': return this._onResult(ps, msg);
+      // the host's answer to a delegated bot layout rehearsal (DESIGN §14): a report, never an error — an unknown,
+      // expired or foreign task is ignored (MatchRehearsal._onRehearsalResult)
+      case 'b.rehearsalResult': this._onRehearsalResult(ps, msg); return OK;
       default: return fail(ERR.BAD_MSG);
     }
   }
@@ -178,6 +181,7 @@ export class MatchIntents {
       const rec = this.gd.item(id);
       if (!rec || rec.isDiy || rec.isHidden) return fail(ERR.BAD_TARGET, 'unknown equipment');
       grantedName = rec.name || id;
+      if (!ps.hand.some(p => !p) && !ps.temp.some(p => !p)) return fail(ERR.HAND_FULL);
       piece = ps.acquireItem(id, { source: 'console', fromPool: false });
       granted = !!piece;
     } else return fail(ERR.BAD_MSG);

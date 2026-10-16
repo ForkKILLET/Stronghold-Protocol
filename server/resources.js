@@ -321,7 +321,7 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', resource
 
   async function build(epoch) {
     const previous = cache;
-    const sources = await Promise.all(['assets.json', 'local-assets.json', ASSET_HASHES_FILE].map(sourceFile));
+    const sources = await Promise.all(['assets.json', 'local-assets.json', ASSET_HASHES_FILE, 'local-fx.json'].map(sourceFile));
     // The optional pack index is probed only when it exists. Keeping it out of
     // the normal source stat set preserves the cheap three-manifest startup
     // path for installs that publish packs nowhere.
@@ -339,10 +339,10 @@ export function createResourceIndex({ dataDir, publicDir, cdnBase = '', resource
       const key = [sourceKey, ...tiles.map((file) => file?.stamp || '-')].join('|');
       if (previous.key === key) return previous;
     }
-    const [assets, local, hashesDoc] = await Promise.all(sources.map(readJson));
+    const [assets, local, hashesDoc, fx] = await Promise.all(sources.map(readJson));
     const packsDoc = await readJson(packSource);
     const assetsDoc = assets ? rewrite(assets.doc) : null;
-    const localDoc = local ? rewrite(local.doc) : null;
+    const localDoc = local || fx ? rewrite({ ...(local?.doc || {}), groups: { ...(local?.doc?.groups || {}), ...(fx?.doc?.groups || {}) } }) : null;
     const collected = collectResourceFiles(assetsDoc, localDoc);
     const tileFiles = collected.filter((f) => /\/assets\/local\/map\/autochess\/tiles\.json$/.test(f.url));
     const tiles = await tileSources(tileFiles);

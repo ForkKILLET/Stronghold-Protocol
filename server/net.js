@@ -33,8 +33,11 @@ import { cleanPlayerCard } from '../shared/playerCard.js';
 // The handler object (implemented by server/lobby.js) receives:
 //   onHello(session, { resumed, repeat })  after `welcome` was sent
 //   welcomeInfo() → object (optional)      extra fields of every `welcome` (never one of its own keys): the lobby's
-//                                          `diyKitted` (0.2.0 自选编队 — which operators a DIY slot may field)
-//   onMessage(session, msg) → { ok: true } | { error: ERR code, detail?: string } | undefined
+//                                          `diyKitted` (0.2.0 自选编队 — which operators a DIY slot may field) and
+//                                          `content` ({ vanilla: <cs> }, the server's content hash — DESIGN §32)
+//   onMessage(session, msg) → { ok: true } | { error: ERR code, detail?: string } | undefined — or a Promise of one
+//                                          (a room whose match runs in a match host worker, DESIGN §32.6: the reply
+//                                          goes out when it settles; a rejection is INTERNAL)
 //   routeGame(session, msg) → same (optional): client-side combat reports `b.progress` / `b.result` (DESIGN §14) go
 //                                          straight to the running match through it; without it they reach onMessage
 //   onDisconnect(session)                  the session's socket closed (session kept for the reconnect window)
@@ -74,7 +77,7 @@ export const NET_DEFAULTS = Object.freeze({
  * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
  * state.resync requests a full match recovery; it also uses the lobby's per-session resync coalescing.
  */
-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.skins', 'room.card', 'room.ownership', 'room.diy', 'room.spectate', 'state.resync']);
+export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.skins', 'room.card', 'room.ownership', 'room.diy', 'room.spectate', 'state.resync', 'room.setPlugins']);
 
 /** Close codes (see header). */
 export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
@@ -120,6 +123,12 @@ export class Session {
     this.resyncAt = -Infinity;
     /** @type {Record<string, { skill: number, module: string|null }> | null} checked operator loadout (lobby-owned, DESIGN §16) */
     this.loadout = null;
+    /** @type {string | null} content set that validated the operator loadout */
+    this.loadoutCs = null;
+    /** @type {string | null} content set that validated not-owned operators */
+    this.notOwnedCs = null;
+    /** @type {string | null} content set that validated DIY operators */
+    this.diyCs = null;
     this.skins = null;
     this.card = null;
     /** @type {Readonly<Record<string, { potential: number, cultivate: number }>> | null} checked per-operator 潜能 / 练度 (lobby-owned, 0.2.2; room.loadout `ops`) */
@@ -217,6 +226,7 @@ export class SessionRegistry {
     s.ops = doc.ops && typeof doc.ops === 'object' ? doc.ops : null;
     s.notOwned = Array.isArray(doc.notOwned) ? doc.notOwned : null;
     s.diy = doc.diy && typeof doc.diy === 'object' ? doc.diy : null;
+    for (const key of ['loadoutCs', 'notOwnedCs', 'diyCs']) s[key] = typeof doc[key] === 'string' && /^[0-9a-f]{64}$/.test(doc[key]) ? doc[key] : null;
     s.lang = doc.lang || 'zh-CN';
     s.notice = typeof doc.notice === 'string' ? doc.notice : null;
     s.pendingResult = Array.isArray(doc.pendingResult) ? doc.pendingResult.filter((frame) => typeof frame === 'string') : null;

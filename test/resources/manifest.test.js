@@ -404,10 +404,10 @@ describe('the resource index cache', () => {
     assert.ok(checks.every((check) => check === checks[0]), 'warm requests share only the ongoing check');
     for (const b of await Promise.all(checks)) assert.equal(b, a);
     assert.equal(reads.length, 0, 'no JSON or tile body read on a cache hit');
-    assert.equal(stats.length, 4, 'only three manifests and the known tile companion');
+    assert.equal(stats.length, 5, 'only four manifests and the known tile companion');
     assert.equal(rewrites, 2, 'no CDN rewrite or resource traversal on a cache hit');
     await index.get();
-    assert.equal(stats.length, 8, 'completed checks are not cached indefinitely');
+    assert.equal(stats.length, 10, 'completed checks are not cached indefinitely');
     index.reset();
     assert.notEqual((await index.get()).body, a.body);
     assert.equal(reads.length, 4);
@@ -587,4 +587,26 @@ describe('the resource index cache', () => {
     assert.ok(m.count > 0, 'the list is still complete: the client preloads from the CDN');
     inst.cleanup();
   });
+});
+
+ test('official effect JSON is a resource: separate manifest, hashes, CDN, sizes and source invalidation', async t => {
+  const paths = ['index.json', 'textures.json', 'prefabs/skill_probe.json', 'mesh/unit_mesh.json'].map(x => '/assets/local/fx/' + x);
+  const inst = install({ assets: null, localDoc: null, files: paths.map(p => p.slice(1)) });
+  t.after(inst.cleanup);
+  const source = path.join(inst.dataDir, 'local-fx.json');
+  const doc = hash => ({ groups: { 'fx/probe': Object.fromEntries(paths.map((p, i) => [i, { path: p, hash }])) } });
+  fs.writeFileSync(source, JSON.stringify(doc('aaaaaaaaaaaa')));
+  const index = createResourceIndex({ dataDir: inst.dataDir, publicDir: inst.publicDir,
+    cdnBase: 'https://cdn.example.com', rewrite: v => rewriteAssetPaths(v, 'https://cdn.example.com') });
+  const a = await index.get();
+  assert.equal(a.manifest.files.length, paths.length);
+  assert.ok(a.manifest.files.every(f => f.url.startsWith('https://cdn.example.com/assets/local/fx/') && f.tier === TIER_ESSENTIAL && f.size > 0 && f.hash === 'aaaaaaaaaaaa'));
+  for (const p of paths) assert.equal(isResourcePath(p), true, p);
+  for (const p of ['/assets/local/fx/secrets.json', '/assets/local/fx/prefabs/nested/config.json', '/assets/local/fx/../config.json']) assert.equal(validateResourceUrl(p), false, p);
+  await new Promise(resolve => setTimeout(resolve, 20));
+  fs.writeFileSync(source, JSON.stringify(doc('bbbbbbbbbbbb')));
+  const b = await index.get();
+  assert.notEqual(b.etag, a.etag);
+  assert.notEqual(b.manifest.version, a.manifest.version);
+  assert.ok(b.manifest.files.every(f => f.hash === 'bbbbbbbbbbbb'));
 });

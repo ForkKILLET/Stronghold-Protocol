@@ -1,5 +1,5 @@
 // test/ci.test.js — tools/ci.mjs (the local run of .github/workflows/ci.yml): its step list is ci.yml's, the reader of
-// the workflow, the arguments, the env and the summary. Nothing here boots a server or runs a step.
+// the workflow, the arguments, the env and the summary. Build dispatch uses an injected runner; no server is booted.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  CI_TEST_ENV, ROOT, SKIPPED_CI_STEPS, SMOKE_PATHS, STEPS, binPath, formatDuration, formatSummary, isSkippedCiStep,
+  CI_TEST_ENV, ROOT, SKIPPED_CI_STEPS, SMOKE_PATHS, STEPS, binPath, buildProductionClient, formatDuration, formatSummary, isSkippedCiStep,
   parseArgs, parseWorkflow, selectSteps, stepEnv,
 } from '../tools/ci.mjs';
 
@@ -146,4 +146,22 @@ test('node tools/ci.mjs --list and a bad option run without npm (exit 0 / 2)', (
   const bad = spawnSync(process.execPath, ['tools/ci.mjs', '--only', 'nope'], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /unknown step "nope"/);
+});
+
+test('production build prepares vendor before Vite with the same environment', async () => {
+  const calls = [], env = { NO_COLOR: '1' };
+  const code = await buildProductionClient(env, async (args, passedEnv) => {
+    calls.push(args);
+    assert.equal(passedEnv, env);
+    return 0;
+  });
+  assert.equal(code, 0);
+  assert.deepEqual(calls, [['tools/vendor.mjs'], [binPath('vite', 'vite'), 'build']]);
+});
+
+test('production build stops on vendor failure and returns Vite failures', async () => {
+  const calls = [];
+  assert.equal(await buildProductionClient({}, async args => { calls.push(args); return 7; }), 7);
+  assert.deepEqual(calls, [['tools/vendor.mjs']]);
+  assert.equal(await buildProductionClient({}, async args => args[0] === 'tools/vendor.mjs' ? 0 : 9), 9);
 });

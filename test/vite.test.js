@@ -200,6 +200,33 @@ test('built simulation matches Node for sleep, Egir, stand-ins, self-selected ki
   }
 });
 
+test('built 0.3.0 collider/block ranges and catapult multihits match Node results, state and events', async () => {
+  const simulation = Object.values(manifest).find(m => m.name === 'simulation');
+  const ns = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
+  const spec = ns.find(n => typeof n?.createBattleFromSpec === 'function');
+  const simdata = ns.find(n => typeof n?.setSimData === 'function');
+  const raw = getData({ log: { warn() {} } }); simdata.setSimData(raw);
+  for (const enemyKey of ['enemy_1001_bigbo', 'enemy_10162_mnctpt']) {
+    const input = nativeSpec.buildBattleSpec({ seed: 41, kind: 'normal', stageId: 'act1autochess_m01', timeLimit: 40,
+      rect: { r0: 9, r1: 12, c0: 0, c1: 10 },
+      players: [{ playerId: 'p', units: [
+        { uid: 1, chessId: 'chess_char_4_25_a', row: 9, col: 4, dir: 'RIGHT' },
+        { uid: 2, chessId: 'chess_char_4_13_a', row: 10, col: 5, dir: 'RIGHT' },
+      ], bonds: {} }], routes: [{ motion: 'WALK', start: [9, 8], end: [9, 0] }],
+      spawns: [{ enemyKey, count: 3, time: 0, routeIndex: 0 }] });
+    const native = nativeSpec.createBattleFromSpec(input, new DataSource(raw), { quiet: true, recordEvents: true });
+    const built = spec.createBattleFromSpec(input, new simdata.DataSource(raw), { quiet: true, recordEvents: true });
+    native.runToEnd(100); built.runToEnd(100);
+    assert.ok(native.finished && built.finished);
+    assert.equal(native.errors.length, 0); assert.equal(built.errors.length, 0);
+    assert.deepEqual(spec.compactResult(built.result()), nativeSpec.compactResult(native.result()), enemyKey);
+    assert.deepEqual(built.snapshot(), native.snapshot(), enemyKey);
+    const events = native.drainEvents();
+    assert.ok(events.length > 0, 'the representative battle produces events');
+    assert.deepEqual(built.drainEvents(), events, enemyKey);
+  }
+});
+
 test('built Wisdel shadows obey boss/hidden field ownership exactly like Node, including solo empty halves', async () => {
   const simulation = Object.values(manifest).find(m => m.name === 'simulation');
   const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
@@ -242,4 +269,11 @@ test('build detection follows built files and separately served worker modules',
   const sharedUpdated = computeBuildTag(temp);
   await fs.writeFile(path.join(temp, 'shared/resourcePaths.js'), '// resource path rules used by the worker');
   assert.notEqual(computeBuildTag(temp), sharedUpdated);
+  for (const file of ['public/js/battle/simWorker.js', 'server/sim/spec.js', 'shared/plugins/scriptLoad.js', 'shared/resourcePackRoutes.js']) {
+    const previous = computeBuildTag(temp);
+    await fs.mkdir(path.dirname(path.join(temp, file)), { recursive: true });
+    await fs.writeFile(path.join(temp, file), '// changed raw Worker dependency');
+    assert.notEqual(computeBuildTag(temp), previous, file);
+  }
+
 });

@@ -1,5 +1,5 @@
 // Local achievement aggregates. Only retained browser records; no account or server state.
-import { countsTowardStats, selfRowOf, roundsOf } from './stats.js';
+import { isModdedRecord, countsTowardStats, selfRowOf, roundsOf } from './stats.js';
 import { N_ } from '../../../shared/i18n.js';
 /** 绝境突破: a clear on these difficulties. */
 const HARD_UP = new Set(['HARD', 'ABYSS']);
@@ -76,7 +76,7 @@ export function achievementStats(records, { hiddenLayers = () => false } = {}) {
     const self = rec ? selfRowOf(rec) : null;
     if (!self || (rec.id && seen.has(rec.id))) continue;
     if (rec.id) seen.add(rec.id);
-    if (!countsTowardStats(rec)) continue;
+    if (!countsTowardStats(rec) || isModdedRecord(rec)) continue;
     out.count++;
     if (!rec.compact) out.detailed++;
     out.trophies += Math.max(0, num(self.trophies));
