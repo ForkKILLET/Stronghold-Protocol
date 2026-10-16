@@ -382,4 +382,12 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 - 2026-10-17 主页面四个开始操作同组呈现，前三项进入配置、加入同盟打开密钥输入；辅助入口集中在左侧，不恢复重复档案按钮。作战提示外框固定高度，长文仅正文内部滚动。
 
-- 2026-10-17 房间底栏命名区域为 summary／tools／status／actions；桌面与 utility-mobile.css 必须同步，不能恢复旧 options 区域。名牌／空席操作栏等高，主操作并列，房间顶栏与大厅共用 1.1rem 高度（矮屏仍自适应）。
+- 2026-10-17 房间底栏命名区域为 summary／tools／status／actions；桌面与 utility-mobile.css 必须同步，不能恢复旧 options 区域。名牌／空席操作栏等高，主操作并列，房间与大厅使用公共 PageHeader（矮屏仍自适应）。
+
+- 2026-10-17 普通面板／按钮／标签／选择器使用直角；头像、圆盘图标、雷达、状态点和光效保留必要圆形。延迟徽标宽度不得随数值跳动；成就入口只保留杯数信息卡，不恢复底部重复档案文案。
+
+- 2026-10-17 局外及战前页面统一使用 ui/pageHeader.js，navigation.css 在 utility-mobile.css 后加载；页面仅提供返回回调与标题，连接、公告、工具和身份不得各页复制。所有这些页面使用相同融合结构，同一视口首行／工具／身份框坐标与总栏高一致，页面专属控件放在内容区，正式对局保留原有 HUD。战前 DraftPause 在 StepHeader 内按布局定位，禁止重新使用旧 fixed 坐标；保留投票和快捷键协议。浏览器回归 test/ui/navigation.e2e.test.js（SP_E2E=1）。
+
+- 2026-10-17 等待室控制台、AI 队友最后选择、匹配同盟队友共用 RoomOptionSwitch，复用设置／插件面板的 set-toggle 直角滑块；名称固定、状态从实际值读取。保留控制台倒计时确认、创建者权限、请求锁与公共匹配限制，不恢复三套开关样式。
+
+- 2026-10-17 PageHeader 不再按 heading 有无分支生成两种 DOM。大厅、配置、档案／历史、调配各视图、报告／图鉴、战前和结算都必须提供页面标题；公共导航不参加整页淡入／淡出。房间、配置草稿及覆盖页返回语义保持原样；不同屏幕尺寸的跨页坐标检查见 navigation.e2e.test.js。

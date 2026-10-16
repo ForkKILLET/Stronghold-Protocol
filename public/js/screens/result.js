@@ -1,3 +1,4 @@
+import { BackButton } from '../ui/pageHeader.js';
 // Result screen (research 06 §10.6): victory / defeat hero with rounds passed, boss medallions, and a
 // card per player — band, final lineup avatars with elite marks, stats, title (评语) with its icon —
 // plus 返回同盟.
@@ -16,7 +17,7 @@
 //                          activatedLayers?, lpLost?, perfectRounds? } }] }
 
 import { useEffect, useState } from '../../vendor/hooks.module.js';
-import { html, Button, Icon, MicroLabel, DifficultyTag } from '../ui/components.js';
+import { html, Icon, MicroLabel, DifficultyTag } from '../ui/components.js';
 import { useGameData, Img, UnitThumb, BandIcon, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
 import { ResultAvatar } from '../ui/resultAvatar.js';
 import { normalizeResult, fmtNum, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
@@ -169,7 +170,7 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
         ${mins ? html`<p class="result__time t-lo">${tParts('本局耗时 {n} 分钟', { n: html`<b class="num">${mins}</b>`, mins })}</p>` : null}
         </div>
         <footer class="result__foot">
-          <${Button} variant="primary" size="xl" icon="chevronLeft" onClick=${onBack}>${backLabel}<//>
+          <${BackButton} onClick=${onBack} title=${backLabel} />
         </footer>
       </section>
       <section class="result__players">

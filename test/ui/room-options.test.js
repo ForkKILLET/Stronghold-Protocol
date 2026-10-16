@@ -1,8 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {RoomOptionsPage} from '../../public/js/ui/roomOptions.js';
+import {RoomOptionsPage,RoomPacingControls} from '../../public/js/ui/roomOptions.js';
 import {PrepTimePicker} from '../../public/js/ui/prepTime.js';
-function* walk(v){if(Array.isArray(v)){for(const x of v)yield*walk(x);return;}if(!v||typeof v!=='object')return;yield v;yield*walk(v.props?.children);}
+import {PageHeader} from '../../public/js/ui/pageHeader.js';
+function* walk(v){if(Array.isArray(v)){for(const x of v)yield*walk(x);return;}if(!v||typeof v!=='object')return;yield v;if(v.type===RoomPacingControls)yield*walk(RoomPacingControls(v.props));yield*walk(v.props?.children);}
 test('separate page uses the existing picker with the original draft and can return',()=>{
  let back=0;const change=()=>{};
  const nodes=[...walk(RoomOptionsPage({mode:'coop',prepChoice:'2',onPrepChange:change,onBack:()=>back++}))];
@@ -20,5 +21,5 @@ test('waiting-room save is distinct from cancellation and viewers cannot change 
  assert.equal(viewer.find(n=>n.type===PrepTimePicker).props.disabled,true);
  assert.ok(viewer.filter(n=>n.type==='button').every(n=>n.props.disabled));
  assert.equal(viewer.some(n=>n.props?.icon==='check'),false);
- viewer.find(n=>n.props?.icon==='chevronLeft').props.onClick();assert.equal(back,1);
+ viewer.find(n=>n.type===PageHeader).props.onBack();assert.equal(back,1);
 });

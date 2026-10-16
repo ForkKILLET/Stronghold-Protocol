@@ -1,3 +1,5 @@
+import { DraftPause } from './draftPause.js';
+import { PageHeader } from './pageHeader.js';
 // Chrome shared by every in-match screen: the step header of the pre-game screens (exit + ping +
 // difficulty | "1/2 确认本局信息" | countdown) and the exit flow (confirm with 暂离 / 放弃, AI 托管 overlay).
 //
@@ -5,13 +7,12 @@
 // off. 放弃模拟: g.leave then room.leave (the platform treats it as a quit), back to the lobby.
 
 import { useState } from '../../vendor/hooks.module.js';
-import { html, Button, Modal, PingPill, DifficultyTag, Countdown, MicroLabel } from './components.js';
+import { html, Button, Modal, DifficultyTag, Countdown, MicroLabel } from './components.js';
 import { actions } from './gameActions.js';
 import { toastError } from './toasts.js';
 import { net } from '../net.js';
-import { store, useStore, shallowEqual, emptyMatch, createStore, isSpectating } from '../store.js';
+import { store, useStore, emptyMatch, createStore, isSpectating } from '../store.js';
 import { GIcon } from './gameComponents.js';
-import { GuideButton } from './guide.js';
 import { recordQuit } from './stats.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 
@@ -124,22 +125,13 @@ export function AwayOverlay({ onBack = () => {} }) {
  * @param {{ step: number, of: number, title: string, micro: string, pub: any, total?: number|null, onExit: Function }} props
  */
 export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
-  const conn = useStore((s) => s.connection, shallowEqual);
-  return html`<header class="stephead">
-    <div class="stephead__left">
-      <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label=${t('离开')} title=${t('离开')} />
-      <div class="stephead__meta">
-        <${PingPill} ms=${conn.ping} online=${conn.status === 'online'} />
-        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}
-      </div>
-    </div>
-    <div class="stephead__center">
-      <${MicroLabel} tone="mint">${micro}</${MicroLabel}>
-      <h1 class="stephead__title"><b class="num">${step}</b><span class="num stephead__of">/${of}</span>${title}</h1>
-    </div>
+  return html`<${PageHeader} onBack=${onExit} backTitle=${t('离开')} title=${title} micro=${micro} />
+  <header class="stephead stephead--context">
+    <div class="stephead__progress num"><b>${step}</b><span>/${of}</span></div>
     <div class="stephead__right">
-      <${GuideButton} class="stephead__guide" variant="secondary" />
+      ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}
       <${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />
+      <${DraftPause} pub=${pub} standalone=${true} />
     </div>
   </header>`;
 }

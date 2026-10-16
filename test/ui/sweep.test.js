@@ -5,12 +5,12 @@ import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
 import {
   SweepShell, SweepView, BondPanel, BandPanel, EnemyPanel, CodexDetail, EnemyCodexView,
-  enemyGrade, codexEnemies, bossEnemyKeys, codexSelection, sweepTab, handbookPage, sweepEscapeAction,
+  enemyGrade, codexEnemies, bossEnemyKeys, codexSelection, sweepTab, sweepEscapeAction,
 } from '../../public/js/screens/sweep.js';
 import { data } from '../../public/js/data.js';
 import { Modal } from '../../public/js/ui/components.js';
 import { loadoutStore, closeLoadout } from '../../public/js/ui/loadoutSync.js';
-import { guideStore, closeGuide } from '../../public/js/ui/guide.js';
+import { PageHeader } from '../../public/js/ui/pageHeader.js';
 import { AchievementView } from '../../public/js/ui/achievements.js';
 import { achievementStats } from '../../public/js/ui/achievementModel.js';
 
@@ -37,7 +37,8 @@ test('report is a full page without a modal or focus trap and yields to the load
   for (const [loadoutOpen, guideOpen, suspended] of [[false, false, false], [true, false, true], [false, true, true]]) {
     const root = SweepShell({ loadoutOpen, guideOpen, children: 'report' });
     assert.equal(root.type, 'main');
-    assert.equal(root.props.children, 'report');
+    assert.equal(text(root), 'report');
+    assert.ok(find(root,v=>v.type===PageHeader));
     assert.equal(root.props.inert, suspended ? '' : undefined);
     assert.equal(root.props['aria-hidden'], suspended ? 'true' : undefined);
     assert.equal(find(root, (v) => v.type === Modal || v.props?.role === 'dialog' || v.props?.['aria-modal']), undefined);
@@ -61,13 +62,14 @@ test('Escape returns from the codex first and cannot cross an operator/guide/dia
     { ...ev, target: { type: 'search', value: 'Scout' } }]) assert.equal(sweepEscapeAction(event, {}), null);
 });
 
-test('all report tabs, loading state, guide shortcut and selection callbacks are wired', () => {
+test('report tabs retain callbacks and delegate return/help to the common header', () => {
   let selected;
   let closed = 0;
   const props = { ready: true, tab: 'bonds', onClose: () => closed++, onTab: (id) => { selected = id; }, notOwned: [] };
   const tree = SweepView(props);
-  find(tree, (v) => v.props?.['aria-label'] === '返回大厅').props.onClick();
-  assert.equal(closed, 1);
+  const shell=SweepShell({children:tree,onBack:()=>closed++});
+  find(shell,v=>v.type===PageHeader).props.onBack();
+  assert.equal(closed,1);
   const tabs = [...walk(tree)].filter((v) => v.props?.role === 'tab');
   assert.deepEqual(tabs.map(text), ['盟约报告', '策略报告', '敌方资料']);
   tabs[2].props.onClick();
@@ -79,13 +81,7 @@ test('all report tabs, loading state, guide shortcut and selection callbacks are
   assert.equal(find(SweepView({ ...props, ready: false }), (v) => v.type?.name === 'BondPanel'), undefined);
   for (const v of [null, 'firepower', '__proto__', 3]) assert.equal(sweepTab(v), 'bonds');
   assert.equal(sweepTab('enemies'), 'enemies');
-  const old = guideStore.get();
-  try {
-    find(tree, (v) => v.props?.['aria-label'] === '进阶图鉴').props.onClick();
-    assert.equal(guideStore.get().open, true);
-    assert.equal(guideStore.get().page, handbookPage());
-    closeGuide();
-  } finally { guideStore.set(old); }
+  assert.equal(find(tree,v=>v.props?.['aria-label']==='进阶图鉴'),undefined);
 });
 
 test('bond report shows actual members/thresholds, ownership and opens the selected operator in the existing loadout', () => {
@@ -210,12 +206,7 @@ test('achievement canvas follows the reference design rem and viewport, without 
   const stats = postcss.parse(read('public/css/screens/stats.css'));
   const compact = [];
   stats.walkRules((r) => { if (r.selector === '.st:not(.st--replay)') compact.push(r); });
-  assert.equal(compact.length, 1);
-  assert.equal(compact[0].parent.params, '(min-width: 1001px) and (min-height: 601px)');
-  assert.match(compact[0].toString(), /width: min\(12rem, 1120px, 90vw\)/);
-  assert.match(compact[0].toString(), /height: min\(8rem, 780px, 86dvh\)/);
-  assert.doesNotMatch(compact[0].toString(), /transform|zoom|--t:/);
-  assert.equal(compact[0].selector.includes('combat-metrics'), false);
+  assert.equal(compact.length, 0, 'the archive now shares the full-width navigation shell');
 });
 
 test('report has an explicit lazy lobby entry, no extra service/assets, readable scrollable mobile controls', () => {

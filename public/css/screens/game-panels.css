@@ -294,7 +294,7 @@
 .bpop__mname { font-size: calc(.12 * var(--t)); color: var(--text-lo); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bpop__member.is-on .bpop__mname { color: var(--mint-400); }
 .bpop__member.is-owned .bpop__mname { color: var(--text-hi); }
-.bpop__ban { position: absolute; top: .02rem; right: .1rem; width: .2rem; height: .2rem; display: grid; place-items: center; background: var(--red); color: #fff; border-radius: 50%; }
+.bpop__ban { position: absolute; top: .02rem; right: .1rem; width: .2rem; height: .2rem; display: grid; place-items: center; background: var(--red); color: #fff; border-radius: 0; }
 .bpop__ban .icon { width: .14rem; height: .14rem; }
 /* a member through 变形同构体 (the item pairing, not the operator's own bond): a gold 同构 tag on the portrait */
 .bpop__iso { position: absolute; top: .02rem; right: .08rem; padding: 0 .04rem; font-size: calc(.11 * var(--t)); line-height: 1.45; font-weight: 700; color: #141414; background: var(--gold-2); }
@@ -496,7 +496,7 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
   padding: .06rem 0 .07rem; background: linear-gradient(0deg, #e4e8e7, #f7f9f8); color: #1b1e1e; pointer-events: none;
   animation: confirm-in var(--t-fast) var(--ease-out);
 }
-.spcard__cbox { flex: none; display: grid; place-items: center; width: .2rem; height: .2rem; border: 2px solid currentColor; border-radius: 2px; }
+.spcard__cbox { flex: none; display: grid; place-items: center; width: .2rem; height: .2rem; border: 2px solid currentColor; border-radius: 0; }
 .spcard__cbox .icon { width: .16rem; height: .16rem; }
 .spcard__confirm b { font-size: .2rem; font-weight: 900; letter-spacing: .22em; padding-left: .22em; }
 .spcard__confirm small { font-size: .12rem; letter-spacing: .1em; opacity: .6; }

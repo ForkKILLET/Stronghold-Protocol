@@ -225,7 +225,9 @@ test('the local view uses the reference panel/header, preserves empty/newer stat
   const entry = AchievementEntryView({ s, onOpen: () => opened++ });
   entry.props.onClick();
   assert.equal(opened, 1);
-  assert.match(text(entry), /成就统计.*博士档案/);
+  assert.equal(entry.props['aria-label'], `成就统计：${s.trophies} 杯`);
+  assert.doesNotMatch(text(entry), /博士档案/);
+  assert.equal([...walk(entry)].some(v=>v.props?.class==='hub-ach__label'),false);
   let closed = 0, openedStats = 0;
   const tree = AchievementView({ me: { name: '<script>' }, ready: true, gd: {}, local: {}, s,
     onClose: () => closed++, onStats: () => openedStats++ });

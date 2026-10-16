@@ -1,3 +1,4 @@
+import { PageHeader, BackButton } from '../ui/pageHeader.js';
 import { Select } from '../ui/select.js';
 import { OperatorPortrait } from '../ui/operatorPortrait.js';
 import { SkinSection } from '../ui/skinPicker.js';
@@ -932,21 +933,18 @@ function LoadoutScreen({ st, leaving = false }) {
   return html`<${Fragment}>
   <div class=${cx('lo', deck && 'lo--deck', leaving && 'is-leaving')} role="dialog" aria-modal="true" aria-label=${t('干员调配')}>
     <div class="lo__bg" aria-hidden="true"></div>
+    <${PageHeader} onBack=${deck && tab !== 'loadout' ? () => setTab('loadout') : closeLoadout}
+      title=${tab === 'ownership' ? t('干员持有') : tab === 'diy' ? t('自选编队') : quick ? t('快速配置') : t('干员调配')}
+      micro=${tab === 'ownership' ? 'OPERATOR ROSTER' : tab === 'diy' ? 'SELF-SELECT SQUAD' : quick ? 'QUICK ASSEMBLE' : 'OPERATOR LOADOUT'} />
     <header class=${cx('lo-top', deck && 'lo-top--deck')}>
       <div class="lo-top__left">
-        ${deck && tab !== 'loadout'
-          ? html`<${Button} variant="ghost" size="md" icon="chevronLeft" class="lo-back" onClick=${() => setTab('loadout')} title=${t('返回干员调配')}>${t('干员调配')}<//>`
-          : html`<${Button} variant="ghost" size="md" icon="chevronLeft" class="lo-back" onClick=${closeLoadout} aria-label=${t('返回')} title=${t('返回 (Esc)')}>${t('返回')}<//>`}
         ${deck ? html`<button type="button" class="lo-info" onClick=${() => setHelp(true)} aria-label=${t('调度手册')} title=${t('调度手册')}><${Icon} name="info" /></button>` : null}
       </div>
       <div class="lo-top__center">
-        ${deckLoadout ? html`<${MicroLabel} tone="mint">${quick ? 'QUICK ASSEMBLE' : 'OPERATOR LOADOUT'}<//>
-          <p class=${cx('lo-top__note', locked && 'is-locked')}>${quick === 'cult' ? t('潜能与练度按干员保存，普通、精锐形态与自选共用')
+        ${deckLoadout ? html`<p class=${cx('lo-top__note', locked && 'is-locked')}>${quick === 'cult' ? t('潜能与练度按干员保存，普通、精锐形态与自选共用')
             : quick ? t('快速编辑：展示干员精锐形态的技能与模组，改动即时保存') : locked ? lockedText : fromText}</p>`
-        : deck ? html`<${MicroLabel} tone="mint">${tab === 'ownership' ? 'OPERATOR ROSTER' : 'SELF-SELECT SQUAD'}<//>
-          <h2 class="lo-top__title">${tab === 'ownership' ? t('干员持有') : t('自选编队')}</h2>`
-        : html`<${MicroLabel} tone="mint">${tab === 'ownership' ? 'OPERATOR ROSTER' : tab === 'diy' ? 'SELF-SELECT SQUAD' : 'OPERATOR LOADOUT'}<//>
-        <div class="lo-tabs" role="tablist" aria-label=${t('干员调配 / 干员持有 / 自选编队')}>
+        : deck ? null
+        : html`<div class="lo-tabs" role="tablist" aria-label=${t('干员调配 / 干员持有 / 自选编队')}>
           <button type="button" role="tab" aria-selected=${tab === 'loadout' ? 'true' : 'false'} data-tab="loadout" class=${cx('lo-tab', tab === 'loadout' && 'is-on')} onClick=${() => setTab('loadout')}>
             <${Img} src=${localAsset('ui/outer', 'operator_preset')} class="lo-top__icon" fallback=${html`<${Icon} name="edit" class="lo-top__icon" />`} />${t('干员调配')}</button>
           <button type="button" role="tab" aria-selected=${tab === 'ownership' ? 'true' : 'false'} data-tab="ownership" class=${cx('lo-tab', tab === 'ownership' && 'is-on')} onClick=${() => setTab('ownership')}
@@ -1054,7 +1052,7 @@ function LoadoutScreen({ st, leaving = false }) {
         </div>
       </section>
       <div class="lo-detail-wrap">
-        <button type="button" class="lo-detail-back tapx" onClick=${() => setNarrowDetail(false)}><${Icon} name="chevronLeft" />${t('干员列表')}</button>
+        <${BackButton} class="lo-detail-back" title=${t('干员列表')} onClick=${() => setNarrowDetail(false)} />
         ${loadoutDetail}
       </div>
     </main>`}

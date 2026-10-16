@@ -394,7 +394,7 @@
 .lo-tab .lo-top__icon { width: max(.24rem, 14px); height: max(.24rem, 14px); }
 .lo-tab:hover { color: var(--text-hi); }
 .lo-tab.is-on { color: var(--text-hi); border-bottom-color: var(--mint-500); }
-.lo-tab__n { display: inline-grid; place-items: center; min-width: 1.5em; height: 1.5em; padding: 0 .3em; font-size: .62em; font-weight: 700; letter-spacing: 0; color: var(--ice-900); background: var(--ice); border-radius: 1em; }
+.lo-tab__n { display: inline-grid; place-items: center; min-width: 1.5em; height: 1.5em; padding: 0 .3em; font-size: .62em; font-weight: 700; letter-spacing: 0; color: var(--ice-900); background: var(--ice); border-radius: 0; }
 
 /* ---- 干员持有 (screens/ownership.js): the NORMAL chess by tier, each operator → its stand-in, a 持有 switch -------------- */
 .own { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .12rem; padding: .16rem .3rem .2rem; }
@@ -424,8 +424,8 @@
 .own-card__arrow .icon { width: max(.18rem, 12px); height: max(.18rem, 12px); color: var(--text-dim); }
 .own-card__sub { opacity: .55; }
 .own-card__state { display: inline-flex; flex-direction: column; align-items: center; gap: .03rem; min-width: max(.5rem, 30px); font-size: max(calc(.12 * var(--utility-text, var(--t))), 9px); font-weight: 700; color: var(--mint-400); white-space: nowrap; }
-.own-switch { position: relative; display: inline-block; width: max(.36rem, 24px); height: max(.2rem, 13px); border-radius: 1em; background: var(--mint-700); }
-.own-switch > i { position: absolute; top: 2px; right: 2px; width: calc(max(.2rem, 13px) - 4px); height: calc(max(.2rem, 13px) - 4px); border-radius: 50%; background: #fff; transition: right var(--t-fast), left var(--t-fast); }
+.own-switch { position: relative; display: inline-block; width: max(.36rem, 24px); height: max(.2rem, 13px); border-radius: 0; background: var(--mint-700); }
+.own-switch > i { position: absolute; top: 2px; right: 2px; width: calc(max(.2rem, 13px) - 4px); height: calc(max(.2rem, 13px) - 4px); border-radius: 0; background: #fff; transition: right var(--t-fast), left var(--t-fast); }
 /* 未持有: the operator greys out, the stand-in (who is deployed) lights up */
 .own-card.is-off { background: rgba(159, 212, 255, .07); border-color: rgba(159, 212, 255, .35); }
 .own-card.is-off .own-card__op { opacity: .5; filter: grayscale(.8); }
@@ -457,7 +457,7 @@
 .diy-slot__fill:hover { background: rgba(255, 255, 255, .05); color: var(--text-hi); }
 .diy-slot__fill b { font-size: max(calc(.16 * var(--t)), 11px); }
 .diy-slot__fill small { font-size: max(calc(.12 * var(--t)), 9px); color: var(--text-lo); }
-.diy-slot__plus { display: grid; place-items: center; width: max(.4rem, 26px); height: max(.4rem, 26px); border: 1px solid var(--line-3); border-radius: 50%; }
+.diy-slot__plus { display: grid; place-items: center; width: max(.4rem, 26px); height: max(.4rem, 26px); border: 1px solid var(--line-3); border-radius: 0; }
 .diy-slot__plus .icon { width: 60%; height: 60%; }
 .diy-slot__art { display: grid; place-items: center; width: max(.9rem, 56px); height: max(1.3rem, 84px); overflow: hidden; background: #0a0d0c; border: 1px solid var(--line-2); }
 .diy-slot__art img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
@@ -477,7 +477,7 @@
 .diy-slot__cult .lo-cult { max-width: max(2.6rem, 200px); }
 .diy-slot__bad { display: flex; align-items: center; gap: .04rem; margin: .02rem 0 0; font-size: max(calc(.12 * var(--t)), 9px); color: var(--amber); }
 .diy-slot.is-bad { border-color: rgba(255, 196, 0, .45); }
-.diy-tag { display: inline-flex; align-items: center; height: 1.5em; padding: 0 .4em; font-size: max(calc(.11 * var(--t)), 8px); font-weight: 700; border-radius: 1em; white-space: nowrap; }
+.diy-tag { display: inline-flex; align-items: center; height: 1.5em; padding: 0 .4em; font-size: max(calc(.11 * var(--t)), 8px); font-weight: 700; border-radius: 0; white-space: nowrap; }
 .diy-tag--proto { color: var(--ice-900); background: var(--ice); }
 .diy-tag--own { color: var(--text-on-mint); background: var(--mint-500); }
 .diy-bonds { display: flex; flex-wrap: wrap; gap: .03rem .06rem; }
@@ -545,10 +545,10 @@
 .lo-entry__icon { width: 1.25em; height: 1.25em; object-fit: contain; flex: none; }
 .lo-entry__n {
   display: inline-grid; place-items: center; min-width: 1.5em; height: 1.5em; padding: 0 .3em; margin-left: .02rem;
-  font-size: .8em; font-weight: 700; color: var(--text-on-mint); background: var(--mint-500); border-radius: 1em;
+  font-size: .8em; font-weight: 700; color: var(--text-on-mint); background: var(--mint-500); border-radius: 0;
 }
 /* 0.2.0 补位: operators marked 未持有 on the 干员持有 tab */
-.lo-entry__own { display: inline-flex; align-items: center; gap: .2em; height: 1.5em; padding: 0 .4em; font-size: .75em; font-weight: 700; color: var(--ice-900); background: var(--ice); border-radius: 1em; white-space: nowrap; }
+.lo-entry__own { display: inline-flex; align-items: center; gap: .2em; height: 1.5em; padding: 0 .4em; font-size: .75em; font-weight: 700; color: var(--ice-900); background: var(--ice); border-radius: 0; white-space: nowrap; }
 
 /* Untimed phases (user playtest #11 / #4 item 3: the official 独立模拟 shows no countdown outside combat — the server
    sends deadline 0 for them, Match.soloUntimed): ui/components.js Countdown now renders nothing without a deadline;
@@ -627,7 +627,7 @@
   /* 16 px: iOS zooms into a focused field below that (same reason as ui/clipboard.js) */
   font-size: max(calc(.2 * var(--t)), 16px); line-height: 1.45;
   color: var(--text-hi); background: rgba(4, 10, 8, .55);
-  border: 1px solid var(--line-2); border-radius: 2px; outline: none;
+  border: 1px solid var(--line-2); border-radius: 0; outline: none;
   /* wrap instead of a horizontal scrollbar: phones are narrow and the payload is meant to be read/copied whole */
   white-space: pre-wrap; overflow-wrap: anywhere; overflow-y: auto;
 }
@@ -662,7 +662,7 @@
   cursor: pointer;
   background: rgba(255, 255, 255, .03);
   border: 1px solid var(--line);
-  border-radius: 2px;
+  border-radius: 0;
   transition: background var(--t-fast), border-color var(--t-fast);
   touch-action: manipulation;
 }
@@ -680,7 +680,7 @@
   flex: 0 0 auto;
   width: max(.36rem, 28px);
   height: max(.36rem, 28px);
-  border-radius: 2px;
+  border-radius: 0;
   background: #0a0d0c;
   border: 1px solid var(--line-2);
   object-fit: cover;
@@ -743,13 +743,13 @@
   position: relative; flex: none; width: auto; min-width: 0; max-width: none; min-height: 44px; box-sizing: border-box;
   display: flex; align-items: center; gap: max(.08rem, 6px); padding: 4px 8px 4px 4px;
   font: inherit; color: var(--text-md); text-align: left; cursor: pointer;
-  background: rgba(255, 255, 255, .025); border: 1px solid var(--line); border-radius: 2px;
+  background: rgba(255, 255, 255, .025); border: 1px solid var(--line); border-radius: 0;
   transition: background var(--t-fast), border-color var(--t-fast); touch-action: manipulation;
 }
 .lo-skin:hover:not(:disabled) { border-color: var(--line-3); background: rgba(255, 255, 255, .06); }
 .lo-skin.is-on { color: var(--text-hi); background: linear-gradient(90deg, rgba(78, 216, 175, .14), rgba(78, 216, 175, .02) 75%); border-color: rgba(78, 216, 175, .7); }
 .lo-skin:disabled { cursor: default; opacity: .45; }
-.lo-skin__art { flex: 0 0 auto; width: max(.32rem, 28px); height: max(.32rem, 28px); display: grid; place-items: center; overflow: hidden; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 2px; }
+.lo-skin__art { flex: 0 0 auto; width: max(.32rem, 28px); height: max(.32rem, 28px); display: grid; place-items: center; overflow: hidden; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 0; }
 .lo-skin__art img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 .lo-skin__art--none { width: 100%; height: 100%; background: repeating-linear-gradient(45deg, rgba(255, 255, 255, .06) 0 3px, transparent 3px 7px); }
 .lo-skin__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: .01rem; }
@@ -824,9 +824,9 @@
 .lo-quickbtn__txt small { font-family: var(--font-display); font-size: max(calc(.09 * var(--utility-text, var(--t))), 7px); letter-spacing: .14em; color: #8b938f; }
 .lo-quickbtn__icon { margin: .06rem .06rem .06rem 0; color: #eef1ef; background: #1a1f1d; }
 .lo-qbar__k { font-size: max(calc(.15 * var(--utility-text, var(--t))), 11px); color: var(--text-lo); white-space: nowrap; }
-.lo-qseg { display: inline-flex; padding: 3px; background: rgba(0, 0, 0, .45); border: 1px solid var(--line-2); border-radius: 999px; }
+.lo-qseg { display: inline-flex; padding: 3px; background: rgba(0, 0, 0, .45); border: 1px solid var(--line-2); border-radius: 0; }
 .lo-qseg button { height: max(.4rem, 28px); padding: 0 max(.2rem, 12px); font: inherit; font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); font-weight: 800; color: var(--text-md);
-  background: none; border: 0; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+  background: none; border: 0; border-radius: 0; cursor: pointer; white-space: nowrap; }
 .lo-qseg button.is-on { color: #111614; background: #eef1ef; }
 
 /* ---- the deck ---- */
@@ -863,7 +863,7 @@
 .lo-op__rail { grid-row: 1 / 3; grid-column: 1; display: flex; flex-direction: column; align-items: center; gap: max(.08rem, 4px); padding-top: 2px; }
 .lo-op__tier.tier { width: 100%; }
 .lo-op__lv { display: flex; flex-direction: column; align-items: center; gap: max(.05rem, 3px); width: 86%; padding: max(.06rem, 3px) 0;
-  background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .14); border-radius: 999px; }
+  background: rgba(0, 0, 0, .45); border: 1px solid rgba(255, 255, 255, .14); border-radius: 0; }
 .lo-op__lvrow { display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .lo-op__lvrow b { font-size: max(calc(.15 * var(--utility-text, var(--t))), 10px); color: var(--text-md); }
 .lo-op__lvrow.is-elite b { color: var(--gold-2); }
@@ -931,10 +931,10 @@
 /* ---- bottom bar ---- */
 .lo-bbar { position: relative; flex: none; display: flex; align-items: center; gap: .3rem; height: max(.8rem, 46px); padding: 0 .36rem;
   background: linear-gradient(180deg, rgba(10, 12, 11, .7), rgba(6, 8, 7, .96)); border-top: 1px solid var(--line); }
-.lo-bbar__seg { flex: none; display: inline-flex; padding: 3px; background: rgba(0, 0, 0, .5); border: 1px solid var(--line-2); border-radius: 999px; }
+.lo-bbar__seg { flex: none; display: inline-flex; padding: 3px; background: rgba(0, 0, 0, .5); border: 1px solid var(--line-2); border-radius: 0; }
 .lo-bbar__seg button { display: inline-flex; align-items: center; gap: .08rem; height: max(.46rem, 30px); padding: 0 max(.26rem, 14px); font: inherit;
-  font-size: max(calc(.18 * var(--utility-text, var(--t))), 12px); font-weight: 800; color: var(--text-md); background: none; border: 0; border-radius: 999px; cursor: pointer; white-space: nowrap; }
-.lo-bbar__seg button .icon { width: max(.22rem, 14px); height: max(.22rem, 14px); padding: 2px; border-radius: 4px; color: #062019; background: var(--mint-500); }
+  font-size: max(calc(.18 * var(--utility-text, var(--t))), 12px); font-weight: 800; color: var(--text-md); background: none; border: 0; border-radius: 0; cursor: pointer; white-space: nowrap; }
+.lo-bbar__seg button .icon { width: max(.22rem, 14px); height: max(.22rem, 14px); padding: 2px; border-radius: 0; color: #062019; background: var(--mint-500); }
 .lo-bbar__seg button.is-on { color: #111614; background: #eef1ef; }
 .lo-bbar__tiers { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: .04rem; overflow-x: auto; scrollbar-width: none; padding-top: .14rem; }
 .lo-bbar__tier { position: relative; flex: none; display: inline-flex; align-items: center; gap: .05rem; height: max(.42rem, 28px); padding: 0 max(.16rem, 8px); font: inherit;
@@ -944,9 +944,9 @@
 .lo-bbar__tier.is-on { color: var(--text-hi); border-bottom-color: var(--mint-500); }
 .lo-bbar__tier:disabled { opacity: .35; cursor: default; }
 .lo-bbar__roman { display: grid; place-items: center; min-width: max(.3rem, 18px); height: max(.26rem, 16px); padding: 0 2px; font-size: max(calc(.13 * var(--utility-text, var(--t))), 9px); font-weight: 800;
-  border: 1px solid currentColor; border-radius: 3px; }
+  border: 1px solid currentColor; border-radius: 0; }
 .lo-bbar__diy { position: absolute; left: 50%; top: max(-.2rem, -14px); transform: translateX(-50%); display: inline-flex; align-items: center; gap: 1px; padding: 0 4px;
-  font-size: max(calc(.12 * var(--utility-text, var(--t))), 9px); color: var(--text-md); background: rgba(255, 255, 255, .1); border-radius: 999px; }
+  font-size: max(calc(.12 * var(--utility-text, var(--t))), 9px); color: var(--text-md); background: rgba(255, 255, 255, .1); border-radius: 0; }
 .lo-bbar__diy .icon { width: max(.13rem, 9px); height: max(.13rem, 9px); }
 .lo-confirm { flex: none; display: inline-flex; align-items: center; gap: .1rem; height: max(.6rem, 38px); padding: 0 max(.24rem, 14px); font: inherit;
   font-size: max(calc(.2 * var(--utility-text, var(--t))), 13px); font-weight: 900; color: #111614; background: #eef1ef; border: 0; cursor: pointer; }

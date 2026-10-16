@@ -1,5 +1,6 @@
+import { PageHeader, PageHeading } from '../ui/pageHeader.js';
 import {profileAvatarUrl} from '../ui/assetUrls.js';
-import {data as avatarData,useData as useAvatarData} from '../data.js';
+import {useData as useAvatarData} from '../data.js';
 import { CommunicationDock, CommunicationBubble } from '../ui/communication.js';
 import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
 import { prepChoiceMultiplier } from '../ui/prepTime.js';
@@ -22,16 +23,13 @@ import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // Texts go through t() (docs/I18N.md).
 
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
+import { DIFFICULTY_NAMES, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
-  html, Button, Icon, MicroLabel, PingPill, OnlineCount, AvatarFrame, DifficultyTag, Tooltip, Modal, confirmDialog, doctorNo,
+  html, Button, Icon, MicroLabel, AvatarFrame, DifficultyTag, Tooltip, Modal, confirmDialog, doctorNo,
 } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { copyText } from '../ui/clipboard.js';
-import { GuideButton } from '../ui/guide.js';
-import { AnnouncementButton } from '../ui/announcement.js';
 import { openStats } from './stats.js';
-import { SettingsButton } from '../ui/settings.js';
 import { LoadoutButton } from './loadout.js';
 import { roomRulesLabel, isModdedRoom } from '../ui/pluginTag.js';
 import { hasScriptConsent, rememberScriptConsent } from '../content.js';
@@ -39,21 +37,11 @@ import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating } from '../store.js';
 import { difficultyInfo } from './lobby.js';
 import { data, useData } from '../data.js';
-import { cardOperators, seatPortrait, cardAvatarUrl } from '../ui/seatArt.js';
-import { useMyCard, setCardOperator, setCardAvatar } from '../ui/playerCard.js';
-import { PortraitPicker, AvatarPicker } from '../ui/opPicker.js';
+import { cardOperators, seatPortrait } from '../ui/seatArt.js';
+import { useMyCard, setCardOperator } from '../ui/playerCard.js';
+import { PortraitPicker } from '../ui/opPicker.js';
 import { useRise } from '../ui/transitions.js';
 import { t, tc } from '../../../shared/i18n.js';
-
-/** Room header utilities use the same compact icon-button treatment in solo and co-op rooms. */
-export function RoomTools({ coop }) {
-  return html`<div class="room-topbar__tools">
-    <${Button} variant="secondary" size="sm" square=${true} icon="chart" class="stats-entry" onClick=${openStats}
-      title=${t('博士档案')} aria-label=${t('博士档案')} />
-    <${SettingsButton} class="room-settings" variant="secondary" square=${true} label=${t('设置')} />
-    <${GuideButton} class="room-guide" variant="secondary" square=${true} label=${t('玩法说明')} />
-  </div>`;
-}
 
 /**
  * Seats padded to the room's capacity (co-op 4, solo 1), each null or a seat record.
@@ -258,19 +246,24 @@ function ConsoleWarning({ open, remaining, busy, onCancel, onConfirm }) {
   <//>`;
 }
 
-/** The 「AI 队友最后选择」 switch (co-op): the host toggles it, everybody else sees its state. */
+/** Use the settings/plugin panel's square slider for every persistent room option. */
+function RoomOptionSwitch({ label, checked, disabled, busy = false, hint, onChange }) {
+  return html`<${Tooltip} text=${hint}>
+    <button type="button" role="switch" aria-checked=${checked ? 'true' : 'false'} aria-label=${label}
+        aria-busy=${busy ? 'true' : undefined} class=${`set-toggle room-option-switch${checked ? ' is-on' : ''}`}
+        disabled=${disabled || busy} onClick=${() => onChange(!checked)}>
+      <i aria-hidden="true"></i><span>${label}</span>
+    </button>
+  <//>`;
+}
+
+/** Co-op: the host toggles this setting; everybody else sees its state read-only. */
 function AiLastToggle({ option, busy, onToggle }) {
   if (!option) return null;
-  return html`<div class="ailast">
-    <${Tooltip} text=${t('策略与机变轮选时，所有博士先于 AI 队友选择')}>
-      <button type="button" role="switch" aria-checked=${option.on ? 'true' : 'false'}
-          class=${`dpick__opt ailast__opt${option.on ? ' is-active' : ''}`} disabled=${!option.editable || !!busy}
-          onClick=${() => option.editable && onToggle(!option.on)}>
-        <${Icon} name="check" class=${option.on ? 'is-on' : ''} />${t('AI 队友最后选择')}
-      </button>
-    <//>
-    ${option.editable ? null : html`<span class="t-dim">${t('由创建者设置')}</span>`}
-  </div>`;
+  const description = t('策略与机变轮选时，所有博士先于 AI 队友选择');
+  return html`<${RoomOptionSwitch} label=${t('AI 队友最后选择')} checked=${option.on}
+    disabled=${!option.editable || !!busy} busy=${busy === 'ailast'} onChange=${onToggle}
+    hint=${option.editable ? description : `${description} · ${t('由创建者设置')}`} />`;
 }
 
 /** Room screen component. */
@@ -279,7 +272,6 @@ export function RoomScreen() {
   const room = useStore((s) => s.room);
   const me = useStore((s) => s.me, shallowEqual);
   const conn = useStore((s) => s.connection, shallowEqual);
-  const presence = useStore((s) => s.presence, shallowEqual);
   const [configDraft, setConfigDraft] = useState(null);
   const [PluginView,setPluginView]=useState(null);
   const seatsRef=useRef(null);
@@ -427,30 +419,12 @@ export function RoomScreen() {
     <//>`;
   }
   return html`<div class=${`screen room-screen${coop ? ' room-screen--coop' : ''}`}>
-    <header class="topbar">
-      <div class="topbar__left">
-        <${Tooltip} text=${t('离开同盟')} placement="bottom">
-          <${Button} variant="ghost" size="sm" icon="chevronLeft" loading=${busy === 'leave'} onClick=${leave} aria-label=${t('离开同盟')}>${t('返回')}<//>
-        <//>
-        <div class="room-ping">
-          <div class="connection-status">
-            <${PingPill} ms=${conn.ping} online=${online} />
-            <${OnlineCount} online=${presence.online} />
-            <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
-          </div>
-        </div>
-        <${RoomTools} coop=${coop} />
-      </div>
-      <div class="topbar__center">
-        <${MicroLabel} tone="mint">${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}<//>
-        <h1 class="topbar__title">${coop ? t('同盟模拟') : t('独立模拟')}<span class="topbar__sep"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" />
-          ${room.content?.modeId ? html`<span class="room-mode" data-testid="room-mode">${(room.content.modes || []).find((m) => m.id === room.content.modeId)?.name || room.content.modeId}</span>` : null}</h1>
-
-      </div>
-      <div class="topbar__right">
-        ${coop ? html`<${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} />` : html`<div class="solo-note"><${MicroLabel}>SINGLE OPERATOR<//><span>${t('仅限 1 名博士')}</span></div>`}
-      </div>
-    </header>
+    <${PageHeader} onBack=${leave} backTitle=${t('离开同盟')} backBusy=${busy === 'leave'}
+      heading=${html`<${PageHeading} title=${coop ? t('同盟模拟') : t('独立模拟')} micro=${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}>
+        <span class="app-header__separator" aria-hidden="true"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" />
+        ${room.content?.modeId ? html`<span class="room-mode" data-testid="room-mode">${(room.content.modes || []).find((m) => m.id === room.content.modeId)?.name || room.content.modeId}</span>` : null}
+      <//>`} />
+    ${coop ? html`<section class="room-invitation" aria-label=${t('同盟密钥')}><${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} /></section>` : null}
 
     <main ref=${seatsRef} class=${`seats${coop ? '' : ' seats--solo'}`}>
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
@@ -474,15 +448,19 @@ export function RoomScreen() {
         <${RoomConfigSummary} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
           contentLabel=${roomRulesLabel(room)} onPlugins=${()=>setConfigDraft(currentDraft('plugins'))}
           editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft(currentDraft())} />
-        <div class="room-bar__tools"><${CommunicationDock} room=${true} disabled=${facts.spectating} />${canManageConsole ? html`<${Button} variant=${room.consoleEnabled ? 'danger' : 'secondary'} size="lg" icon="terminal"
-          class="room-console-btn" disabled=${(!room.consoleEnabled && !!room.matching) || !online} onClick=${room.consoleEnabled ? disableConsole : openConsole}
-          title=${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}>${room.consoleEnabled ? t('关闭控制台') : t('启用控制台')}<//>`
-          : room.consoleEnabled ? html`<span class="room-console-status"><${Icon} name="terminal" />${t('控制台已启用')}</span>` : null}
+        <div class="room-bar__tools">
+          <${CommunicationDock} room=${true} disabled=${facts.spectating} />
+          ${canManageConsole || room.consoleEnabled ? html`<${RoomOptionSwitch} label=${t('启用控制台')}
+            checked=${!!room.consoleEnabled} disabled=${!canManageConsole || (!room.consoleEnabled && !!room.matching) || !online || !!busy}
+            busy=${busy === 'console' || busy === 'console-disable'}
+            hint=${canManageConsole ? room.consoleEnabled ? t('关闭控制台') : t('启用控制台') : t('由创建者设置')}
+            onChange=${(on) => on ? openConsole() : disableConsole()} />` : null}
           <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} />
-          ${facts.isHost && coop && !room.matching ? html`<div class="room-match-options" title=${(room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}>
-                  <label class="room-match-toggle"><input type="checkbox" checked=${matchTeammates} disabled=${!!room.consoleEnabled || facts.modded || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
-                    onChange=${(e) => setMatchTeammates(e.currentTarget.checked)} /><span>${t('匹配同盟队友')}</span></label>
-                </div>` : null}</div>
+          ${facts.isHost && coop && !room.matching ? html`<${RoomOptionSwitch} label=${t('匹配同盟队友')}
+            checked=${matchTeammates} disabled=${!!room.consoleEnabled || facts.modded || !!busy || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
+            hint=${room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : facts.modded ? t('插件房间不能参加公共匹配') : (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}
+            onChange=${setMatchTeammates} />` : null}
+        </div>
       </div>
       <div class="room-bar__center">
         <div class="ready-count" hidden=${!coop}>

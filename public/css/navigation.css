@@ -1,0 +1,103 @@
+/* One navigation skeleton for every out-of-match and preparation page. */
+.app-header { --utility-text:var(--t); position:relative; z-index:3; flex:none; color:var(--text-hi); background:linear-gradient(180deg,#080f0d,#0b1311); border-bottom:1px solid var(--mint-a35); }
+.app-header__row {
+  box-sizing:border-box; display:grid;
+  grid-template-columns:minmax(0,1fr) clamp(260px,26vw,460px) minmax(0,1fr);
+  grid-template-rows:44px 36px; grid-template-areas:"links heading identity" "tools heading .";
+  align-items:center; gap:8px 24px; height:108px; padding:10px clamp(16px,2.3vw,44px);
+}
+.app-header__links { grid-area:links; min-width:0; display:flex; align-items:center; gap:12px; height:44px; }
+.app-header__status, .app-header__tools { display:flex; align-items:center; gap:8px; min-width:0; }
+.app-header .app-header__status { flex:none; gap:8px; overflow:visible; }
+.app-header__tools { grid-area:tools; align-self:start; }
+.app-header .app-back { box-sizing:border-box; border:0; flex:none; height:36px; min-height:36px; padding:6px 10px; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); }
+.app-header .app-back .icon { width:16px; height:16px; }
+.app-header .btn--square { box-sizing:border-box; width:36px; min-width:36px; height:36px; min-height:36px; padding:8px; }
+.app-header__tools .btn--square svg { width:18px; height:18px; }
+.app-header .ping { height:26px; min-height:26px; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); }
+.app-header .topbar-announcement { box-sizing:border-box; height:30px; min-height:30px; padding:4px 8px; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); }
+.app-header .topbar-announcement .icon { width:16px; height:16px; }
+.app-header .ping__unit { font-size:11px; }
+.app-header .ping__icon { width:13px; height:13px; }
+.app-header__identity { grid-area:identity; align-self:start; justify-self:end; box-sizing:border-box; min-width:150px; max-width:230px; height:44px; min-height:44px; margin:0; padding:6px 10px; }
+.app-header__identity .avatar { --av:32px; }
+.app-header__identity .me-chip__name { font-size:max(13px,calc(.18 * var(--utility-text,var(--t)))); }
+.app-header__heading { grid-area:heading; min-width:0; min-height:0; height:100%; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; animation:page-heading-in 140ms ease-out; }
+.app-header__heading > .micro { font-size:max(10px,calc(.12 * var(--utility-text,var(--t)))); letter-spacing:.18em; }
+.app-header__heading h1 { max-width:100%; margin:0; display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px 12px; font-size:max(28px,calc(.38 * var(--utility-text,var(--t)))); line-height:1.15; font-weight:900; letter-spacing:.08em; }
+.app-header__subtitle { font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); color:var(--mint-400); letter-spacing:.08em; }
+.app-header__separator { height:24px; width:1px; background:var(--line-2); }
+.app-header__heading .dtag { font-size:max(15px,calc(.21 * var(--utility-text,var(--t)))); letter-spacing:.04em; }
+.app-header__heading .room-mode { font-size:12px; max-width:100%; overflow-wrap:anywhere; }
+.app-header .settings-btn, .app-header .guide-btn { flex:none; }
+@keyframes page-heading-in { from { opacity:0; } }
+
+/* Dedicated rows below the shared header hold filters, profile data and game controls. */
+.protocol-screen > .app-header { position:sticky; top:0; }
+.protocol-screen .proto { min-height:0; flex:1 0 auto; }
+.protocol-screen .proto-body { padding-top:12px; }
+.room-invitation { flex:none; display:flex; justify-content:center; padding:8px 16px; border-bottom:1px solid var(--line); background:#0a1210a6; }
+.sweep-host .sw-report-page { flex:1; min-height:0; height:auto; }
+.sweep-host .sw-top { justify-content:center; min-height:50px; }
+.sweep-host .sw-top__left { display:none; }
+.sweep-host .sw-codex { flex:1; min-height:0; height:auto; }
+.lo > .lo-top { height:auto; min-height:54px; padding-block:8px; }
+.lo .lo-top__left:empty { display:none; }
+.lo .lo-top { grid-template-columns:auto minmax(0,1fr) auto; }
+.st .doctor-top { grid-template-columns:minmax(0,1fr) auto; min-height:90px; }
+.st .doctor-identity { grid-column:1; }
+.st .doctor-top > .st-top__right { grid-column:2; }
+.st .doctor-tabs { grid-column:1/-1; }
+.stephead.stephead--context { min-height:50px; height:auto; padding:6px 24px; grid-template-columns:minmax(0,1fr) auto; }
+.stephead__progress { display:flex; align-items:baseline; gap:4px; font-size:max(16px,calc(.22 * var(--t))); color:var(--text-lo); }
+.stephead__progress b { color:var(--mint-400); font-size:max(22px,calc(.3 * var(--t))); }
+.stephead--context .stephead__right { gap:16px; min-width:0; }
+.stephead--context .stephead__right .dtag { flex:none; }
+.stephead--context .stephead__right .countdown { flex:none; width:auto; }
+.stephead--context .stephead__right .countdown--untimed { width:32px; }
+.stephead--context .draft-pause { position:static; display:flex; z-index:auto; }
+.result-page > .settle, .st--replay > .result { position:relative; inset:auto; flex:1; width:100%; height:auto; min-height:0; }
+.result-page .settle__back { min-width:0; background:none; color:var(--text-hi); box-shadow:none; }
+.lobby-hub .hub-center { container-type:size; min-height:220px; }
+.lobby-hub .hub-radar { width:min(72cqh,90cqw,420px); height:min(72cqh,90cqw,420px); }
+.utility-modal.hub-dialog { width:min(760px,calc(100vw - 32px)); box-sizing:border-box; }
+.st:not(.st--replay) { inset:0; width:auto; height:calc(var(--sp-vh,1vh) * 100); transform:none; }
+.app-back.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; min-height:36px; padding:6px 10px; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); }
+.app-back.btn > .icon { width:16px; height:16px; }
+
+/* The navigation stays painted during page/overlay transitions; only content fades. */
+.lobby-hub, .protocol-screen, .room-screen, .room-options-screen, .brief, .draft, .result-page, .sweep-host, .sweep-host > .sw, .lo, .lo.is-leaving, .st { animation:none; }
+.lo.is-leaving > .app-header { animation:none; }
+.room-options__frame, .st-body { animation:page-heading-in 140ms ease-out; }
+@media (max-width:1100px) {
+ .app-header__row { grid-template-columns:minmax(0,1fr) 220px minmax(0,1fr); gap:8px 12px; padding-inline:16px; }
+ .app-header__links { gap:8px; }
+ .app-header__identity { min-width:44px; max-width:44px; width:44px; padding:4px; justify-content:center; }
+ .app-header__identity .me-chip__text, .app-header__identity .me-chip__stats { display:none; }
+ .app-header .app-header__status, .app-header__tools { gap:6px; }
+ .app-header__status .topbar-announcement { width:32px; min-width:32px; padding-inline:6px; font-size:0; }
+ .app-header__status .topbar-announcement .icon { width:16px; height:16px; }
+ .app-header__heading h1 { font-size:max(25px,calc(.34 * var(--utility-text,var(--t)))); }
+}
+@media (max-width:760px) {
+ .app-header__row { grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:44px 36px 56px; grid-template-areas:"links identity" "tools tools" "heading heading"; height:168px; gap:8px 12px; padding:8px 12px; }
+ .app-header__heading h1 { font-size:max(26px,calc(.34 * var(--utility-text,var(--t)))); }
+ .app-header__status .online-count { padding-inline:5px; }
+ .app-header__status .online-count .ping__unit { font-size:10px; }
+ .stephead.stephead--context { padding:8px 12px; }
+ .stephead--context .stephead__right { gap:10px; }
+}
+@media (max-width:400px) {
+ .app-header .app-back { width:28px; padding:6px; font-size:0; gap:0; }
+ .app-header__links { gap:6px; }
+ .app-header .app-header__status { gap:4px; }
+}
+@media (max-height:560px) and (min-width:761px) {
+ .app-header__row { grid-template-rows:40px 36px; height:94px; gap:6px 12px; padding-block:6px; }
+ .app-header__links { height:40px; }
+ .app-header__identity { height:40px; min-height:40px; }
+ .app-header__heading { gap:4px; }
+ .lobby-hub .hub-center { min-height:65px; }
+}
+@media (max-width:600px) { .utility-modal.hub-dialog { width:calc(100vw - 16px); } }
+@media (prefers-reduced-motion:reduce) { .app-header__heading, .room-options__frame, .st-body { animation:none; } }

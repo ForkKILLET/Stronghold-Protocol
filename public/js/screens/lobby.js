@@ -1,11 +1,9 @@
-import {DoctorAvatar,profileStore} from '../ui/profile.js';
+import { PageHeader, PageHeading } from '../ui/pageHeader.js';
 import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 import { Emblem } from './title.js';
 import { useMyCard } from '../ui/playerCard.js';
-import { cardAvatarUrl } from '../ui/seatArt.js';
-import { HubBackdrop, HubRadar, BackdropGlyph, BackdropSettings } from '../ui/hubBackdrop.js';
+import { HubBackdrop, HubRadar } from '../ui/hubBackdrop.js';
 import { useHubBackdrop, backdropTheme } from '../ui/hubAppearance.js';
-import { LobbyMusicButton } from '../ui/lobbyMusic.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 / 同盟匹配 and a difficulty (标准/险境/绝境/终极), create a room,
 // join the public alliance queue, or join a private room with a 同盟密钥 (recent codes remembered).
@@ -24,18 +22,14 @@ import { RoomOptionsPage, RoomPacingControls } from '../ui/roomOptions.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
-import { html, Button, Icon, MicroLabel, TextField, PingPill, OnlineCount, AvatarFrame, Tooltip, Spinner, DifficultyIcon, Modal, doctorNo } from '../ui/components.js';
-import { AnnouncementButton } from '../ui/announcement.js';
+import { html, Button, Icon, MicroLabel, TextField, Tooltip, Spinner, DifficultyIcon, Modal } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
-import { GuideButton } from '../ui/guide.js';
 import { openStats } from './stats.js';
-import { SettingsButton } from '../ui/settings.js';
-import { PwaInstallButton } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
 import { AchievementEntry } from '../ui/achievements.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
-import { data, getConfig, getMode, getStage, useData } from '../data.js';
+import { getConfig, getMode, getStage, useData } from '../data.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
@@ -252,8 +246,7 @@ export function SweepLoadingPage({ onClose }) {
   return html`<main class="screen sweep-host" aria-label=${t('S.W.E.E.P.报告')} onKeyDown=${(e) => {
     if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('.modal, .guide')) { e.preventDefault(); onClose(); }
   }}>
-    <div class="sw"><header class="sw-top"><button ref=${back} type="button" class="sw-back proto-back" onClick=${onClose}
-      aria-label=${t('返回大厅')}><${Icon} name="chevronLeft" /><span class="proto-back__home"><${Icon} name="rook" /></span></button></header>
+    <div class="sw"><${PageHeader} onBack=${onClose} backTitle=${t('返回大厅')} title=${t('S.W.E.E.P.报告')} micro="S.W.E.E.P. ARCHIVE" />
       <p class="sw-loading" role="status">${t('正在读取报告…')}</p></div>
   </main>`;
 }
@@ -298,14 +291,11 @@ function ProtocolPage(props) {
 export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{} }) {
   const info = difficultyInfo(roomMode, difficulty);
   return html`<main ref=${pageRef} class="screen protocol-screen" aria-label=${`${t(card.name)} · ${t('选择模拟协议')}`}>
+    <${PageHeader} onBack=${onClose} backTitle=${t('返回大厅')}
+      heading=${html`<${PageHeading} title=${t('选择模拟协议')} micro=${card.en} subtitle=${t(card.name)} />`} />
     <div class="proto" style=${`--d-color:${DIFFICULTY_COLORS[difficulty]}`}>
       <div class="proto__bg" aria-hidden="true"></div>
-      <header class="proto-top">
-        <button type="button" class="proto-back" onClick=${onClose} title=${t('返回大厅')} aria-label=${t('返回大厅')}>
-          <${Icon} name="chevronLeft" /><span class="proto-back__home"><${Icon} name="rook" /></span>
-        </button>
-        <div class="proto-title"><h2>${t('选择模拟协议')}</h2><span class="proto-title__mode">${t(card.name)}<i>${card.en}</i></span></div>
-      </header>
+
       <div class="proto-body">
         <section class="proto-stage"><${ProtocolScene} key=${difficulty} difficulty=${difficulty} />
           <div class="proto-brief"><span class="proto-brief__code num">${info.code}</span><b class="proto-brief__name">${t(DIFFICULTY_NAMES[difficulty])}</b><p>${t(card.desc, card.params)}</p></div>
@@ -339,12 +329,9 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
 
 /** Lobby screen component. */
 export function LobbyScreen() {
-  const doctor = useStore(s=>s.user,Object.is,profileStore);
-  const me = useStore((s) => s.me, shallowEqual);
   const myCard = useMyCard();
   useData(...(myCard.avatar ? ['assets'] : []));
   const conn = useStore((s) => s.connection, shallowEqual);
-  const presence = useStore((s) => s.presence, shallowEqual);
   const matchQueue = useStore((s) => s.ui.matchQueue);
   useData('config');
   const [roomMode, setRoomMode] = useState(() => {
@@ -360,7 +347,6 @@ export function LobbyScreen() {
   const [battleSpeed, setBattleSpeed] = useState(2);
   const [panel, setPanel] = useState(null); // protocol | join | achievements | sweep; existing server actions only
   const bg = useHubBackdrop();
-  const [bgOpen, setBgOpen] = useState(false);
   const sweepEntry = useRef(null);
   const modeEntries = useRef({});
   const lobbyRef = useRef(null);
@@ -456,35 +442,8 @@ export function LobbyScreen() {
     queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} />`;
   return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
     <${HubBackdrop} bg=${bg} />
-    <header class="topbar hub-topbar">
-      <div class="topbar__left">
-        <${Button} variant="ghost" size="sm" icon="chevronLeft" onClick=${backToTitle} title=${t('返回标题')}>${t('返回')}<//>
-        <div class="connection-status">
-          <${PingPill} ms=${conn.ping} online=${online} />
-          <${OnlineCount} online=${presence.online} />
-          <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
-        </div>
-        <div class="topbar__tools">
-          <${Button} variant="secondary" size="sm" square=${true} title=${t('大厅背景')} aria-label=${t('大厅背景')}
-            onClick=${() => setBgOpen(true)}><${BackdropGlyph} /><//>
-          <${LobbyMusicButton} />
-          <${SettingsButton} class="lobby-settings" variant="secondary" square=${true} />
-          <${GuideButton} class="lobby-guide" variant="secondary" square=${true} />
-          <${PwaInstallButton} class="lobby-pwa" square=${true} />
-        </div>
-      </div>
-      <div class="topbar__right">
-        <${ResumeMatchButton} />
-        <button type="button" class="me-chip me-chip--btn stats-entry" onClick=${openStats} title=${t('博士档案')} aria-label=${t('博士档案')}>
-          <${DoctorAvatar} name=${me.name} />
-          <span class="me-chip__text">
-            <span class="me-chip__name">${doctor?.name || me.name || t('博士')}</span>
-            <${MicroLabel}>DOCTOR ARCHIVE<//>
-          </span>
-          <${Icon} name="user" class="me-chip__stats" />
-        </button>
-      </div>
-    </header>
+    <${PageHeader} onBack=${backToTitle} backTitle=${t('返回标题')} title=${t('开始模拟')} micro="OPERATIONS HUB" />
+    <div class="hub-recover"><${ResumeMatchButton} /></div>
     <main class="hub-stage screen__scroll">
       <div class="hub-center" aria-hidden="true">
         <div class="hub-center__mark"><${HubRadar} bg=${bg} /><${Emblem} /></div>
@@ -511,9 +470,7 @@ export function LobbyScreen() {
       </section>
     </main>
 
-    <${Modal} open=${bgOpen} utility=${true} class="hub-backdrop-panel" title=${t('大厅背景')} micro="LOBBY BACKDROP" onClose=${() => setBgOpen(false)}>
-      <${BackdropSettings} bg=${bg} />
-    <//>
+
     <${Modal} open=${panel === 'join'} utility=${true} class="hub-dialog" title=${t('加入同盟')} micro="ALLIANCE KEY" onClose=${() => setPanel(null)}>
       <div class="join-panel">
         <div class="join-row">

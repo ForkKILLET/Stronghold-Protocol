@@ -1,3 +1,4 @@
+import { PageHeader } from '../ui/pageHeader.js';
 // S.W.E.E.P. report adapted from isomerpoi UI b2bd17af; existing local game data only, no new protocol or rule state.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, roman } from '../ui/components.js';
@@ -8,7 +9,7 @@ import { abilityRows } from '../ui/abilityLines.js';
 import { data, useData } from '../data.js';
 import { useStore, loadPref, savePref } from '../store.js';
 import { loadoutStore, openLoadout } from '../ui/loadoutSync.js';
-import { openGuide, guidePages, guideStore } from '../ui/guide.js';
+import { guideStore } from '../ui/guide.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -363,11 +364,9 @@ export function codexSelection(all, { scope = null, rank = 'all', query = '', se
   return { list, cur, counts };
 }
 
-export function EnemyCodexView({ model: { list, cur, counts }, scope, rank, query, open, m, onClose, onScope, onQuery, onRank, onSelect }) {
+export function EnemyCodexView({ model: { list, cur, counts }, scope, rank, query, open, m, onScope, onQuery, onRank, onSelect }) {
   return html`<section class="sw-codex" aria-label=${t('敌方图鉴')}>
     <div class="sw-codex__top">
-      <button type="button" class="sw-back proto-back" onClick=${onClose} aria-label=${t('返回')} title=${t('返回 (Esc)')}><${Icon} name="chevronLeft" /></button>
-      <span class="sw-codex__title">${t('敌方图鉴')}</span>
       ${scope ? html`<button type="button" class="sw-scope" onClick=${() => onScope(null)} title=${t('显示全部敌人')}>${open.title || t('筛选')}<${Icon} name="close" /></button>` : null}
       <label class="sw-search"><${Icon} name="search" /><input type="search" value=${query} aria-label=${t('名称或编号')} placeholder=${t('名称或编号')} onInput=${(ev) => onQuery(ev.currentTarget.value)} /></label>
     </div>
@@ -390,12 +389,6 @@ export function EnemyCodexView({ model: { list, cur, counts }, scope, rank, quer
 }
 
 // ---- the screen --------------------------------------------------------------------------------------------------------
-
-/** First page of 玩法说明's 进阶图鉴 chapter (0 when the pages are not listed). */
-export function handbookPage() {
-  const i = guidePages().findIndex((p) => p.key === 'autochess_handbook_1');
-  return i < 0 ? 0 : i;
-}
 
 /** Escape ownership is decided before any higher layer handles (and closes on) the same event. */
 export function sweepEscapeAction(ev, { loadoutOpen, guideOpen, dialogOpen, codexOpen }) {
@@ -425,7 +418,7 @@ export function SweepReport({ onClose }) {
   useLayoutEffect(() => {
     if (loadoutOpen || guideOpen) return;
     const target = !codex && returnFocus.current?.isConnected ? returnFocus.current
-      : pageRef.current?.querySelector(codex ? '.sw-codex .sw-back' : '.sw-back');
+      : pageRef.current?.querySelector('.app-back');
     target?.focus();
   }, [codex, loadoutOpen, guideOpen]);
   useEffect(() => {
@@ -443,7 +436,7 @@ export function SweepReport({ onClose }) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
-  return html`<${SweepShell} loadoutOpen=${loadoutOpen} guideOpen=${guideOpen} pageRef=${pageRef}>
+  return html`<${SweepShell} onBack=${() => codex ? setCodex(null) : onClose()} backTitle=${codex ? t('返回报告') : t('返回大厅')} title=${codex ? t('敌方图鉴') : t('S.W.E.E.P.报告')} micro=${codex ? 'ENEMY INTELLIGENCE' : 'S.W.E.E.P. ARCHIVE'} loadoutOpen=${loadoutOpen} guideOpen=${guideOpen} pageRef=${pageRef}>
     <div class="sw-report-page" hidden=${!!codex}>
       <${SweepView} ready=${ready} tab=${tab} notOwned=${notOwned} bondSel=${bondSel} bandSel=${bandSel} enemySel=${enemySel}
         onClose=${onClose} onTab=${setTab} onBond=${setBondSel} onBand=${setBandSel} onEnemy=${setEnemySel} onCodex=${openCodex} />
@@ -453,14 +446,14 @@ export function SweepReport({ onClose }) {
 }
 
 /** No backdrop or focus trap. Existing operator/guide layers alone own modal interactions. */
-export function SweepShell({ loadoutOpen, guideOpen, pageRef, children }) {
+export function SweepShell({ loadoutOpen, guideOpen, pageRef, children, onBack, backTitle, title = t('S.W.E.E.P.报告'), micro = 'S.W.E.E.P. ARCHIVE' }) {
   const suspended = !!(loadoutOpen || guideOpen);
   return html`<main ref=${pageRef} class="screen sweep-host" aria-label=${t('S.W.E.E.P.报告')}
-    inert=${suspended ? '' : undefined} aria-hidden=${suspended ? 'true' : undefined}>${children}</main>`;
+    inert=${suspended ? '' : undefined} aria-hidden=${suspended ? 'true' : undefined}><${PageHeader} onBack=${onBack} backTitle=${backTitle} title=${title} micro=${micro} />${children}</main>`;
 }
 
 /** Hook-free report view. All panels read the same installed, localized data as the rest of the client. */
-export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, onClose, onTab, onBond, onBand, onEnemy, onCodex }) {
+export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, onTab, onBond, onBand, onEnemy, onCodex }) {
   const m = data.get('assets');
   const bonds = ready ? data.list('bonds').filter((b) => b?.bondId).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99)) : [];
   const bands = ready ? data.list('bands').filter((b) => b?.bandId).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99)) : [];
@@ -483,12 +476,6 @@ export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, on
   return html`<div class="sw" data-tab=${tab}>
     <div class="sw__bg" aria-hidden="true"><i class="sw__mist"></i><i class="sw__lines"></i></div>
     <header class="sw-top">
-      <div class="sw-top__left">
-        <button type="button" class="sw-back proto-back" onClick=${onClose} aria-label=${t('返回大厅')} title=${t('返回 (Esc)')}>
-          <${Icon} name="chevronLeft" /><span class="proto-back__home" aria-hidden="true"><${Icon} name="rook" /></span>
-        </button>
-        <button type="button" class="sw-info" onClick=${() => openGuide(handbookPage())} aria-label=${t('进阶图鉴')} title=${t('进阶图鉴：敌人类型、盟约、策略与轮选')}><${Icon} name="info" /></button>
-      </div>
       <nav class="sw-tabs" role="tablist" aria-label=${t('S.W.E.E.P.报告')}>
         ${TABS.map((x) => html`<button key=${x.id} type="button" role="tab" aria-selected=${tab === x.id ? 'true' : 'false'} class=${cx('sw-tab', tab === x.id && 'is-on')}
           onClick=${() => onTab(x.id)}><span class="sw-tab__icon">${x.icon()}</span><span>${t(x.name)}</span></button>`)}

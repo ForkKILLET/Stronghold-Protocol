@@ -1,3 +1,4 @@
+import { PageHeader } from './pageHeader.js';
 import { html, Fragment, Button, MicroLabel, DifficultyIcon, Icon } from './components.js';
 import { PrepTimePicker } from './prepTime.js';
 import { BATTLE_SPEEDS } from '../../../shared/roomOptions.js';
@@ -8,8 +9,7 @@ import { t } from '../../../shared/i18n.js';
 /** A dedicated page; draft values belong to LobbyScreen and survive going back. */
 export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disabled=false, children, battleSpeed=2, onSpeedChange=()=>{}, difficulty='NORMAL', onDifficultyChange=()=>{}, onSave=onBack, readOnly=false, tab='basic', onTabChange=null, pluginContent=null}) {
  return html`<div class="screen room-options-screen">
-  <header class="topbar"><div class="topbar__left"><${Button} variant="ghost" icon="chevronLeft" onClick=${onBack}>${t('返回')}<//></div>
-   <div class="topbar__center"><${MicroLabel} tone="mint">ROOM CONFIGURATION<//><h1 class="topbar__title">${t('模拟配置')}</h1></div></header>
+  <${PageHeader} onBack=${onBack} title=${t('模拟配置')} micro="ROOM CONFIGURATION" />
   ${onTabChange?html`<nav class="room-options__tabs" aria-label=${t('模拟配置')}>
     <button type="button" class=${tab==='basic'?'is-on':''} aria-pressed=${tab==='basic'} disabled=${disabled} onClick=${()=>onTabChange('basic')}>${t('基础配置')}</button>
     <button type="button" class=${tab==='plugins'?'is-on':''} aria-pressed=${tab==='plugins'} disabled=${disabled || (!readOnly && !valid(prepChoice))} onClick=${()=>onTabChange('plugins')}>${t('玩法插件')}</button>

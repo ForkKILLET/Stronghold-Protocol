@@ -2366,5 +2366,8 @@
   "外观插件只改变画面和声音；玩法插件会改变规则，且不计入默认统计。": "Cosmetic plugins change visuals and audio. Gameplay plugins change rules and are excluded from default statistics.",
   "配置并创建": "Configure and create",
   "配置并匹配": "Configure matchmaking",
-  "输入同盟密钥": "Enter alliance key"
+  "输入同盟密钥": "Enter alliance key",
+  "成就统计：{n} 杯": "Achievements: {n} trophies",
+  "全局导航": "Global navigation",
+  "返回报告": "Back to report"
 }

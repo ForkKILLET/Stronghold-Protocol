@@ -1,3 +1,4 @@
+import { PageHeader } from '../ui/pageHeader.js';
 import {profileStore,ProfileEditor,ProfileRecovery,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
 import {AchievementContent} from '../ui/achievements.js';
 import {achievementStats} from '../../../shared/achievementStats.js';
@@ -337,6 +338,7 @@ function StatsScreen({ tab }) {
   };
 
   if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
+    <${PageHeader} onBack=${() => setReplay(null)} backTitle=${t('返回统计')} title=${t('对局记录')} micro="MATCH RECORD" />
     <${Replay} rec=${replay} onBack=${() => setReplay(null)} />
   </div>`;
 
@@ -344,9 +346,10 @@ function StatsScreen({ tab }) {
   const tabs=profile.enabled?TABS:TABS.filter(x=>x.id!=='profile');
   return html`<div class="st" role="dialog" aria-modal="true" aria-label=${t('博士档案')} tabindex="-1" ref=${boxRef}>
     <div class="st__bg" aria-hidden="true"></div>
+    <${PageHeader} onBack=${closeStats} title=${t('博士档案')} micro="DOCTOR ARCHIVE" />
     <header class="st-top doctor-top">
-      <div class="st-top__left"><${Button} variant="ghost" size="md" icon="chevronLeft" class="st-back" onClick=${closeStats} aria-label=${t('返回')} title=${t('返回 (Esc)')}>${t('返回')}<//></div>
-      <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><${MicroLabel} tone="mint">DOCTOR ARCHIVE<//><h2>${profile.user?.name || identityName() || t('博士')}</h2><span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
+
+      <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><h2>${profile.user?.name || identityName() || t('博士')}</h2><span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
       ${profile.enabled?html`<${Button} variant="ghost" size="sm" icon="edit" onClick=${()=>statsStore.set({tab:'profile'})}>${t('编辑资料')}<//>`:null}</div>
       <div class="st-top__right">${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>fetchAccount()}>${t('刷新')}<//>`:null}</div>
       <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${tabs.map(x=>html`<button key=${x.id} type="button" role="tab" aria-selected=${x.id===tab} data-tab=${x.id} class=${cx('st-tab',x.id===tab&&'is-on')} onClick=${()=>statsStore.set({tab:x.id})}>${t(x.name)}</button>`)}</nav>

@@ -7,7 +7,7 @@
 /* ---- picture / fallback glyph ------------------------------------------------------------------------------- */
 .eart { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
 .eart--glyph {
-  display: grid; place-items: center; border-radius: 22%;
+  display: grid; place-items: center; border-radius: 0;
   background: radial-gradient(circle at 50% 42%, rgba(78, 216, 175, .10), rgba(78, 216, 175, 0) 70%);
   color: rgba(195, 203, 199, .55);
 }
@@ -19,7 +19,7 @@
 .ewheel__btn {
   position: relative; display: flex; align-items: center; justify-content: flex-start; gap: .08rem;
   height: .56rem; min-width: 1.51rem; padding: 0 .2rem 0 .14rem;
-  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); border-radius: .04rem;
+  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2); border-radius: 0;
   color: var(--text-md); font-size: .18rem; font-weight: 700; letter-spacing: .1em; line-height: 1;
   transition: color var(--t-fast), border-color var(--t-fast), filter var(--t-fast), opacity var(--t-fast);
 }
@@ -56,7 +56,7 @@
   touch-action: pan-y; user-select: none; -webkit-user-select: none;
 }
 .ewheel__panel::before { /* CSS look-alike of the emoji_bkg plate */
-  content: ''; position: absolute; left: .15rem; top: .13rem; width: 2.82rem; height: 1.99rem; border-radius: .06rem;
+  content: ''; position: absolute; left: .15rem; top: .13rem; width: 2.82rem; height: 1.99rem; border-radius: 0;
   background: rgba(19, 19, 19, .92); box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .07);
 }
 .ewheel__panel.has-sprite { background: var(--ewheel-bg) center / 100% 100% no-repeat; }
@@ -75,7 +75,7 @@
 
 .ewheel__item {
   position: relative; display: grid; place-items: center; width: .85rem; height: .85rem; padding: .07rem; margin: 0; box-sizing: border-box;
-  background: rgba(255, 255, 255, .16); border: 0; border-radius: .08rem; color: inherit; font-size: 0; flex-direction: initial; gap: 0;
+  background: rgba(255, 255, 255, .16); border: 0; border-radius: 0; color: inherit; font-size: 0; flex-direction: initial; gap: 0;
   transition: background-color var(--t-fast), filter var(--t-fast), transform 90ms var(--ease-out);
 }
 .ewheel__panel.has-cell .ewheel__item { background: var(--ewheel-cell) center / 100% 100% no-repeat; border-radius: 0; }
@@ -89,7 +89,7 @@
 /* pager: ‹ dots › in the strip under the cells */
 .ewheel__dots { position: absolute; left: .15rem; width: 2.82rem; top: 1.99rem; height: .12rem; display: flex; align-items: center; justify-content: center; gap: .1rem; }
 .ewheel__dot {
-  position: relative; width: .11rem; height: .12rem; padding: 0; border: 0; border-radius: .015rem; background: rgba(255, 255, 255, .28);
+  position: relative; width: .11rem; height: .12rem; padding: 0; border: 0; border-radius: 0; background: rgba(255, 255, 255, .28);
   transition: background-color var(--t-fast), transform var(--t-fast);
 }
 .ewheel__dot:hover { background: rgba(255, 255, 255, .55); }
@@ -119,7 +119,7 @@
 }
 /* CSS look-alike of emoji_bubble_bkg: dark rounded square + tail */
 .ebubble::before {
-  content: ''; position: absolute; left: .22rem; top: .08rem; width: .76rem; height: .78rem; border-radius: .08rem;
+  content: ''; position: absolute; left: .22rem; top: .08rem; width: .76rem; height: .78rem; border-radius: 0;
   background: rgba(24, 24, 24, .86); box-shadow: 0 .02rem .08rem rgba(0, 0, 0, .45);
 }
 .ebubble::after {

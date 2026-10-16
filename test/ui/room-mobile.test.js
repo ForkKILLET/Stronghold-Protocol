@@ -3,9 +3,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
-import { RoomTools } from '../../public/js/screens/room.js';
-import { SettingsButton } from '../../public/js/ui/settings.js';
-import { GuideButton } from '../../public/js/ui/guide.js';
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 const layers = ['public/css/components.css', 'public/css/screens/lobby.css', 'public/css/screens/room.css', 'public/css/utility-mobile.css']
@@ -53,38 +50,6 @@ test('room artwork preserves 1:2 while the seat container fits available height'
     if (width > 560) assert.equal(property(['.seats', '.room-screen .seats'], 'grid-template-rows', width, height), 'auto', 'the row grows with the taller artwork and nameplate');
     assert.equal(property(['.seats', '.room-screen .seats'], 'overflow', width, height), 'visible');
   }
-});
-
-test('co-op utilities use three real icon-only square buttons and preserve action/accessible names', () => {
-  const tools = RoomTools({ coop: true });
-  assert.equal(tools.props.class, 'room-topbar__tools');
-  const buttons = tools.props.children.filter((node) => node && typeof node === 'object');
-  assert.equal(buttons.length, 3);
-  const [stats, settings, guide] = buttons;
-  assert.equal(stats.props.square, true);
-  assert.equal(stats.props.icon, 'chart');
-  assert.ok(!stats.props.children, 'there is no visible statistics text to hide with CSS');
-  assert.equal(typeof stats.props.onClick, 'function');
-  assert.ok(stats.props.title);
-  assert.ok(stats.props['aria-label']);
-  assert.equal(settings.type, SettingsButton);
-  assert.equal(settings.props.square, true);
-  assert.equal(guide.type, GuideButton);
-  assert.equal(guide.props.square, true);
-  assert.match(read('public/js/ui/settings.js'), /title=\$\{t\('设置'\)\} aria-label=\$\{t\('设置'\)\}/);
-  assert.match(read('public/js/ui/guide.js'), /title=\$\{t\('玩法说明'\)\} aria-label=\$\{t\('玩法说明'\)\}/);
-  assert.match(read('public/js/ui/settings.js'), /\$\{square \? null : label\}/, 'square mode removes text, not the nested gear SVG');
-});
-
-test('solo and co-op room utilities use the same icon-only order', () => {
-  const buttons = RoomTools({ coop: false }).props.children.filter((node) => node && typeof node === 'object');
-  assert.equal(buttons[0].props.square, true);
-  assert.ok(!buttons[0].props.children);
-  assert.equal(buttons[1].type, SettingsButton);
-  assert.equal(buttons[1].props.square, true);
-  assert.equal(buttons[2].type, GuideButton);
-  assert.equal(buttons[2].props.square, true);
-  assert.match(read('public/js/screens/room.js'), /<\$\{RoomTools\} coop=\$\{coop\}/);
 });
 
 for (const [width, height] of [[320, 568], [390, 844], [560, 320], [640, 360], [760, 390], [761, 390], [844, 390], [915, 412], [1000, 600], [1200, 500]]) {

@@ -380,7 +380,6 @@
   .room-screen .room-match-actions { min-width: 0; max-width: 100%; }
   .room-screen .room-match-state { flex-wrap: wrap; }
   .room-screen .room-loadout { max-width: 100%; flex-wrap: wrap; white-space: normal; }
-  .room-screen .ailast { max-width: 100%; flex-wrap: wrap; gap: .1rem; }
 
   /* Title login remains scrollable on short / narrow viewports; decorative art does not occupy form space. */
   .title-screen { overflow-y: auto; justify-content: flex-start; }

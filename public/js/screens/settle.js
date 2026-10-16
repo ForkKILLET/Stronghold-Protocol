@@ -1,3 +1,4 @@
+import { PageHeader } from '../ui/pageHeader.js';
 // Settlement presentation adapted from isomerpoi UI b2bd17af. Uses existing results only; no account, social or XP system.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, DifficultyTag } from '../ui/components.js';
@@ -409,8 +410,8 @@ function TeamPage({ r, res, gd, myId, at, backLabel, onBack, onDetail }) {
         <span class="steam__row"><${SvgPath} d=${CALENDAR} />${fmtDate(at)}</span>
       </div>
       <button type="button" class="sbtn sbtn--ghost steam__detail" onClick=${onDetail}><${Icon} name="chart" /><span>${t('数据详情')}</span></button>
-      <button type="button" ref=${backRef} class="sbtn sbtn--primary settle__back" onClick=${onBack}>
-        <span class="sbtn__mark" aria-hidden="true"><svg viewBox="0 0 40 30"><path d="M8 4h10v8H8zM22 4h10v8H22zM8 18h10v8H8zM22 18h10v8H22z" fill="none" stroke="currentColor" stroke-width="2.6" /><path d="M2 2v26M38 2v26" stroke="currentColor" stroke-width="2.4" /></svg></span>
+      <button type="button" ref=${backRef} class="btn btn--ghost btn--sm app-back settle__back" onClick=${onBack}>
+        <${Icon} name="chevronLeft" />
         <span>${backLabel}</span></button>
     </div>
   </section>`;
@@ -456,5 +457,5 @@ export function ResultScreen() {
   const myId = useStore((s) => s.me.playerId);
   const hasRoom = useStore((s) => !!s.room);
   const back = () => store.set({ match: emptyMatch() });
-  return html`<${SettleFlow} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} />`;
+  return html`<div class="screen result-page"><${PageHeader} onBack=${back} backTitle=${hasRoom ? t('返回同盟') : t('返回大厅')} title=${t('结算')} micro="SIMULATION RESULT" /><${SettleFlow} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} /></div>`;
 }

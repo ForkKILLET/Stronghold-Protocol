@@ -7,29 +7,8 @@
 .room-screen--coop .room-topbar__tools .btn--square { width: max(.42rem, 36px); height: max(.42rem, 36px); min-width: max(.42rem, 36px); }
 .room-match-actions { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-end; gap: .06rem; min-width: 3.2rem; }
 .room-match-actions--active { flex-direction: row; align-items: center; justify-content: flex-end; gap: .12rem; min-height: .92rem; }
-.room-match-options { display: flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: .12rem; min-height: .32rem; }
 .room-match-state { display: inline-flex; align-items: center; gap: .06rem; color: var(--mint-400); font-size: calc(.15 * var(--utility-text, var(--t))); }
 .room-match-state .icon { width: .18rem; height: .18rem; }
-.room-match-toggle { display: inline-flex; align-items: center; gap: .06rem; color: var(--text-lo); font-size: calc(.14 * var(--utility-text, var(--t))); cursor: pointer; }
-/* Preserve the native checkbox interaction while drawing the game's square,
-   mint selection treatment instead of the browser/OS control. */
-.room-match-toggle input {
-  appearance: none; -webkit-appearance: none; flex: none;
-  width: .18rem; height: .18rem; margin: 0;
-  border: 1px solid var(--line-2); border-radius: 0;
-  background: rgba(0, 0, 0, .3); cursor: pointer;
-}
-.room-match-toggle input:checked {
-  border-color: var(--mint-500); background-color: var(--mint-500);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m4 10 4 4 8-8' fill='none' stroke='%230d100f' stroke-width='2'/%3E%3C/svg%3E");
-  background-size: 100% 100%; background-repeat: no-repeat;
-}
-.room-match-toggle input:enabled:hover { border-color: var(--mint-400); }
-.room-match-toggle input:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 3px; }
-.room-match-toggle input:disabled, .room-match-toggle input:disabled + span { opacity: .5; cursor: default; }
-.room-match-toggle input:disabled { cursor: default; }
-@media (pointer: coarse) { .room-match-toggle { min-height: 44px; } }
-@media (forced-colors: active) { .room-match-toggle input { appearance: auto; -webkit-appearance: auto; } }
 .room-match-actions > .tt-anchor { justify-self: end; }
 .room-match-actions > .tt-anchor, .room-match-actions > .tt-anchor .btn { width: 100%; }
 .room-ping { display: flex; flex-direction: column; align-items: flex-start; gap: .04rem; }
@@ -320,9 +299,6 @@
 .room-bar__difficulty, .room-bar__tools { display: flex; flex-wrap: wrap; align-items: center; gap: .12rem; min-width: 0; max-width: 100%; }
 .room-bar__difficulty .dpick { flex-wrap: wrap; }
 .room-bar__tools .btn--lg { min-height: .36rem; height: auto; padding: .06rem .12rem; font-size: calc(.15 * var(--utility-text, var(--t))); }
-.room-console-btn { position: relative; z-index: 5; flex: none; white-space: nowrap; pointer-events: auto; }
-.room-console-status { position: relative; z-index: 4; display: inline-flex; align-items: center; gap: .08rem; height: .54rem; padding: 0 .16rem; color: var(--red-premium); border: 1px solid rgba(255, 84, 84, .55); background: rgba(120, 28, 28, .18); font-size: calc(.16 * var(--utility-text, var(--t))); font-weight: 700; white-space: nowrap; }
-.room-console-status .icon { width: .2rem; height: .2rem; }
 .console-warning { display: flex; flex-direction: column; align-items: center; gap: .16rem; text-align: center; font-size: calc(.18 * var(--utility-text, var(--t))); line-height: 1.7; }
 .console-warning p { margin: 0; max-width: 5.8rem; }
 .console-warning__icon { width: .6rem; height: .6rem; color: var(--red-premium); }
@@ -364,14 +340,6 @@
 }
 .dpick__opt.is-active .icon { opacity: 1; filter: drop-shadow(0 0 5px var(--d-color)); }
 .dpick--ro { border: 0; background: none; gap: .18rem; align-items: center; font-size: calc(.14 * var(--utility-text, var(--t))); }
-/* 「AI 队友最后选择」 (GitHub #338, co-op): one switch styled like a difficulty option, under the difficulty picker */
-.room-bar__opts { display: flex; flex-direction: column; align-items: flex-start; gap: .08rem; min-width: 0; }
-.ailast { display: flex; align-items: center; gap: .12rem; font-size: calc(.14 * var(--utility-text, var(--t))); }
-.ailast__opt { --d-color: var(--mint-400); height: .36rem; padding: 0 .14rem; border: 1px solid var(--line-2); background: rgba(0, 0, 0, .3); font-size: calc(.15 * var(--utility-text, var(--t))); letter-spacing: .04em; }
-.ailast__opt:last-child { border-right: 1px solid var(--line-2); }
-.ailast__opt .icon { opacity: .25; }
-.ailast__opt .icon.is-on { opacity: 1; }
-
 .ready-count[hidden] { display: none; }
 .ready-count { display: flex; align-items: baseline; gap: .06rem; font-size: calc(.16 * var(--utility-text, var(--t))); }
 .ready-count b { font-size: calc(.36 * var(--utility-text, var(--t))); line-height: 1; color: var(--mint-400); text-shadow: 0 0 .14rem rgba(23, 249, 183, .45); }
@@ -429,9 +397,6 @@
 .room-screen .room-bar__right .btn { box-sizing:border-box; height:48px; min-height:48px; padding:10px 18px; }
 .room-screen .room-bar .btn--xl { min-width:220px; font-size:max(18px,calc(.25 * var(--utility-text,var(--t)))); letter-spacing:.12em; }
 .room-screen .room-match-actions { min-width:0; }
-.room-screen .room-match-options { display:flex; align-items:center; min-height:34px; }
-.room-screen .room-match-toggle { min-height:34px; gap:6px; font-size:max(12px,calc(.14 * var(--utility-text,var(--t)))); }
-.room-screen .room-match-toggle input { width:16px; height:16px; flex:none; }
 .room-screen .topbar__left { gap:12px; }
 .room-screen .room-topbar__tools .btn--square { width:36px; height:36px; min-width:36px; }
 .room-screen .room-ping { display:flex; align-items:center; }
@@ -451,10 +416,7 @@
  .room-screen .room-bar__right { justify-self:stretch; justify-content:space-between; }
 }
 
-.room-screen .room-bar__tools .ailast__opt { box-sizing:border-box; display:flex; align-items:center; gap:6px; height:34px; min-height:34px; padding:6px 10px; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); letter-spacing:0; }
-.room-screen .room-bar__tools .room-match-options { padding-inline:4px; }
-
-.room-screen .room-bar__tools .btn, .room-screen .room-bar__tools .ewheel__btn, .room-screen .room-bar__tools .ailast__opt { box-sizing:border-box; height:36px; min-height:36px; }
+.room-screen .room-bar__tools .btn, .room-screen .room-bar__tools .ewheel__btn { box-sizing:border-box; height:36px; min-height:36px; }
 
 @media (min-width:1001px) and (min-height:601px) {
  .room-screen .invite { padding:6px 10px; gap:4px 12px; }
@@ -463,3 +425,18 @@
  .room-screen .invite__btns { gap:4px; }
  .room-screen .invite__btns .btn { height:22px; min-height:22px; padding:2px 8px; font-size:10px; }
 }
+
+/* Same slider/state treatment as settings and plugins, with the option name kept visible. */
+.room-screen .room-option-switch {
+  box-sizing:border-box; grid-column:auto; flex:none; height:36px; min-height:36px;
+  gap:8px; padding:6px 10px; font-size:max(12px,calc(.16 * var(--utility-text,var(--t))));
+  line-height:1.2; white-space:nowrap;
+  transition:color var(--t-fast),border-color var(--t-fast),background var(--t-fast);
+}
+.room-screen .room-option-switch i { flex:none; width:28px; height:16px; }
+.room-screen .room-option-switch i::after { left:3px; top:3px; width:10px; height:10px; }
+.room-screen .room-option-switch.is-on i::after { transform:translateX(12px); }
+.room-screen .room-option-switch:hover:not(:disabled) { border-color:var(--mint-500); background:var(--bg-3); color:var(--text-hi); }
+.room-screen .room-option-switch.is-on:hover:not(:disabled) { color:var(--mint-400); }
+.room-screen .room-option-switch:focus-visible { outline:2px solid var(--mint-400); outline-offset:2px; }
+.room-screen .room-option-switch:disabled { opacity:.5; cursor:default; }

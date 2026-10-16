@@ -79,7 +79,7 @@ import { PHASE, GEO } from '../../../shared/constants.js';
 import { html, Spinner, ResultDialog, Icon, Button, confirmDialog, closeAllDialogs, useTicker } from '../ui/components.js';
 import { useGameData, GIcon } from '../ui/gameComponents.js';
 import { useFieldView } from '../ui/fieldHost.js';
-import { PauseButton, TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
+import { TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } from '../ui/hud.js';
 import { BondStrip, BondPopup } from '../ui/bondStrip.js';
 import { TeamPanel } from '../ui/teamPanel.js';
 import { ShopBar } from '../ui/shopBar.js';
@@ -184,34 +184,11 @@ export function GameScreen() {
   else if (mode === 'draft') body = html`<${BandDraftScreen} />`;
   else body = html`<${MatchScreen} />`;
   return html`${body}
-    ${['briefing', 'draft'].includes(mode) ? html`<${DraftPause} pub=${pub} standalone=${['briefing', 'draft'].includes(mode)} />` : null}
     ${endOn && endKind ? html`<${EndPlate} kind=${endKind} leaving=${endStage === 'leaving'}
       leaderIcon=${bossIconOf(gd, pub.bossId)} coreIcon=${bossIconOf(gd, pub.hiddenBossId)} />` : null}
     ${bootShown ? html`<${ProtocolBoot} players=${sortedPlayers(pub)} myId=${myId} leaving=${bootLeaving} />` : null}
     ${(away || autoplay) && !hasResult && mode !== 'result' && !ended ? html`<${AwayOverlay} />` : null}
     ${ended && !hasResult && mode !== 'result' ? html`<${MatchEnded} />` : null}`;
-}
-
-/** The briefing and strategy draft use the same pause control as the combat HUD. */
-function DraftPause({ pub, standalone }) {
-  const myId = useStore(s => s.me.playerId);
-  const [busy, setBusy] = useState(false);
-  const participant = pub.players?.find(p => p.playerId === myId);
-  const requested = !!pub.pauseRequests?.includes(myId);
-  const toggle = async () => { if (busy) return; setBusy(true); try { await actions.pause(!requested); } finally { setBusy(false); } };
-  useEffect(() => {
-    const onKey = e => {
-      if (!standalone || e.repeat || !participant?.alive || shortcutFor(e, shortcutsStore.get()) !== 'pause'
-        || document.querySelector('.modal, .guide, .st')) return;
-      e.preventDefault(); toggle();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [requested, busy, participant?.alive, standalone]);
-  return html`
-    ${participant?.alive ? html`<div class="draft-pause"><${PauseButton} paused=${pub.paused} requested=${requested}
-      votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null}
-    ${standalone && pub.paused ? html`<${PausedOverlay} canResume=${!!participant?.alive} busy=${busy} onResume=${toggle} />` : null}`;
 }
 
 // ---- match screen ----------------------------------------------------------------------------------------

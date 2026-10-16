@@ -45,7 +45,7 @@ export function AchievementEntry({ onOpen }) {
 
 /** Hook-free entry; no game data is requested just to show it. */
 export function AchievementEntryView({ s, onOpen }) {
-  return html`<button type="button" class="hub-ach" onClick=${onOpen} title=${t('博士档案')}>
+  return html`<button type="button" class="hub-ach" onClick=${onOpen} title=${t('成就统计')} aria-label=${t('成就统计：{n} 杯', {n:s.trophies})}>
     <span class="hub-ach__scene" aria-hidden="true">
       <svg class="hub-ach__land" viewBox="0 0 320 110" preserveAspectRatio="none">
         <defs><linearGradient id="hubAchSky" x1="0" y1="0" x2="0" y2="1">
@@ -57,10 +57,6 @@ export function AchievementEntryView({ s, onOpen }) {
       </svg>
       <span class="hub-ach__mark"><${Emblem} /></span>
       <span class="hub-ach__rank"><${Icon} name="rook" /><small><${Icon} name="crown" /><b class="num">${s.trophies}</b></small></span>
-    </span>
-    <span class="hub-ach__label">
-      <svg class="hub-ach__badge" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v12l-7 6-7-6zm4 5v2h2V8zm4 0v2h2V8zm-4.5 4.2a4.5 4.5 0 0 0 7 0l-1.3-1a3 3 0 0 1-4.4 0z" fill-rule="evenodd" /></svg>
-      <span>${t('成就统计')}</span><b class="hub-ach__lv">${t('博士档案')}</b>
     </span>
   </button>`;
 }

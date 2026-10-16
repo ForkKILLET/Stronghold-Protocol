@@ -325,7 +325,7 @@ html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
 .title-dev {
   padding: .03rem .1rem;
   border: 1px solid #ff9f43;
-  border-radius: .04rem;
+  border-radius: 0;
   color: #ffb066;
   background: rgba(255, 159, 67, .14);
   font-weight: 700;

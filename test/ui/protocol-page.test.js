@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
 import { ProtocolSelect, ProtoCard, protocolEscapeAction } from '../../public/js/screens/lobby.js';
+import { PageHeader } from '../../public/js/ui/pageHeader.js';
 import { Modal } from '../../public/js/ui/components.js';
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
@@ -47,7 +48,7 @@ for (const [mode, name, start] of [
     assert.ok(text(startButton).includes(start));
     startButton.props.onClick();
     assert.equal(started, 1);
-    find(tree, (v) => v.props?.['aria-label'] === '返回大厅').props.onClick();
+    find(tree, (v) => v.type === PageHeader).props.onBack();
     assert.equal(closed, 1);
   });
 }
@@ -62,7 +63,7 @@ test('returning from matchmaking is separate from cancelling the queue', () => {
   const panel = find(tree, (v) => v.type?.name === 'MatchQueuePanel');
   assert.equal(panel.props.queue, queue);
   assert.equal(find(tree, (v) => cls(v, 'proto-start')), undefined);
-  find(tree, (v) => cls(v, 'proto-back')).props.onClick();
+  find(tree, (v) => v.type === PageHeader).props.onBack();
   assert.equal(returned, 1);
   assert.equal(cancelled, 0, 'back must not send match.leave');
   panel.props.onCancel();
