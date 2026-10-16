@@ -72,9 +72,10 @@ test('the source and build entry load the density layer after the existing touch
   assert.match(declaration(':is(.lobby-screen, .room-screen) .field__input', 'font-size', MOBILE), /16px/);
   assert.equal(declaration('.title-screen .title-login .field__input', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
   assert.equal(declaration('.title-screen .lang-select select', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
-  assert.equal(declaration('.settings-modal :is(.set-seg button, .set-toggle, .shortcut-key)', 'font-size', MOBILE),
+  const settingsControls = ':is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) :is(.btn, .set-seg button, .set-toggle, .set-native, .shortcut-key)';
+  assert.equal(declaration(settingsControls, 'font-size', MOBILE),
     'calc(.16 * var(--t))');
-  assert.equal(declaration('.settings-modal :is(.set-seg button, .set-toggle, .shortcut-key)', 'min-height', MOBILE), '.75rem');
+  assert.equal(declaration(settingsControls, 'min-height', MOBILE), '.6rem');
 });
 
 test('short-screen density does not change field/shop/chat layout or hide functional entries', () => {

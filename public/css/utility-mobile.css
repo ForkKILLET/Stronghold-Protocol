@@ -111,31 +111,6 @@
   .resource-modal .pbar__meta { flex-wrap: wrap; gap: 2px 6px; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
   .resource-modal .pbar__value { font-size: max(calc(.16 * var(--utility-text, var(--t))), 12px); }
 
-  /* Settings: remove empty micro-label space, keep full controls and diagnostic text. */
-  .settings-modal .set-list { gap: 6px; padding-top: 0; }
-  .settings-modal .set-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto; gap: 8px; min-height: 30px; }
-  .settings-modal .set-row__label { gap: 5px; line-height: 1.35; }
-  .settings-modal .set-row__label { font-size: calc(.18 * var(--utility-text, var(--t))); }
-  .settings-modal .set-row__label .micro { display: none; }
-  .settings-modal .set-row__label .icon { width: 14px; height: 14px; }
-  .settings-modal .set-row__val { min-width: 2.5em; }
-  .settings-modal .set-row__val { font-size: calc(.18 * var(--utility-text, var(--t))); }
-  .settings-modal .set-seg { width: 100%; }
-  .settings-modal .set-seg button { min-width: 0; padding: 4px 7px; }
-  .settings-modal .set-toggle { padding: 4px 8px; }
-  .settings-modal .set-toggle i { width: 28px; height: 16px; }
-  .settings-modal .set-toggle i::after { left: 2px; top: 2px; width: 12px; height: 12px; }
-  .settings-modal .set-toggle.is-on i::after { transform: translateX(12px); }
-  .settings-modal .set-range { min-width: 0; height: 28px; border-block: 10px solid transparent; background-clip: padding-box; }
-  .settings-modal .set-range::-webkit-slider-thumb { width: 14px; height: 20px; }
-  .settings-modal .set-range::-moz-range-thumb { width: 14px; height: 20px; }
-  .settings-modal .set-row--fps { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
-  .settings-modal .set-row--fps .set-seg--fps button { min-width: 0; }
-  .settings-modal .set-hint { margin: 0; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); line-height: 1.45; color: var(--text-lo); }
-  .settings-modal .set-res { gap: 4px; }
-  .settings-modal .set-res__body { gap: 4px; }
-  .settings-modal .set-diag { gap: 4px; padding-top: 6px; }
-  .settings-modal .set-diag__text { height: 96px; min-height: 64px; }
   .utility-modal .shortcut-row { min-height: 30px; grid-template-columns: minmax(0, 1fr) 90px; gap: 8px; }
   .utility-modal .shortcut-list { gap: 4px; }
   .utility-modal .lo-io__text { height: 120px; min-height: 72px; }
@@ -209,28 +184,84 @@
   .resource-modal .pbar__meta { gap: .05rem .15rem; font-size: calc(.14 * var(--t)); }
   .resource-modal .pbar__value { font-size: calc(.16 * var(--t)); }
 
-  .settings-modal .set-list { gap: .15rem; }
-  .settings-modal .set-row { gap: .2rem; min-height: .75rem; }
-  .settings-modal .set-row__label { gap: .125rem; line-height: 1.35; font-size: calc(.18 * var(--t)); }
-  .settings-modal .set-row__label .icon { width: .35rem; height: .35rem; }
-  .settings-modal .set-row__val { font-size: calc(.18 * var(--t)); }
-  .settings-modal :is(.set-seg button, .set-toggle, .shortcut-key) {
-    min-height: .75rem; height: auto; padding: .1rem .175rem;
-    font-size: calc(.16 * var(--t)); line-height: 1.25;
+  /* Settings and its portal-mounted shortcut editor share one scale. Geometry follows rem,
+     typography follows --t, and SVGs follow their text/button rather than fixed mobile pixels.
+     Keep the generic utility readability floor and larger controls out of these two dialogs. */
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) {
+    --utility-text: var(--t); font-size: calc(.16 * var(--t));
   }
-  .settings-modal .set-seg button { min-width: 0; }
-  .settings-modal .set-toggle { padding: .1rem .2rem; }
-  .settings-modal .modal__actions .btn { min-height: .75rem; font-size: calc(.16 * var(--t)); }
-  .settings-modal .set-toggle i { width: .7rem; height: .4rem; }
-  .settings-modal .set-toggle i::after { left: .05rem; top: .05rem; width: .3rem; height: .3rem; }
-  .settings-modal .set-toggle.is-on i::after { transform: translateX(.3rem); }
-  .settings-modal .set-range { height: .7rem; border-block: .25rem solid transparent; }
-  .settings-modal .set-range::-webkit-slider-thumb { width: .35rem; height: .5rem; }
-  .settings-modal .set-range::-moz-range-thumb { width: .35rem; height: .5rem; }
-  .settings-modal .set-hint { font-size: calc(.14 * var(--t)); }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__head {
+    padding: .12rem .2rem .08rem; gap: .15rem;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__head .micro {
+    font-size: calc(.1 * var(--t));
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__title {
+    font-size: calc(.22 * var(--t)); line-height: 1.25;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__body {
+    padding: .1rem .2rem .15rem;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .modal__actions {
+    gap: .1rem; padding: .1rem .2rem;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) :is(.btn, .set-seg button, .set-toggle, .set-native, .shortcut-key) {
+    min-width: 0; max-width: 100%; min-height: .6rem; height: auto; padding: .1rem .16rem;
+    font-size: calc(.16 * var(--t)); line-height: 1.35; white-space: normal; overflow-wrap: anywhere;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .btn__icon {
+    flex: none; width: 1.15em; height: 1.15em;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .utility-modal__close {
+    width: .6rem; height: .6rem; min-width: .6rem; min-height: .6rem; padding: 0;
+  }
+  :is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) .utility-modal__close .icon {
+    width: 50%; height: 50%;
+  }
+  .settings-modal .set-list { gap: .12rem; padding-top: 0; }
+  .settings-modal .set-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) auto;
+    gap: .14rem; min-height: .6rem; min-width: 0;
+  }
+  .settings-modal .set-row__label {
+    min-width: 0; gap: .1rem; line-height: 1.4; overflow-wrap: anywhere; font-size: calc(.18 * var(--t));
+  }
+  .settings-modal .set-row__label .micro { display: none; }
+  .settings-modal .set-row__label .icon { flex: none; width: 1.15em; height: 1.15em; }
+  .settings-modal .set-row__val { min-width: 2.5em; font-size: calc(.18 * var(--t)); }
+  .settings-modal .set-row > .btn { grid-column: 2 / 4; justify-self: start; }
+  .settings-modal .set-row--fps { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  .settings-modal .set-row--fps .set-seg--fps button { min-width: 0; }
+  .settings-modal .set-seg { width: 100%; min-width: 0; }
+  .settings-modal .set-voice { width: 100%; min-width: 0; gap: .1rem; }
+  .settings-modal .set-voice .set-seg { flex: 1 1 auto; }
+  .settings-modal .lang-select select {
+    box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%;
+    min-height: .6rem; height: auto; padding: .08rem .12rem;
+    font-size: max(calc(.16 * var(--t)), 16px); /* native select: retain the iOS focus-zoom guard */
+  }
+  .settings-modal .set-toggle { gap: .1rem; }
+  .settings-modal .set-toggle i { flex: none; width: .46rem; height: .24rem; }
+  .settings-modal .set-toggle i::after { left: .03rem; top: .03rem; width: .18rem; height: .18rem; }
+  .settings-modal .set-toggle.is-on i::after { transform: translateX(.22rem); }
+  .settings-modal .set-range {
+    box-sizing: border-box; min-width: 0; height: .6rem; margin: 0;
+    border-block: .24rem solid transparent; border-inline: 0; background-clip: padding-box;
+  }
+  .settings-modal .set-range::-webkit-slider-thumb { width: .24rem; height: .32rem; }
+  .settings-modal .set-range::-moz-range-thumb { width: .24rem; height: .32rem; }
+  :is(.settings-modal, .settings-shortcuts-modal) .set-hint {
+    margin: 0; font-size: calc(.14 * var(--t)); line-height: 1.5; color: var(--text-lo);
+  }
   .settings-modal .set-res, .settings-modal .set-res__body { gap: .1rem; }
+  .settings-modal .set-keys__head { display: flex; flex-wrap: wrap; align-items: center; gap: .12rem; justify-content: space-between; }
   .settings-modal .set-diag { gap: .1rem; padding-top: .15rem; }
-  .settings-modal .set-diag__text { height: 2.4rem; min-height: 1.6rem; }
+  .settings-modal .set-diag__text { height: 2.4rem; min-height: 1.6rem; padding: .1rem .12rem; }
+  .settings-shortcuts-modal .shortcut-list { gap: .1rem; }
+  .settings-shortcuts-modal .shortcut-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.25rem);
+    gap: .14rem; min-height: .6rem; font-size: calc(.16 * var(--t)); overflow-wrap: anywhere;
+  }
 
   .utility-modal.title-about .title-about__links { gap: .2rem; }
   .utility-modal.title-about .title-about__links dt { margin-bottom: .075rem; font-size: calc(.16 * var(--t)); }

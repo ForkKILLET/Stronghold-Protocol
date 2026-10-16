@@ -374,7 +374,7 @@ function ShortcutModal({ open, onClose }) {
   };
   const reset = () => { shortcutsStore.set({ ...DEFAULT_SHORTCUTS }); setEditing(null); setError(''); };
   const display = (code) => code === 'Space' ? t('空格') : code.replace(/^Key/, '').replace(/^Digit/, '').replace(/^Arrow/, '方向');
-  return html`<${Modal} open=${open} title=${t('修改快捷键')} micro="KEYBOARD SHORTCUTS" width="6.5rem" onClose=${onClose} utility=${true}
+  return html`<${Modal} open=${open} title=${t('修改快捷键')} micro="KEYBOARD SHORTCUTS" width="6.5rem" onClose=${onClose} utility=${true} class="settings-shortcuts-modal"
       actions=${html`<${Button} variant="secondary" icon="refresh" onClick=${reset}>${t('重置默认')}<//><${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <div class="shortcut-list">
       ${Object.entries(SHORTCUT_LABELS).map(([action, [label]]) => html`<div key=${action} class="shortcut-row">
