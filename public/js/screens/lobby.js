@@ -22,7 +22,7 @@ import { RoomOptionsPage, RoomPacingControls } from '../ui/roomOptions.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
-import { html, Button, Icon, MicroLabel, TextField, Tooltip, Spinner, DifficultyIcon, Modal } from '../ui/components.js';
+import { html, Button, Icon, MicroLabel, TextField, Tooltip, DifficultyIcon, Modal } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { openStats } from './stats.js';
 import { LoadoutButton } from './loadout.js';
@@ -315,11 +315,10 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
           <div class="proto-foot">
             ${queue ? html`<${MatchQueuePanel} queue=${queue} onCancel=${onCancel} />` : html`
               <p class="proto-hint">${!online ? t('正在连接服务器…') : roomMode === 'match' ? t('仅匹配真人 · 满四人后开始') : roomMode === 'solo' ? t('创建后即可开始模拟') : t('创建后可邀请好友或匹配队友')}</p>
-              <button type="button" class="proto-start" disabled=${!online || !!busy || (roomMode==='coop' && !validPrepChoice(prepChoice))} onClick=${onStart}>
-                <span class="proto-start__mark" aria-hidden="true"><span class="proto-start__rook"><i>[</i><${Icon} name="rook" /><i>]</i></span><small>STRONGHOLD<br />PROTOCOL</small></span>
-                <span class="proto-start__label">${busy ? html`<${Spinner} size="sm" />` : null}${roomMode === 'solo' ? t('开始独立模拟') : roomMode === 'match' ? t('开始同盟匹配') : t('创建同盟')}</span>
-                <span class="proto-start__deco" aria-hidden="true"></span>
-              </button>`}
+              <${Button} class="proto-start" variant="primary" size="lg" loading=${!!busy}
+                disabled=${!online || !!busy || (roomMode==='coop' && !validPrepChoice(prepChoice))} onClick=${onStart}>
+                ${roomMode === 'solo' ? t('开始独立模拟') : roomMode === 'match' ? t('开始同盟匹配') : t('创建同盟')}
+              <//>`}
           </div>
         </section>
       </div>

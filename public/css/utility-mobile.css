@@ -341,16 +341,6 @@
   .room-screen .room-ping { align-items: flex-start; gap: 0; min-width: 0; flex: 1 1 auto; overflow: hidden; }
   .room-screen .room-ping > .micro { display: none; }
   .room-screen .connection-status { flex-wrap: nowrap; gap: .1rem; max-width: 100%; overflow: hidden; }
-  .room-screen .invite { min-width: 0; max-width: 100%; padding: .075rem .1rem; gap: .05rem .1rem; }
-  .room-screen .invite__label { flex-wrap: nowrap; gap: .075rem; }
-  .room-screen .invite__label .micro { display: none; }
-  .room-screen .invite__code { gap: .025rem; }
-  .room-screen .invite__code span {
-    width: .72em; height: 1em; flex: none; font-size: calc(.2 * var(--utility-text, var(--t)));
-  }
-  .room-screen .invite__btns { flex-direction: row; gap: .05rem; }
-  .room-screen .invite__btns .btn { min-width: .65rem; width: .65rem; min-height: .65rem; height: .65rem; padding: .075rem; font-size: 0; }
-  .room-screen .invite__btns .icon { width: .4rem; height: .4rem; }
   .room-screen--coop { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
   .room-screen .seats { padding: .2rem .25rem; gap: .2rem; grid-template-rows: auto; overflow-y: auto; }
   .room-screen--coop .seats { flex: 1 0 3.6rem; min-height: 3.6rem; }
@@ -363,23 +353,9 @@
   .room-screen .solo-brief { padding: .25rem; gap: .15rem; overflow-y: auto; touch-action: pan-y; }
   .room-screen .solo-brief h2 { font-size: calc(.26 * var(--utility-text, var(--t))); }
   .room-screen .specbar { padding: 0 .25rem .15rem; gap: .15rem; }
-  .room-screen .room-bar {
-    height: auto; min-height: 0; padding: .15rem .25rem; gap: .15rem .25rem;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "summary summary" "tools actions" "status actions";
-  }
-  .room-screen .room-bar__left, .room-screen .room-bar__right { gap: .15rem; flex-wrap: wrap; }
-  .room-screen .room-bar__left { display:contents; min-width:0; }
-  .room-screen .room-bar__label .micro { display: none; }
-  .room-screen .room-bar__center { grid-area: status; flex-direction: row; flex-wrap: wrap; justify-self: start; gap: .1rem .2rem; min-width: 0; text-align: left; }
-  .room-screen .room-bar__right { grid-area: actions; min-width: 0; align-items: flex-end; justify-content: flex-end; }
-  .room-screen .room-bar__status { overflow-wrap: anywhere; }
-  .room-screen .room-bar .btn--xl { min-width: 0; }
   .room-screen .dpick { min-width: 0; max-width: 100%; flex-wrap: wrap; }
   .room-screen .dpick__opt { height: auto; min-height: .7rem; padding: .1rem .175rem; }
-  .room-screen .room-match-actions { min-width: 0; max-width: 100%; }
   .room-screen .room-match-state { flex-wrap: wrap; }
-  .room-screen .room-loadout { max-width: 100%; flex-wrap: wrap; white-space: normal; }
 
   /* Title login remains scrollable on short / narrow viewports; decorative art does not occupy form space. */
   .title-screen { overflow-y: auto; justify-content: flex-start; }
@@ -529,10 +505,6 @@
   .room-screen .topbar { grid-template-columns: minmax(0, .85fr) minmax(0, 1.3fr) minmax(0, .85fr); grid-template-areas: "controls title invite"; }
   .room-screen .topbar__left { flex-direction: column; align-items: flex-start; }
   .room-screen .topbar__right { justify-self: end; }
-  .room-screen .invite { display: flex; flex-direction: column; align-items: center; width: auto; }
-  .room-screen .invite__btns { flex-direction: row; justify-content: center; flex-wrap: nowrap; }
-  .room-screen .room-bar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "summary" "tools" "status" "actions"; }
-  .room-screen .room-bar__right { justify-self: stretch; }
   .lo-top, .st-top { grid-template-columns: auto minmax(0, 1fr); }
   .lo-top__center, .st-top__center { grid-column: 1 / -1; grid-row: 2; }
   .lo-top__right, .st-top__right { grid-column: 2; grid-row: 1; }
@@ -601,7 +573,36 @@
   .rseat__avatar { min-width: 30px; min-height: 30px; }
 }
 
-@media (max-width:650px) {
-  .room-screen .room-bar { grid-template-columns:minmax(0,1fr); grid-template-areas:"summary" "tools" "status" "actions"; }
-  .room-screen .room-bar__right { justify-self:stretch; }
+
+/* Compact cards keep names/actions readable when the portrait space is limited. */
+@media (max-width:560px) {
+ .room-screen--coop .seats { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:auto; align-content:center; flex:1 0 280px; min-height:280px; }
+}
+@media (max-height:560px) and (min-width:761px) {
+ .room-screen--coop .seats { grid-template-columns:repeat(4,minmax(0,1fr)); }
+ .room-screen .seats--solo { grid-template-columns:minmax(0,240px) minmax(0,480px); }
+}
+@media (max-width:560px), (max-height:560px) and (min-width:761px) {
+  .room-screen .rseat { display:grid; grid-template-columns:min(54px,var(--room-seat-width,48px)) minmax(0,1fr); grid-template-rows:28px auto; }
+  .room-screen .rseat__strip { grid-column:1/-1; grid-row:1; }
+  .room-screen .rseat__art { grid-column:1; grid-row:2; }
+  .room-screen .rseat__plate { grid-column:2; grid-row:2; height:auto; min-height:0; margin:0; padding:6px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
+  .room-screen .rseat__plate .avatar { --av:24px; width:24px; height:24px; flex:none; }
+  .room-screen .rseat__who { max-width:100%; font-size:12px; }
+  .room-screen .rseat__actions .btn { height:40px; min-height:40px; font-size:12px; padding:4px; gap:4px; }
+  .room-screen .rseat__actions .btn__label { white-space:normal; }
+  .room-screen .rseat__invite { padding:4px; gap:4px; }
+  .room-screen .rseat__invite small { display:none; }
+  .room-screen .rseat__invite b { font-size:12px; }
+  .room-screen .rseat__plus { width:28px; height:28px; }
+  .room-screen .rseat .rseat__state { bottom:4px; gap:2px; font-size:10px; }
+  .room-screen .rseat__box { width:12px; height:12px; border-width:1px; }
+}
+@media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-height:560px) and (min-width:761px) {
+ .room-screen .rseat { grid-template-rows:36px auto; }
+}
+
+@media (max-height:560px) and (min-width:761px) {
+ .room-screen--coop .seats { flex:1 0 100px; min-height:100px; padding-block:4px; }
+ .room-screen .rseat__plate:not(.rseat__plate--empty) { flex-direction:row; }
 }

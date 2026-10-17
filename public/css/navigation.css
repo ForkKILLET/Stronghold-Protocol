@@ -36,7 +36,6 @@
 .protocol-screen > .app-header { position:sticky; top:0; }
 .protocol-screen .proto { min-height:0; flex:1 0 auto; }
 .protocol-screen .proto-body { padding-top:12px; }
-.room-invitation { flex:none; display:flex; justify-content:center; padding:8px 16px; border-bottom:1px solid var(--line); background:#0a1210a6; }
 .sweep-host .sw-report-page { flex:1; min-height:0; height:auto; }
 .sweep-host .sw-top { justify-content:center; min-height:50px; }
 .sweep-host .sw-top__left { display:none; }

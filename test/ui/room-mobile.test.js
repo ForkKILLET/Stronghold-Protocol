@@ -9,8 +9,8 @@ const layers = ['public/css/components.css', 'public/css/screens/lobby.css', 'pu
   .map((file) => postcss.parse(read(file)));
 
 function mediaMatches(params, width, height) {
-  return params.split(',').some((part) => [...part.matchAll(/\(max-(width|height):\s*(\d+)px\)/g)]
-    .every(([, axis, max]) => (axis === 'width' ? width : height) <= Number(max)));
+  return params.split(',').some((part) => [...part.matchAll(/\((min|max)-(width|height):\s*(\d+)px\)/g)]
+    .every(([, bound, axis, limit]) => bound === 'max' ? (axis === 'width' ? width : height) <= Number(limit) : (axis === 'width' ? width : height) >= Number(limit)));
 }
 
 // Only the exact simple selectors listed per element below are matched. Cascade class counts and source order
@@ -75,7 +75,7 @@ for (const [width, height] of [[320, 568], [390, 844], [560, 320], [640, 360], [
     assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', width, height), 'auto',
       'footer contents may grow without spilling over the seats');
     assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', width, height),
-      width <= 650 ? '"summary" "tools" "status" "actions"' : '"summary summary" "tools actions" "status actions"');
+      width <= 760 ? '"summary" "status" "tools" "actions"' : '"summary status" "tools actions"');
     const buttons = ['.btn--square.btn--sm', '.room-screen--coop .room-topbar__tools .btn--square', '.room-screen .room-topbar__tools .btn--square'];
   assert.equal(property(buttons, 'width', width, height), '.75rem');
   });
@@ -86,7 +86,7 @@ test('desktop footer separates options/status from actions and grows with wrappe
   assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-columns', 1920, 1080),
     'minmax(0, 1fr) auto minmax(0, 1fr)');
   assert.equal(property(['.room-bar'], 'grid-template-columns', 1920, 1080), 'minmax(0, 1fr) auto');
-  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', 1920, 1080), '"summary summary" "tools actions" "status actions"');
+  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', 1920, 1080), '"summary status" "tools actions"');
   assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'min-height', 1920, 1080), '0');
 });
 
@@ -99,8 +99,8 @@ test('the room title remains on the same row as controls and invitation at phone
 
 test('invite code boxes scale with their own glyphs instead of a tiny rem box plus enlarged text', () => {
   const selector = ['.invite__code span', '.room-screen .invite__code span'];
-  assert.equal(property(selector, 'width', 844, 390), '.72em');
-  assert.equal(property(selector, 'height', 844, 390), '1em');
+  assert.equal(property(selector, 'width', 844, 390), 'max(32px,.46rem,.9em)');
+  assert.equal(property(selector, 'height', 844, 390), 'max(40px,1.05em)');
   assert.equal(property(selector, 'flex', 844, 390), 'none');
   assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'font-size', 844, 390),
     'calc(.16 * var(--utility-text, var(--t)))');
@@ -111,7 +111,7 @@ test('short rooms retain a visible seat region and scrolling; portrait seats can
   assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'min-height', 640, 270), '3.6rem');
   assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'flex', 640, 270), '1 0 3.6rem');
   assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-template-rows', 390, 844), 'none');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-auto-rows', 390, 844), 'minmax(3.5rem, auto)');
+  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-auto-rows', 390, 844), 'auto');
   assert.equal(property(['.seat', '.room-screen .seat'], 'min-height', 390, 844), '3.5rem');
   assert.equal(property(['.seat__foot .tt-anchor', '.room-screen--coop .seat__foot .tt-anchor'], 'position', 640, 360), 'static');
 });

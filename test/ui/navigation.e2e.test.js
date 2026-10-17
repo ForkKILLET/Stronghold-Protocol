@@ -48,6 +48,16 @@ test('shared navigation, latency width, overlay return and pre-game pause surviv
   await click('.lobby-hub .stats-entry');await header('.st');await click('.st .app-back');await page.waitForSelector('.st',{hidden:true});
   await page.evaluate(()=>[...document.querySelectorAll('.hub-entry')].find(e=>e.textContent.includes('创建同盟')).click());await header('.protocol-screen');
   await click('.proto-start');await header('.room-screen');
+  assert.equal(await page.$('.rseat__doc'),null);
+  await page.waitForSelector('.rseat__strip .rseat__pick');await page.mouse.move(5,150);
+  const editStyle=()=>page.$eval('.rseat__pick',e=>[getComputedStyle(e).borderColor,getComputedStyle(e).backgroundColor]);
+  const idle=await editStyle();await page.hover('.rseat.is-me .rseat__art');
+  await new Promise(r=>setTimeout(r,180));assert.deepEqual(await editStyle(),idle,'portrait hover does not activate edit');
+  await page.hover('.rseat__pick');await new Promise(r=>setTimeout(r,180));assert.notDeepEqual(await editStyle(),idle);
+  const actionSizes=await page.$$eval('.room-config-summary > button,.room-bar__right button',els=>els.map(e=>[e.getBoundingClientRect().height,getComputedStyle(e).fontSize,getComputedStyle(e).padding]));
+  for(const size of actionSizes)assert.deepEqual(size,actionSizes[0],'room actions share height, font and padding');
+  const keyBox=await page.$eval('.room-invitation',e=>{const code=e.querySelector('.invite__code span');return{insideHeader:!!e.closest('.app-header'),font:parseFloat(getComputedStyle(code).fontSize),buttons:[...e.querySelectorAll('button')].map(b=>b.getBoundingClientRect().height)};});
+  assert.equal(keyBox.insideHeader,false);assert.ok(keyBox.font>=28);assert.ok(keyBox.buttons.every(h=>h>=36));
   const roomCode=await page.evaluate(async()=>{const{store}=await import('/js/store.js');return store.get().room.code;});
   await text('调整配置');await header('.room-options-screen');await text('时长倍率');
   await click('.room-options-screen .stats-entry');await header('.st');await click('.st .app-back');await page.waitForSelector('.st',{hidden:true});
@@ -55,7 +65,9 @@ test('shared navigation, latency width, overlay return and pre-game pause surviv
   await click('.room-options-screen .app-back');await header('.room-screen');
   assert.equal(await page.evaluate(async()=>{const{store}=await import('/js/store.js');return store.get().room.code;}),roomCode);
   for(const [width,height] of [[844,390],[390,844],[320,720]]) {
-   await page.setViewport({width,height});await header('.room-screen');await click('.room-screen .stats-entry');await header('.st');await click('.st .app-back');await page.waitForSelector('.st',{hidden:true});await header('.room-screen');
+   await page.setViewport({width,height});await header('.room-screen');
+   await page.waitForFunction(()=>[...document.querySelectorAll('.rseat')].every(e=>{const card=e.getBoundingClientRect(),plate=e.querySelector('.rseat__plate').getBoundingClientRect();return plate.bottom<=card.bottom+1;}));
+   await click('.room-screen .stats-entry');await header('.st');await click('.st .app-back');await page.waitForSelector('.st',{hidden:true});await header('.room-screen');
   }
   await page.setViewport({width:1366,height:768});
   for(let i=0;i<3;i++){await page.waitForFunction(n=>document.querySelectorAll('.rseat:not(.rseat--empty)').length===n,{},i+1);await page.evaluate(()=>[...document.querySelectorAll('.rseat__actions button')].find(e=>e.textContent.includes('添加 AI')&&!e.disabled).click());}

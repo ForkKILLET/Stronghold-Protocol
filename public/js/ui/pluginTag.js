@@ -87,5 +87,5 @@ export function PluginTag({ room, myId }) {
 /** A plain-language room configuration summary, separate from compact legacy badges. */
 export function roomRulesLabel(room) {
  const f=roomPluginFacts(room,null);
- return f.modded?t('玩法：自定义 · {n} 个插件',{n:f.count}):f.count?t('玩法：原版规则 · {n} 个外观插件',{n:f.count}):t('玩法：原版规则');
+ return f.modded?t('玩法 自定义（{n} 个插件）',{n:f.count}):f.count?t('玩法 原版规则（{n} 个外观插件）',{n:f.count}):t('玩法 原版规则');
 }

@@ -29,13 +29,13 @@ export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disable
 import { validPrepChoice as valid } from './prepTime.js';
 
 
-export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSeconds=null, battleSpeed=2, onOpen, editable=true, disabled=false, contentLabel=null, onPlugins=null}) {
+export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSeconds=null, battleSpeed=2, onOpen, editable=true, disabled=false, contentLabel=null}) {
  return html`<div class="room-config-summary">
   <div class="room-config-summary__values"><span>${t(DIFFICULTY_NAMES[difficulty] || difficulty)}</span>
-   <span>${t('休整期')} · ${mode==='solo'?t('不限时'):prepSeconds!=null?t('每回合 {seconds} 秒',{seconds:prepSeconds}):prepTimeLabel(prepMultiplier)}</span>
-   <span>${t('战斗倍速')} · ${battleSpeed}×</span>
-   ${contentLabel?html`<button type="button" class="room-config-summary__plugins" data-testid="plugin-tag" disabled=${disabled} onClick=${onPlugins}>${contentLabel}</button>`:null}</div>
-  <${Button} variant="secondary" size="sm" icon="edit" disabled=${disabled} onClick=${onOpen}>${editable?t('调整配置'):t('查看配置')}<//>
+   <span>${t('休整期')} ${mode==='solo'?t('不限时'):prepSeconds!=null?t('每回合 {seconds} 秒',{seconds:prepSeconds}):prepTimeLabel(prepMultiplier)}</span>
+   <span>${t('战斗倍速')} ${battleSpeed}×</span>
+   ${contentLabel?html`<span>${contentLabel}</span>`:null}</div>
+  <${Button} variant="secondary" size="lg" icon="edit" disabled=${disabled} onClick=${onOpen}>${editable?t('调整配置'):t('查看配置')}<//>
  </div>`;
 }
 

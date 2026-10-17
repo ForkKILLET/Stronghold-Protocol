@@ -10,7 +10,7 @@ export function validPrepChoice(value) {
   return isPrepMultiplier(multiplier) && (typeof value !== 'string' || multiplier >= PREP_MIN_MULTIPLIER);
 }
 export function prepTimeLabel(multiplier) {
-  return multiplier == null ? t('默认 · 随回合变化') : multiplier === 0 ? t('不限时') : t('默认时长 × {multiplier}', { multiplier });
+  return multiplier == null ? t('默认') : multiplier === 0 ? t('不限时') : t('默认 × {multiplier}', { multiplier });
 }
 export function PrepTimePicker({ value, onChange, disabled = false }) {
   const scaled = typeof value === 'string';

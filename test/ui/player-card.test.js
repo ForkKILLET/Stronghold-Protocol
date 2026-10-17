@@ -4,6 +4,7 @@ import { createStore } from '../../public/js/store.js';
 import { DoctorAvatar, profileStore } from '../../public/js/ui/profile.js';
 import { installCardSync, cardStore } from '../../public/js/ui/playerCard.js';
 import { options, h, Component } from '../../public/vendor/preact.module.js';
+import { PageHeader } from '../../public/js/ui/pageHeader.js';
 import { LobbyScreen } from '../../public/js/screens/lobby.js';
 import { data } from '../../public/js/data.js';
 import { seatPortrait, cardAvatarUrl } from '../../public/js/ui/seatArt.js';
@@ -67,7 +68,9 @@ test('LobbyScreen renders with default and saved avatars without an undeclared d
       cardStore.set({ avatar:'char_b' });
       const tree = renderHookComponent(LobbyScreen);
       assert.equal(tree.props.class, 'screen lobby-screen lobby-hub');
-      const doctor = [...walk(tree)].find((v) => v.type === DoctorAvatar);
+      const header = [...walk(tree)].find((v) => v.type === PageHeader);
+      assert.ok(header);
+      const doctor = [...walk(renderHookComponent(() => PageHeader(header.props)))].find((v) => v.type === DoctorAvatar);
       assert.ok(doctor);
       const frame=renderHookComponent(()=>DoctorAvatar(doctor.props));
       assert.equal(frame.props.src, expected);
