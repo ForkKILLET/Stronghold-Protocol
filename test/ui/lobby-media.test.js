@@ -182,7 +182,8 @@ test('muted songs do not start a media request; failed songs fall back without r
 test('lobby media uses existing modal management and audio bootstrap without changing battle choices', () => {
   const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
   assert.match(read('public/js/main.js'), /installLobbyMusic\(\)/);
-  assert.match(read('public/js/screens/lobby.js'), /title=\$\{t\('大厅背景'\)\}/);
-  assert.match(read('public/js/screens/lobby.js'), /open=\$\{bgOpen\} utility=\$\{true\}/);
+  assert.match(read('public/js/ui/settings.js'), /<\$\{PersonalizationSection\} \/>/);
+  assert.match(read('public/js/ui/personalization.js'), /open=\$\{backgroundOpen\} utility=\$\{true\}/);
+  assert.doesNotMatch(read('public/js/ui/pageHeader.js'), /LobbyMusicButton|BackdropSettings/);
   assert.match(read('public/js/ui/lobbyMusic.js'), /open=\$\{open\} utility=\$\{true\}/);
 });

@@ -1,15 +1,11 @@
 // Shared navigation for the lobby and management/pre-game pages. Gameplay keeps its own HUD.
-import { useState } from '../../vendor/hooks.module.js';
-import { html, Button, Icon, PingPill, OnlineCount, MicroLabel, Modal } from './components.js';
+import { html, Button, Icon, PingPill, OnlineCount, MicroLabel } from './components.js';
 import { useStore, shallowEqual } from '../store.js';
 import { DoctorAvatar, profileStore } from './profile.js';
 import { SettingsButton } from './settings.js';
 import { GuideButton } from './guide.js';
 import { AnnouncementButton } from './announcement.js';
 import { PwaInstallButton } from './device.js';
-import { LobbyMusicButton } from './lobbyMusic.js';
-import { BackdropGlyph, BackdropSettings } from './hubBackdrop.js';
-import { useHubBackdrop } from './hubAppearance.js';
 import { t } from '../../../shared/i18n.js';
 
 /** Same return treatment for page navigation and nested report/detail views. */
@@ -24,8 +20,6 @@ export function PageHeader({ onBack, backTitle, backBusy = false, title = null, 
   const presence = useStore(s => s.presence, shallowEqual);
   const me = useStore(s => s.me, shallowEqual);
   const profile = useStore(s => s.user, Object.is, profileStore);
-  const [backgroundOpen, setBackgroundOpen] = useState(false);
-  const background = useHubBackdrop();
   const name = profile?.name || me.name || t('博士');
   const openArchive = () => import('../screens/stats.js').then(m => m.openStats());
   const backButton = html`<${BackButton} onClick=${onBack} title=${backTitle || t('返回')} busy=${backBusy} />`;
@@ -35,9 +29,6 @@ export function PageHeader({ onBack, backTitle, backBusy = false, title = null, 
         <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
       </div>`;
   const tools = html`<div class="app-header__tools">
-        <${Button} variant="secondary" size="sm" square=${true} title=${t('大厅背景')} aria-label=${t('大厅背景')}
-          onClick=${() => setBackgroundOpen(true)}><${BackdropGlyph} /><//>
-        <${LobbyMusicButton} />
         <${SettingsButton} variant="secondary" square=${true} />
         <${GuideButton} variant="secondary" square=${true} />
         <${PwaInstallButton} square=${true} />
@@ -55,9 +46,6 @@ export function PageHeader({ onBack, backTitle, backBusy = false, title = null, 
       ${heading || html`<${PageHeading} title=${title || t('卫戍协议：盟约')} micro=${micro} subtitle=${subtitle} />`}
       ${identity}
     </div>
-    <${Modal} open=${backgroundOpen} utility=${true} class="hub-backdrop-panel" title=${t('大厅背景')} micro="LOBBY BACKDROP" onClose=${() => setBackgroundOpen(false)}>
-      <${BackdropSettings} bg=${background} />
-    <//>
   </header>`;
 }
 

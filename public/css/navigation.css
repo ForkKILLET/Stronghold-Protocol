@@ -14,6 +14,9 @@
 .app-header .app-back .icon { width:16px; height:16px; }
 .app-header .btn--square { box-sizing:border-box; width:36px; min-width:36px; height:36px; min-height:36px; padding:8px; }
 .app-header__tools .btn--square svg { width:18px; height:18px; }
+/* Tool color has no state meaning: inherit the same neutral/hover treatment. */
+.app-header__tools > .btn .btn__icon { color:inherit; }
+.app-header__tools > .btn:not(:disabled):hover { color:var(--mint-400); }
 .app-header .ping { height:26px; min-height:26px; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); }
 .app-header .topbar-announcement { box-sizing:border-box; height:30px; min-height:30px; padding:4px 8px; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); }
 .app-header .topbar-announcement .icon { width:16px; height:16px; }

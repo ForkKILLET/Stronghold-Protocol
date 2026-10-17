@@ -57,7 +57,7 @@ export function installLobbyMusic() {
   lobbyMusic.load();
 }
 
-export function LobbyMusicButton() {
+export function LobbyMusicButton({ class: cls = '', size = 'sm', square = true } = {}) {
   const [open, setOpen] = useState(false), [state, setState] = useState(lobbyMusic.get), [error, setError] = useState('');
   const input = useRef(null);
   useEffect(() => {
@@ -65,10 +65,10 @@ export function LobbyMusicButton() {
   }, []);
   const action = async (fn) => { setError(''); try { await fn(); } catch (e) { setError(e.message || t('操作失败')); } };
   const record = state.record;
-  return html`<${Button} variant="secondary" size="sm" square=${true} class="hub-music-btn"
+  return html`<${Button} variant="secondary" size=${size} square=${square} class=${`hub-music-btn ${cls}`}
     title=${t('大厅音乐')} aria-label=${t('大厅音乐')} onClick=${() => setOpen(true)}>
     <svg class="btn__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M9 3v12.2A4 4 0 1 0 11 19V7l8-2v8.2A4 4 0 1 0 21 17V0z" /></svg><//>
+      <path fill="currentColor" d="M9 3v12.2A4 4 0 1 0 11 19V7l8-2v8.2A4 4 0 1 0 21 17V0z" /></svg>${square ? null : t('大厅音乐')}<//>
     <${Modal} open=${open} utility=${true} class="lobby-music-panel" title=${t('大厅音乐')} micro="LOBBY MUSIC" onClose=${() => setOpen(false)}>
       <div class="lobby-music">
         <p class="bgset__note">${t('选择你喜欢的大厅音乐，每首最大 20MB。仅保存在当前浏览器，无需上传服务器。')}</p>
