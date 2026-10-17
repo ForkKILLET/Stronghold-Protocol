@@ -71,7 +71,7 @@
 /* ---- body ------------------------------------------------------------------------------------------------------------ */
 .st-body {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-  padding: .2rem .36rem .32rem; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent;
+  padding: .2rem .36rem .32rem;
 }
 .st-body > * { max-width: max(12.4rem, 760px); margin-left: auto; margin-right: auto; }
 .st-loading { flex: 1; display: grid; place-items: center; min-height: 2rem; }

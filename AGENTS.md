@@ -407,3 +407,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-18 全局顶栏工具没有用颜色区分身份或状态；图标统一继承工具按钮的常态／悬停颜色，不恢复设置／玩法说明的固定强调色。
 
 - 2026-10-18 大厅背景与音乐入口只在设置的 PersonalizationSection 内提供，不恢复顶栏独立入口；嵌套面板关闭回到原设置位置，main.js 的 installLobbyMusic 启动恢复独立保留。顶栏工具颜色仅匹配直接按钮，不覆盖其弹窗内容。
+
+- 2026-10-18 可见滚动条由 theme.css 的 --scrollbar-* 统一管理；Chromium/WebKit 使用直角伪元素并将标准属性保持 auto，Firefox 使用标准 thin／配色回退。各页面不再单独定义 scrollbar-color／thin，原有 scrollbar-width:none 的隐藏页签保留。

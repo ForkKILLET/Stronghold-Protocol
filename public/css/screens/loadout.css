@@ -147,7 +147,7 @@
   --q: max(.4rem, 32px); --qg: max(.05rem, 4px); --art: max(.52rem, 40px);
   --cols: minmax(max(2.2rem, 110px), max(3.2rem, 260px)) calc(3 * var(--q) + 2 * var(--qg)) calc(4 * var(--q) + 3 * var(--qg)) max(2.2rem, 160px);
   flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-  padding: 0 .06rem .2rem 0; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent;
+  padding: 0 .06rem .2rem 0;
 }
 .sp-coarse .lo-list { --q: max(.44rem, 40px); }
 .lo-list__head, .lo .lo-card { display: grid; grid-template-columns: var(--cols); justify-content: start; align-items: center; column-gap: max(.12rem, 8px); }
@@ -277,7 +277,7 @@
 .lo-bond__dot { width: .1rem; height: .1rem; border-radius: 50%; background: var(--mint-700); }
 .lo-dhead__reset { position: absolute; right: .12rem; top: .12rem; }
 
-.lo-detail__body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: .12rem .18rem .2rem; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+.lo-detail__body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: .12rem .18rem .2rem; }
 .lo-garrisons { margin-bottom: .18rem; }
 .lo-garrisons .dgarrison__k { font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px); }
 .lo-garrisons .dgarrison__type { font-size: max(calc(.12 * var(--utility-text, var(--t))), 10px); }
@@ -401,8 +401,7 @@
 .own__bar { flex: none; display: flex; align-items: center; gap: .2rem; }
 .own__lead { flex: 1; margin: 0; font-size: max(calc(.15 * var(--utility-text, var(--t))), 10px); line-height: 1.5; color: var(--text-md); }
 .own__lead b { color: var(--ice); font-weight: 700; }
-.own__list { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .18rem; padding: 0 .06rem .2rem 0;
-  scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+.own__list { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .18rem; padding: 0 .06rem .2rem 0; }
 .own-tier__head { display: flex; align-items: center; gap: .08rem; margin: 0 0 .08rem; font-size: max(calc(.17 * var(--utility-text, var(--t))), 12px); font-weight: 700; color: var(--text-md); letter-spacing: .06em; }
 .own-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(4.4rem, 270px), 1fr)); gap: .08rem; }
 .own-card {
@@ -441,8 +440,7 @@
 
 /* ---- 自选编队 (screens/diy.js): four DIY slots by tier, the slot picker (operator list + skill / module) --------------- */
 .diy { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: .12rem; padding: .16rem .3rem .2rem; }
-.diy__body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .18rem; padding: 0 .06rem .2rem 0;
-  scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+.diy__body { flex: 1 1 auto; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; display: flex; flex-direction: column; gap: .18rem; padding: 0 .06rem .2rem 0; }
 .diy-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(5.2rem, 300px), 1fr)); gap: .1rem; }
 .diy-slot {
   position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .1rem; align-items: start; min-width: 0;
@@ -491,7 +489,7 @@
 .diy-pick__bar { flex: none; display: flex; align-items: center; gap: .1rem; flex-wrap: wrap; }
 .diy-pick__search { flex: 1 1 2rem; min-width: 120px; height: max(.36rem, 26px); padding: 0 .08rem; font: inherit; font-size: max(calc(.13 * var(--t)), 10px); color: var(--text-hi); background: rgba(255, 255, 255, .04); border: 1px solid var(--line-2); }
 .diy-pick__main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: .12rem; }
-.diy-pick__list, .diy-pick__detail { min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+.diy-pick__list, .diy-pick__detail { min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 .diy-pick__list { display: grid; grid-template-columns: 1fr; align-content: start; gap: .06rem; }
 .diy-opt {
   position: relative; display: flex; align-items: center; gap: .07rem; min-width: 0; padding: .06rem; font: inherit; color: var(--text-hi); text-align: left;
@@ -832,8 +830,7 @@
 /* ---- the deck ---- */
 .lo-deckwrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
 .lo-deck { position: relative; flex: 1 1 auto; min-width: 0; display: flex; align-items: stretch; gap: .34rem; padding: .24rem .36rem .2rem;
-  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin; scrollbar-color: var(--line-3) transparent; }
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .lo-deck.is-dragging { cursor: grabbing; user-select: none; }
 .lo-deck.is-dragging * { cursor: grabbing !important; }
 .lo-deck--empty { align-items: center; justify-content: center; }
