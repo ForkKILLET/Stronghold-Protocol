@@ -277,7 +277,7 @@ export function SettingsModal({ open, onClose }) {
     <div class="set-list">
       <div class="set-row">
         <span class="set-row__label">${t('语言')}<${MicroLabel}>LANGUAGE<//></span>
-        <${LangToggle} class="set-lang" />
+        <${LangToggle} class="set-lang" compact=${true} />
       </div>
       ${mtNote ? html`<p class="set-hint set-lang-note" data-testid="lang-mt-note">${mtNote}</p>` : null}
       <${Slider} label=${t('背景音乐')} micro="BGM" icon="play" value=${s.bgm} onInput=${(v) => updateSettings({ bgm: v })} />

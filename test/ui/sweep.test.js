@@ -1,3 +1,4 @@
+import { length } from '../helpers/css-values.js';
 // Node/vnode + CSS-contract regressions; not a browser/real-device layout test.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -200,20 +201,20 @@ test('achievement canvas follows the reference design rem and viewport, without 
   sheet.walkRules((r) => {
     if (r.selector === '.ach__box') r.walkDecls('width', (d) => heights.push(d.value));
   });
-  assert.ok(heights.includes('min(17.4rem, calc(100vw - 1.1rem))'));
+  assert.ok(Math.abs(length(heights.at(-1), { '--ui-unit': 100 }) - 1740) < 1e-7);
   const sizes = [];
   sheet.walkRules((r) => {
     if (r.selector === '.ach__box') r.walkDecls('height', (d) => sizes.push(d.value));
   });
-  assert.ok(sizes.includes('min(9.06rem, calc(var(--sp-vh, 1vh) * 100 - .9rem))'));
+  assert.ok(Math.abs(length(sizes.at(-1), { '--ui-unit': 100, '--sp-vh': 10.8 }) - 906) < 1e-7);
   assert.doesNotMatch(read('public/css/screens/lobby.css'), /1080px|720px/);
   const stats = postcss.parse(read('public/css/screens/stats.css'));
   const compact = [];
   stats.walkRules((r) => { if (r.selector === '.st:not(.st--replay)') compact.push(r); });
   assert.equal(compact.length, 1);
-  assert.equal(compact[0].parent.params, '(min-width: 1001px) and (min-height: 601px)');
-  assert.match(compact[0].toString(), /width: min\(12rem, 1120px, 90vw\)/);
-  assert.match(compact[0].toString(), /height: min\(8rem, 780px, 86dvh\)/);
+  assert.equal(compact[0].parent.type, 'root', 'history dimensions no longer jump at a mobile breakpoint');
+  assert.match(compact[0].toString(), /width: min\(calc\(12 \* var\(--ui-unit, 1rem\)\)/);
+  assert.match(compact[0].toString(), /height: min\(calc\(8 \* var\(--ui-unit, 1rem\)\)/);
   assert.doesNotMatch(compact[0].toString(), /transform|zoom|--t:/);
   assert.equal(compact[0].selector.includes('combat-metrics'), false);
 });
@@ -229,7 +230,7 @@ test('report has an explicit lazy lobby entry, no extra service/assets, readable
   assert.match(report, /useData\('bonds', 'bands', 'bosses', 'factions', 'enemies', 'chess', 'assets'\)/);
   const mobile = read('public/css/utility-mobile.css');
   assert.match(mobile, /\.sweep-host \.sw-tile__cap \{ display: block; white-space: normal/);
-  assert.match(mobile, /\.sweep-host \.sw-search input \{[^}]*font-size: 16px/);
+  assert.match(mobile, /font-size: max\(calc\(\.16 \* var\(--utility-text\)\), 16px\)/);
   const css = read('public/css/screens/lobby.css');
   assert.match(css, /\.screen\.sweep-host \{[^}]*height: calc\(var\(--sp-vh/);
   assert.match(css, /\.sweep-host \.sw-left \{[^}]*overflow-y: auto/);

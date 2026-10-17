@@ -271,12 +271,12 @@ test('the achievement entry remains local-only and the original design keeps sha
   assert.match(view, /260 - \(Date\.now\(\) - opened\.current\)/);
   assert.match(view, /useLeave\(onClose, 180\)/);
   const sheet = read('public/css/screens/lobby.css');
-  assert.match(sheet, /\.ach-top-area \{ grid-template-columns: minmax\(0, 1fr\)/);
-  assert.match(sheet, /\.ach-marks--list \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(4\.6rem, 1fr\)\)/);
+  assert.match(sheet, /\.ach-top-area \{ display: grid; grid-template-columns: minmax\(0, calc\(9\.1 \* var\(--ui-unit, 1rem\)\)\) minmax\(0, 1fr\)/);
+  assert.match(sheet, /\.ach-marks--list \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(calc\(4\.6 \* var\(--ui-unit, 1rem\)\), 1fr\)\)/);
   const mobile = read('public/css/utility-mobile.css');
-  assert.match(mobile, /\.ach-marks--list \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(mobile, /\.ach-mark--row \{ min-width: 0; gap: \.1rem/);
-  assert.match(sheet, /\.ach__box \{[^}]*width: min\(17\.4rem, calc\(100vw - 1\.1rem\)\)/);
+  assert.doesNotMatch(mobile, /\.ach-marks--list \{ grid-template-columns:/, 'same card columns as the reference canvas');
+  assert.match(mobile, /\.ach-mark__text small \{ white-space: normal; overflow-wrap: anywhere;/);
+  assert.match(sheet, /\.ach__box \{[^}]*width: min\(calc\(17\.4 \* var\(--ui-unit, 1rem\)\)/);
   assert.match(css, /\.ach__box \{[^}]*--sa-l[^}]*--sp-vh/);
   const pending = AchievementView({ ready: false, s: achievementStats([]), local: {}, gd: {}, onClose() {} });
   assert.ok([...walk(pending)].some((v) => v.props?.class === 'ach__loader'));

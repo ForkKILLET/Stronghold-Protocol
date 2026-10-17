@@ -99,7 +99,7 @@ test('manager binds persisted choices, disables changes during ZIP and retains t
   assert.match(source, /fieldset class="resource-voice-choice" disabled=\$\{disabled\}/);
   const css = readFileSync(new URL('../../public/css/components.css', import.meta.url), 'utf8');
   assert.match(css, /resource-voice-choice__options[^}]+flex-wrap: wrap/);
-  assert.match(css, /resource-voice-choice \.resource-choice[^}]+min-height: 44px/);
+  assert.match(css, /resource-voice-choice \.resource-choice[^}]+min-height: calc\(0\.44 \* var\(--ui-unit, 1rem\)\)/);
   const main = readFileSync(new URL('../../public/js/main.js', import.meta.url), 'utf8');
   assert.match(main, /updateSettings\(\{ preloadVoiceLang \}\)/);
   assert.match(main, /syncResources\(!!s.preload, !!s.preloadOptional, s.preloadVoiceLang, !!s.preloadSkins\)/);

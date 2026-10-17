@@ -23,6 +23,7 @@ import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { pwaInstall } from '../pwa.js';
 import { html, Icon, Button } from './components.js';
 import { t } from '../../../shared/i18n.js';
+import { updateManagementViewport } from './managementScale.js';
 
 /** A touch held this long without moving opens the detail (contextmenu) on DOM controls. */
 export const LONG_PRESS_MS = 520;
@@ -214,10 +215,12 @@ export function installDeviceSupport(win = globalThis) {
   const setVh = () => {
     const h = win.visualViewport?.height || win.innerHeight || 0;
     if (h > 0) root.style.setProperty('--sp-vh', `${h / 100}px`);
+    updateManagementViewport(win);
   };
   setVh();
   on(win, 'resize', setVh, { passive: true });
   on(win.visualViewport, 'resize', setVh, { passive: true });
+  on(win.visualViewport, 'scroll', setVh, { passive: true });
 
   // rotation: the new viewport size settles a few frames late on iOS → one more resize after it settles
   let rotTimer = 0;

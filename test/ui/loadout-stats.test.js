@@ -1,3 +1,4 @@
+import { length } from '../helpers/css-values.js';
 // GitHub issue #64 — 干员调配 showed only the skill and module sections: no stats, no 攻击范围 (the in-match detail card has
 // them). The screen's 局内数值 section now draws the detail card's own stats block (ui/detailPanel.js chessStatsBlock),
 // plus 特性 and 天赋, for the selected chess under its chosen skill and module — the 精锐 record by default (the module only
@@ -266,19 +267,24 @@ test('place in the detail: after the skills, before the modules; the first .lo-s
   assert.match(src, /const \[statLevel, setStatLevel\] = useState\('elite'\)/);
 });
 
-test('css: the section reuses the card\'s .dstats / .drange / .rgrid, sized for the overlay with px floors (readable at 1 rem = 40 px), the range box may wrap under the numbers', () => {
+test('css: the section reuses the card\'s .dstats / .drange / .rgrid, sized with local overlay units and saved text preferences, the range box may wrap under the numbers', () => {
   const css = read('public/css/screens/loadout.css').replace(/\/\*[\s\S]*?\*\//g, '');
   const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2] }));
   const mine = rules.filter((r) => /\.lo-sec--stats|\.lo-stats__cap|\.lo-minfo--kit/.test(r.sel));
   assert.ok(mine.length >= 8, 'the stats rules exist');
   for (const r of mine) for (const m of r.body.matchAll(/font-size:\s*([^;]+);/g)) {
-    assert.match(m[1], /^max\([^)]*\d+px\)$/, `${r.sel}: font-size ${m[1]} keeps a px floor`);
+    assert.match(m[1], /var\(--utility-text, var\(--t\)\)/, r.sel + ': honours text preferences');
+    assert.doesNotMatch(m[1], /\dpx/, r.sel + ': no independent pixel floor');
   }
   const rule = (sel) => rules.find((r) => r.sel === sel)?.body || '';
   assert.match(rule('.lo-sec--stats .dstats-wrap'), /flex-wrap:\s*wrap/);
-  assert.match(rule('.lo-sec--stats .dstats-wrap > .dstats'), /flex:\s*1 1 max\(3\.2rem, 190px\)/);
-  assert.match(rule('.lo-sec--stats .rgrid'), /--rg:\s*max\(\.14rem, 7px\)/);
-  assert.match(rule('.lo-sec--stats .drange'), /min-width:\s*max\(1\.1rem, 56px\)/);
+  const flex = rule('.lo-sec--stats .dstats-wrap > .dstats').match(/flex:\s*1 1 ([^;]+)/)[1];
+  assert.equal(length(flex, { '--ui-unit': 100 }), 320);
+  assert.equal(length(flex, { '--ui-unit': 30 }), 96);
+  const grid = rule('.lo-sec--stats .rgrid').match(/--rg:\s*([^;]+)/)[1];
+  assert.ok(Math.abs(length(grid, { '--ui-unit': 100 }) - 14) < 1e-8);
+  const range = rule('.lo-sec--stats .drange').match(/min-width:\s*([^;]+)/)[1];
+  assert.ok(Math.abs(length(range, { '--ui-unit': 100 }) - 110) < 1e-8);
   // the base classes come from game-panels.css, which every page loads
   const panels = read('public/css/screens/game-panels.css');
   for (const c of ['.dstats-wrap', '.dstats', '.dstat', '.dstat__k', '.dstat__v', '.drange', '.rgrid', '.rgrid-all']) {

@@ -19,12 +19,16 @@ public/fonts/
 data/local-assets.json
 # tools/asset-hashes.mjs → per-file hashes of public/assets + public/fonts (ship it next to the manifests)
 data/asset-hashes.json
-# tools/local-extract/fx.py → the official battle effects' file list (DESIGN §33; the files under public/assets/local/fx/)
+data/resource-packs.json
+# tools/local-extract/fx.py -> the official battle effects' file list (DESIGN section 33)
 data/local-fx.json
 # download caches, upstream tables, ledgers, reports, setup state
 .cache/
-# a worktree that links these folders instead of holding them: git sees a symlink as a file, which the patterns
-# above (trailing slash: directories only) do not match
+# Local release archives, resource baselines, delta packages, reports and checksums.
+# Never commit bundled game art or machine-specific delivery artifacts.
+artifacts/
+public/resource-packs/
+# Linked worktree dependency and asset folders must also be ignored as files.
 /node_modules
 /public/vendor
 /public/assets
@@ -73,6 +77,3 @@ desktop.ini
 .claude/
 # tools/sim-check.mjs: the corpus and its Node traces for /dev/sim-check.html
 public/dev/simcheck/data/
-
-# Per-install skin download selection (never copied from another deployment)
-data/skins-installed.json

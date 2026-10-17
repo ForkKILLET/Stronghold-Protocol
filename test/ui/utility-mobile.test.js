@@ -5,7 +5,6 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import postcss from 'postcss';
-import { combatMetricsLayout } from '../../public/js/ui/combatMetricsLayout.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (file) => readFileSync(path.join(ROOT, file), 'utf8');
@@ -25,92 +24,72 @@ function declaration(selector, prop, media = '') {
 }
 
 const MOBILE = '(max-width: 1000px), (max-height: 600px)';
-test('the opt-in utility modal preserves ordinary widths and keeps a keyboard-accessible close button in its header', () => {
+test('utility modal honours requested widths and keeps focus, close and body scrolling', () => {
   const component = read('public/js/ui/components.js');
-  assert.match(component, /utility = false/);
-  assert.match(component, /utility \? `--utility-width:\$\{width\}` : `width:\$\{width\}`/);
-  assert.match(component, /utility && onClose[\s\S]*?utility-modal__close[\s\S]*?aria-label=\$\{t\('关闭'\)\}/);
-  assert.match(component, /topmost\(\)/, 'existing focus trap/stack remains');
-  assert.match(declaration('.utility-modal .modal__body', 'overflow-y'), /auto/);
+  assert.match(component, /--utility-width:\$\{managementLength\(width\)\}/);
+  assert.match(component, /utility && onClose[\s\S]*?utility-modal__close[\s\S]*?aria-label/);
+  assert.match(component, /topmost\(\)/);
+  assert.equal(declaration('.utility-modal .modal__body', 'overflow-y'), 'auto');
   assert.equal(declaration('.utility-modal .modal__body', 'min-height'), '0');
-  assert.equal(declaration('.utility-modal .modal__head', 'flex'), 'none');
+  assert.equal(declaration('.utility-modal', 'width'), 'var(--utility-width, calc(6.4 * var(--ui-unit, 1rem)))');
+  sheet.walkRules(rule => {
+    assert.doesNotMatch(rule.selector, /\.modal--utility \.settings-modal/,
+      'no mobile rule may replace the requested settings width with 14rem');
+  });
 });
 
-test('resource/settings/about/announcement/resume/import/info/console utilities explicitly opt in, not gameplay selections', () => {
-  for (const file of [
-    'public/js/ui/resourcePanel.js', 'public/js/ui/settings.js', 'public/js/screens/title.js',
+test('management and plugin modals opt in; gameplay choices keep their original geometry', () => {
+  for (const file of ['public/js/ui/resourcePanel.js', 'public/js/ui/settings.js', 'public/js/screens/title.js',
     'public/js/ui/announcement.js', 'public/js/ui/resumeMatch.js', 'public/js/screens/loadout.js',
-    'public/js/ui/matchInfo.js', 'public/js/ui/console.js', 'public/js/screens/room.js',
-  ]) assert.match(read(file), /utility=\$\{true\}/, file);
-  for (const file of ['public/js/ui/equipReplace.js', 'public/js/ui/choiceOverlay.js', 'public/js/ui/rewardOverlay.js']) {
+    'public/js/ui/matchInfo.js', 'public/js/ui/console.js', 'public/js/screens/room.js', 'public/js/ui/pluginPanel.js'])
+    assert.match(read(file), /utility=\$\{true\}/, file);
+  for (const file of ['public/js/ui/equipReplace.js', 'public/js/ui/choiceOverlay.js', 'public/js/ui/rewardOverlay.js'])
     assert.doesNotMatch(read(file), /utility=\$\{true\}/, file);
-  }
-  assert.match(read('public/js/ui/components.js'), /utility=\$\{utility\}/, 'imperative dialogs opt in without changing gameplay confirmations');
-  assert.match(read('public/js/screens/stats.js'), /confirmDialog\(\{[\s\S]*?utility: true/);
 });
 
-test('the source and build entry load the density layer after the existing touch/game styles', () => {
-  const html = read('public/index.html');
-  assert.ok(html.indexOf('/css/utility-mobile.css') > html.indexOf('/css/devices.css'));
-  assert.equal((html.match(/href="\/css\/utility-mobile.css"/g) || []).length, 1);
-  for (const fixture of ['public/dev/game-mock.html', 'public/dev/uikit.html']) {
-    const page = read(fixture);
-    assert.ok(page.indexOf('/css/utility-mobile.css') > page.indexOf('/css/devices.css'), fixture);
+test('the final layer changes only local design units, and never defines global roots or zoom', () => {
+  for (const file of ['public/index.html', 'public/dev/game-mock.html', 'public/dev/uikit.html', 'public/studio/index.html']) {
+    const page = read(file);
+    assert.ok(page.indexOf('/css/utility-mobile.css') > page.indexOf('/css/devices.css'), file);
   }
   assert.doesNotMatch(source, /(?:^|\n)\s*(?:html|body|:root)\s*\{/);
   assert.doesNotMatch(source, /--t\s*:|(?:zoom|scale)\s*:/);
-  sheet.walkDecls((decl) => {
-    if (/var\(--utility-text/.test(decl.value)) assert.equal(decl.prop, 'font-size', `${decl.prop} cannot move layout`);
-  });
-  assert.match(declaration('.utility-modal', '--utility-text', MOBILE), /max\(var\(--t\), 64px\)/);
-  assert.equal(declaration(':is(.title-screen, .lobby-screen, .room-screen)', '--utility-text', MOBILE), 'var(--t)');
-  assert.equal(declaration('.title-screen .title-tag', 'font-size', MOBILE), 'calc(.16 * var(--utility-text, var(--t)))');
-  assert.equal(declaration('.lobby-screen .mode-card__points', 'font-size', MOBILE), 'calc(.14 * var(--utility-text, var(--t)))');
-  assert.equal(declaration('.title-screen .title-cn', 'font-size', MOBILE), 'calc(.72 * var(--t))');
-  assert.equal(declaration('.lobby-screen .lobby-body', 'padding', MOBILE), '.2rem .25rem');
-  assert.equal(declaration(':is(.lobby-screen, .room-screen) .btn', 'min-height', MOBILE), '.75rem');
-  assert.match(declaration(':is(.lobby-screen, .room-screen) .field__input', 'font-size', MOBILE), /16px/);
-  assert.equal(declaration('.title-screen .title-login .field__input', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
-  assert.equal(declaration('.title-screen .lang-select select', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
-  const settingsControls = ':is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) :is(.btn, .set-seg button, .set-toggle, .set-native, .shortcut-key)';
-  assert.equal(declaration(settingsControls, 'font-size', MOBILE),
-    'calc(.16 * var(--t))');
-  assert.equal(declaration(settingsControls, 'min-height', MOBILE), '.6rem');
+  const roots = ':is(.title-screen, .lobby-screen, .room-screen, .protocol-screen, .sweep-host, .lo, .st, .ach, .modal--utility, .guide, .studio)';
+  assert.equal(declaration(roots, '--ui-unit'), 'var(--sp-ui-unit, 1rem)');
+  assert.equal(declaration(roots, '--utility-text'), 'calc(var(--t) * var(--sp-ui-scale, 1))');
+  sheet.walkDecls('--ui-unit', d => assert.doesNotMatch(d.parent.selector, /\.gm\b|\.shopbar|\.combat-metrics/));
 });
 
-test('short-screen density does not change field/shop/chat layout or hide functional entries', () => {
-  sheet.walkRules((rule) => {
-    assert.doesNotMatch(rule.selector, /\.gm__hud|\.gm__field|\.shopbar|\.scard|\.ewheel|\.readybtn|\.uframe|\.bstrip/);
-  });
-  assert.equal(declaration('.lobby-screen .mode-card__points', 'display', MOBILE), 'flex');
-  assert.equal(declaration('.lobby-screen .diff-card__effects', 'display', MOBILE), 'flex');
-  assert.equal(declaration('.lobby-screen .tips', 'display', MOBILE), 'block');
-  assert.equal(declaration('.st-note.is-warn', 'display', MOBILE), 'flex');
-  assert.equal(declaration('.lo-card__bonds', 'display', MOBILE), 'flex');
-  assert.equal(declaration('.title-screen .title-corner--tr', 'position', MOBILE), 'relative', 'language/stats entries remain accessible');
+test('management retains explanations, desktop artwork and complete achievement descriptions', () => {
+  assert.equal(declaration('.lobby-hub .hub-side .tips', 'display'), 'block');
+  assert.equal(declaration('.lo-card__bonds', 'display'), 'flex');
+  assert.equal(declaration('.ach-mark__text small', 'white-space'), 'normal');
+  assert.equal(declaration('.sweep-host .sw-tile__cap', 'display'), 'block');
+  const lobby = read('public/css/screens/lobby.css');
+  for (const selector of ['pcard__meta', 'proto-brief p', 'hub-side .tips'])
+    assert.doesNotMatch(lobby, new RegExp('\\.' + selector + ' \\{ display: none'));
+  const title = read('public/css/screens/title.css');
+  assert.doesNotMatch(title, /\.title-en \{ display: none/);
 });
 
-test('compact utility controls have real hit boxes instead of overlapping 44px pseudo-elements', () => {
-  const selector = '.sp-coarse :is(.utility-modal, .lo, .st, .lobby-screen, .room-screen, .title-screen) :is(.btn, .tabs__tab, .set-toggle, .set-seg button, .fsbtn)::before';
-  assert.equal(declaration(selector, 'inset', MOBILE), '0');
-  assert.equal(declaration(selector, 'width', MOBILE), '100%');
-  assert.equal(declaration(selector, 'transform', MOBILE), 'none');
-  assert.equal(declaration('.resource-choice', 'min-height', MOBILE), '.7rem');
-  assert.equal(declaration('.guide__dot', 'min-width', MOBILE), '24px');
-  assert.equal(declaration('.guide__dots', 'overflow-x', MOBILE), 'auto');
-  assert.match(declaration('.lo .lo-cult .lo-select select', 'font-size', MOBILE), /16px/, 'native select focus zoom guard');
+test('compact hit boxes stay within their own bounds, while native controls retain the iOS guard', () => {
+  const selector = '.sp-coarse :is(.utility-modal, .lo, .st, .lobby-screen, .room-screen, .title-screen, .guide, .ach, .studio) :is(.btn, .tabs__tab, .set-toggle, .set-seg button, .fsbtn)::before';
+  assert.equal(declaration(selector, 'inset'), '0');
+  assert.equal(declaration(selector, 'width'), '100%');
+  assert.equal(declaration(selector, 'transform'), 'none');
+  assert.match(source, /font-size: max\(calc\(\.16 \* var\(--utility-text\)\), 16px\)/);
+  assert.match(source, /min-height: 1\.6em; height: auto; max-width: 100%/);
 });
 
-test('resource tiers stay in two columns on landscape phones and stack only at genuinely narrow widths', () => {
-  assert.equal(declaration('.resource-manager__tiers', 'grid-template-columns', MOBILE), 'repeat(2, minmax(0, 1fr))');
-  assert.equal(declaration('.resource-manager__tiers', 'grid-template-columns', '(max-width: 560px)'), 'minmax(0, 1fr)');
-  assert.equal(declaration('.resource-tier__list li', 'padding', MOBILE), '.07rem 0');
-  assert.equal(declaration('.utility-modal.resource-modal', 'width'), 'min(9.6rem, calc(100vw - .4rem))');
-  assert.equal(declaration('.resource-manager', 'gap', MOBILE), '.12rem');
-  assert.match(read('public/css/components.css'), /\.resource-tier__summary \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto/);
-  assert.match(read('public/js/ui/resourcePanel.js'), /group\.present.*group\.wanted/s, 'category progress/counts retained');
-  assert.match(read('public/js/ui/resourcePanel.js'), /packProgress\.speedBytesPerSecond/, 'ZIP transport speed is visible');
-  assert.match(read('public/js/ui/resourcePanel.js'), /archiveGroup === group\.id/, 'current import category retained');
+test('resources keep landscape columns, ZIP progress and category status; only portrait windows stack', () => {
+  const components = read('public/css/components.css');
+  assert.match(components, /resource-manager__tiers[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.equal(declaration('.resource-manager__options', 'grid-template-columns', '(max-aspect-ratio: 1/1)'), 'minmax(0, 1fr)');
+  assert.equal(declaration('.resource-manager__pack-progress small', 'font-size'), 'calc(.12 * var(--utility-text))');
+  const resource = read('public/js/ui/resourcePanel.js');
+  assert.match(resource, /packProgress\.speedBytesPerSecond/);
+  assert.match(resource, /archiveGroup === group\.id/);
+  assert.match(resource, /group\.present.*group\.wanted/s);
 });
 
 test('damage meter keeps its measured dock, four numeric columns and type bars; mobile ranks cannot shrink out of view', () => {
@@ -139,90 +118,6 @@ test('damage meter keeps its measured dock, four numeric columns and type bars; 
   assert.match(component, /useLayoutEffect\(\(\) =>/, 'position is measured before painting');
 });
 
-// Small evaluator for the numeric CSS expressions below. It does NOT model fonts, intrinsic sizes, grid/flex or
-// CSS selector matching. The matrix verifies explicit viewport/safe-area budgets only.
-function length(expr, vars, viewport, parent = viewport.width) {
-  const tokens = expr.match(/--[\w-]+|\d*\.?\d+(?:dvh|vh|vw|rem|px|%)?|[a-z]+|[()+*/,-]/g) || [];
-  let at = 0;
-  function primary() {
-    const token = tokens[at++];
-    if (/^\d|^\./.test(token)) {
-      const n = parseFloat(token);
-      const unit = token.replace(/^[\d.]+/, '');
-      return n * ({ px: 1, rem: vars.rem, vw: viewport.width / 100,
-        vh: viewport.height / 100, dvh: viewport.height / 100, '%': parent / 100, '': 1 }[unit]);
-    }
-    if (token === '(') { const value = sum(); assert.equal(tokens[at++], ')'); return value; }
-    assert.equal(tokens[at++], '(');
-    if (token === 'var') {
-      const name = tokens[at++];
-      let fallback;
-      if (tokens[at] === ',') { at++; fallback = sum(); }
-      assert.equal(tokens[at++], ')');
-      return vars[name] ?? fallback;
-    }
-    const values = [sum()];
-    while (tokens[at] === ',') { at++; values.push(sum()); }
-    assert.equal(tokens[at++], ')');
-    if (token === 'min') return Math.min(...values);
-    if (token === 'max') return Math.max(...values);
-    assert.equal(token, 'calc');
-    return values[0];
-  }
-  function product() {
-    let value = primary();
-    while (tokens[at] === '*' || tokens[at] === '/') {
-      const op = tokens[at++];
-      const right = primary();
-      value = op === '*' ? value * right : value / right;
-    }
-    return value;
-  }
-  function sum() {
-    let value = product();
-    while (tokens[at] === '+' || tokens[at] === '-') {
-      const op = tokens[at++];
-      const right = product();
-      value = op === '+' ? value + right : value - right;
-    }
-    return value;
-  }
-  const value = sum();
-  assert.equal(at, tokens.length, expr);
-  assert.ok(Number.isFinite(value), expr);
-  return value;
-}
-
-for (const [width, height] of [[320, 568], [390, 844], [640, 360], [844, 390], [915, 412], [1000, 600]]) {
-  test(`static viewport budget ${width}x${height}: resources/settings/guide/damage panel fit safe-area bounds`, () => {
-    const viewport = { width, height };
-    const vars = { rem: Math.max(40, Math.min(width / 19.2, height / 10.8)), '--sa-l': 20, '--sa-r': 12, '--sa-t': 8, '--sa-b': 10 };
-    const available = width - vars['--sa-l'] - vars['--sa-r'] - 12;
-    for (const selector of ['.modal--utility .utility-modal', '.modal--utility .resource-modal', '.modal--utility .settings-modal']) {
-      const w = length(declaration(selector, 'width', MOBILE), vars, viewport, available);
-      assert.ok(w <= available && w > 200, `${selector}: ${w}/${available}`);
-    }
-    const heightBudget = length(declaration('.modal--utility .utility-modal', 'max-height', MOBILE), vars, viewport);
-    assert.equal(heightBudget, height - vars['--sa-t'] - vars['--sa-b'] - 12);
-    const guideWidth = length(declaration('.guide__page', 'width', MOBILE), vars, viewport);
-    assert.ok(guideWidth <= width - vars['--sa-l'] - vars['--sa-r'] - 28);
-    assert.ok(guideWidth * 9 / 16 <= height - vars['--sa-t'] - vars['--sa-b'] - 90 + .01);
-    const damageWidth = length(declaration('.combat-metrics', 'width', MOBILE), vars, viewport);
-    assert.ok(damageWidth <= width - vars['--sa-l'] - vars['--sa-r'] - .48 * vars.rem);
-    const dock = combatMetricsLayout({
-      cornerTop: height - vars['--sa-b'] - .24 * vars.rem - 110,
-      cornerBottom: height - vars['--sa-b'] - .24 * vars.rem,
-      viewportHeight: height, rem: vars.rem, safeTop: vars['--sa-t'], safeBottom: vars['--sa-b'],
-    });
-    vars['--combat-available-height'] = dock.availableHeight;
-    vars['--combat-viewport-height'] = dock.viewportSpace;
-    const damageHeight = length(declaration('.combat-metrics', 'max-height', MOBILE), vars, viewport);
-    assert.ok(damageHeight <= dock.availableHeight);
-    const floatingHeight = length(declaration('.combat-metrics[data-viewport-docked="true"]', 'max-height', MOBILE), vars, viewport);
-    assert.ok(floatingHeight <= height - vars['--sa-t'] - vars['--sa-b'] - 12);
-  });
-}
-
 test('mandatory landscape stays global: utility, room, loadout and statistics cannot bypass the portrait gate', () => {
   sheet.walkRules((rule) => assert.doesNotMatch(rule.selector, /rotate-hint/, 'the compact layer must not override the orientation gate'));
   assert.match(read('public/css/theme.css'), /\.sp-rotatable \.rotate-hint \{ display: grid; \}/);
@@ -230,15 +125,4 @@ test('mandatory landscape stays global: utility, room, loadout and statistics ca
   for (const file of ['public/js/ui/components.js', 'public/js/ui/guide.js', 'public/js/ui/combatMetrics.js']) {
     assert.doesNotMatch(read(file), /useUtilitySurface|claimUtilitySurface|sp-utility-open/, file);
   }
-});
-
-test('utility/modal/title height budgets follow the visible viewport when the keyboard reduces it', () => {
-  const viewport = { width: 390, height: 844 };
-  const vars = { rem: 40, '--sp-vh': 3, '--sa-t': 8, '--sa-b': 10 };
-  assert.equal(length(declaration('.modal--utility', 'height', MOBILE), vars, viewport), 300);
-  assert.equal(length(declaration('.lo', 'height', MOBILE), vars, viewport), 300);
-  assert.equal(length(declaration('.st', 'height', MOBILE), vars, viewport), 300);
-  assert.equal(length(declaration('.title-screen', 'height', MOBILE), vars, viewport), 282);
-  assert.equal(length(declaration('.modal--utility .utility-modal', 'max-height', MOBILE), vars, viewport), 270);
-  assert.match(read('public/js/ui/device.js'), /visualViewport\?\.height/);
 });

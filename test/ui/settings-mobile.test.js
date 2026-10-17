@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
+import { length } from '../helpers/css-values.js';
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 const layers = [
@@ -10,8 +11,6 @@ const layers = [
   'public/css/screens/game.css', 'public/css/devices.css', 'public/css/utility-mobile.css',
 ].map((file) => postcss.parse(read(file)));
 const mobile = layers.at(-1);
-const dialogs = ':is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal)';
-const controls = `${dialogs} :is(.btn, .set-seg button, .set-toggle, .set-native, .shortcut-key)`;
 
 function splitSelectors(selector) {
   return selector.split(/,\s*(?![^()]*\))/).map((part) => part.trim().replace(/\s+/g, ' '));
@@ -70,90 +69,76 @@ function declaration(selector, prop) {
   return value;
 }
 
-test('the shortcut editor explicitly shares settings scaling without changing Modal lifecycle or bindings', () => {
+test('settings and shortcut editor share local units, focus stack and saved bindings', () => {
   const source = read('public/js/ui/settings.js');
-  assert.match(source, /title=\$\{t\('修改快捷键'\)\}[^\n]*utility=\$\{true\} class="settings-shortcuts-modal"/);
+  assert.match(source, /utility=\$\{true\} class="settings-shortcuts-modal"/);
   assert.match(source, /shortcutsStore\.set\(\{ \[action\]: code \}\)/);
   assert.match(source, /if \(other\) \{ setError/);
-  for (const dialog of ['settings-modal', 'settings-shortcuts-modal']) {
-    assert.equal(property(['.utility-modal', dialogs], '--utility-text'), 'var(--t)', dialog);
-    assert.equal(property(['.utility-modal .modal__head .micro', `${dialogs} .modal__head .micro`], 'font-size'),
-      'calc(.1 * var(--t))', dialog);
-  }
+  assert.equal(declaration(':is(.title-screen, .lobby-screen, .room-screen, .protocol-screen, .sweep-host, .lo, .st, .ach, .modal--utility, .guide, .studio)', '--utility-text'),
+    'calc(var(--t) * var(--sp-ui-scale, 1))');
 });
 
-test('all mobile settings buttons beat generic utility and coarse-pointer sizing in the actual stylesheet cascade', () => {
-  for (const viewport of [
-    { width: 640, height: 360, coarse: true }, { width: 844, height: 390, coarse: true },
-    { width: 1000, height: 700, coarse: false }, { width: 1280, height: 600, coarse: true },
-  ]) {
-    for (const base of ['.set-toggle', '.set-seg button', '.set-native', '.shortcut-key', '.btn', '.btn--sm']) {
-      const matches = [base, '.set-toggle, .set-seg button',
-        '.utility-modal :is(.btn, .set-toggle, .set-seg button, .shortcut-key)',
-        ':is(.utility-modal.resource-modal, .utility-modal.settings-modal, .utility-modal.title-about) :is(.btn, .set-toggle, .set-seg button, .shortcut-key)',
-        controls];
-      assert.equal(property(matches, 'min-height', viewport), '.6rem', base);
-      assert.equal(property(matches, 'height', viewport), 'auto', base);
-      assert.equal(property(matches, 'font-size', viewport), 'calc(.16 * var(--t))', base);
-    }
-    assert.equal(property([
-      '.set-seg button', '.set-row--fps .set-seg--fps button',
-      '.settings-modal .set-row--fps .set-seg--fps button', controls,
-    ], 'min-width', viewport), '0', 'FPS choices cannot retain the coarse 44px minimum');
-  }
-});
-
-test('normal desktop settings dimensions remain outside the mobile overrides', () => {
-  const viewport = { width: 1440, height: 900, coarse: false };
-  assert.equal(property(['.set-toggle', controls], 'height', viewport), '.38rem');
-  assert.equal(property(['.set-row__label .icon', '.settings-modal .set-row__label .icon'], 'width', viewport), '.2rem');
-  assert.equal(property(['.shortcut-row', '.settings-shortcuts-modal .shortcut-row'], 'grid-template-columns', viewport), '1fr 1.25rem');
-});
-
-test('SVGs track their label or button and the close icon remains proportionate', () => {
-  assert.equal(declaration('.settings-modal .set-row__label .icon', 'width'), '1.15em');
-  assert.equal(declaration('.settings-modal .set-row__label .icon', 'height'), '1.15em');
-  assert.equal(declaration(`${dialogs} .btn__icon`, 'width'), '1.15em');
-  assert.equal(property(['.utility-modal :is(.btn--square, .utility-modal__close)', `${dialogs} .utility-modal__close`], 'height'), '.6rem');
-  assert.equal(declaration(`${dialogs} .utility-modal__close .icon`, 'width'), '50%');
-  for (const textRoot of [40, 64, 76, 88]) {
-    const labelIcon = .18 * textRoot * 1.15;
-    const buttonIcon = .16 * textRoot * 1.15;
-    assert.ok(labelIcon > buttonIcon && labelIcon <= .6 * 40);
-  }
-});
-
-test('switch and slider geometry scale uniformly at phone and tablet rem sizes', () => {
-  const rem = (selector, prop) => {
-    const value = declaration(selector, prop);
-    assert.match(value, /^\d*\.?\d+rem$/);
-    return Number.parseFloat(value);
-  };
-  const track = rem('.settings-modal .set-toggle i', 'width');
-  const knob = rem('.settings-modal .set-toggle i::after', 'width');
-  const inset = rem('.settings-modal .set-toggle i::after', 'left');
-  const travel = Number.parseFloat(declaration('.settings-modal .set-toggle.is-on i::after', 'transform').slice(11));
-  assert.ok(Math.abs(inset * 2 + knob + travel - track) < 1e-8, 'on/off inset stays symmetric');
-  for (const root of [40, 48, 56]) {
-    assert.ok((inset + travel + knob) * root < track * root);
-    assert.equal(rem('.settings-modal .set-range', 'height') * root, .6 * root);
-    for (const thumb of ['::-webkit-slider-thumb', '::-moz-range-thumb']) {
-      assert.equal(rem(`.settings-modal .set-range${thumb}`, 'height') * root, .32 * root);
+test('control sizes are design units across phone, touch tablet and desktop, without coarse pixel inflation', () => {
+  const scope = '.utility-modal :is(.set-toggle, .set-seg button, .set-native, .shortcut-key)';
+  for (const viewport of [{ width: 640, height: 360, coarse: true }, { width: 844, height: 390, coarse: true },
+    { width: 1280, height: 600, coarse: true }, { width: 1440, height: 900, coarse: false }]) {
+    for (const base of ['.set-toggle', '.set-seg button', '.set-native', '.shortcut-key']) {
+      assert.equal(property([base, scope], 'min-height', viewport), 'calc(.38 * var(--ui-unit))');
+      assert.equal(property([base, '.utility-modal :is(.btn, .set-toggle, .set-seg button, .set-native, .shortcut-key)'], 'height', viewport), 'auto');
     }
   }
-  assert.equal(declaration('.settings-modal .set-range', 'border-block'), '.24rem solid transparent');
-  assert.equal(declaration('.settings-modal .set-range', 'box-sizing'), 'border-box');
+  assert.equal(property(['.set-toggle'], 'height', { width: 1440, height: 900, coarse: false }), 'calc(0.38 * var(--ui-unit, 1rem))',
+    'outside management the fallback is exactly the original layout rem');
+  assert.equal(declaration('.settings-modal .set-seg--fps button', 'min-width'), '0');
 });
 
-test('voice/native/select and shortcut rows shrink or wrap instead of retaining mobile pixel widths', () => {
+test('label and action SVGs track text while the close SVG stays half its button', () => {
+  for (const selector of ['.settings-modal .set-row__label .icon', '.utility-modal .btn__icon']) {
+    assert.equal(declaration(selector, 'width'), '1.15em');
+    assert.equal(declaration(selector, 'height'), '1.15em');
+  }
+  assert.equal(declaration('.utility-modal__close .icon', 'width'), '50%');
+  assert.equal(declaration('.utility-modal__close .icon', 'height'), '50%');
+});
+
+test('switch tracks, knobs and travel share the same layout unit rather than text scaling', () => {
+  const source = read('public/css/screens/game.css');
+  assert.match(source, /\.set-toggle i \{ width: calc\(0\.46 \* var\(--ui-unit, 1rem\)\); height: calc\(0\.24 \* var\(--ui-unit, 1rem\)\)/);
+  assert.match(source, /translateX\(calc\(0\.22 \* var\(--ui-unit, 1rem\)\)\)/);
+  assert.equal(declaration('.utility-modal .set-range', 'height'), 'calc(.5 * var(--ui-unit))');
+  assert.equal(declaration('.utility-modal .set-range', 'border-block'), 'calc(.2 * var(--ui-unit)) solid transparent');
+  for (const root of [30, 40, 71.1, 100]) assert.ok(Math.abs((.03 + .18 + .22 + .03) * root - .46 * root) < 1e-8);
+});
+
+test('voice, native selects and shortcuts wrap inside the requested width, with readable native input', () => {
   assert.equal(declaration('.settings-modal .set-row > .btn', 'grid-column'), '2 / 4');
-  assert.equal(declaration('.settings-modal .set-voice', 'min-width'), '0');
   assert.equal(declaration('.settings-modal .set-seg', 'min-width'), '0');
-  assert.equal(declaration(controls, 'white-space'), 'normal');
-  assert.equal(declaration('.settings-modal .lang-select select', 'min-width'), '0');
-  assert.match(declaration('.settings-modal .lang-select select', 'font-size'), /16px/);
-  assert.equal(property(['.utility-modal .shortcut-row', '.shortcut-row', '.settings-shortcuts-modal .shortcut-row'],
-    'grid-template-columns'), 'minmax(0, 1fr) minmax(0, 2.25rem)');
-  assert.equal(declaration('.settings-modal .set-keys__head', 'flex-wrap'), 'wrap');
-  assert.equal(declaration('.utility-modal .modal__body', 'overflow-y'), 'auto');
+  assert.equal(declaration('.settings-modal .set-voice', 'min-width'), '0');
+  assert.equal(declaration('.utility-modal :is(.btn, .set-toggle, .set-seg button, .set-native, .shortcut-key)', 'white-space'), 'normal');
+  assert.match(read('public/css/utility-mobile.css'), /font-size: max\(calc\(\.16 \* var\(--utility-text\)\), 16px\)/);
+});
+
+test('settings action buttons beat the generic utility minimum and retain compact font/padding', () => {
+  const selector = ':is(.settings-modal, .settings-shortcuts-modal) .btn';
+  for (const viewport of [{ width: 640, height: 360, coarse: true }, { width: 844, height: 390, coarse: true },
+    { width: 1440, height: 900, coarse: false }]) {
+    for (const base of ['.btn', '.btn--sm']) {
+      const matches = ['.btn', base, '.utility-modal .btn', selector];
+      assert.equal(property(matches, 'min-height', viewport), 'calc(.36 * var(--ui-unit))');
+      assert.equal(property(matches, 'font-size', viewport), 'calc(.15 * var(--utility-text))');
+      assert.equal(property(matches, 'padding', viewport), 'calc(.04 * var(--ui-unit)) calc(.12 * var(--ui-unit))');
+    }
+  }
+  const unit = 390 / 10.8;
+  assert.equal(length(declaration(selector, 'min-height'), { '--ui-unit': unit }), .36 * unit);
+  assert.ok(length(declaration(selector, 'font-size'), { '--utility-text': unit }) < 8);
+});
+
+test('settings language dropdown follows the saved text scale without opting out of native input guards', () => {
+  const picker = '.settings-modal .set-lang-picker :is(.set-lang__trigger, .set-lang__option)';
+  assert.equal(declaration(picker, 'font-size'), 'calc(.16 * var(--utility-text))');
+  assert.equal(declaration(picker, 'min-height'), 'calc(.36 * var(--ui-unit))');
+  assert.match(read('public/js/ui/settings.js'), /<\$\{LangToggle\} class="set-lang" compact=\$\{true\}/);
+  assert.match(read('public/js/ui/lang.js'), /if \(compact\) return html`<\$\{LanguageMenu\}/);
+  assert.match(read('public/css/utility-mobile.css'), /font-size: max\(calc\(\.16 \* var\(--utility-text\)\), 16px\)/);
 });

@@ -21,6 +21,7 @@ import { data, useData, localAsset } from '../data.js';
 import { uiUrl } from './assetUrls.js';
 import { useAssetImage } from './useAssetImage.js';
 import { PixBot } from './pixbots.js';
+import { managementLength } from './managementScale.js';
 
 /**
  * h() for htm with its static-subtree cache switched off. htm keeps the vnode it built for a fully static subtree in
@@ -459,7 +460,7 @@ export function Modal({ open, title, micro, tone = 'mint', onClose, actions, wid
   return html`<div class=${cx('modal', utility && 'modal--utility')} role="presentation"
       onMouseDown=${(e) => { if (closeOnBackdrop && e.target === e.currentTarget && onClose) onClose(); }}>
     <div ref=${boxRef} class=${cx('modal__box', 'brackets', `modal__box--${tone}`, utility && 'utility-modal', cls)} role="dialog" aria-modal="true" tabindex="-1"
-         style=${width ? utility ? `--utility-width:${width}` : `width:${width}` : undefined}>
+         style=${width ? utility ? `--utility-width:${managementLength(width)}` : `width:${width}` : undefined}>
       <div class="modal__stripe" aria-hidden="true"></div>
       ${title || micro ? html`<header class="modal__head">
         <div class="modal__titles">

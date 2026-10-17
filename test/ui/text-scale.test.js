@@ -149,8 +149,8 @@ describe('文字大小: the setting', () => {
     assert.match(src, /const TEXT_SCALES = \[\[?.*'sm'.*'md'.*'lg'.*'xl'/s, 'the steps with their labels');
     assert.match(src, /applyTextSize\(settingsStore\.get\(\)\.textSize\)/, 'applied at module load (before main.js renders)');
     assert.ok(src.indexOf("t('文字大小')") > src.indexOf("t('画面质量')"), 'the row is below the quality row');
-    assert.match(read('public/css/screens/game.css'), /\.set-seg\.set-textsize button \{ min-width: \.62rem; \}/,
-      'four steps fit the row on a phone (1rem = 40 px)');
+    assert.match(read('public/css/screens/game.css'), /\.set-seg\.set-textsize button \{ min-width: calc\(0\.62 \* var\(--ui-unit, 1rem\)\); \}/,
+      'four steps use the management unit and retain the ordinary rem fallback');
   });
 });
 
@@ -186,16 +186,16 @@ describe('文字大小: the CSS text root', () => {
   test('readable text reads --t (body, .micro, buttons, modals, panels, settings)', () => {
     const want = [
       [theme, /body \{[^}]*font-size: calc\(\.18 \* var\(--t\)\)/s, 'theme.css body (the 7.2 px text)'],
-      [theme, /\.micro \{[^}]*font-size: calc\(\.11 \* var\(--t\)\)/s, 'theme.css .micro (92 render sites)'],
+      [theme, /\.micro \{[^}]*font-size: calc\(\.11 \* var\(--utility-text, var\(--t\)\)\)/s, 'theme.css .micro (management text or original battle text)'],
       [theme, /:root\[data-text="md"\]/, 'the steps'],
     ];
     for (const [src, re, what] of want) assert.match(src, re, what);
     const byRel = new Map(sheets.map((s) => [s.rel, s.src]));
     const samples = [
       ['components.css', /\.btn \{[^}]*font-size: calc\(\.18 \* (?:var\(--t\)|var\(--utility-text, var\(--t\)\))\)/s],
-      ['screens/game.css', /\.set-row__label \{[^}]*font-size: calc\(\.18 \* var\(--t\)\)/s],
+      ['screens/game.css', /\.set-row__label \{[^}]*font-size: calc\(\.18 \* var\(--utility-text, var\(--t\)\)\)/s],
       ['screens/game-panels.css', /\.dtext \{ font-size: calc\(\.15 \* var\(--t\)\); line-height: 1\.65;/],
-      ['screens/guide.css', /\.guide__tips li \{ font-size: calc\(\.18 \* var\(--t\)\)/],
+      ['screens/guide.css', /\.guide__tips li \{ font-size: calc\(\.18 \* var\(--utility-text, var\(--t\)\)\)/],
       ['screens/lobby.css', /\.mode-card__desc/, ],
     ];
     for (const [file, re] of samples) assert.match(byRel.get(`${CSS}/${file}`), re, file);

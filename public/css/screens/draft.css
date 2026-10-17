@@ -97,41 +97,41 @@
 }
 .draft-order__info .btn__icon { color: var(--mint-400); }
 .modal__box.minfo-dlg {
-  width: min(max(12rem, 600px), calc(100vw - .6rem - var(--sa-l, 0px) - var(--sa-r, 0px)));
-  max-height: calc(100vh - .6rem);
-  max-height: calc(100svh - .6rem);
+  width: min(max(calc(12 * var(--ui-unit, 1rem)), calc(6 * var(--ui-unit, 1rem))), calc(100vw - calc(0.6 * var(--ui-unit, 1rem)) - var(--sa-l, 0px) - var(--sa-r, 0px)));
+  max-height: calc(100vh - calc(0.6 * var(--ui-unit, 1rem)));
+  max-height: calc(100svh - calc(0.6 * var(--ui-unit, 1rem)));
 }
-.minfo-dlg .modal__head { padding: .16rem .3rem .02rem; }
-.minfo-dlg .modal__head .micro { font-size: max(.11rem, 8px); }
-.minfo-dlg .modal__title { font-size: max(.26rem, 15px); }
-.minfo-dlg .modal__body { display: flex; flex-direction: column; gap: max(.16rem, 6px); padding: .1rem .3rem .2rem; }
-.minfo-dlg .modal__actions { align-items: center; padding: .12rem .3rem; }
-.minfo-dlg .modal__actions .btn { height: max(.5rem, 30px); font-size: max(.18rem, 12px); }
+.minfo-dlg .modal__head { padding: calc(0.16 * var(--ui-unit, 1rem)) calc(0.3 * var(--ui-unit, 1rem)) calc(0.02 * var(--ui-unit, 1rem)); }
+.minfo-dlg .modal__head .micro { font-size: max(calc(0.11 * var(--utility-text, var(--t))), calc(0.08 * var(--ui-unit, 1rem))); }
+.minfo-dlg .modal__title { font-size: max(calc(0.26 * var(--utility-text, var(--t))), calc(0.15 * var(--ui-unit, 1rem))); }
+.minfo-dlg .modal__body { display: flex; flex-direction: column; gap: max(calc(0.16 * var(--ui-unit, 1rem)), calc(0.06 * var(--ui-unit, 1rem))); padding: calc(0.1 * var(--ui-unit, 1rem)) calc(0.3 * var(--ui-unit, 1rem)) calc(0.2 * var(--ui-unit, 1rem)); }
+.minfo-dlg .modal__actions { align-items: center; padding: calc(0.12 * var(--ui-unit, 1rem)) calc(0.3 * var(--ui-unit, 1rem)); }
+.minfo-dlg .modal__actions .btn { height: max(calc(0.5 * var(--ui-unit, 1rem)), calc(0.3 * var(--ui-unit, 1rem))); font-size: max(calc(0.18 * var(--utility-text, var(--t))), calc(0.12 * var(--ui-unit, 1rem))); }
 .minfo-dlg__status { margin-right: auto; min-width: 0; }
-.minfo-dlg__turn { display: inline-flex; align-items: center; gap: .06rem; font-size: max(.17rem, 11px); font-weight: 700; color: var(--gold); white-space: nowrap; }
-.minfo-dlg__turn .icon { width: max(.18rem, 12px); height: max(.18rem, 12px); }
-.minfo-dlg__turn b { margin-left: .04rem; font-size: max(.22rem, 14px); }
+.minfo-dlg__turn { display: inline-flex; align-items: center; gap: calc(0.06 * var(--ui-unit, 1rem)); font-size: max(calc(0.17 * var(--utility-text, var(--t))), calc(0.11 * var(--ui-unit, 1rem))); font-weight: 700; color: var(--gold); white-space: nowrap; }
+.minfo-dlg__turn .icon { width: max(calc(0.18 * var(--ui-unit, 1rem)), calc(0.12 * var(--ui-unit, 1rem))); height: max(calc(0.18 * var(--ui-unit, 1rem)), calc(0.12 * var(--ui-unit, 1rem))); }
+.minfo-dlg__turn b { margin-left: calc(0.04 * var(--ui-unit, 1rem)); font-size: max(calc(0.22 * var(--utility-text, var(--t))), calc(0.14 * var(--ui-unit, 1rem))); }
 .minfo-dlg__turn.is-warn { color: var(--orange-hi); }
 .minfo-dlg__turn.is-mint { color: var(--mint-400); }
 .minfo-dlg__turn.is-dim { color: var(--text-lo); }
-.minfo-dlg .brief-bonds, .minfo-dlg .brief-banned { padding: max(.16rem, 6px) max(.2rem, 8px) max(.2rem, 8px); }
-.minfo-dlg .brief-h { font-size: max(.21rem, 12px); margin-bottom: max(.12rem, 5px); }
-.minfo-dlg .brief-h::before { width: max(.06rem, 3px); height: max(.2rem, 11px); }
-.minfo-dlg .brief-bonds__row { gap: max(.16rem, 6px) max(.1rem, 4px); }
-.minfo-dlg .brief-bond { width: max(1rem, 50px); }
-.minfo-dlg .brief-bond .bond { --disc: max(.66rem, 32px); }
-.minfo-dlg .brief-bond .bond__name { font-size: max(.16rem, 10px); }
-.minfo-dlg .brief-bond__ban { font-size: max(.12rem, 9px); padding: 0 max(.05rem, 2px); }
-.minfo-dlg .brief-bond__ban .icon { width: max(.12rem, 9px); height: max(.12rem, 9px); }
-.minfo-dlg .brief-legend { margin-top: 0; font-size: max(.14rem, 10px); }
-.minfo-dlg .brief-legend__off { width: max(.16rem, 9px); height: max(.16rem, 9px); }
-.minfo-dlg .brief-legend__ban { width: max(.2rem, 12px); height: max(.18rem, 11px); }
-.minfo-dlg .brief-legend__ban .icon { width: max(.12rem, 8px); height: max(.12rem, 8px); }
-.minfo-dlg .brief-banned__n { font-size: max(.22rem, 13px); }
-.minfo-dlg .brief-banned__grid { grid-template-columns: repeat(auto-fill, minmax(max(.6rem, 34px), 1fr)); gap: max(.08rem, 3px); }
-.minfo-dlg .brief-banned__grid .uthumb { --ut: max(.6rem, 34px); }
-.minfo-dlg .brief-banned__diy { font-size: max(.14rem, 12px); }
-.minfo-dlg .t-dim { font-size: max(.16rem, 10px); }
+.minfo-dlg .brief-bonds, .minfo-dlg .brief-banned { padding: max(calc(0.16 * var(--ui-unit, 1rem)), calc(0.06 * var(--ui-unit, 1rem))) max(calc(0.2 * var(--ui-unit, 1rem)), calc(0.08 * var(--ui-unit, 1rem))) max(calc(0.2 * var(--ui-unit, 1rem)), calc(0.08 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-h { font-size: max(calc(0.21 * var(--utility-text, var(--t))), calc(0.12 * var(--ui-unit, 1rem))); margin-bottom: max(calc(0.12 * var(--ui-unit, 1rem)), calc(0.05 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-h::before { width: max(calc(0.06 * var(--ui-unit, 1rem)), 3px); height: max(calc(0.2 * var(--ui-unit, 1rem)), calc(0.11 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-bonds__row { gap: max(calc(0.16 * var(--ui-unit, 1rem)), calc(0.06 * var(--ui-unit, 1rem))) max(calc(0.1 * var(--ui-unit, 1rem)), calc(0.04 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-bond { width: max(calc(1 * var(--ui-unit, 1rem)), calc(0.5 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-bond .bond { --disc: max(calc(0.66 * var(--ui-unit, 1rem)), calc(0.32 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-bond .bond__name { font-size: max(calc(0.16 * var(--utility-text, var(--t))), calc(0.1 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-bond__ban { font-size: max(calc(0.12 * var(--utility-text, var(--t))), calc(0.09 * var(--ui-unit, 1rem))); padding: 0 max(calc(0.05 * var(--ui-unit, 1rem)), 2px); }
+.minfo-dlg .brief-bond__ban .icon { width: max(calc(0.12 * var(--ui-unit, 1rem)), calc(0.09 * var(--ui-unit, 1rem))); height: max(calc(0.12 * var(--ui-unit, 1rem)), calc(0.09 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-legend { margin-top: 0; font-size: max(calc(0.14 * var(--utility-text, var(--t))), calc(0.1 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-legend__off { width: max(calc(0.16 * var(--ui-unit, 1rem)), calc(0.09 * var(--ui-unit, 1rem))); height: max(calc(0.16 * var(--ui-unit, 1rem)), calc(0.09 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-legend__ban { width: max(calc(0.2 * var(--ui-unit, 1rem)), calc(0.12 * var(--ui-unit, 1rem))); height: max(calc(0.18 * var(--ui-unit, 1rem)), calc(0.11 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-legend__ban .icon { width: max(calc(0.12 * var(--ui-unit, 1rem)), calc(0.08 * var(--ui-unit, 1rem))); height: max(calc(0.12 * var(--ui-unit, 1rem)), calc(0.08 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-banned__n { font-size: max(calc(0.22 * var(--utility-text, var(--t))), calc(0.13 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-banned__grid { grid-template-columns: repeat(auto-fill, minmax(max(calc(0.6 * var(--ui-unit, 1rem)), calc(0.34 * var(--ui-unit, 1rem))), 1fr)); gap: max(calc(0.08 * var(--ui-unit, 1rem)), 3px); }
+.minfo-dlg .brief-banned__grid .uthumb { --ut: max(calc(0.6 * var(--ui-unit, 1rem)), calc(0.34 * var(--ui-unit, 1rem))); }
+.minfo-dlg .brief-banned__diy { font-size: max(calc(0.14 * var(--utility-text, var(--t))), calc(0.12 * var(--ui-unit, 1rem))); }
+.minfo-dlg .t-dim { font-size: max(calc(0.16 * var(--utility-text, var(--t))), calc(0.1 * var(--ui-unit, 1rem))); }
 
 /* (stronghold-ui package: 对局动画与结算 — appended by tools/install.mjs) */
 /* ---- 「请选择策略」 (ui/matchIntro.js TurnBanner) ---- */

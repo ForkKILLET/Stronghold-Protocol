@@ -143,7 +143,7 @@ export function PluginPanel({ open, room, myId, onClose }) {
   };
   // the same choice again (without a plugin the server no longer offers): the set of the files as they are now
   const reapply = () => send(f.chosen.filter((x) => !offeredIds || offeredIds.has(x)), 'reapply');
-  return html`<${Modal} open=${open} onClose=${onClose} title=${t('插件')} micro="PLUGINS" width="7.4rem"
+  return html`<${Modal} open=${open} onClose=${onClose} title=${t('插件')} micro="PLUGINS" width="7.4rem" utility=${true}
       actions=${html`<${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <div class="plugpanel" data-testid="plugin-panel">
       <p class="plugpanel__lead">
@@ -226,7 +226,7 @@ export function InstalledPlugins({ open, onClose }) {
   const cat = useStore((s) => s, Object.is, catalog);
   useEffect(() => { loadCatalog({ force: true }); }, []);
   const plugins = unofficialPlugins(cat.plugins);
-  return html`<${Modal} open=${open} onClose=${onClose} title=${t('本服务器的插件')} micro="PLUGINS" width="6.8rem"
+  return html`<${Modal} open=${open} onClose=${onClose} title=${t('本服务器的插件')} micro="PLUGINS" width="6.8rem" utility=${true}
       actions=${html`<${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <div class="plugpanel" data-testid="installed-plugins">
       <p class="plugpanel__lead">${t('插件为非官方制作，不属于原版游戏；原版内容始终是默认。')}</p>

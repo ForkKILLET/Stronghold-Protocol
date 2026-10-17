@@ -186,7 +186,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .display { font-family: var(--font-display); text-transform: uppercase; letter-spacing: .12em; }
 .micro {
   font-family: var(--font-display);
-  font-size: calc(.11 * var(--t));
+  font-size: calc(.11 * var(--utility-text, var(--t)));
   line-height: 1.2;
   letter-spacing: .18em;
   text-transform: uppercase;

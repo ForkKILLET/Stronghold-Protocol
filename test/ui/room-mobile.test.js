@@ -12,7 +12,7 @@ const layers = ['public/css/components.css', 'public/css/screens/lobby.css', 'pu
   .map((file) => postcss.parse(read(file)));
 
 function mediaMatches(params, width, height) {
-  return params.split(',').some((part) => [...part.matchAll(/\(max-(width|height):\s*(\d+)px\)/g)]
+  return params.split(',').some((part) => (!part.includes('max-aspect-ratio: 1/1') || width <= height) && [...part.matchAll(/\(max-(width|height):\s*(\d+)px\)/g)]
     .every(([, axis, max]) => (axis === 'width' ? width : height) <= Number(max)));
 }
 
@@ -87,64 +87,37 @@ test('solo and co-op room utilities use the same icon-only order', () => {
   assert.match(read('public/js/screens/room.js'), /<\$\{RoomTools\} coop=\$\{coop\}/);
 });
 
-for (const [width, height] of [[320, 568], [390, 844], [560, 320], [640, 360], [760, 390], [761, 390], [844, 390], [915, 412], [1000, 600], [1200, 500]]) {
-  test(`room ${width}x${height}: named title/control/invite areas override shared grid rules and fixed heights`, () => {
+for (const [width, height] of [[320, 568], [560, 320], [640, 360], [760, 390], [761, 390], [844, 390], [915, 412], [1000, 600], [1200, 500], [1920, 1080]]) {
+  test(`room ${width}x${height}: intrinsic-width controls and invite keep the title in their grid row`, () => {
     const bar = ['.topbar', '.room-screen .topbar'];
-    const center = ['.topbar__center', '.room-screen .topbar__center'];
-    const left = ['.topbar__left', '.room-screen .topbar__left'];
-    const right = ['.topbar__right', '.room-screen .topbar__right'];
     assert.equal(property(bar, 'height', width, height), 'auto');
-    assert.equal(property(bar, 'min-height', width, height), '0');
-    assert.equal(property(center, 'grid-area', width, height), 'title');
-    assert.equal(property(left, 'grid-area', width, height), 'controls');
-    assert.equal(property(left, 'flex-wrap', width, height), 'nowrap');
-    assert.equal(property(['.room-ping', '.room-screen .room-ping'], 'flex', width, height), '1 1 auto');
-    assert.equal(property(['.connection-status', '.room-screen .connection-status'], 'flex-wrap', width, height), 'nowrap');
-    assert.equal(property(right, 'grid-area', width, height), 'invite');
-    assert.equal(property(right, 'max-width', width, height), '100%', 'invite stays within its grid track');
+    assert.equal(property(bar, 'min-height', width, height), 'calc(1.1 * var(--ui-unit))');
+    assert.equal(property(bar, 'grid-template-columns', width, height), 'auto minmax(0, 1fr) auto');
     assert.equal(property(bar, 'grid-template-areas', width, height), '"controls title invite"');
-    assert.equal(property(bar, 'grid-template-columns', width, height),
-      width <= 560 ? 'minmax(0, .85fr) minmax(0, 1.3fr) minmax(0, .85fr)' : 'minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr)');
-    assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'white-space', width, height), 'nowrap');
-    assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'flex-wrap', width, height), 'nowrap');
-    assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', width, height), 'auto',
-      'footer contents may grow without spilling over the seats');
-    assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', width, height),
-      width <= 560 ? '"options" "status" "actions"' : '"options actions" "status actions"');
-    const buttons = ['.btn--square.btn--sm', '.room-screen--coop .room-topbar__tools .btn--square', '.room-screen .room-topbar__tools .btn--square'];
-  assert.equal(property(buttons, 'width', width, height), '.75rem');
+    for (const [side, area] of [['left', 'controls'], ['center', 'title'], ['right', 'invite']])
+      assert.equal(property(['.topbar__' + side, '.room-screen .topbar__' + side], 'grid-area', width, height), area);
+    for (const selectors of [['.room-screen .topbar__left'], ['.room-screen .room-ping'], ['.room-screen .connection-status']])
+      assert.equal(property(selectors, 'overflow', width, height), 'visible', 'connection and tools must not be clipped');
+    assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', width, height), 'auto');
   });
 }
 
-test('normal desktop room chrome retains its existing three-column layout and height', () => {
-  assert.equal(property(['.topbar', '.room-screen .topbar'], 'height', 1920, 1080), '1.36rem');
-  assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-columns', 1920, 1080),
-    'minmax(0, 1fr) auto minmax(0, 1fr)');
-  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', 1920, 1080), '1.5rem');
+test('long translated titles may wrap inside their own column without moving the title to a new grid row', () => {
+  assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'white-space', 640, 360), 'normal');
+  assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'flex-wrap', 640, 360), 'wrap');
+  assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-areas', 640, 360), '"controls title invite"');
 });
 
-test('the room title remains on the same row as controls and invitation at phone widths', () => {
-  for (const width of [320, 360, 390, 560, 640, 844]) {
-    assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-areas', width, 390), '"controls title invite"');
-    assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'white-space', width, 390), 'nowrap');
-  }
+test('invite character boxes follow their own text scale and keep complete glyphs', () => {
+  assert.equal(property(['.invite__code span', '.room-screen .invite__code span'], 'width', 844, 390), '.85em');
+  assert.equal(property(['.invite__code span', '.room-screen .invite__code span'], 'height', 844, 390), '1.2em');
 });
 
-test('invite code boxes scale with their own glyphs instead of a tiny rem box plus enlarged text', () => {
-  const selector = ['.invite__code span', '.room-screen .invite__code span'];
-  assert.equal(property(selector, 'width', 844, 390), '.72em');
-  assert.equal(property(selector, 'height', 844, 390), '1em');
-  assert.equal(property(selector, 'flex', 844, 390), 'none');
-  assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'font-size', 844, 390),
-    'calc(.16 * var(--utility-text, var(--t)))');
-});
-
-test('short rooms retain a visible seat region and scrolling; portrait seats cannot overrun a smaller explicit first row', () => {
+test('short rooms keep a seat region and scroll; portrait rows grow with their actual 1:2 cards', () => {
   assert.equal(property(['.room-screen--coop'], 'overflow-y', 640, 270), 'auto');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'min-height', 640, 270), '3.6rem');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'flex', 640, 270), '1 0 3.6rem');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-template-rows', 390, 844), 'none');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-auto-rows', 390, 844), 'minmax(3.5rem, auto)');
-  assert.equal(property(['.seat', '.room-screen .seat'], 'min-height', 390, 844), '3.5rem');
-  assert.equal(property(['.seat__foot .tt-anchor', '.room-screen--coop .seat__foot .tt-anchor'], 'position', 640, 360), 'static');
+  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'min-height', 640, 270), 'calc(3.6 * var(--ui-unit))');
+  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'flex', 640, 270), '1 0 calc(3.6 * var(--ui-unit))');
+  assert.equal(property(['.seats', '.room-screen .seats'], 'grid-template-rows', 390, 844), 'auto');
+  assert.equal(property(['.seats', '.room-screen .seats'], 'grid-auto-rows', 390, 844), 'auto');
+  assert.equal(property(['.room-screen .rseat__art'], 'aspect-ratio', 640, 360), '1 / 2');
 });

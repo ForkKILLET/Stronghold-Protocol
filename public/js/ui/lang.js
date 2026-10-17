@@ -27,6 +27,7 @@ import { loadPref, savePref } from '../store.js';
 import { data } from '../data.js';
 import { updateRotateHintPwaI18n } from './device.js';
 import { html } from './components.js';
+import { LanguageMenu } from './languageMenu.js';
 
 /** The switch's own label, in both languages (whoever opens it may not read the current one). */
 const SWITCH_LABEL = 'Language / 语言'; // i18n-ignore
@@ -297,9 +298,9 @@ export function machineTranslationNote() {
 
 /**
  * The language menu: 中文 | English | … as buttons, or a list when there are many packs.
- * @param {{ class?: string }} props
+ * @param {{ class?: string, compact?: boolean }} props
  */
-export function LangToggle({ class: cls }) {
+export function LangToggle({ class: cls, compact = false }) {
   const lang = useLang();
   const menu = langMenuModel(useLangs(), lang);
   const pick = async (code, select = null) => {
@@ -311,6 +312,7 @@ export function LangToggle({ class: cls }) {
     if (select && request === langRequest) select.value = getLang();
   };
   if (menu.kind === 'select') {
+    if (compact) return html`<${LanguageMenu} class=${cls} label=${SWITCH_LABEL} items=${menu.items} onSelect=${pick} />`;
     return html`<label class=${`set-seg lang-toggle lang-select${cls ? ` ${cls}` : ''}`} data-testid="lang-toggle">
       <select aria-label=${SWITCH_LABEL} value=${lang} onChange=${(e) => pick(e.currentTarget.value, e.currentTarget)}>
         ${menu.items.map((it) => html`<option key=${it.code} value=${it.code} lang=${it.htmlLang} title=${it.title || undefined} selected=${it.on}>${it.label}</option>`)}

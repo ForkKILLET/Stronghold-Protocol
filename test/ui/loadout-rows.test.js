@@ -1,3 +1,4 @@
+import { length } from '../helpers/css-values.js';
 // test/ui/loadout-rows.test.js — the 干员调配 roster as one list (0.2.2): the quick choices of PR #301 (by @farridge) laid
 // out as one row per operator with aligned columns instead of three columns of cards (the owner's decision of 2026-10-08:
 // 「三个竖排有点乱影响观感」), and the per-operator 潜能 / 练度 controls (「调配干员里自己设置吧，默认满潜满加成」): the row's skill
@@ -178,18 +179,27 @@ test('css: the selected skill\'s frame is square around its icon (GitHub #398 / 
   const rule = css.match(/^([^{}\n]*\.lo-sicon__outline) \{([^}]*)\}/m);
   assert.ok(rule, 'the frame rule');
   assert.equal(rule[1], '.lo-sicon .lo-sicon__outline', 'more specific than `.lo-sicon img`');
-  assert.match(rule[2], /inset: -\.05rem; width: calc\(100% \+ \.1rem\) !important; height: calc\(100% \+ \.1rem\) !important;/);
+  const inset = rule[2].match(/inset:([^;]+)/)[1];
+  const width = rule[2].match(/width:([^;]+) !important/)[1];
+  const height = rule[2].match(/height:([^;]+) !important/)[1];
+  for (const unit of [30, 40, 100]) {
+    const vars = { '--ui-unit': unit, parent: 100 };
+    assert.ok(Math.abs(length(inset, vars) + .05 * unit) < 1e-7);
+    assert.equal(width, height);
+    assert.ok(Math.abs(length(width, vars) - (100 + .1 * unit)) < 1e-7);
+  }
   assert.match(rule[2], /max-width: none;/);
   assert.match(rule[2], /object-fit: fill;/);
   assert.match(css, /\.lo-sicon img \{ width: 100%; height: 100%; object-fit: cover;/, 'the icon itself still covers');
   assert.match(readFileSync(path.join(ROOT, 'public/css/theme.css'), 'utf8'), /\bimg \{ max-width: 100%; \}/, 'the global clamp the frame opts out of');
 });
 
-test('css: the head and the rows share one grid (columns aligned), quick targets grow on a coarse pointer, the detail slides over below 1000 px', () => {
+test('css: the head and the rows share one grid (columns aligned), quick targets scale together, the detail slides over only in portrait windows', () => {
   const css = readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8');
   assert.match(css, /\.lo-list__head, \.lo \.lo-card \{ display: grid; grid-template-columns: var\(--cols\);/);
-  assert.match(css, /\.sp-coarse \.lo-list \{ --q: max\(\.44rem, 40px\); \}/);
-  const block = css.slice(css.indexOf('@media (max-width: 1000px) {\n  .lo-body'));
+  assert.match(css, /\.sp-coarse \.lo-list \{ --q: max\(calc\(0\.44 \* var\(--ui-unit, 1rem\)\)/);
+  const layer = readFileSync(path.join(ROOT, 'public/css/utility-mobile.css'), 'utf8');
+  const block = layer.slice(layer.indexOf('@media (max-aspect-ratio: 1/1)'));
   assert.match(block, /\.lo-body \{ grid-template-columns: minmax\(0, 1fr\); \}/);
   assert.match(block, /\.lo-detail-wrap \{ display: none; \}/);
   assert.ok(!/\.lo-grid\b/.test(css), 'the old card grid is gone');

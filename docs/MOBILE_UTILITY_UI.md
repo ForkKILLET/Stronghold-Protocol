@@ -1,86 +1,58 @@
-# Mobile management UI
+# Non-battle UI scaling
 
-This server branch keeps battlefield rendering, shop placement, HUD geometry, simulation, network protocol and chat
-sizes separate from non-battle management UI. `public/css/utility-mobile.css` loads after `devices.css` in source
-mode and in the Vite CSS bundle.
+The title, lobby, protocol pages, room preparation, management dialogs, operator management, local history,
+achievements, S.W.E.E.P., guide and plugin studio use the same design proportions across desktop and mobile.
+The mandatory landscape gate remains global. Simulation, matchmaking, battle/HUD/shop/chat geometry and combat
+statistics aggregation/positioning retain their existing behaviour.
 
-## Scope and density
+## Local design units
 
-Mobile rules apply below 1000 CSS pixels wide or below 600 CSS pixels tall. Normal desktop layout is unchanged.
-The design's global `rem` remains unchanged. Shared typography uses
-`var(--utility-text, var(--t))`; management containers alone define a readable floor derived from the saved text-size
-setting. That variable must never be used for widths, heights or battlefield positioning.
+- `public/js/ui/managementScale.js` computes a local unit from the layout viewport, safe-area insets and the
+  existing root rem: `min(rem, availableWidth / 19.2, availableHeight / 10.8)`.
+- `device.js` publishes `--sp-ui-unit` and `--sp-ui-scale` on resize/rotation. Only management roots opt into
+  `--ui-unit`; shared components fall back to `1rem` elsewhere. Global rem and `--t` remain unchanged.
+- Geometry uses `calc(designSize * var(--ui-unit, 1rem))`. Text uses `--utility-text`, derived from the saved
+  `--t` times the local factor. Text preferences never change the unit or battlefield placement.
+- Former pixel floors in management cards, text and spacing now scale as design lengths. Hairline borders stay
+  in pixels. Native editable inputs/selects retain a 16px floor and enough line height to avoid iOS focus zoom.
+- Modal's utility width is converted by `managementLength()`, including min()/calc() expressions. A requested
+  7.4-unit settings dialog stays 7.4 units; crossing 1000px no longer replaces it with a 14-rem dialog.
+- Settings action buttons override the generic utility minimum with a .36-unit height and .15 text coefficient.
+  Its many-language dropdown uses a scaled button/listbox instead of a native select, retaining arrow/Home/End,
+  Enter/Space, Escape, Tab, outside dismissal and focus return. Other editable native controls keep the 16px guard.
 
-| Surface | Mobile changes | Preserved behaviour |
-| --- | --- | --- |
-| Resource manager | Up to 17 design rem of available width; two columns on landscape phones; one below 560px; shorter category/voice rows | Required/optional and voice selection, counts, sizes, progress, active import category, pause, ZIP actions, warnings |
-| Settings and shortcuts | Wider dialog, compact label/control rows, smaller gaps, wrapping footer | Browser preferences, four text sizes/FPS choices, diagnostics, bindings, language, sound, keyboard focus |
-| Announcement/about/resume/import dialogs | Usable viewport height, wrapping text, fixed close/action areas | Links, disclaimer, notice scheduling, selected recovery identity, ZIP/data validation, drafts |
-| Title/lobby/room | Compact cards/actions, fewer decorative gaps, no hidden difficulty explanations; actual-sized input text | Language/statistics/settings/preload entry points, matchmaking, all seats, mode rules, invitation controls |
-| Operator loadout/ownership/DIY | Smaller aligned quick-choice buttons, compact filters, responsive grids | All skill/module/cultivation columns, bond labels, search, scrolling, the existing list/detail workflow |
-| Local statistics/history | Compact header/cards/tables; full width; warnings remain visible | Local-only records, import/export, all columns, replay, damaged/newer-data warnings |
-| Combat damage/healing panel | Pinned title/scope/close; ranking-first scrolling body; measured viewport fallback when the corner has too little room | Modeless display, normal corner-relative docking, own-player aggregation, battle default, all damage types, DPS/HPS and healing |
-| Guide | Dynamic-height and safe-area budgets; scrollable chapter/dot controls and text fallback | All pages, 16:9 image rendering, close/navigation, keyboard shortcuts |
-| Match information/console | Wider, bounded dialogs with compact controls | Server ownership/permissions, all data and actions, validation |
-| Archived settlement | Responsive local-history replay layout | Live result/battle screens remain unchanged |
+## Layout and ownership
 
-Settings and its separate shortcut editor use the game's `rem` geometry and saved `--t` typography, without the
-generic utility text floor. Their controls have a `.6rem` minimum height; native voice, language, FPS and shortcut
-controls wrap or shrink within the row. Label/action SVGs use `em`, while the close glyph uses half its button.
-Switch tracks/knobs, slider hit boxes/thumbs, spacing and diagnostic boxes use `rem` rather than fixed mobile
-pixels. Native selects and text boxes retain the 16px iOS focus-zoom guard. The existing global landscape gate,
-safe areas, visible-viewport height, focus stack and scrollable body remain unchanged.
+The final layer `public/css/utility-mobile.css` loads after `devices.css` in source and production. It keeps
+information visible instead of hiding explanations or changing the artwork at phone-width breakpoints. Truly
+portrait windows may use an aspect-ratio fallback; rotatable phones still show the mandatory landscape hint.
 
-Utility dialogs explicitly opt into `Modal`'s `utility` prop. Their requested desktop width becomes
-`--utility-width`, allowing the mobile stylesheet to resize them without an inline-width override. Other modals
-retain their existing width behaviour. Utility headers gain a keyboard-accessible close button; the existing focus
-trap, Escape handling, body scrolling and footer actions remain.
+Room tools keep equal icon squares with accessible names. Controls and invitation use intrinsic column widths;
+the title stays in the same grid row and long translations can wrap within that column. Room art stays fully
+visible at 1:2; automatic rows and scrolling handle content exceeding available height. Footer actions can wrap.
+Operator lists, ownership/DIY grids, deck cards and details use the same units; portrait windows retain the
+list/detail back flow. The achievement reference composition and full descriptions remain intact.
 
-Management surfaces also use the existing `device.js` visual-viewport height (`--sp-vh`), capped by `100dvh`, so a
-soft keyboard reduces their explicit size budget rather than leaving footer actions behind it. This is a static
-budget contract; keyboard panning/focus behaviour still requires real-device verification.
+Protocol/report outer hosts own the viewport; their children apply safe-area padding once. Utility dialogs,
+guide, operator pages and history bound their body/close/actions against `--sp-vh`. Visual-viewport pan publishes
+`--sp-vtop` and `--sp-vleft`; visual-only keyboard shrink does not resize the underlying design canvas.
+Native focus/keyboard behaviour on physical devices still needs verification.
 
-Compact targets use their actual boxes, generally 24–36px high; they do not retain invisible 44px pseudo-elements
-that overlap neighbouring controls. Text fields/native selects retain a 16px readable floor against iOS focus zoom.
-Larger saved text sizes still enlarge content and may require scrolling; content is not truncated to meet a row budget.
-
-The mobile damage panel has a definite measured height, not only `max-height`. Rank rows are non-shrinking and placed
-before totals, legend and explanatory text in its single scrolling body; range switching and close stay in the head.
-When fewer than 128px remain above the actual corner (or the corner is outside the visual viewport), it floats within
-the visible safe-area bounds instead of rendering just a header. Window/visual-viewport resize and pan plus corner
-ResizeObserver updates recalculate this placement. Desktop retains its independent rank-list scroll.
-
-Co-op room statistics/settings/guide entries are actual icon-only square buttons on every device, with the original
-actions and accessible/hover names. Solo entry labels remain unchanged. Compact room chrome keeps controls, title,
-and invitation in one named grid row at every mobile width; the title never wraps onto its own line. Footer
-options/status remain beside actions, and both bars grow instead of keeping desktop fixed heights. Invite glyph boxes use their own font
-size, not a tiny layout-rem box around an enlarged glyph. Short co-op rooms can scroll as a whole while retaining
-a visible seat region; portrait card rows cannot be smaller than their card minimum height.
-
-## Orientation
-
-The existing global mandatory-landscape gate remains active on every mobile page, including management dialogs,
-the guide and damage panel. No utility surface bypasses the rotate hint.
+Plugin management explicitly opts into utility Modal, sharing its focus stack, header close, scrolling body and
+visible-viewport bounds. The independent studio loads device support, safe-area styles and local units too.
+Game selection dialogs retain existing geometry and lifecycle. Actual touch boxes stay within their controls
+rather than expanding over neighbours. Combat metrics/HUD overrides in the final layer are retained.
 
 ## Verification
 
-- `test/ui/settings-mobile.test.js` checks settings/shortcut scaling, mobile/coarse-pointer cascade, SVG proportions,
-  switch/slider geometry, native control wrapping and unchanged normal desktop dimensions.
-- `test/ui/utility-mobile.test.js` checks the CSS contract, resource columns, retained content, real hit boxes, text
-  scope, global orientation gate, and explicit width/height budgets at 320×568, 390×844, 640×360, 844×390, 915×412 and
-  1000×600 with synthetic safe areas.
-- `test/ui/combat-metrics-layout.test.js` covers 240–412px viewport heights, 34–148px wrapped corners, safe areas and
-  visual-viewport shrink/pan; it explicitly reproduces the old header-only height budget.
-- `test/ui/room-mobile.test.js` checks the three tool components and the actual room/shared/mobile CSS layer cascade,
-  including both sides of 760/761px, portrait automatic rows and unchanged normal desktop bar dimensions.
-- `test/ui/text-scale.test.js`, `test/ui/devices.test.js`, resource/voice tests, local statistics and combat metrics
-  tests protect settings, data/aggregation behaviour and the unchanged battlefield geometry.
-- `test/vite.test.js` verifies production CSS inclusion/order as well as existing simulation/CDN contracts.
-- Opt-in device browser tests retain the landscape checks and now distinguish portrait utility/battle screens.
+- `test/ui/management-scale.test.js`: viewport/safe-area fit, continuous modal width across the old breakpoint,
+  keyboard visual shrink/pan, outer-host ownership and unchanged battle roots.
+- Settings/room/utility tests: CSS cascade, icon proportions, switch/slider units, native guards, retained content,
+  intrinsic room columns, portrait row growth, focus and orientation.
+- Existing skin, loadout, history, achievement, S.W.E.E.P., media, device and resource tests retain behaviour checks.
+- Production build, Vite/static-client checks and typecheck verify source/bundle inclusion and compatibility.
 
-Static numeric budgets do not emulate intrinsic text widths, CSS layout, a virtual keyboard, real notches or touch
-hit testing. A build/Node pass is not a browser or physical-device verification. When browser testing is requested,
-check both source/production modes, Chinese/English, all text sizes, portrait/landscape, long lists/names/large
-numbers, safe areas and nested dialogs; inspect screenshots and ensure every action can actually be tapped.
-
-Deployment needs a new frontend build and updated hashed assets/HTML; restarting an old build will not apply this UI.
+These are static/component checks, not a font/layout engine, touch hit test, browser or real-device verification.
+When requested, browser acceptance should cover source/production, Chinese/English, all text sizes, notches,
+keyboard pan/shrink, long names/lists, nested dialogs and reachable close/actions. Deployment needs a fresh frontend
+build; an old deployed bundle does not gain these changes merely by restarting its server.

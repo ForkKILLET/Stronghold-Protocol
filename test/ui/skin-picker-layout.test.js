@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
+import { length } from '../helpers/css-values.js';
 
 const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
 const desktop = postcss.parse(read('public/css/screens/loadout.css'));
@@ -24,14 +25,14 @@ function style(selector, phone = false) {
 test('skin cards override the legacy column flex sizing with compact auto-fit grid rows', () => {
   const grid = style('.lo-skins'), card = style('.lo-skin');
   assert.equal(grid.display, 'grid');
-  assert.equal(grid['grid-template-columns'], 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))');
-  assert.equal(grid.gap, '6px');
+  assert.equal(grid['grid-template-columns'], 'repeat(auto-fit, minmax(min(100%, calc(1.8 * var(--ui-unit, 1rem))), 1fr))');
+  assert.equal(length(grid.gap, { '--ui-unit': 100 }), 6);
   assert.equal(card.flex, 'none', 'the old 1.9rem flex basis must not become a vertical card height');
   assert.equal(card.width, 'auto', 'do not combine a full-width item with a wrapping row');
   assert.equal(card['min-width'], '0');
   assert.equal(card['max-width'], 'none');
-  assert.equal(card.padding, '4px 8px 4px 4px');
-  assert.equal(card['min-height'], '44px');
+  assert.match(card.padding, /--ui-unit/);
+  assert.equal(length(card['min-height'], { '--ui-unit': 100 }), 44);
   assert.equal(card.height, undefined, 'larger user text can grow naturally instead of being clipped');
   for (const selector of ['.lo-skin__name', '.lo-skin__group']) {
     const text = style(selector);
@@ -40,25 +41,15 @@ test('skin cards override the legacy column flex sizing with compact auto-fit gr
   }
 });
 
-test('desktop normal-text cards stay near 44px and phone cards keep 44px real touch targets', () => {
-  const art = style('.lo-skin__art');
-  assert.equal(art.width, 'max(.32rem, 28px)');
-  assert.equal(art.height, art.width);
-  // Border-box geometry: the image/text maximum plus top/bottom padding and the card border.
-  for (const rem of [40, 71.1, 100]) {
-    const image = Math.max(.32 * rem, 28);
-    const text = (.16 + .12) * rem * 1.2 + Math.max(.02 * rem, 1);
-    const height = Math.max(44, Math.max(image, text) + 8 + 2);
-    assert.ok(height <= 46, `${rem}px design rem: ${height}px card`);
+test('skin art and minimum height scale with the local design unit instead of retaining phone pixel floors', () => {
+  const art = style('.lo-skin__art'), card = style('.lo-skin');
+  for (const unit of [30, 40, 71.1, 100]) {
+    const vars = { '--ui-unit': unit };
+    assert.ok(Math.abs(length(art.width, vars) - .32 * unit) < 1e-7);
+    assert.equal(art.height, art.width);
+    assert.ok(Math.abs(length(card['min-height'], vars) - .44 * unit) < 1e-7);
   }
-  const card = style('.lo-skin', true), phoneArt = style('.lo-skin__art', true);
-  assert.equal(card.flex, 'none');
-  assert.equal(card['min-height'], '44px');
-  assert.equal(card.padding, '4px');
-  assert.equal(phoneArt.width, '32px');
-  assert.equal(phoneArt.height, '32px');
-  assert.equal(style('.lo-skins', true)['grid-template-columns'], 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))');
-  assert.equal(Math.max(44, 32 + 4 * 2 + 2), 44);
+  assert.match(style('.lo-skins', true)['grid-template-columns'], /minmax\(min\(100%, calc\(1\.5 \* var\(--ui-unit\)/);
 });
 
 test('compact picker keeps skin names, series, selection semantics and full-label tooltips', () => {

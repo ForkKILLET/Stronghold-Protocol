@@ -165,7 +165,7 @@ test('new layout stays on existing grids and text scale; mode selection uses pag
       if (rule.selector === '.gm.has-spdraft .gtop') rule.walkDecls('visibility', (decl) => assert.notEqual(decl.value, 'hidden'));
     });
   }
-  assert.match(read('public/css/screens/room.css'), /\.room-screen \.rseat \{[^}]*width: 100%[^}]*min-height: 3\.5rem/);
+  assert.match(read('public/css/screens/room.css'), /\.room-screen \.rseat \{[^}]*width: 100%[^}]*min-height: calc\(3\.5 \* var\(--ui-unit, 1rem\)\)/);
   assert.match(read('public/css/screens/lobby.css'), /\.screen\.protocol-screen \{[^}]*height: calc\(var\(--sp-vh/);
   assert.doesNotMatch(read('public/css/screens/lobby.css'), /protocol-modal/);
   assert.match(read('public/css/utility-mobile.css'), /\.lo--deck \.lo-top--deck \{[^}]*height: auto/);

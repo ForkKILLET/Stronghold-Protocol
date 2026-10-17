@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="dark" />
   <meta name="robots" content="noindex, nofollow" />
   <title>插件工作台 · Plugin studio · 卫戍协议：盟约</title>
@@ -14,12 +14,19 @@
   <link rel="stylesheet" href="/css/components.css" />
   <link rel="stylesheet" href="/css/screens/game.css" />
   <link rel="stylesheet" href="/css/screens/game-panels.css" />
+  <link rel="stylesheet" href="/css/devices.css" />
+  <link rel="stylesheet" href="/css/utility-mobile.css" />
   <link rel="stylesheet" href="/studio/studio.css" />
   <script type="importmap">
     { "imports": { "preact": "/vendor/preact.module.js", "preact/hooks": "/vendor/hooks.module.js", "htm": "/vendor/htm.module.js" } }
   </script>
 </head>
 <body class="studio">
+  <div class="rotate-hint" role="status">
+    <div class="rotate-hint__phone"></div>
+    <div class="rotate-hint__title">请将设备横屏</div>
+    <div class="rotate-hint__micro">ROTATE DEVICE</div>
+  </div>
   <div id="app"><div class="st-boot">插件工作台 · Plugin studio</div></div>
   <script type="module" src="/studio/js/main.js"></script>
 </body>
