@@ -1,5 +1,6 @@
 // Main-thread proxy for complete Match instances hosted in lane Workers.
 import { Worker } from 'node:worker_threads';
+import { attachWorkerState } from '../stateTransport.js';
 // Worker JSON owns the wire value. Routing only needs its kind; old hooks materialize a complete message lazily.
 // State transport parses an independent snapshot, so mutation by a hook cannot corrupt its baseline.
 export function encodedMessage(kind, encoded) {
@@ -22,6 +23,7 @@ class RemoteMatch {
     this.instanceId = instanceId;
     this.remote = true;
     this.hooks = hooks;
+    this.stateOwner = {}; // Connection baselines must not retain the Match/pool/hook graph.
     this.pending = new Map();
     this.nextRequest = 0;
     this.queue = Promise.resolve();
@@ -80,6 +82,8 @@ class Lane {
     this.failure = null;
     this.exited = false;
     this.initialization = null;
+    this.load = null;
+    this.loadAt = 0;
   }
 
   initialize() {
@@ -151,9 +155,19 @@ export class MatchWorkerPool {
     if (existing != null) return this.lanes[existing];
     const available = this.lanes.filter((lane) => !lane.closed);
     if (!available.length) throw new Error('no healthy match worker lane');
-    const lane = available.reduce((best, current) => current.matches.size < best.matches.size ? current : best);
+    const lane = available.reduce((best, current) => this.laneScore(current) < this.laneScore(best) ? current : best);
     this.assignments.set(id, lane.id);
     return lane;
+  }
+
+  laneScore(lane) {
+    const age = Date.now() - lane.loadAt;
+    const load = lane.load || {};
+    // A stale busy lane must not look idle just because its reporting timer is delayed.
+    const utilization = age < 5000 ? Number(load.utilization) || 0 : lane.load && lane.matches.size ? 0.9 : 0;
+    return (lane.matches.size + lane.pending.size + (Number(load.workQueued) || 0))
+      / Math.max(0.1, 1 - utilization) + (Number(load.delayP99Ms) || 0) / 20
+      + (Number(load.serverFields) || 0) * 2;
   }
 
   create(key, options, hooks = {}, checkpoint = null, departedPlayerIds = []) {
@@ -191,18 +205,19 @@ export class MatchWorkerPool {
 
   onMessage(lane, message) {
     if (lane.closed) return;
+    if (message.type === 'load') { lane.load = message.load; lane.loadAt = Date.now(); return; }
     const current = lane.matches.get(message.key);
     const match = current?.instanceId === message.instanceId ? current : null;
     if (message.type === 'send') {
       if (match?.hooks.send) {
         const msg = typeof message.kind === 'string' && typeof message.encoded === 'string'
-          ? encodedMessage(message.kind, message.encoded) : message.msg;
+          ? attachWorkerState(encodedMessage(message.kind, message.encoded), message.encoded, message.state, match.stateOwner) : message.msg;
         match.hooks.send(message.playerId, msg, message.encoded);
       }
     } else if (message.type === 'broadcast') {
       if (match) {
         const msg = typeof message.kind === 'string' && typeof message.encoded === 'string'
-          ? encodedMessage(message.kind, message.encoded) : message.msg;
+          ? attachWorkerState(encodedMessage(message.kind, message.encoded), message.encoded, message.state, match.stateOwner) : message.msg;
         if (msg?.t === 'm.public') match.public = msg;
         if (msg?.t === 'm.result') match.lastResultMsg = msg;
         match.hooks.broadcast?.(msg, message.encoded);
@@ -240,7 +255,8 @@ export class MatchWorkerPool {
       busy: this.lanes.filter((lane) => lane.pending.size > 0).length,
       queued: 0,
       rooms: this.lanes.reduce((n, lane) => n + lane.matches.size, 0),
-      lanes: this.lanes.map((lane) => ({ id: lane.id, rooms: lane.matches.size, pending: lane.pending.size, failed: !!lane.failure })),
+      lanes: this.lanes.map((lane) => ({ id: lane.id, rooms: lane.matches.size, pending: lane.pending.size, failed: !!lane.failure,
+        load: lane.load, loadAgeMs: lane.loadAt ? Date.now() - lane.loadAt : null, score: this.laneScore(lane) })),
     };
   }
 

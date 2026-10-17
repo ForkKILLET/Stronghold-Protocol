@@ -299,13 +299,18 @@ export class Persister {
    *   log?: object, now?: () => number, saveMs?: number,
    * }} opts
    */
-  constructor({ store, registry, lobby, log = noopLog, now = Date.now, saveMs = SAVE_MS }) {
+  constructor({ store, registry, lobby, log = noopLog, now = Date.now, saveMs = SAVE_MS, checkpointConcurrency = 4, checkpointWaitMs = 2000 }) {
     this.store = store;
     this.registry = registry;
     this.lobby = lobby;
     this.log = log;
     this.now = now;
     this.saveMs = Math.max(1000, Number(saveMs) || SAVE_MS);
+    this.checkpointConcurrency = Math.max(1, Math.min(32, Math.floor(Number(checkpointConcurrency) || 4)));
+    this.checkpointWaitMs = Math.max(1, Number(checkpointWaitMs) || 2000);
+    this.checkpointTimeouts = 0;
+    this.checkpointTimes = new WeakMap();
+    this.checkpointInflight = new WeakMap();
     /** Keys of safe checkpoints; their contents live in the persistence Worker. */
     this.checkpointKeys = new Set();
     this.encoder = new PersistenceWorker();
@@ -373,6 +378,7 @@ export class Persister {
       if ((cp.seed != null && Number.isFinite(Number(cp.seed)) && Number(cp.seed) !== match.seed)
         || (typeof cp.battlePrefix === 'string' && cp.battlePrefix && cp.battlePrefix !== match.battlePrefix)) continue;
       matches[key] = cp;
+      this.checkpointTimes.set(match, Number.isFinite(doc.savedAt) ? doc.savedAt : this.now());
     }
     const seedDoc = { ...doc, matches };
     this.encoder.rememberDocument(seedDoc, entries);
@@ -390,12 +396,60 @@ export class Persister {
 
   /** Post each capture immediately, before yielding: mutations cannot interleave with a match's structured clone. */
   async checkpointMatches() {
+    const groups = new Map();
     for (const item of this.lobby.persistenceMatches()) {
-      await this.checkpoint(item);
+      const lane = item.match.lane || 'local';
+      if (!groups.has(lane)) groups.set(lane, []);
+      groups.get(lane).push(item);
     }
+    const pending = [...groups.values()];
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(this.checkpointConcurrency, pending.length) }, async () => {
+      while (next < pending.length) {
+        const group = pending[next++];
+        for (const item of group) {
+          let timer;
+          const timedOut = Symbol('checkpoint timeout');
+          try {
+            const result = await Promise.race([this.checkpoint(item), new Promise((resolve) => {
+              timer = setTimeout(() => resolve(timedOut), this.checkpointWaitMs);
+            })]);
+            if (result === timedOut) {
+              this.checkpointTimeouts++;
+              // Keep the in-flight capture (no retry or cancellation). Skip the rest of this lane this round;
+              // its last safe checkpoints remain in the encoder, while healthy lanes can still be saved.
+              break;
+            }
+          } finally { clearTimeout(timer); }
+        }
+      }
+    }));
   }
 
-  async checkpoint(item) {
+  checkpoint(item) {
+    const current = this.checkpointInflight.get(item.match);
+    if (current) return current;
+    const pending = this.captureCheckpoint(item).finally(() => this.checkpointInflight.delete(item.match));
+    this.checkpointInflight.set(item.match, pending);
+    return pending;
+  }
+
+  checkpointStats() {
+    const at = this.now();
+    let oldestAgeMs = 0, missing = 0;
+    for (const { match } of this.lobby.persistenceMatches()) {
+      const saved = this.checkpointTimes.get(match);
+      if (saved == null) missing++;
+      else oldestAgeMs = Math.max(oldestAgeMs, at - saved);
+    }
+    return { concurrency: this.checkpointConcurrency, waitMs: this.checkpointWaitMs,
+      timeouts: this.checkpointTimeouts, oldestAgeMs, missing };
+  }
+
+  async captureCheckpoint(item) {
+    const startedAt = this.now();
+    // Reserve the generation before yielding: a replacement Match may finish its capture first.
+    if (!this.generations.has(item.match)) this.generations.set(item.match, ++this.generationSeq);
     try {
       if (typeof item.match.captureSnapshotBytes === 'function') {
         const bytes = await item.match.captureSnapshotBytes();
@@ -404,6 +458,7 @@ export class Persister {
         // Transfer ownership onward without inspecting/decoding the capture on the main thread.
         await this.encoder.request('checkpointBytes', { key: item.key, generation: this.generations.get(item.match), bytes }, [bytes.buffer]);
         this.checkpointKeys.add(item.key);
+        this.checkpointTimes.set(item.match, startedAt);
         return true;
       }
       const capture = typeof item.match.captureSnapshot === 'function'
@@ -413,6 +468,7 @@ export class Persister {
       if (!this.generations.has(item.match)) this.generations.set(item.match, ++this.generationSeq);
       await this.encoder.request('checkpoint', { key: item.key, generation: this.generations.get(item.match), capture });
       this.checkpointKeys.add(item.key);
+      this.checkpointTimes.set(item.match, startedAt);
       return true;
     } catch (e) {
       this.failures++;

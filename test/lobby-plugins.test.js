@@ -162,11 +162,11 @@ describe('room.setPlugins (P1a: cosmetic plugins)', () => {
     host.clearInbox();
     guest.clearInbox();
     fs.writeFileSync(path.join(tmp, 'plugins', 'fresh', 'f.png'), png(2, 2, [2, 2, 2, 255]));
-    srv.packs.rescan();
+    await srv.packs.rescan();
     const toast = await host.waitFor('m.toast', (m) => m.msgid === '房间插件「{names}」的文件在服务器上变了，请在插件面板中点「重新应用」');
     assert.deepEqual([toast.kind, toast.params?.names], ['warn', 'fresh']);
     await guest.expectNone('m.toast', () => true, 150);
-    srv.packs.rescan();
+    await srv.packs.rescan();
     await host.expectNone('m.toast', () => true, 150);
     // 「重新应用」: the same list → the set of the files as they are now
     assert.equal((await host.request({ t: 'room.setPlugins', plugins: [{ id: 'fresh' }] })).t, 'ok');
@@ -185,7 +185,7 @@ describe('room.setPlugins (P1a: cosmetic plugins)', () => {
     await host.waitFor('room.state', (s) => s.inMatch === true);
     host.clearInbox();
     fs.writeFileSync(path.join(tmp, 'plugins', 'later', 'l.png'), png(2, 2, [6, 6, 6, 255]));
-    srv.packs.rescan();
+    await srv.packs.rescan();
     await host.expectNone('m.toast', (m) => m.msgid === MSG, 200);
     host.send({ t: 'g.infoReady' }); // the stub match ends once every human is ready
     await host.waitFor('room.state', (s) => s.inMatch === false);

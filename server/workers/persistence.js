@@ -26,7 +26,10 @@ parentPort.on('message', ({ id, type, payload }) => {
       const capture = type === 'checkpointBytes' ? deserialize(payload.bytes) : payload.capture;
       const checkpoint = encodeMatchCapture(capture);
       if (!checkpoint) throw new Error('match checkpoint could not be encoded');
-      checkpoints.set(payload.key, { generation: payload.generation, checkpoint });
+      // Concurrent lane captures can finish after a new Match reused the room key.
+      if (!checkpoints.has(payload.key) || checkpoints.get(payload.key).generation <= payload.generation) {
+        checkpoints.set(payload.key, { generation: payload.generation, checkpoint });
+      }
       parentPort.postMessage({ id, memory: memorySample() });
     } else if (type === 'serialize') {
       const active = new Map(payload.entries.map(({ key, generation }) => [key, generation]));

@@ -127,8 +127,8 @@ export async function startServer(opts = {}) {
   // language packs and plugins (docs/PACKS.md, docs/PLUGINS.md): scanned now — the start log names them — and again
   // whenever their folders change
   const scriptMode = process.env.SP_PLUGIN_SCRIPTS;
-  const packs = createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log, scriptHost:host, scriptMode });
-  packs.refresh(true);
+  const packs = createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log, scriptHost:host, scriptMode, background: true });
+  await packs.refresh(true);
   // the visual sets of the cosmetic plugins (DESIGN §32 P1a): what a room's host switches on, served at /vs/ and /p/
   const visual = createVisualSets({ registry: packs, log });
   // the server owner's policy (plugins/config.json), the content sets of the gameplay plugins (served at /cs/<cs16>/…),
@@ -253,7 +253,7 @@ export async function startServer(opts = {}) {
     // Check the kernel's address too: aliases/DNS and bind fallback cannot weaken the owner gate.
     const actual = server.address();
     const scriptHost = actual && typeof actual === 'object' ? actual.address : '';
-    packs.setScriptHost(scriptHost);
+    await packs.setScriptHost(scriptHost);
     if (!trustedHostAllowed(scriptHost, scriptMode)) {
       lobby.trustedRuntime = null;
       await trustedRuntime?.close();
@@ -268,6 +268,8 @@ export async function startServer(opts = {}) {
     if (ownsWorkerPool) await workerPool?.close();
     if (ownsMatchWorkerPool) await matchWorkerPool?.close();
     studio?.close();
+    await packs.close();
+    await serveStatic.close?.();
     await trustedRuntime?.close();
     throw e;
   }
@@ -298,6 +300,8 @@ export async function startServer(opts = {}) {
       if (ownsWorkerPool) await workerPool?.close();
       if (ownsMatchWorkerPool) await matchWorkerPool?.close();
       studio?.close();
+      await packs.close();
+      await serveStatic.close?.();
       await trustedRuntime?.close();
       await new Promise((resolve) => {
         server.close(() => resolve());

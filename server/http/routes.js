@@ -148,7 +148,8 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
       sendJson(req, res, 200, {
         ...healthReport(health),
         persist: persister ? { redis: true, writes: persister.writes, checkpoints: persister.checkpointKeys.size,
-          snapshotBytes: persister.encoder.seed?.bytes.byteLength || 0, workerMemory: persister.encoder.memory } : null,
+          snapshotBytes: persister.encoder.seed?.bytes?.byteLength || 0, workerMemory: persister.encoder.memory,
+          capture: persister.checkpointStats() } : null,
         workers: workerPool?.stats() || null,
         ...(matchWorkerPool ? { matchWorkers: matchWorkerPool.stats() } : {}),
         announcements: announcements.stats(),

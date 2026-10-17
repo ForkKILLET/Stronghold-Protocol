@@ -72,7 +72,8 @@ test('metrics retains persistence diagnostics when a state store is configured',
   const srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, workers: 0, store, announcementsFile: null });
   t.after(() => srv.close());
   const metrics = await (await fetch(srv.url + '/metrics')).json();
-  assert.deepEqual(metrics.persist, { redis: true, writes: 0, checkpoints: 0, snapshotBytes: 0, workerMemory: null });
+  assert.deepEqual(metrics.persist, { redis: true, writes: 0, checkpoints: 0, snapshotBytes: 0, workerMemory: null,
+    capture: { concurrency: 4, waitMs: 2000, timeouts: 0, oldestAgeMs: 0, missing: 0 } });
   assert.equal('persist' in await (await fetch(srv.url + '/healthz')).json(), false);
 });
 

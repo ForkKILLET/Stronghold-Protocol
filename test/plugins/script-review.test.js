@@ -99,11 +99,11 @@ for (const mode of ['trusted','trusted-force']) test(`actual wildcard bind reche
   if (mode === 'trusted') {
     assert.equal(server.packs.plugin('service').status,'disabled');
     assert.equal(server.packs.plugin('service').disabled.code,'PLUGIN_TRUST_PUBLIC');
-    server.packs.rescan();assert.equal(server.packs.plugin('service').status,'disabled');
+    await server.packs.rescan();assert.equal(server.packs.plugin('service').status,'disabled');
     assert.equal(server.lobby.trustedRuntime,null);assertDead(file);
   } else {
     assert.equal(server.packs.plugin('service').status,'loaded');
-    server.packs.rescan();assert.equal(server.packs.plugin('service').status,'loaded');
+    await server.packs.rescan();assert.equal(server.packs.plugin('service').status,'loaded');
     assert.equal((await request(server.lobby.trustedRuntime,'/x/service/ok')).value,true);
     await server.close();assertDead(file);
   }

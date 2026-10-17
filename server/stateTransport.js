@@ -4,7 +4,13 @@ import { diffState, isStateKind, STATE_DELTA_VERSION } from '../shared/stateDelt
 
 const connections = new WeakMap();
 const snapshots = new WeakMap();
+const workerFrames = new WeakMap();
 let sequence = 0;
+
+export function attachWorkerState(msg, encoded, frame, owner) {
+  if (frame) workerFrames.set(msg, { encoded, frame, owner });
+  return msg;
+}
 
 export function negotiateStateDelta(ws, version) {
   const enabled = version === STATE_DELTA_VERSION;
@@ -20,6 +26,16 @@ export function resetStateDelta(ws) { connections.get(ws)?.clear(); }
 export function prepareStateFrame(ws, msg, encoded) {
   const states = connections.get(ws);
   if (!states || !isStateKind(msg?.t)) return { data: encoded, commit() {} };
+  const prepared = workerFrames.get(msg);
+  if (prepared?.encoded === encoded) {
+    const { frame, owner } = prepared;
+    const previous = states.get(msg.t);
+    const sameStream = previous?.owner === owner && previous?.stream === frame.stream;
+    const data = sameStream && previous.seq === frame.base && frame.delta
+      ? frame.delta
+      : `{"t":"m.state","kind":${JSON.stringify(msg.t)},"seq":${frame.seq},"full":${encoded}}`;
+    return { data, commit() { states.set(msg.t, { owner, stream: frame.stream, seq: frame.seq }); } };
+  }
   let snapshot = snapshots.get(msg);
   // The encoding, not mutable game objects, owns this immutable baseline.
   if (!snapshot || snapshot.encoded !== encoded) {
@@ -32,7 +48,7 @@ export function prepareStateFrame(ws, msg, encoded) {
   }
   const previous = states.get(msg.t);
   let data = snapshot.full;
-  if (previous && previous !== snapshot) {
+  if (previous?.view && previous !== snapshot) {
     let transition = snapshot.transitions.get(previous);
     if (transition === undefined) {
       const patch = diffState(previous.view, snapshot.view);
