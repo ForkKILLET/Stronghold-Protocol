@@ -409,3 +409,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-18 大厅背景与音乐入口只在设置的 PersonalizationSection 内提供，不恢复顶栏独立入口；嵌套面板关闭回到原设置位置，main.js 的 installLobbyMusic 启动恢复独立保留。顶栏工具颜色仅匹配直接按钮，不覆盖其弹窗内容。
 
 - 2026-10-18 可见滚动条由 theme.css 的 --scrollbar-* 统一管理；Chromium/WebKit 使用直角伪元素并将标准属性保持 auto，Firefox 使用标准 thin／配色回退。各页面不再单独定义 scrollbar-color／thin，原有 scrollbar-width:none 的隐藏页签保留。
+
+- 2026-10-18 快捷键录入时 Tab 取消录入且保留正常焦点移动，Esc 先取消录入而不关闭弹窗；随后 Esc 逐层关闭快捷键子弹窗、设置并恢复原入口焦点。取消不更改已有绑定，回归 modal.e2e.test.js 使用当前子弹窗结构。

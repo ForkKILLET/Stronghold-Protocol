@@ -149,7 +149,7 @@ describe('Modal keyboard focus', { skip: !ENABLED && 'set SP_E2E=1 and have Chro
     } finally { await page.close(); }
   });
 
-  test('title settings: Tab cycles and leaves hotkey capture; Esc cancels capture before closing', async () => {
+  test('title settings: Tab leaves capture; Escape cancels capture then closes nested dialogs', async () => {
     const page = await browser.newPage();
     try {
       await page.setViewport({ width: 1280, height: 720 });
@@ -160,19 +160,32 @@ describe('Modal keyboard focus', { skip: !ENABLED && 'set SP_E2E=1 and have Chro
       await page.waitForFunction(() => document.querySelector('.modal__box')?.contains(document.activeElement));
       const assertInside = async () => assert.equal(await page.evaluate(() => document.querySelector('.modal__box').contains(document.activeElement)), true);
       for (const reverse of [false, true]) for (let i = 0; i < 25; i++) { await tab(page, reverse); await assertInside(); }
-      await page.focus('.set-key[data-action="retreat"]');
+      // Shortcut editing now has its own nested dialog rather than inline .set-key controls.
+      await page.evaluate(() => {
+        const button = [...document.querySelectorAll('.settings-modal button')].find(el => el.textContent.trim() === '修改快捷键');
+        button.focus(); button.click();
+      });
+      await page.waitForSelector('.settings-shortcuts-modal');
+      const focusRetreat = () => page.evaluate(() => [...document.querySelectorAll('.settings-shortcuts-modal .shortcut-row')]
+        .find(row => row.textContent.includes('撤离当前干员')).querySelector('button').focus());
+      await focusRetreat();
       await page.keyboard.press('Enter');
-      await page.waitForSelector('.set-key.is-waiting');
+      await page.waitForSelector('.shortcut-key.is-listening');
       await tab(page);
-      await page.waitForSelector('.set-key.is-waiting', { hidden: true });
+      await page.waitForSelector('.shortcut-key.is-listening', { hidden: true });
       await assertInside();
-      assert.equal(await page.$eval('.set-key[data-action="retreat"]', (el) => el.textContent.trim()), 'Q');
-      await page.focus('.set-key[data-action="retreat"]');
+      assert.equal(await page.evaluate(() => [...document.querySelectorAll('.shortcut-row')]
+        .find(row => row.textContent.includes('撤离当前干员')).querySelector('button').textContent.trim()), 'Q');
+      await focusRetreat();
       await page.keyboard.press('Enter');
-      await page.waitForSelector('.set-key.is-waiting');
+      await page.waitForSelector('.shortcut-key.is-listening');
       await page.keyboard.press('Escape');
-      await page.waitForSelector('.set-key.is-waiting', { hidden: true });
-      assert.ok(await page.$('.modal'), 'capture consumes the first Esc');
+      await page.waitForSelector('.shortcut-key.is-listening', { hidden: true });
+      assert.ok(await page.$('.settings-shortcuts-modal'), 'first Esc cancels shortcut capture');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.settings-shortcuts-modal', { hidden: true });
+      assert.ok(await page.$('.settings-modal'), 'second Esc returns from the shortcut dialog');
+      await assertInside();
       await page.keyboard.press('Escape');
       await page.waitForSelector('.modal', { hidden: true });
       assert.equal(await page.evaluate(() => document.activeElement.matches('.title-settings')), true);

@@ -371,8 +371,11 @@ function ShortcutModal({ open, onClose }) {
   const listenRef = useRef(null);
   useEffect(() => { if (editing) listenRef.current?.focus?.(); }, [editing]);
   const setKey = (action, e) => {
+    // Tab leaves capture with normal focus movement; Escape cancels before the modal stack sees it.
+    if (e.key === 'Tab') { setEditing(null); setError(''); return; }
     e.preventDefault(); e.stopPropagation();
-    if (e.ctrlKey || e.metaKey || e.altKey || e.key === 'Escape') return;
+    if (e.key === 'Escape') { setEditing(null); setError(''); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const code = e.code;
     if (!code || !/^Key[A-Z]|^Digit[0-9]|^Space$|^Arrow/.test(code)) { setError(t('请使用字母、数字、方向键或空格')); return; }
     const other = Object.entries(shortcuts).find(([a, v]) => a !== action && v === code);
