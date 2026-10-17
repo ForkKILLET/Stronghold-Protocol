@@ -434,6 +434,7 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
 ```
 
 - 服务端在返回 `data/assets.json`、`data/local-assets.json` 时，把其中所有 `/assets/…` 改写成 `<SP_ASSETS_CDN>/assets/…`，因此**客户端零改动**：图片、Spine（skel / atlas / 贴图）、音频、本地提取的素材都自动走 CDN。
+- 官方特效库也会按运行时 `SP_ASSETS_CDN` 改写 `local-fx.json` 中的素材地址，包括索引、纹理表、预制体、网格及完整/半尺寸贴图；直接从 `SP_DATA_CDN` 读取原始清单、旧版清单回退也适用。已带域名或插件地址保持不变。部署此客户端修复需要重新构建并发布前端、刷新页面，不需要重新生成素材清单。
 - CDN 侧目录结构必须与 `public/assets/` 一致（把该目录整个上传即可），并且**必须允许跨域**：浏览器会用 `fetch` 取 Spine 的 `.skel` / `.atlas`、用 `crossOrigin="anonymous"` 取图片。Nginx 例：`add_header Access-Control-Allow-Origin "*" always;`（音频走 `<audio>`，不需要 CORS）。
 - 素材带内容指纹，可以放心设长缓存（`Cache-Control: public, max-age=31536000, immutable`）；`/fonts/` 与 `public/vendor/` 仍由游戏服务器自己提供。
 - 没设置该变量时行为完全不变（服务器照旧自己提供 `/assets/…`），设置后本地 `/assets/` 仍然可用，可随时回退。

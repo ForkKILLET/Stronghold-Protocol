@@ -17,6 +17,8 @@
 import { compileEffect } from './effect.js';
 import { FX_LIST_URL, loadFxList } from './available.js';
 import { setIndexVersion } from './mounts.js';
+import { rewriteAssetPaths } from '../../../../shared/cdn.js';
+import { ASSETS_CDN } from '../../asset-cdn.js';
 const MAX_PARALLEL = 8;
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
@@ -79,7 +81,7 @@ export function normalizeMesh(m) {
 
 export class FxLibrary {
   /**
-   * @param {{ assets?: any, fetch?: typeof fetch, listUrl?: string, list?: any, decode?: (blob: Blob) => Promise<any> }} [opts]
+   * @param {{ assets?: any, fetch?: typeof fetch, listUrl?: string, list?: any, assetsCdn?: string, decode?: (blob: Blob) => Promise<any> }} [opts]
    */
   constructor(opts = {}) {
     this.assets = opts.assets || null;
@@ -87,6 +89,7 @@ export class FxLibrary {
     this.fetch = opts.fetch || this._defaultFetch;
     this.listUrl = opts.listUrl || FX_LIST_URL;
     this.list = isObj(opts.list) ? opts.list : null;
+    this.assetsCdn = opts.assetsCdn ?? ASSETS_CDN;
     this.groups = null;
     this._init = null;
     this._index = null;
@@ -124,7 +127,11 @@ export class FxLibrary {
         const g = isObj(local?.groups) ? local.groups : null;
         if (g && isObj(g['fx/prefabs']) && Object.keys(g['fx/prefabs']).length) groups = { fx: g.fx || {}, 'fx/prefabs': g['fx/prefabs'], 'fx/tex': g['fx/tex'] || {}, 'fx/mesh': g['fx/mesh'] || {} };
       }
-      this.groups = groups && isObj(groups['fx/prefabs']) ? groups : null;
+      // A static data CDN serves raw manifests, unlike the game server's rewritten view.
+      // Include fallback/injected lists and half textures without mutating shared manifest data.
+      this.groups = groups && isObj(groups['fx/prefabs'])
+        ? this.assetsCdn ? rewriteAssetPaths(structuredClone(groups), this.assetsCdn) : groups
+        : null;
       // computed once: the full set lists ~4,000 prefabs and `available` is read for every event
       this._available = false;
       if (this.groups) for (const _k in this.groups['fx/prefabs']) { this._available = true; break; }
