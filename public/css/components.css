@@ -1160,6 +1160,30 @@
 .announcement-modal .modal__body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 .announcement-content { display: flex; flex-direction: column; gap: .2rem; overflow-wrap: anywhere; }
 .announcement-content__plain { white-space: pre-wrap; }
+.announcement-modal { height: min(8rem, calc(100dvh - var(--sa-t, 0px) - var(--sa-b, 0px) - .6rem)); }
+.announcement-sections { min-width: 0; }
+.announcement-sections__tabs { position: sticky; top: 0; z-index: 1; margin-bottom: .18rem; background: var(--bg-1); }
+.announcement-sections__tabs .tabs__tab { flex: 1; justify-content: center; }
+.announcement-content__title { margin: 0; color: var(--text-hi); font-size: max(16px, calc(.22 * var(--utility-text, var(--t)))); }
+.announcement-changelog { display: grid; gap: 12px; }
+.announcement-changelog__source { display: inline-flex; justify-self: end; align-items: center; gap: 6px; color: var(--text-lo); font-size: max(12px, calc(.14 * var(--utility-text, var(--t)))); }
+.announcement-changelog__source .icon { width: 14px; height: 14px; }
+.announcement-changelog__source:hover { color: var(--mint-400); }
+.announcement-changelog__day { min-width: 0; border: 1px solid var(--line-2); background: var(--bg-1); }
+.announcement-changelog__day summary { display: flex; align-items: center; gap: 12px; padding: 12px 14px; list-style: none; cursor: pointer; font-size: max(13px, calc(.16 * var(--utility-text, var(--t)))); }
+.announcement-changelog__day summary::-webkit-details-marker { display: none; }
+.announcement-changelog__day summary time { color: var(--text-hi); font-variant-numeric: tabular-nums; font-weight: 700; }
+.announcement-changelog__day summary span { flex: 1; text-align: right; color: var(--text-lo); }
+.announcement-changelog__day summary .icon { width: 16px; height: 16px; color: var(--text-lo); }
+.announcement-changelog__day[open] summary { border-bottom: 1px solid var(--line-2); }
+.announcement-changelog__day[open] summary .icon { transform: rotate(90deg); }
+.announcement-changelog__day summary:hover time { color: var(--mint-400); }
+.announcement-changelog__day summary:focus-visible, .announcement-changelog__source:focus-visible { outline: 2px solid var(--mint-400); outline-offset: -2px; }
+.announcement-changelog__entries { display: grid; gap: 18px; padding: 14px; }
+.announcement-changelog__entries article { min-width: 0; }
+.announcement-changelog__entries article + article { padding-top: 16px; border-top: 1px solid var(--line-2); }
+.announcement-changelog__entries h3 { color: var(--text-hi); font-size: max(15px, calc(.19 * var(--utility-text, var(--t)))); margin: 0 0 8px; }
+
 .announcement-markdown {
   min-width: 0; color: var(--text-md); font-size: max(14px, calc(.18 * var(--utility-text, var(--t))));
   line-height: 1.65; overflow-wrap: anywhere;

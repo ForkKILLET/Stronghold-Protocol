@@ -126,3 +126,12 @@ HTTP 读者不要直接把 Markdown 或原始 HTML 放进 `innerHTML`；应按�
 ```
 
 上例于 12:00 到期。当前文件无效或不可读时，HTTP API 返回 `null`；游戏内原有“保留上次有效排期直到到期”的行为继续生效。无写入 API，无 CORS。其他方法返回 HTML 错误页，状态 405、`Allow: GET, HEAD`。
+
+
+## 本分支更新日志
+
+`GET /api/changelog`、`HEAD /api/changelog` 返回 `{source, entries: [{date, title, text}]}`；`source` 为本 Fork
+完整 CHANGELOG 的 GitHub 链接，`date` 为 YYYY-MM-DD，`text` 为安全渲染前的 Markdown。仅收录仓库 CHANGELOG 中
+Fork / 本部署章节，按日期倒序，同日保持文件顺序；仓库相对链接转换为 GitHub 文件链接。无条目时为 `entries: []`，
+源文件不可读时为 503 `{error: "CHANGELOG_UNAVAILABLE"}`。只支持 GET/HEAD，其他方法返回 405，响应 `Cache-Control: no-store`；
+服务端按需合并读取、缓存 2 秒。接口不读取公告排期、账户数据或对局状态，无需登录。

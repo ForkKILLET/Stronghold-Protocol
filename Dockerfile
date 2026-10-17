@@ -43,6 +43,7 @@ COPY tools ./tools
 COPY data ./data
 COPY public ./public
 COPY config ./config
+COPY CHANGELOG.md ./CHANGELOG.md
 COPY plugins ./plugin-resources
 COPY schemas ./schemas
 COPY test/helpers/battleHarness.js ./test/helpers/battleHarness.js
@@ -69,6 +70,7 @@ COPY --from=build /app/server ./server
 COPY --from=build /app/data ./data
 COPY --from=build /app/public ./public
 COPY --from=build /app/config ./config
+COPY --from=build /app/CHANGELOG.md ./CHANGELOG.md
 # the Spine and atlas parsers the plugin packer and the plugin studio use (server/plugins/pack.js, server/studio/)
 COPY --from=build /app/tools/assets ./tools/assets
 COPY --from=build /app/tools/plugin.mjs ./tools/plugin.mjs

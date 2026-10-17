@@ -479,6 +479,15 @@ for a dodge fx whose payload is `num: 'm'` (PRTS 作战机制 「伤害红字（
 digits in that mode. The mark is computed in the sim; the random offset above the model is client-side. The
 simplified board uses the same mark with a fixed slot. The branch retains its existing server-about links and does not add the upstream title-footer repository link.
 
+### Branch announcement sections (2026-10-18)
+
+The announcement dialog reuses the game's Tabs for server notices and fork update history. Manual opening selects
+an active popup notice, otherwise update history; automatic notices always select the server-notice section.
+Update history lazily fetches `/api/changelog`, groups Fork / deployment entries from the repository CHANGELOG by
+descending date and expands the newest day. The existing safe Markdown renderer is reused per entry, and repository
+links resolve to this fork. Empty, loading, retry and keyboard states retain the shared utility modal and theme.
+This independent read-only section never writes popup-seen records or changes popup scheduling/withdrawal behavior.
+
 ### Branch popup announcements (2026-10-14)
 
 Branch bulk preload combat gate (2026-10-14): `resources/combat.js` binds the initial and subsequent app-store combat

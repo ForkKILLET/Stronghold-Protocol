@@ -2370,5 +2370,11 @@
   "输入同盟密钥": "Enter alliance key",
   "成就统计：{n} 杯": "Achievements: {n} trophies",
   "全局导航": "Global navigation",
-  "返回报告": "Back to report"
+  "返回报告": "Back to report",
+  "服务器公告": "Server notices",
+  "更新日志": "Update history",
+  "完整更新记录": "Full changelog",
+  "更新日志加载失败，请重试。": "Could not load update history. Please try again.",
+  "暂无更新记录。": "No updates yet.",
+  "{n} 项更新": "{n} updates"
 }

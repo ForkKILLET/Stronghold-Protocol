@@ -1,6 +1,7 @@
 // i18n-ignore-file: API summaries keep configured content and bilingual HTTP errors.
 // Read-only public HTTP APIs. Project only documented fields, never session ids or private match data.
 import { createHash } from 'node:crypto';
+import { createChangelogReader } from './changelog.js';
 import { DIFFICULTY_NAMES, MAX_SEATS } from '../shared/constants.js';
 import { clientAddress, limitKeyOf, TokenBucket } from './net.js';
 
@@ -38,7 +39,7 @@ export function roomStatus(room, serverNow) {
 }
 
 /** Returns true if this API router handled the request. Address resolution shares the WebSocket TRUST_PROXY rules. */
-export function createPublicApi({ lobby, announcements, trustProxy, sendJson, sendError, now = Date.now }) {
+export function createPublicApi({ lobby, announcements, trustProxy, sendJson, sendError, now = Date.now, readChangelog = createChangelogReader({ now }) }) {
   const buckets = new Map();
   let sweptAt = now();
   let announcementReadAt = now();
@@ -65,6 +66,16 @@ export function createPublicApi({ lobby, announcements, trustProxy, sendJson, se
         const match = /^\/api\/rooms\/([ABCDEFGHJKLMNPQRSTUVWXYZ]{4})\/status$/i.exec(pathname);
         const status = match ? roomStatus(lobby.getRoom(match[1]), at) : null;
         sendJson(req, res, status ? 200 : 404, status || { error: 'ROOM_NOT_FOUND' });
+      }
+      return true;
+    }
+    if (pathname === '/api/changelog') {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.setHeader('Allow', 'GET, HEAD');
+        sendJson(req, res, 405, { error: 'METHOD_NOT_ALLOWED' });
+      } else {
+        try { sendJson(req, res, 200, await readChangelog()); }
+        catch { sendJson(req, res, 503, { error: 'CHANGELOG_UNAVAILABLE' }); }
       }
       return true;
     }
