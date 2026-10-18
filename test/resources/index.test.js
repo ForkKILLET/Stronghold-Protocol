@@ -374,6 +374,32 @@ test('invalid or cancelled ZIP imports do not enable preload or invoke the persi
   assert.equal(callbacks, 0);
 });
 
+test('ZIP import releases the manager at completion without a blocking whole-cache scan', async (t) => {
+  const files = FILES.map((f) => ({ ...f, hash: createHash('sha1').update('b'.repeat(f.size)).digest('hex').slice(0, 12) }));
+  const source = new ResourceStore({ ...MANIFEST, files }, { caches: new MemoryCaches(), origin: ORIGIN,
+    fetcher: async (url) => new Response('b'.repeat(files.find((f) => url.endsWith(f.url)).size)) });
+  await source.download();
+  const { blob } = await exportResourceZip(source);
+  const env = stubEnv({ manifest: { ...MANIFEST, files } });
+  t.after(env.restore);
+  const cache = await env.caches.open(CACHE_NAME);
+  cache.keys = async () => { throw new Error('full scans belong to the deferred verification'); };
+  const mod = await import('../../public/js/resources/index.js?zip-no-blocking-scan');
+  t.after(() => mod.syncResources(false));
+  let imported = false;
+  const result = await mod.importResources(blob, { onImported: () => {
+    assert.equal(mod.resourceState().archive, '');
+    imported = true;
+  } });
+  await mod.startResources();
+  assert.equal(imported, true);
+  assert.equal(result.imported, files.length);
+  assert.equal(mod.resourceState().archive, '');
+  assert.equal(mod.resourceState().phase, 'ready');
+  assert.equal(mod.resourceState().cacheVerified, false);
+  assert.deepEqual(env.calls.fetch, [MANIFEST_URL], 'the imported selection needs no network resources');
+});
+
 test('ZIP percentages and category counters update together every 500 ms, with immediate phase completion', async (t) => {
   const files = Array.from({ length: 6 }, (_, i) => ({ url: `/assets/map/${i}.png`, tier: 1, size: 1,
     hash: createHash('sha1').update('b').digest('hex').slice(0, 12) }));

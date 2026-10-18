@@ -662,7 +662,7 @@ function transferArchive(kind, file) {
     if (!ctx.store) throw new Error(ctx.error || ctx.unsupported || '服务器没有可预载的资源');
     checkAbort(signal);
     const outcome = await withDownloadLock(async () => {
-      set(counters(await ctx.store.status()));
+      if (kind === 'export') set(counters(await ctx.store.status()));
       const archive = await import('./archive.js');
       checkAbort(signal);
       let lastTime = -Infinity;
@@ -687,7 +687,7 @@ function transferArchive(kind, file) {
     });
     if (outcome.busy) throw new Error('另一个标签页正在处理资源，请暂停后重试');
     checkAbort(signal);
-    const status = await ctx.store.status();
+    const status = kind === 'import' ? outcome : await ctx.store.status();
     const missing = resourceSelection(status, optional, voiceLang, skins).selectedMissing;
     set({ ...counters(status), failed: 0, phase: selectionComplete(status) ? 'ready' : 'paused',
       message: kind === 'export'
@@ -700,7 +700,9 @@ function transferArchive(kind, file) {
     return outcome;
   })().catch(async (err) => {
     const ctx = await resourceContext();
-    const status = await ctx.store?.status().catch(() => null);
+    // Cancellation/errors must also release the manager without waiting for a
+    // full response scan. Successful writes have already flushed their index.
+    const status = await ctx.store?.status({ verifyCache: kind !== 'import' }).catch(() => null);
     const aborted = err?.name === 'AbortError';
     set({ ...(status ? counters(status) : {}), phase: aborted ? 'paused' : 'error', error: !aborted,
       message: aborted ? t('资源包处理已取消，已保存的资源保留。')

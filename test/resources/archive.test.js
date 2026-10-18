@@ -780,6 +780,38 @@ test('reimporting unchanged verified ZIP resources performs no index writes', as
   assert.equal(writes, 0, 'unchanged metadata is not serialized/written again');
 });
 
+test('ZIP completion checks package bytes without rescanning unrelated cached assets', async () => {
+  const files = [file('/assets/a.png', 'a'), file('/assets/b.png', 'b'),
+    file('/assets/outside.png', 'outside'), file('/assets/evicted.png', 'evicted')];
+  const target = store(files);
+  const cache = await target.caches.open(CACHE_NAME);
+  // An unindexed runtime hit is reusable, while an indexed but corrupt body must be repaired.
+  await cache.put(target.store.keyOf(files[0].url), new Response('a', { headers: { 'Content-Length': '1' } }));
+  await cache.put(target.store.keyOf(files[1].url), new Response('bad', { headers: { 'Content-Length': '3' } }));
+  await cache.put(target.store.keyOf(files[2].url), new Response('outside', { headers: { 'Content-Length': '7' } }));
+  await cache.put(indexUrl(target.store.origin), new Response(JSON.stringify({ version: 1, manifest: 'v1',
+    files: Object.fromEntries(files.slice(1).map((f) => [target.store.keyOf(f.url), f.hash])) })));
+  const keys = cache.keys.bind(cache);
+  const match = cache.match.bind(cache);
+  cache.keys = async () => { throw new Error('ZIP import must not enumerate the entire cache'); };
+  cache.match = async (key) => {
+    assert.ok(!key.endsWith('/outside.png') && !key.endsWith('/evicted.png'), 'unrelated responses stay unopened');
+    return match(key);
+  };
+  const blob = await packageZip(files.slice(0, 2), { version: 2 });
+  const result = await importResourceZip(target.store, blob);
+  assert.equal(result.imported, 1, 'reuse verified runtime bytes and replace the corrupt copy');
+  assert.equal(result.count, 4);
+  assert.equal(result.cacheVerified, false, 'counts outside this ZIP remain provisional until background verification');
+  assert.ok(result.present.has(target.store.keyOf(files[0].url)));
+  assert.equal(await (await match(target.store.keyOf(files[1].url))).text(), 'b');
+  cache.keys = keys;
+  cache.match = match;
+  const verified = await target.store.status();
+  assert.equal(verified.count, 3, 'a later full check still detects unrelated browser eviction');
+  assert.equal(verified.complete, false);
+});
+
 test('ZIP final index retries a failed checkpoint and includes every completed resource write', async () => {
   const files = Array.from({ length: 70 }, (_, i) => file(`/assets/${i}.png`, String(i)));
   const target = store(files);

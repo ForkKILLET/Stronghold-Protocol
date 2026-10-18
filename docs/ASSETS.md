@@ -162,6 +162,12 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   are consumed for the whole-package digest but not retained. This exception is only for server-indexed deployment packs.
   Manually imported/general ZIP files still receive the normal per-entry CRC, size and content-digest checks. Missing,
   invalid or mismatched transport packs fall back to the ordinary per-file fetch path.
+  Manual ZIP import reads the saved indexes for provisional category counts, then verifies each package entry and
+  any existing destination body before reuse, including unindexed runtime hits. Missing or invalid length headers
+  cause a verified replacement. Completion waits for all writes and the final fingerprint flush, then publishes
+  those counters directly; it does not repeat full-cache response scans before/after import or on cancellation.
+  Counts outside the ZIP stay `cacheVerified: false` until the existing deferred full check detects eviction and
+  repairs metadata. This avoids a long apparent stall at 100% in Firefox without weakening ZIP integrity checks.
 - **Weak-network runtime art recovery.** Battle-time images, Spine files and official board sidecars use a shared
   request transport (`public/js/resourceNetwork.js`): identical URLs are coalesced, visible critical art is prioritized,
   runtime transfers are limited to four (two on `2g`/`3g`), transient HTTP failures retry with 1/3/8/20-second

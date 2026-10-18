@@ -101,7 +101,10 @@ export class ResourceStore {
     const lanes = Number.isInteger(concurrency) ? Math.max(1, Math.min(4, concurrency)) : 4;
     const cache = await this.caches.open(this.cacheName);
     const index = await this.#readIndex(cache);
-    const before = await this.status();
+    // Import verifies every package destination itself. Do not open every unrelated
+    // cached response before/after a ZIP: that can take minutes in Firefox.
+    // Counts outside the package remain provisional, as on indexed startup.
+    const before = await this.status({ verifyCache: false });
     const allowed = new Set(this.files);
     const groups = new Map(before.groups.map((group) => [group.id, group]));
     const byKey = new Map();
@@ -171,8 +174,10 @@ export class ResourceStore {
         const cacheStart = performance.now();
         let current;
         try {
-          const existing = before.present.has(key) ? await cache.match(key) : null;
-          current = !!existing && await digestOf(existing, { consume: true }) === file.hash;
+          // Probe even unindexed runtime hits; only verified, usable responses
+          // can be reused. A stale index never skips body verification.
+          const existing = await cache.match(key);
+          current = hasContentLength(existing) && await digestOf(existing, { consume: true }) === file.hash;
         } finally { timings.cacheCheckMs += performance.now() - cacheStart; }
         if (!current) {
           const data = prepared || await entry.read();
@@ -194,9 +199,9 @@ export class ResourceStore {
           finally { timings.cacheWriteMs += performance.now() - writeStart; }
           // A put cannot be cancelled: successful writes must be counted even
           // when another lane has since failed.
-          markPresent(key);
           imported++;
         }
+        markPresent(key);
         // Also index an existing runtime entry after its own bytes were
         // verified. It previously bypassed this step when no Cache.put was needed.
         if (index.files[key] !== file.hash) {
@@ -240,7 +245,9 @@ export class ResourceStore {
       averageCacheWriteMs: timings.cacheWriteCount ? timings.cacheWriteMs / timings.cacheWriteCount : 0 };
     try { onDiagnostics?.(report); } catch { /* diagnostics must not affect verified imports */ }
     if (failed) throw failure;
-    return { ...await this.status(), imported, timings: report };
+    // All lanes and the final fingerprint flush have finished. Reuse their
+    // counters; the controller schedules the ordinary background eviction check.
+    return { ...before, imported, timings: report };
   }
 
   /** Commit files from a transport ZIP after its trusted, whole-package SHA-1 has passed. */
