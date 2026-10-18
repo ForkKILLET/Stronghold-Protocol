@@ -35,7 +35,9 @@ test('announcement sections: lazy history, retry, responsive layout and automati
     assert.ok(reads > 0);
     const latest = await page.$eval('.announcement-changelog__day', element => ({ open: element.open, text: element.textContent }));
     assert.equal(latest.open, true);
-    assert.match(latest.text, /公告分板块/);
+    const history = await (await fetch(srv.url + '/api/changelog')).json();
+    assert.ok(latest.text.includes(history.entries[0].date));
+    assert.ok(latest.text.includes(history.entries[0].title));
     const out = new URL('../e2e/out/', import.meta.url);
     mkdirSync(out, { recursive: true });
     for (const [width, height] of [[1366, 768], [844, 390], [390, 844]]) {

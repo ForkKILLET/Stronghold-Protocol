@@ -149,7 +149,8 @@ function AnnouncementSections({ notice }) {
     <${Tabs} class="announcement-sections__tabs" value=${section} onChange=${setSection} items=${[
       { id: 'notice', label: t('服务器公告') }, { id: 'changelog', label: t('更新日志') },
     ]} />
-    <section role="tabpanel" aria-label=${section === 'notice' ? t('服务器公告') : t('更新日志')}>
+    <section key=${section} class="announcement-sections__panel" role="tabpanel" tabIndex="0"
+      aria-label=${section === 'notice' ? t('服务器公告') : t('更新日志')}>
       ${section === 'notice' ? html`<div class="announcement-content">
         ${notice?.title ? html`<h3 class="announcement-content__title">${notice.title}</h3>` : null}
         <${AnnouncementContent} notice=${notice} />
