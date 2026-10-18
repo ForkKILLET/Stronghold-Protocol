@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="dark"><title>资源补给站 · 卫戍协议</title>
+  <link rel="stylesheet" href="../fonts/fonts.css"><link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="./site.css"><script type="module" src="./site.js"></script>
+</head>
+<body>
+  <header class="dl-header"><a class="dl-back" href="/">〈 返回游戏</a><span class="dl-brand">STRONGHOLD PROTOCOL</span><span class="dl-status"><i></i> RESOURCE DEPOT</span></header>
+  <main>
+    <div class="dl-title"><div><p class="dl-kicker">PRELOAD / SUPPLY</p><h1>资源补给站</h1><p class="dl-lead">提前装载画面与声音，让下一场模拟更从容。</p></div><div class="dl-stamp"><span>资源版本</span><b id="version">正在读取</b><span id="updated">正在同步资源目录</span></div></div>
+    <section class="dl-recommend" aria-labelledby="recommend-title"><div><p class="dl-kicker">RECOMMENDED LOADOUT</p><h2 id="recommend-title">基础画面 + 通用增强 + 一种语音</h2><p>首次游玩推荐这套组合。皮肤可单独追加，已下载过的包无需重复导入。</p></div><div class="dl-selection"><div role="group" aria-label="推荐语音"><button type="button" class="is-on" data-voice="cn" aria-pressed="true">中文</button><button type="button" data-voice="jp" aria-pressed="false">日语</button></div><b id="recommended-size">—</b><small>推荐组合下载量</small></div></section>
+    <ol class="dl-steps" aria-label="使用步骤"><li><b>01</b><span>下载需要的 ZIP<small>资源包可以分别下载</small></span></li><li><b>02</b><span>打开游戏「预载资源」<small>开始页面或设置中进入</small></span></li><li><b>03</b><span>依次导入 ZIP<small>保留已有资源，自动补齐缺失</small></span></li></ol>
+    <div class="dl-section-head"><div><span class="dl-kicker">RESOURCE PACKAGES</span><h2>选择补给</h2></div><a href="./SHA256SUMS" download>SHA-256 校验清单 ↗</a></div>
+    <div id="notice" class="dl-notice" role="status">正在读取资源目录…</div>
+    <div id="packages" class="dl-grid" aria-live="polite"></div>
+    <section class="dl-notes"><h2>补给说明</h2><p>每个 ZIP 都是可独立导入的资源包，无需解压。导入旧版本包时，只保留当前仍有效的素材，缺少的部分由游戏增量下载。</p><p>下载只保存 ZIP 文件；完成游戏内导入后才写入浏览器缓存。切换浏览器或设备需要重新导入。素材预载不提供离线联机。</p><p>游戏内「开始预载」也可自动下载，无需先下载 ZIP。备用线路与主线路提供相同文件，可通过校验清单核对。</p></section>
+  </main>
+  <footer><span>非官方同人项目 · 游戏素材权利归原权利人所有</span><a href="https://github.com/ForkKILLET/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">ForkKILLET / Stronghold-Protocol ↗</a></footer>
+  <template id="package-template"><article class="dl-card"><div class="dl-card-head"><span class="dl-kicker"></span><span class="dl-badge"></span></div><h3></h3><p class="dl-description"></p><div class="dl-metrics"><b></b><span></span></div><div class="dl-actions"><a class="dl-button" download>↓ 下载 ZIP</a></div><details><summary>查看校验值</summary><code></code><button type="button" class="dl-copy">复制 SHA-256</button></details></article></template>
+</body></html>

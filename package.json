@@ -44,6 +44,7 @@
     "package": "node tools/package.mjs",
     "package:lite": "node tools/package.mjs --lite",
     "build:admin": "node tools/build-admin.mjs",
+    "build:downloads": "node tools/build-downloads.mjs",
     "start:admin": "node dist/admin/server.js"
   },
   "engines": {

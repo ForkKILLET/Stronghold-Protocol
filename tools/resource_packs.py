@@ -50,6 +50,10 @@ def canonical(url):
 def group(row):
     path = row["url"]
     if row["tier"] == 2:
+        if "/profile-avatars/" in path:
+            return "avatar"
+        if re.search(r"/char/(?:avatar|portrait)/skin/|/spine/op/[^/]+/[^/]+/(?:front|back)/", path):
+            return "skins"
         if "/assets/local/fx/" in path:
             return "fx"
         for key in ("voice/cn", "voice/jp", "voice/en", "voice/kr", "voice", "sfx", "bgm"):
@@ -58,9 +62,9 @@ def group(row):
         return "other"
     if "/spine/" in path or path.endswith((".skel", ".atlas", ".webp.atlas")):
         return "spine"
-    if "/local/map/" in path or "/local/scene/" in path or path.endswith(".obj"):
+    if re.search(r"/(?:map|maps|mesh|board)/", path) or path.endswith(".obj"):
         return "map"
-    if re.search(r"/(char|enemy|token)/", path):
+    if re.search(r"/(char|chars|enemy|enemies|token|tokens)/", path):
         return "character"
     return "ui"
 

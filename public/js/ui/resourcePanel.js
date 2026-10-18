@@ -9,7 +9,7 @@ import { t, N_ } from '../../../shared/i18n.js';
 
 const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), en: N_('英语语音'), kr: N_('韩语语音') };
 
-const RESOURCE_DOWNLOAD_URL = 'https://t.bilibili.com/1256354225629167619';
+const RESOURCE_DOWNLOAD_URL = '/downloads/';
 
 export function byteText(st) {
   if (Number.isFinite(st.selectedWanted)) {
@@ -199,14 +199,14 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
       ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}
       <section class="resource-archive">
         <h3>${t('ZIP 资源包')}</h3>
-        <p>${t('可将已缓存的资源导出为 ZIP 并发送给朋友，也可以前往我的动态下载资源包。支持导入旧版本资源包；导入会校验完整性，只复用当前版本仍有效的文件，并增量下载缺少的资源。')}</p>
+        <p>${t('可前往本服资源补给站下载分类 ZIP，也可将已缓存的资源导出并分享。导入时只复用当前版本仍有效的资源，缺少的部分会增量下载。')}</p>
         ${st.archive ? html`<${ProgressBar} value=${st.archivePercent} max=${100} size="sm" tone="mint" />` : null}
         <input ref=${fileInput} type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden onChange=${importFile} />
         <div class="res-actions">
           <${Button} variant="secondary" disabled=${archiveBusy || !st.supported} onClick=${() => fileInput.current?.click()}>${t('导入 ZIP')}<//>
           <${Button} variant="secondary" disabled=${archiveBusy || !st.supported || !st.done} onClick=${exportFile}>${t('导出 ZIP')}<//>
           <${Button} variant="secondary" icon="link" disabled=${!RESOURCE_DOWNLOAD_URL}
-            title=${RESOURCE_DOWNLOAD_URL ? t('前往我的动态下载资源包') : t('下载链接待补充')}
+            title=${t('ZIP 资源包')}
             onClick=${() => window.open(RESOURCE_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')}>${t('前往下载')}<//>
         </div>
       </section>
