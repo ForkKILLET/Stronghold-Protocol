@@ -78,13 +78,14 @@ export function ResourceRow({ enabled }) {
 
 export function ResourceLauncher({ enabled }) {
   const st = useResources();
-  return html`<div class=${`res-pill${enabled ? ' is-on' : ''}`}>
-    <button type="button" class="res-pill__head" title=${t('管理预载资源和 ZIP 资源包')} onClick=${openResources}>
+  return html`<button type="button" class=${`res-pill${enabled ? ' is-on' : ''}`}
+    title=${t('管理预载资源和 ZIP 资源包')} aria-haspopup="dialog" onClick=${openResources}>
+    <span class="res-pill__head">
       <span class="res-pill__label">${t('预载资源')}<${MicroLabel}>PRELOAD<//></span>
       <span class="res-pill__state">${stateText(st, enabled)}</span>
-    </button>
-    <p class="res-pill__hint">${t('必备 / 可选资源 · ZIP 导入与导出')}</p>
-  </div>`;
+    </span>
+    <span class="res-pill__hint">${t('必备 / 可选资源 · ZIP 导入与导出')}</span>
+  </button>`;
 }
 
 function ResourceTier({ st, tier, optional, onOptional, disabled }) {
