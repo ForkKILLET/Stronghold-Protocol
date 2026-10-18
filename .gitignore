@@ -79,3 +79,6 @@ public/dev/simcheck/data/
 
 # Per-install skin download selection (never copied from another deployment)
 data/skins-installed.json
+
+# Independently built management service and its static assets
+/dist/

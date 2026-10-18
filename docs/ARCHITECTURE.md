@@ -46,6 +46,10 @@ making one, in Chinese). How to set up, test and send a change: [CONTRIBUTING.md
   + − × ÷ and `Math.sqrt`; ESLint and `test/sim/detmath.test.js` refuse the Math ones in `server/sim/`. The golden
   results (§5) rely on it.
 
+### 本分支独立管理服务
+
+`server/admin/service.js` 是单独的 HTTP 进程，不启动游戏或创建玩家；`tools/build-admin.mjs` 将共享 UI、字体、语言包与服务端分别打包，`deploy/admin/Dockerfile` 只保留面板产物。管理员认证与最多五分钟趋势由面板持有。游戏 `server/admin/telemetry.js` 在显式配置服务密钥后开启独立内部监听器，只输出 `server/admin/snapshot.js` 的 schema 1 白名单；`server/admin/upstream.js` 在面板端合并采集请求、保留过期数据并提供分页。游戏公开端口不提供管理页。部署及故障语义见 [ADMIN.md](ADMIN.md)。
+
 ## 2. The WebSocket protocol
 
 `shared/protocol.js` is normative: `C2S` holds one validator per client message and `S2C` lists the server messages.

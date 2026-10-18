@@ -3,7 +3,7 @@ import {render} from '../../vendor/preact.module.js';
 import {useEffect,useRef,useState} from '../../vendor/hooks.module.js';
 import {html,Button,Icon,Tabs} from '../ui/components.js';
 import {Select} from '../ui/select.js';
-import {initLang,useLang} from '../ui/lang.js';
+import {initLang,useLang} from './lang.js';
 import {t} from '../../../shared/i18n.js';
 import {PHASE_NAMES,DIFFICULTY_NAMES} from '../../../shared/constants.js';
 
@@ -112,7 +112,8 @@ function Dashboard() {
       try {
         const results=await Promise.all([api('overview',{signal:c.signal}),kind!=='overview'?api(`list?${new URLSearchParams({kind,q:search,page:String(page),status:kind==='players'?status:'all'})}`,{signal:c.signal}):null]);
         if(c.signal.aborted)return;
-        setOverview(results[0]);setList(results[1]);setError('');
+        setOverview(results[0]);setList(results[1]);setError(results[0].connection?.ok===false
+          ? (results[0].connection.error==='SCHEMA'?t('游戏数据接口版本不匹配'):t('游戏服务暂时不可用，显示最后一次成功读取的数据')) : '');
       }catch(e){if(!c.signal.aborted){if(e.status===401){setAuth('login');setOverview(null);setList(null);setLoginError(t('登录已过期，请重新输入管理员口令'));}else setError(e.message);}}
       finally{if(!c.signal.aborted){setUpdating(false);timer=setTimeout(poll,3000);}}
     };poll();return()=>{c.abort();clearTimeout(timer);};

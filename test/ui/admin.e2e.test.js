@@ -5,6 +5,7 @@ import {existsSync,mkdirSync} from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import {startServer} from '../../server/index.js';
+import {startAdminService} from '../../server/admin/service.js';
 import {TestClient} from '../helpers/wsClient.js';
 const password='admin-browser-fixture-password';
 const out=process.env.SP_E2E_OUT || '/tmp/stronghold-admin-shots';
@@ -13,13 +14,14 @@ for(const [engine,executablePath] of engines)test(`${engine}: admin authenticati
   skip:process.env.SP_E2E!=='1'||!existsSync(executablePath),timeout:120000,
 },async t=>{
   mkdirSync(out,{recursive:true});
-  const server=await startServer({port:0,host:'127.0.0.1',quiet:true,workers:0,matchWorkers:1,store:null,userFile:'',nameModeration:null,announcementsFile:null,clientBuild:false,adminPassword:password});
+  const server=await startServer({port:0,host:'127.0.0.1',quiet:true,workers:0,matchWorkers:1,store:null,userFile:'',nameModeration:null,announcementsFile:null,clientBuild:false,adminToken:'browser-collector-token-32-characters',adminPort:0});
+  const panel=await startAdminService({port:0,host:'127.0.0.1',password,token:'browser-collector-token-32-characters',gameUrl:server.telemetry.url,publicDir:path.resolve(import.meta.dirname,'../../dist/admin/public')});
   const clients=[];let browser;
-  t.after(async()=>{await browser?.close();await server.close();await Promise.all(clients.map(c=>c.terminate()));});
+  t.after(async()=>{await browser?.close();await panel.close();await server.close();await Promise.all(clients.map(c=>c.terminate()));});
   browser=await puppeteer.launch({browser:engine,executablePath,headless:true,ignoreDefaultArgs:['--hide-scrollbars'],args:engine==='chrome'?['--no-sandbox','--mute-audio']:[]});
   const page=await browser.newPage(),errors=[],requests=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
-  await page.setViewport({width:1440,height:1000});await page.goto(server.url+'/admin',{waitUntil:'networkidle0'});await page.bringToFront();
+  await page.setViewport({width:1440,height:1000});await page.goto(panel.url+'/admin',{waitUntil:'networkidle0'});await page.bringToFront();
   const shot=async label=>{
     await page.evaluate(()=>{for(const a of document.getAnimations()){if(a.effect?.getComputedTiming().iterations!==Infinity)a.finish();}});
     await page.screenshot({path:path.join(out,`${engine}-${label}.png`),fullPage:true});
@@ -83,9 +85,15 @@ for(const [engine,executablePath] of engines)test(`${engine}: admin authenticati
   await page.type('#admin-password',password);await clickText('进入面板');await page.waitForSelector('.ad-content');
   await clickText('退出登录');await page.waitForSelector('#admin-password');assert.equal(await page.$('.ad-content'),null);
   const unauth=await page.evaluate(async()=> (await fetch('/admin/api/overview')).status);assert.equal(unauth,401);
-  await page.setViewport({width:390,height:844});await page.goto(server.url+'/admin?lang=en',{waitUntil:'networkidle0'});
+  await page.setViewport({width:390,height:844});await page.goto(panel.url+'/admin?lang=en',{waitUntil:'networkidle0'});
   await page.waitForSelector('#admin-password');await fits();await shot('login-en-390');
   await page.type('#admin-password',password);await clickText('Open panel');await page.waitForSelector('.ad-content');await fits();await shot('players-en-390');
   assert.ok(!requests.some(url=>url.includes('/api/user')||url.endsWith('/ws')||url.includes('/js/net.js')||url.includes('/js/profile.js')),requests.filter(url=>url.includes('profile')||url.includes('net.js')));
+  assert.ok(requests.every(url=>!url.startsWith(panel.url)||url.startsWith(panel.url+'/admin')),requests);
   assert.equal(server.registry.size,5);assert.equal(server.network.connectionCount,4);assert.deepEqual(errors,[]);
+  await server.close();
+  await page.waitForFunction(()=>document.querySelector('.ad-error--bar')?.textContent.includes('Game service unavailable'));
+  assert.ok(await page.$('.ad-stats'),'retain the last successful snapshot while the game is down');
+  assert.equal((await page.evaluate(()=>fetch('/admin/api/session').then(r=>r.status))),200);
+  await shot('game-unavailable');
 });

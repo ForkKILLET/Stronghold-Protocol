@@ -15,11 +15,11 @@ export function createAdminSnapshot({health, diagnostics, data, now = Date.now})
   const {lobby, registry, network, startedAt} = health;
   const publicCache = new WeakMap();
   let cached, cachedAt = -Infinity, previous = null;
-  const history = [];
+  let latest = null;
   function sample() {
     const at = now();
     // A refresh and the timer may fire together; keep rate deltas over a useful interval.
-    if (history.length && at-history.at(-1).at < 2500) return history.at(-1);
+    if (latest && at-latest.at < 2500) return latest;
     const tick = performance.now(), cpu = process.cpuUsage();
     const used = cpu.user + cpu.system;
     const memory = process.memoryUsage();
@@ -39,8 +39,7 @@ export function createAdminSnapshot({health, diagnostics, data, now = Date.now})
         pendingResults:lobby.userOutbox?.size || 0} : {enabled:false},
     };
     previous = {tick,used,sent:net.sentBytes,received:net.receivedBytes};
-    history.push(point);
-    while (history.length > 101 || history[0]?.at < at-300000) history.shift();
+    latest = point;
     return point;
   }
   function publicState(ctx) {
@@ -147,24 +146,10 @@ export function createAdminSnapshot({health, diagnostics, data, now = Date.now})
   }
   return {
     sample,
-    overview() {
+    capture() {
       const current = view();
-      if (!history.length || now()-history.at(-1).at >= 3000) sample();
-      return {at:now(),server:{version:APP_VERSION,build:buildTag(),uptimeSec:Math.max(0,(now()-startedAt)/1000)},
-        counts:current.counts,resources:history.at(-1),history};
-    },
-    list(kind,{page=1,query='',status='all'}={}) {
-      let rows = view()[kind];
-      if (!Array.isArray(rows)) throw new Error('Invalid list kind');
-      if (status !== 'all') rows = rows.filter(r=>status==='online'?r.connected:status==='disconnected'?!r.connected:r.state===status);
-      if (query) {
-        const q = query.toLocaleLowerCase();
-        rows = rows.filter(row=>[row.id,row.roomCode,row.name,row.host,...(row.players || []).flatMap(p=>[p.name,p.playerId])]
-          .some(value=>typeof value==='string' && value.toLocaleLowerCase().includes(q)));
-      }
-      const pages = Math.max(1,Math.ceil(rows.length/50));
-      page = Math.min(page,pages);
-      return {at:now(),items:rows.slice((page-1)*50,page*50),total:rows.length,page,pages};
+      return {schema:1,...current,server:{version:APP_VERSION,build:buildTag(),uptimeSec:Math.max(0,(now()-startedAt)/1000)},
+        resources:sample()};
     },
   };
 }

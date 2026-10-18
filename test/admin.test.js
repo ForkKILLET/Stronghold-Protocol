@@ -7,6 +7,9 @@ import path from 'node:path';
 import {startServer} from '../server/index.js';
 import {adminPassword,createAdmin} from '../server/admin/index.js';
 import {createAdminSnapshot} from '../server/admin/snapshot.js';
+import {createAdminUpstream} from '../server/admin/upstream.js';
+import {startAdminService} from '../server/admin/service.js';
+const TOKEN='local-collector-service-token-32-characters';
 import {TestClient} from './helpers/wsClient.js';
 
 const PASSWORD='local-admin-test-password';
@@ -30,32 +33,33 @@ function fixture(){
   const health={registry,lobby,network,startedAt:at-100000},diagnostics={};
   return {health,diagnostics,data:{},now:()=>at,tick:ms=>at+=ms};
 }
+function remote(f){const source=createAdminSnapshot(f);return createAdminUpstream({url:'http://collector.invalid',token:TOKEN,now:f.now,fetch:async()=>new Response(JSON.stringify({...source.capture(),server:{instance:'fixture',version:'0.3.0',build:'test'}}))});}
 const post=(password=PASSWORD,headers={})=>({method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify({password})});
 async function login(url){const r=await fetch(url+'/admin/api/login',post());assert.equal(r.status,200);return r.headers.get('set-cookie').split(';')[0];}
 
-test('safe summaries deduplicate people/matches, preserve queue semantics, bound history and paginate',()=>{
-  const f=fixture(),snapshot=createAdminSnapshot(f),o=snapshot.overview();
+test('safe summaries deduplicate people/matches, preserve queue semantics, bound history and paginate',async()=>{
+  const f=fixture(),snapshot=remote(f),o=await snapshot.overview();
   assert.deepEqual(o.counts,{online:1,disconnected:1,rooms:1,matches:1,queuedTeams:1,queuedPlayers:1,bots:1,spectators:0});
-  const matches=snapshot.list('matches').items;
+  const matches=(await snapshot.list('matches')).items;
   assert.equal(matches.length,1);assert.equal(matches[0].phase,'PREP');assert.equal(matches[0].round,4);assert.equal(matches[0].paused,true);
   assert.equal(matches[0].mode,'solo');assert.equal(matches[0].players[0].lp,12);
-  const serialized=JSON.stringify(['matches','rooms','queue','players'].map(kind=>snapshot.list(kind)));
+  const serialized=JSON.stringify(await Promise.all(['matches','rooms','queue','players'].map(kind=>snapshot.list(kind))));
   for(const secret of ['SECRET_USER','SECRET_TOKEN','SECRET_OTHER','OTHER_TOKEN','SECOND_TOKEN','SECRET_STATE','SECRET_HAND','"userId"','"token"'])assert.ok(!serialized.includes(secret),secret);
-  assert.equal(snapshot.list('players',{query:'博士乙'}).total,1);
-  assert.equal(snapshot.list('players',{status:'online'}).items[0].sessionCount,2);
-  assert.equal(snapshot.list('players',{status:'online'}).items[0].state,'match');
-  assert.equal(snapshot.list('players',{status:'disconnected'}).total,1);
-  assert.equal(snapshot.list('players',{page:50}).page,1);
+  assert.equal((await snapshot.list('players',{query:'博士乙'})).total,1);
+  assert.equal((await snapshot.list('players',{status:'online'})).items[0].sessionCount,2);
+  assert.equal((await snapshot.list('players',{status:'online'})).items[0].state,'match');
+  assert.equal((await snapshot.list('players',{status:'disconnected'})).total,1);
+  assert.equal((await snapshot.list('players',{page:50})).page,1);
   assert.equal(o.resources.socketBufferedBytes,42);assert.equal(o.resources.cpuPercent,null);
-  snapshot.sample();assert.equal(snapshot.overview().history.length,1,'manual refresh and timer cannot create tiny rate windows');
-  for(let i=0;i<110;i++){f.tick(3000);snapshot.sample();}
-  const next=snapshot.overview();assert.ok(next.history.length<=101);assert.ok(next.history[0].at>=f.now()-300000);
+  await snapshot.overview();assert.equal((await snapshot.overview()).history.length,1,'manual refresh and timer cannot create tiny rate windows');
+  for(let i=0;i<110;i++){f.tick(3000);await snapshot.overview();}
+  const next=await snapshot.overview();assert.ok(next.history.length<=101);assert.ok(next.history[0].at>=f.now()-300000);
   assert.ok(Number.isFinite(next.resources.cpuPercent));
   for(let i=0;i<110;i++)f.health.registry.all().push({playerId:`extra${i}`,name:'extra',connected:true,lastSeen:f.now()});
-  f.tick(1001);assert.equal(snapshot.list('players',{page:3}).items.length,12);
-  assert.equal(snapshot.list('players',{page:3}).pages,3);
-  f.health.lobby.rooms.clear();f.health.lobby.activeQueueMatches.clear();f.health.lobby.queueByPlayer.clear();f.tick(1001);
-  assert.equal(snapshot.overview().counts.matches,0);assert.equal(snapshot.overview().counts.queuedPlayers,0);
+  f.tick(3000);assert.equal((await snapshot.list('players',{page:3})).items.length,12);
+  assert.equal((await snapshot.list('players',{page:3})).pages,3);
+  f.health.lobby.rooms.clear();f.health.lobby.activeQueueMatches.clear();f.health.lobby.queueByPlayer.clear();f.tick(3000);
+  assert.equal((await snapshot.overview()).counts.matches,0);assert.equal((await snapshot.overview()).counts.queuedPlayers,0);
 });
 
 test('password loading is explicit and validates secrets before server startup',()=>{
@@ -71,14 +75,14 @@ test('password loading is explicit and validates secrets before server startup',
 });
 
 test('disabled admin namespace cannot leak via static aliases or encoded paths',async t=>{
-  const srv=await startServer({...opts,adminPassword:null});t.after(()=>srv.close());
+  const srv=await startServer({...opts,adminToken:null});t.after(()=>srv.close());
   for(const path of ['/admin','/admin/','/admin/index.html','/%61dmin/index.html','//admin/index.html','/ADMIN/index.html','/admin/api/overview']){
     const r=await fetch(srv.url+path);assert.equal(r.status,404,path);
   }
 });
 
 test('admin HTTP auth, bounded inputs, cookies, origin, session expiry and login/read throttling',async t=>{
-  const f=fixture(),controller=createAdmin({password:PASSWORD,publicDir:root,...f,trustProxy:true});
+  const f=fixture(),controller=createAdmin({password:PASSWORD,publicDir:root,snapshot:remote(f),now:f.now,trustProxy:true});
   const server=http.createServer((req,res)=>controller.handle(req,res,new URL(req.url,'http://local').pathname));
   await new Promise(r=>server.listen(0,'127.0.0.1',r));const url=`http://127.0.0.1:${server.address().port}`;
   t.after(async()=>{controller.close();await new Promise(r=>server.close(r));});
@@ -113,9 +117,12 @@ test('admin HTTP auth, bounded inputs, cookies, origin, session expiry and login
 });
 
 test('real Match Worker summaries update without checkpoints and admin reads do not create game sessions', {timeout:20000},async t=>{
-  const srv=await startServer({...opts,adminPassword:PASSWORD,matchWorkers:1});const clients=[];
+  const srv=await startServer({...opts,adminToken:TOKEN,adminPort:0,matchWorkers:1});const clients=[];
+  const panel=await startAdminService({port:0,host:'127.0.0.1',password:PASSWORD,token:TOKEN,gameUrl:srv.telemetry.url,publicDir:root});
+  t.after(()=>panel.close());
   t.after(async()=>{await srv.close();await Promise.all(clients.map(c=>c.terminate()));});
-  const cookie=await login(srv.url),headers={Cookie:cookie};
+  const cookie=await login(panel.url),headers={Cookie:cookie};
+  assert.equal((await fetch(srv.url+'/admin')).status,404);
   assert.equal(srv.registry.size,0);assert.equal(srv.network.connectionCount,0);
   for(const name of ['甲','乙']){const c=await TestClient.connect(srv.url.replace('http:','ws:')+'/ws');await c.hello(name);clients.push(c);}
   const [host,guest]=clients;
@@ -124,10 +131,10 @@ test('real Match Worker summaries update without checkpoints and admin reads do 
   await host.waitFor('m.public',p=>p.phase==='INFO_CHECK');
   const match=srv.lobby.rooms.get(room.code).match;
   assert.equal(match.remote,true);match.snapshot=()=>{throw Error('admin must not checkpoint');};
-  let rows=await (await fetch(srv.url+'/admin/api/list?kind=matches',{headers})).json();
+  let rows=await (await fetch(panel.url+'/admin/api/list?kind=matches',{headers})).json();
   assert.equal(rows.total,1);assert.equal(rows.items[0].phase,'INFO_CHECK');assert.ok(rows.items[0].startedAt>0);assert.equal(rows.items[0].players.length,2);
   await host.request({t:'g.pause',on:true});await guest.request({t:'g.pause',on:true});await host.waitFor('m.public',p=>p.paused);
-  await new Promise(r=>setTimeout(r,1010));
-  rows=await (await fetch(srv.url+'/admin/api/list?kind=matches',{headers})).json();assert.equal(rows.items[0].paused,true);
+  await new Promise(r=>setTimeout(r,2600));
+  rows=await (await fetch(panel.url+'/admin/api/list?kind=matches',{headers})).json();assert.equal(rows.items[0].paused,true);
   assert.equal(srv.registry.size,2);assert.equal(srv.network.connectionCount,2);
 });

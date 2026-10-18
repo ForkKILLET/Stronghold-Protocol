@@ -32,7 +32,7 @@
 import http from 'node:http';
 import {openUserStore} from './users/store.js';
 import {createUserApi} from './users/http.js';
-import {adminPassword,createAdmin} from './admin/index.js';
+import {telemetryToken,startTelemetry} from './admin/telemetry.js';
 import { nameModerationFromEnv } from './nameModeration.js';
 import { createNameModerationRoute } from './http/nameModeration.js';
 import path from 'node:path';
@@ -80,7 +80,7 @@ export {
 /**
  * Build and start the HTTP + WebSocket server.
  * @param {{
- *   userFile?: string, adminPassword?: string | null,
+ *   userFile?: string, adminToken?: string | null, adminPort?: number, adminHost?: string,
  *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
  *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string, pluginsDir?: string,
@@ -99,7 +99,7 @@ export {
  *                     traffic: ReturnType<typeof createTrafficCounter>, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
-  const administratorPassword = adminPassword(opts.adminPassword);
+  const administratorToken = telemetryToken(opts.adminToken);
   const nameModeration = opts.nameModeration !== undefined ? opts.nameModeration : nameModerationFromEnv();
   const { port, host } = listenAddress(opts);
   const log = opts.log || makeLogger(!!opts.quiet);
@@ -233,15 +233,18 @@ export async function startServer(opts = {}) {
   const traffic = createTrafficCounter();
   const health = { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health };
   const diagnostics = { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic };
-  const admin = createAdmin({password:administratorPassword,publicDir,health,diagnostics,data,trustProxy:network.opts.trustProxy});
+  let admin=null;
   const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, health, serveApi,
-    diagnostics, admin, log, trustProxy: network.opts.trustProxy }));
+    diagnostics, log, trustProxy: network.opts.trustProxy }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic, users });
 
   // The address actually bound. The default may fall back to IPv4; the returned host and url follow that.
   let boundHost;
   try {
+    admin=await startTelemetry({token:administratorToken,health,diagnostics,data,
+      port:opts.adminPort ?? Number(process.env.SP_ADMIN_PORT || 8001),
+      host:opts.adminHost ?? process.env.SP_ADMIN_HOST ?? '127.0.0.1'});
     // A host with IPv6 switched off refuses '::'. Fall back to IPv4 rather than not booting. Only the default is
     // retried: an explicit HOST is literal (server/http/config.js bindCandidates).
     let bound = null;
@@ -289,7 +292,7 @@ export async function startServer(opts = {}) {
     if (ownsWorkerPool) await workerPool?.close();
     if (ownsMatchWorkerPool) await matchWorkerPool?.close();
     studio?.close();
-    admin?.close();
+    await admin?.close();
     await trustedRuntime?.close();
     throw e;
   }
@@ -304,7 +307,7 @@ export async function startServer(opts = {}) {
   async function close() {
     if (closing) return closing;
     closing = (async () => {
-      admin?.close();
+      await admin?.close();
       clearInterval(userRetry);
       network.beginShutdown();
       nameModeration?.close?.();
@@ -337,7 +340,7 @@ export async function startServer(opts = {}) {
   }
 
   return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, store: store || null, persister,
-    workerPool, matchWorkerPool, announcements, users, content, visual, contents, hosts, studio, traffic, close };
+    workerPool, matchWorkerPool, announcements, users, content, visual, contents, hosts, studio, traffic, telemetry:admin, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).

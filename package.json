@@ -42,7 +42,9 @@
     "check:imports": "node tools/check-imports.mjs",
     "ci": "node tools/ci.mjs",
     "package": "node tools/package.mjs",
-    "package:lite": "node tools/package.mjs --lite"
+    "package:lite": "node tools/package.mjs --lite",
+    "build:admin": "node tools/build-admin.mjs",
+    "start:admin": "node dist/admin/server.js"
   },
   "engines": {
     "node": ">=22"

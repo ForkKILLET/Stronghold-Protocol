@@ -374,7 +374,7 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 实时管理面板
 
-- 2026-10-18 `/admin` 使用独立入口 public/js/admin/main.js，共用主题／Button／Tabs／Select，但不得导入游戏 boot／net／profile 或建立玩家身份。SP_ADMIN_PASSWORD_FILE／SP_ADMIN_PASSWORD 显式启用独立认证，默认整个命名空间 404；口令和 Cookie 不入日志／存储。摘要只白名单投影 registry／room／queue 及 ctx.lastPublic，禁止轮询 snapshot／diag 或暴露 userId／token／地址／存档。保留公开 metrics 格式与计数语义，管理页面自行按账户去重且区分排队队伍／人数。回归 test/admin.test.js、test/ui/admin.e2e.test.js（SP_E2E=1，Chrome／Firefox），部署见 docs/ADMIN.md。
+- 2026-10-18 `/admin` 由独立 `server/admin/service.js` 服务提供，页面以 `tools/build-admin.mjs` 构建为 `/admin/assets/` 自有资源，复用主题／Button／Tabs／Select，不导入游戏 boot／net／profile 或建立玩家身份。管理员口令／Cookie 仅在面板使用；游戏只通过独立内部端口的 `/v1/snapshot`、`SP_ADMIN_TOKEN_FILE` 服务密钥输出 schema 1 轻量白名单。游戏公开端口的 `/admin` 始终 404。采集只读 registry／room／queue 和 ctx.lastPublic，禁止 snapshot／diag、账户内部 ID／令牌／地址／存档。面板按账户去重，独立保存最多 5 分钟趋势；上游不可用保留数据并标记过期，不能当作零人或退出管理员登录。游戏与面板可分别构建／发布／回滚，首次迁移遵守无对局冷更新。回归 test/admin.test.js、test/admin-service.test.js、test/ui/admin.e2e.test.js（SP_E2E=1，Chrome／Firefox），部署见 docs/ADMIN.md。
 
 ## 统一选择控件
 

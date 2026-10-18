@@ -109,7 +109,7 @@ const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.tes
  *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null, admin = null }) {
+export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null }) {
   const healthBody = createHealthBody(health);
   function serveHealth(req, res) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -136,8 +136,7 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
     let decodedPath;
     try { decodedPath = decodeURIComponent(parts.rawPath); } catch { sendError(req,res,400,'Bad request'); return; }
     if (decodedPath === '/admin' || decodedPath.startsWith('/admin/')) {
-      if (admin) await admin.handle(req,res,decodedPath);
-      else sendError(req,res,404,'Not found');
+      sendError(req,res,404,'Not found');
       return;
     }
     if (trustedRuntime && parts.rawPath.startsWith('/x/') && await trustedRuntime.route(req, res, parts.rawPath)) return;

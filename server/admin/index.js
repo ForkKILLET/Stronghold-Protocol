@@ -6,7 +6,6 @@ import {promisify} from 'node:util';
 import {sendJson,sendError} from '../http/common.js';
 import {clientAddress,limitKeyOf,isLocalIp} from '../net.js';
 import {sameOrigin} from '../users/http.js';
-import {createAdminSnapshot} from './snapshot.js';
 
 const derive = promisify(scrypt);
 export const ADMIN_COOKIE = 'sp_admin';
@@ -31,12 +30,11 @@ async function body(req) {
   catch { throw Object.assign(new Error(),{status:400}); }
 }
 
-export function createAdmin({password,publicDir,health,diagnostics,data,trustProxy,now=Date.now}) {
+export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now}) {
   if (!password) return null;
   const salt=randomBytes(16), expected=scryptSync(password,salt,32);
   const sessions=new Map(), attempts=new Map();
-  const snapshot=createAdminSnapshot({health,diagnostics,data,now});
-  let activeLogins=0, globalAttempts={until:0,count:0}, timer=null,lastRead=0,closed=false;
+  let activeLogins=0, globalAttempts={until:0,count:0},closed=false;
   const json=(req,res,status,data)=>{res.setHeader('Cache-Control','no-store');res.setHeader('Vary','Cookie');sendJson(req,res,status,data);};
   function cookie(req,res,token) {
     const secure=!!req.socket.encrypted || ((trustProxy===true || (trustProxy==='auto' && isLocalIp(req.socket.remoteAddress))) && req.headers['x-forwarded-proto']==='https');
@@ -61,15 +59,6 @@ export function createAdmin({password,publicDir,health,diagnostics,data,trustPro
     const at=now();
     if (value.until<=at) {value.until=at+60000;value.reads=0;}
     return ++value.reads<=120;
-  }
-  function activate() {
-    lastRead=now();
-    if (timer) return;
-    timer=setInterval(()=>{
-      if (now()-lastRead>60000) {clearInterval(timer);timer=null;return;}
-      // An unavailable diagnostic must not interrupt live games.
-      try { snapshot.sample(); } catch {}
-    },3000);timer.unref?.();
   }
   return {
     async handle(req,res,pathname) {
@@ -108,7 +97,7 @@ export function createAdmin({password,publicDir,health,diagnostics,data,trustPro
         if (req.method!=='GET') {json(req,res,405,{error:'METHOD'});return;}
         if (!readAllowed(current)) {json(req,res,429,{error:'RATE'});return;}
         if (pathname==='/admin/api/session') {json(req,res,200,{ok:true,expires:current.expires});return;}
-        if (pathname==='/admin/api/overview') {activate();json(req,res,200,snapshot.overview());return;}
+        if (pathname==='/admin/api/overview') {json(req,res,200,await snapshot.overview());return;}
         if (pathname==='/admin/api/list') {
           const params=new URL(req.url,'http://local').searchParams;
           const kind=params.get('kind'),page=Number(params.get('page') || 1),query=params.get('q') || '',status=params.get('status') || 'all';
@@ -116,11 +105,11 @@ export function createAdmin({password,publicDir,health,diagnostics,data,trustPro
               !['all','online','disconnected','match','queue','waiting','lobby','spectating'].includes(status) || status!=='all' && kind!=='players') {
             json(req,res,400,{error:'INPUT'});return;
           }
-          activate();json(req,res,200,snapshot.list(kind,{page,query,status}));return;
+          json(req,res,200,await snapshot.list(kind,{page,query,status}));return;
         }
         json(req,res,404,{error:'NOT_FOUND'});
       } catch(error) {json(req,res,error.status || 503,{error:error.status?'INPUT':'UNAVAILABLE'});}
     },
-    close() {closed=true;clearInterval(timer);timer=null;sessions.clear();attempts.clear();},
+    close() {closed=true;sessions.clear();attempts.clear();snapshot.close?.();},
   };
 }

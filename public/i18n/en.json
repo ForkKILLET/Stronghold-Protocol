@@ -2462,5 +2462,7 @@
   "新状态将在下次刷新时显示": "Changes will appear on the next refresh",
   "共 {n} 条": "{n} records",
   "运行时长": "Uptime",
-  "更新于": "Updated"
+  "更新于": "Updated",
+  "游戏服务暂时不可用，显示最后一次成功读取的数据": "Game service unavailable; showing the last successful snapshot",
+  "游戏数据接口版本不匹配": "Game data API version mismatch"
 }
