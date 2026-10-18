@@ -372,6 +372,10 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 个人头像使用 PRTS 修订 441454 的原版目录 `data/profile-avatars.json`，不兼容 band ID。只接受目录 ID，图片通过既有 asset plan／哈希获取到本站；`profileAvatars` 根节点归可选预载、个人头像组，保留 ZIP／CDN 语义。刷新来源须显式指定并核对修订，不静默接受改变的 SHA-256；验证 `test/users/avatars.test.js` 和资源／ZIP 回归。
 - 本机旧统计不自动上报；服务器个人战绩不冒充防作弊榜。验证 `test/users/persistence.test.js`、原有会话／Redis／Worker／匹配回归，部署要求见 `docs/USERS.md`。
 
+## 实时管理面板
+
+- 2026-10-18 `/admin` 使用独立入口 public/js/admin/main.js，共用主题／Button／Tabs／Select，但不得导入游戏 boot／net／profile 或建立玩家身份。SP_ADMIN_PASSWORD_FILE／SP_ADMIN_PASSWORD 显式启用独立认证，默认整个命名空间 404；口令和 Cookie 不入日志／存储。摘要只白名单投影 registry／room／queue 及 ctx.lastPublic，禁止轮询 snapshot／diag 或暴露 userId／token／地址／存档。保留公开 metrics 格式与计数语义，管理页面自行按账户去重且区分排队队伍／人数。回归 test/admin.test.js、test/ui/admin.e2e.test.js（SP_E2E=1，Chrome／Firefox），部署见 docs/ADMIN.md。
+
 ## 统一选择控件
 
 - 2026-10-17 游戏和工作台使用 ui/select.js 的 Select，菜单浮出滚动容器，保留触发器焦点；支持键盘、Esc、禁用项与视口边界。新增选择项不得使用原生 select。回归 test/ui/select.e2e.test.js（SP_E2E=1）。

@@ -722,6 +722,10 @@ docker run -d --name stronghold -p 3000:3000 --restart unless-stopped \
 Docker 运行镜像及源码包需保留根目录 `CHANGELOG.md`，升级需重新构建镜像；公告 JSON 的目录挂载不覆盖它。
 
 
+### 本分支实时管理面板
+
+同一 HTTPS 地址下的 `/admin` 提供独立口令保护的只读面板，可查看对局、匹配／房间、玩家及游戏进程资源。设置 `SP_ADMIN_PASSWORD_FILE`（推荐）或 `SP_ADMIN_PASSWORD` 后启用，未配置默认关闭；无需额外端口或数据库。启用方式、统计口径与验证见 [ADMIN.md](ADMIN.md)。
+
 ## 4. macOS / Linux 常驻
 
 - 临时开服：`scripts/start.sh`（或 `npm start`），保持终端窗口打开。macOS 首次会询问是否允许 node 接受传入连接，选「允许」。

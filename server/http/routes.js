@@ -109,7 +109,7 @@ const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.tes
  *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null }) {
+export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null, admin = null }) {
   const healthBody = createHealthBody(health);
   function serveHealth(req, res) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -132,6 +132,14 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
     if (url.length > MAX_URL_LENGTH) { sendError(req, res, 414, '请求地址过长 · URI too long'); return; }
     const parts = splitUrl(url);
     if (!parts) { sendError(req, res, 400, '请求地址无效 · Bad request'); return; }
+    // Reserve the whole namespace even when disabled: never fall through to the public HTML file.
+    let decodedPath;
+    try { decodedPath = decodeURIComponent(parts.rawPath); } catch { sendError(req,res,400,'Bad request'); return; }
+    if (decodedPath === '/admin' || decodedPath.startsWith('/admin/')) {
+      if (admin) await admin.handle(req,res,decodedPath);
+      else sendError(req,res,404,'Not found');
+      return;
+    }
     if (trustedRuntime && parts.rawPath.startsWith('/x/') && await trustedRuntime.route(req, res, parts.rawPath)) return;
     if (studio && studio.handles(parts.rawPath)) { await studio.handle(req, res, parts.rawPath, parts.query); return; }
     if (parts.rawPath === '/healthz') { serveHealth(req, res); return; }

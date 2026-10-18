@@ -350,6 +350,7 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
       return;
     }
     const first = segments[0] || '';
+    if (mount.name === 'public' && first.toLowerCase() === 'admin') { sendError(req,res,404,'Not found'); return; }
     if (mount.name === 'public' && (first.toLowerCase().startsWith('studio') || /[^\x00-\x7f]/.test(first))) {
       const studio = await studioRealPath();
       const real = studio ? await fsp.realpath(absPath).catch(() => null) : null;

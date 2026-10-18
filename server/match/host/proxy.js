@@ -63,6 +63,9 @@ export class MatchProxy {
     this.log = log;
     this.requestTimeoutMs = requestTimeoutMs;
     this.roomCode = opts.roomCode ?? '----';
+    this.startedAt = Date.now() - Math.max(0, opts.checkpoint?.startedAtAgoMs || 0);
+    this.mode = opts.mode;
+    this.difficulty = opts.difficulty;
     /** @type {Map<number, { resolve: (r: any) => void, timer: any }>} */
     this.pending = new Map();
     this.seq = 0;
@@ -112,6 +115,7 @@ export class MatchProxy {
 
   async captureSnapshot() { const r = await this._request('captureSnapshot', []); return r?.capture || null; }
   async restoreCheckpoint(checkpoint, departedPlayerIds = []) {
+    this.startedAt = Date.now() - Math.max(0, checkpoint?.startedAtAgoMs || 0);
     this.opts = { ...this.opts, checkpoint, departedPlayerIds };
     this.start();
     const r = await this.diag();

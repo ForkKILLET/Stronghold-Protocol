@@ -32,6 +32,7 @@
 import http from 'node:http';
 import {openUserStore} from './users/store.js';
 import {createUserApi} from './users/http.js';
+import {adminPassword,createAdmin} from './admin/index.js';
 import { nameModerationFromEnv } from './nameModeration.js';
 import { createNameModerationRoute } from './http/nameModeration.js';
 import path from 'node:path';
@@ -79,7 +80,7 @@ export {
 /**
  * Build and start the HTTP + WebSocket server.
  * @param {{
- *   userFile?: string,
+ *   userFile?: string, adminPassword?: string | null,
  *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
  *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string, pluginsDir?: string,
@@ -98,6 +99,7 @@ export {
  *                     traffic: ReturnType<typeof createTrafficCounter>, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
+  const administratorPassword = adminPassword(opts.adminPassword);
   const nameModeration = opts.nameModeration !== undefined ? opts.nameModeration : nameModerationFromEnv();
   const { port, host } = listenAddress(opts);
   const log = opts.log || makeLogger(!!opts.quiet);
@@ -229,8 +231,11 @@ export async function startServer(opts = {}) {
   buildTag(ROOT, { clientBuild });
 
   const traffic = createTrafficCounter();
-  const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, health: { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health }, serveApi,
-    diagnostics: { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic }, log, trustProxy: network.opts.trustProxy }));
+  const health = { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health };
+  const diagnostics = { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic };
+  const admin = createAdmin({password:administratorPassword,publicDir,health,diagnostics,data,trustProxy:network.opts.trustProxy});
+  const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, health, serveApi,
+    diagnostics, admin, log, trustProxy: network.opts.trustProxy }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic, users });
 
@@ -284,6 +289,7 @@ export async function startServer(opts = {}) {
     if (ownsWorkerPool) await workerPool?.close();
     if (ownsMatchWorkerPool) await matchWorkerPool?.close();
     studio?.close();
+    admin?.close();
     await trustedRuntime?.close();
     throw e;
   }
@@ -298,6 +304,7 @@ export async function startServer(opts = {}) {
   async function close() {
     if (closing) return closing;
     closing = (async () => {
+      admin?.close();
       clearInterval(userRetry);
       network.beginShutdown();
       nameModeration?.close?.();
