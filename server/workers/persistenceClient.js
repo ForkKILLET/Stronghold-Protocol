@@ -1,4 +1,5 @@
 import { Worker } from 'node:worker_threads';
+import { performance } from 'node:perf_hooks';
 
 /** Lazy, single dedicated Worker with bounded requests. Failures skip a save; never encode on the game thread. */
 export class PersistenceWorker {
@@ -11,10 +12,23 @@ export class PersistenceWorker {
     this.seed = null;
     this.memory = null;
     this.stopping = new Set();
+    this.recoveryRefs = new Map();
   }
 
   remember(bytes, entries) { this.seed = { bytes, entries }; }
   rememberDocument(doc, entries) { this.seed = { doc, entries }; }
+
+  /** Unchanged recovery checkpoints stay in the Worker; periodic saves send only identities and replacements. */
+  async serialize(document, entries) {
+    const { recovery = {}, ...doc } = document;
+    const refs = new Map(Object.entries(recovery));
+    const recoveryUpdates = [...refs].filter(([key, entry]) => this.recoveryRefs.get(key) !== entry);
+    const pending = this.request('serialize', { doc, entries, recoveryKeys: [...refs.keys()], recoveryUpdates });
+    const worker = this.worker;
+    const result = await pending;
+    if (this.worker === worker) this.recoveryRefs = refs;
+    return result;
+  }
 
   request(type, payload, transfer = []) {
     if (this.closed) return Promise.reject(new Error('persistence worker closed'));
@@ -28,7 +42,7 @@ export class PersistenceWorker {
         this.pending.delete(id);
         clearTimeout(task.timer);
         if (error) task.reject(new Error(error));
-        else task.resolve(value);
+        else task.resolve({ ...value, postMs: task.postMs });
         if (this.pending.size === 0) worker.unref();
       });
       worker.on('error', (err) => this.drop(worker, err));
@@ -42,7 +56,11 @@ export class PersistenceWorker {
       timer.unref?.();
       this.pending.set(id, { resolve, reject, timer });
       worker.ref();
-      try { worker.postMessage({ id, type, payload }, transfer); }
+      try {
+        const started = performance.now();
+        worker.postMessage({ id, type, payload }, transfer);
+        this.pending.get(id).postMs = performance.now() - started;
+      }
       catch (e) {
         this.pending.delete(id);
         clearTimeout(timer);
@@ -55,6 +73,7 @@ export class PersistenceWorker {
   drop(worker, err) {
     if (this.worker !== worker) return;
     this.worker = null;
+    this.recoveryRefs.clear();
     for (const task of this.pending.values()) { clearTimeout(task.timer); task.reject(err); }
     this.pending.clear();
     const stopped = worker.terminate().catch(() => {}).finally(() => this.stopping.delete(stopped));

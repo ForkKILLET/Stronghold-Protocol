@@ -183,15 +183,15 @@ test('a missing active human leaves the restored match while available teammates
   assert.ok(back.warnings.some((line) => line.includes(env.b.playerId) && line.includes('session')));
 });
 
-test('a checkpoint with no remaining human is retained without starting an unattended game', (t) => {
+test('a checkpoint with no remaining human is discarded without starting an unattended game', (t) => {
   const env = running(t);
   const doc = document(env);
   for (const p of doc.matches[env.key].players) p.left = true;
   const back = restore(t, doc);
   assert.equal(back.stats.matches, 0);
   assert.equal(back.lobby.activeQueueMatches.size, 0);
-  assert.equal(back.stats.deferredMatches, 1);
-  assert.deepEqual(back.lobby.recoveryDocs.get(env.key).checkpoint, doc.matches[env.key]);
+  assert.equal(back.stats.deferredMatches, 0);
+  assert.equal(back.lobby.recoveryDocs.size, 0);
 });
 
 test('registry capacity cannot evict a disconnected human from a running standalone match', () => {
@@ -572,7 +572,7 @@ test('explicit session ownership prevents double binding without abandoning eith
   assert.notEqual(owner, other);
 });
 
-test('starting a new game in a deferred room archives its old checkpoint without resurrecting it later', async (t) => {
+test('starting a new game in a deferred room discards its superseded checkpoint without resurrecting it later', async (t) => {
   const env = runningRoom(t);
   const original = document(env);
   const back = setup(t);
@@ -585,12 +585,12 @@ test('starting a new game in a deferred room archives its old checkpoint without
   await writer.seed(original);
   const saved = await writer.document();
   const archive = Object.values(saved.recovery).find((entry) => entry.superseded);
-  assert.deepEqual(archive.checkpoint, original.matches[env.key]);
+  assert.equal(archive, undefined);
   assert.equal(saved.matches[env.key].phase, PHASE.INFO_CHECK);
   const again = restore(t, saved);
   assert.equal(again.stats.matches, 1);
   assert.equal(again.lobby.getRoom(env.key).match.phase, PHASE.INFO_CHECK);
-  assert.ok([...again.lobby.recoveryDocs.values()].some((entry) => entry.superseded));
+  assert.equal(again.lobby.recoveryDocs.size, 0);
 });
 
 test('a fast-started match entering combat before a periodic save keeps its initial checkpoint', async (t) => {
@@ -608,17 +608,15 @@ test('a fast-started match entering combat before a periodic save keeps its init
   assert.equal(restore(t, saved).stats.matches, 1);
 });
 
-test('a new match queues another immediate save when a state write is already in flight', { timeout: 5000 }, async (t) => {
+test('new matches capture immediately but wait for the next periodic save instead of chaining whole-state writes', { timeout: 5000 }, async (t) => {
   const env = setup(t);
-  let release, entered, secondSaved;
+  let release, entered;
   const started = new Promise((resolve) => { entered = resolve; });
   const gate = new Promise((resolve) => { release = resolve; });
-  const second = new Promise((resolve) => { secondSaved = resolve; });
   let writes = 0, saved;
   const writer = new Persister({ ...env, store: { async save(doc) {
     writes++; saved = doc;
     if (writes === 1) { entered(); await gate; }
-    else secondSaved();
     return true;
   } } }).start();
   t.after(() => writer.shutdown());
@@ -635,7 +633,9 @@ test('a new match queues another immediate save when a state write is already in
   await captures[0];
   release();
   await firstWrite;
-  await second;
+  assert.equal(writes, 1, 'initial capture does not trigger another Redis write');
+  assert.equal(await writer.flush('interval'), true);
+  assert.equal(writes, 2);
   assert.equal(saved.matches[key].phase, PHASE.INFO_CHECK);
 });
 

@@ -6,7 +6,7 @@
 //   * a server that cannot start exits 1 (with a hint when the port is in use); unhandled rejections and uncaught
 //     exceptions are logged, not fatal;
 //   * graceful shutdown on SIGINT/SIGTERM (rooms get room.closed{reason:'shutdown'}, sockets close 1001); a second
-//     signal exits at once, and the process exits anyway 5 s after the first.
+//     signal exits at once. The first allows up to SP_SHUTDOWN_TIMEOUT_MS (default 60 s) for final persistence.
 
 import fs from 'node:fs';
 import { applyPendingUpdate } from '../update.js';
@@ -15,6 +15,11 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { APP_VERSION, DEV_BUILD } from '../../shared/constants.js';
 import { limitKeyOf } from '../net.js';
+
+export function shutdownTimeoutMs(value = process.env.SP_SHUTDOWN_TIMEOUT_MS) {
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 1000 && n <= 300_000 ? n : 60_000;
+}
 
 /**
  * Non-internal addresses as http URLs — IPv4 first, then IPv6 (an IPv6 literal needs brackets: `http://[240e:…]:3000`).
@@ -101,7 +106,10 @@ export async function runMain(start) {
     if (stopping) { console.log('forced exit'); process.exit(1); }
     stopping = true;
     console.log(`\n[${signal}] shutting down…`);
-    setTimeout(() => process.exit(0), 5000).unref();
+    setTimeout(() => {
+      console.error('[shutdown] timeout before graceful close completed; final state may not have been saved');
+      process.exit(1);
+    }, shutdownTimeoutMs()).unref();
     srv.close().then(() => process.exit(0), () => process.exit(1));
   };
   process.on('SIGINT', () => stop('SIGINT'));

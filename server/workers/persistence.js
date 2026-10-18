@@ -3,9 +3,13 @@ import { parentPort, workerData } from 'node:worker_threads';
 import { encodeMatchCapture } from '../match/snapshot.js';
 import { memorySample } from './memory.js';
 import { deserialize } from 'node:v8';
+import { performance } from 'node:perf_hooks';
 
 const checkpoints = new Map();
+const recovery = new Map();
 function seed(doc, entries) {
+  recovery.clear();
+  for (const [key, entry] of Object.entries(doc.recovery || {})) recovery.set(key, entry);
   for (const { key, generation } of entries) {
     const checkpoint = doc.matches?.[key];
     if (checkpoint) checkpoints.set(key, { generation, checkpoint });
@@ -32,14 +36,24 @@ parentPort.on('message', ({ id, type, payload }) => {
       }
       parentPort.postMessage({ id, memory: memorySample() });
     } else if (type === 'serialize') {
+      const started = performance.now();
       const active = new Map(payload.entries.map(({ key, generation }) => [key, generation]));
       const matches = {};
       for (const [key, entry] of checkpoints) {
         if (active.get(key) !== entry.generation) { checkpoints.delete(key); continue; }
         matches[key] = entry.checkpoint;
       }
-      const bytes = new TextEncoder().encode(JSON.stringify({ ...payload.doc, matches }));
-      parentPort.postMessage({ id, bytes, keys: Object.keys(matches), memory: memorySample() }, [bytes.buffer]);
+      let doc = payload.doc;
+      if (payload.recoveryKeys) {
+        const activeRecovery = new Set(payload.recoveryKeys);
+        for (const key of recovery.keys()) if (!activeRecovery.has(key)) recovery.delete(key);
+        for (const [key, entry] of payload.recoveryUpdates || []) if (activeRecovery.has(key)) recovery.set(key, entry);
+        for (const key of activeRecovery) if (!recovery.has(key)) throw new Error('missing retained recovery checkpoint');
+        doc = { ...doc, recovery: Object.fromEntries(recovery) };
+      }
+      const bytes = new TextEncoder().encode(JSON.stringify({ ...doc, matches }));
+      parentPort.postMessage({ id, bytes, keys: Object.keys(matches), encodeMs: performance.now() - started,
+        memory: memorySample() }, [bytes.buffer]);
     } else throw new Error(`unknown persistence task: ${type}`);
   } catch (e) {
     parentPort.postMessage({ id, error: e.message });

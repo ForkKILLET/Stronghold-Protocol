@@ -289,7 +289,11 @@ departures through `room.leave`. Checkpoints retain these independent departure 
 acknowledgement. Restoring a known empty queue container does not put its external teammates into the original room
 or change their own room ownership; missing-room reconstruction keeps its existing best-effort fallback. Offline
 external teammates retain their own encoded settlement replay after the container is released. A failed recovery
-keeps the original checkpoint and tokens without leaving an unused empty room behind.
+keeps the original checkpoint and tokens while an original human remains within its wall-clock reconnect window,
+without leaving an unused empty room behind. All-expired/departed recovery and superseded archives are pruned before
+serialization; repeated saves/restarts do not renew the deadline. Initial checkpoints are captured immediately, while
+Redis writes are batched at 30-second intervals (`SP_REDIS_SAVE_MS`). Graceful shutdown waits for a pending save and
+writes one final state before disposing rooms; its process timeout is 60 seconds (`SP_SHUTDOWN_TIMEOUT_MS`).
 
 Regression coverage: `test/matchmaking-lifecycle.test.js`, `test/memory-lifecycle.test.js`,
 `test/persist-queue-recovery.test.js` and `test/match-worker-lifecycle.test.js`.

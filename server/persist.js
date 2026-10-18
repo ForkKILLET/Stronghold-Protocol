@@ -18,21 +18,24 @@
 //   * A session whose reconnect window elapsed while the server was down (10 min for a co-op room, 6 h for a solo run:
 //     lobby.soloReconnectWindowMs). Its room is dropped too when nobody is left in it; a running match whose human seat
 //     lost its session leaves the restored match; the other valid identities continue. A checkpoint with no usable
-//     human identity is retained for a later recovery attempt. Latest departures travel separately from checkpoints.
+//     human identity is discarded. Failed checkpoints with an unexpired original human remain recoverable.
+//     Latest departures travel separately from checkpoints.
 //
-// The document is one JSON object under `<prefix>state`, rewritten every `saveMs` (default 10 s) and once on a graceful
+// The document is one JSON object under `<prefix>state`, rewritten every `saveMs` (default 30 s) and once on a graceful
 // shutdown. State older than the Redis TTL (25 h) is gone; a *stale* document (a Redis that kept state from an older
 // run of another version) is recovered only through compatible fields, with diagnostics and retained failed records.
 
 import { captureMatch, SNAPSHOT_VERSION } from './match/snapshot.js';
 import { PersistenceWorker } from './workers/persistenceClient.js';
+import { countRecoveryRemoval, pruneRecovery, recoveryRemovalReason, resumeWindowMs } from './persistRecovery.js';
+import { performance } from 'node:perf_hooks';
 import { t } from '../shared/i18n.js';
 import { DIFFICULTIES, MAX_SEATS, ROOM_CODE_LEN } from '../shared/constants.js';
 
 /** Document layout version (bumped when the shape below changes). */
 export const PERSIST_VERSION = 1;
 /** Default interval between state writes (ms). */
-export const SAVE_MS = 10_000;
+export const SAVE_MS = 30_000;
 
 const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 
@@ -106,9 +109,8 @@ export function snapshotServer({ registry, lobby, matchDocs = null, now = Date.n
   for (const { key, match, ctx, room } of lobby.persistenceMatches()) {
     const previous = lobby.recoveryDocs?.get(key);
     if (previous) {
-      const archiveKey = `superseded:${key}:${previous.checkpoint?.seed}:${previous.checkpoint?.savedAt}`;
-      lobby.recoveryDocs.set(archiveKey, { ...previous, key, superseded: true });
       lobby.recoveryDocs.delete(key);
+      countRecoveryRemoval(lobby, 'superseded');
     }
     // Main-thread membership is authoritative even if a Worker dies before acknowledging onLeave.
     const departed = [...new Set([...(match.order || []), ...(ctx?.members || []), ...(room?.seats || [])]
@@ -116,6 +118,7 @@ export function snapshotServer({ registry, lobby, matchDocs = null, now = Date.n
     if (departed.length) matchDepartures[key] = departed;
     if (Number.isInteger(match._battleSeq)) matchBattleSeq[key] = match._battleSeq;
   }
+  pruneRecovery(registry, lobby, now);
   return {
     v: PERSIST_VERSION,
     snapshot: SNAPSHOT_VERSION,
@@ -160,7 +163,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
   const retained = doc.recovery && typeof doc.recovery === 'object' ? doc.recovery : {};
   const matches = new Map(Object.entries(doc.matches && typeof doc.matches === 'object' ? doc.matches : {}));
   for (const [key, entry] of Object.entries(retained)) {
-    if (entry?.superseded) { lobby.recoveryDocs?.set(key, entry); stats.deferredMatches++; }
+    if (entry?.superseded) { countRecoveryRemoval(lobby, 'superseded'); }
     else if (!matches.has(key) && entry?.checkpoint) matches.set(key, entry.checkpoint);
   }
   const sessionDocs = new Map();
@@ -170,15 +173,15 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
   }
   const activeIds = new Set([...matches.values()].flatMap((cp) => Array.isArray(cp?.players)
     ? cp.players.filter((p) => p && !p.isBot && !p.left).map((p) => p.playerId) : []));
+  const soloIds = new Set([...matches.values()].filter(cp => cp?.mode === 'solo').flatMap(cp =>
+    Array.isArray(cp.players) ? cp.players.filter(p => p && !p.isBot && !p.left).map(p => p.playerId) : []));
   const sessionMatchKeys = new Map([...sessionDocs].filter(([, s]) => typeof s.activeMatchKey === 'string').map(([id, s]) => [id, s.activeMatchKey]));
 
   for (const s of [...sessionDocs.values()].sort((a, b) => Number(activeIds.has(b.playerId)) - Number(activeIds.has(a.playerId)))) {
     // a session that was connected when the document was written was cut off by the restart itself: its window starts now
     const since = s.connected === false && Number.isFinite(s.disconnectedAt) ? Number(s.disconnectedAt) : now;
     // Extensions are solo retention windows. Clamp old 24-hour records to the current branch setting.
-    const windowMs = Number.isFinite(s.resumeWindowMs) && s.resumeWindowMs > 0
-      ? Math.min(Number(s.resumeWindowMs), lobby.soloResumeWindowMs()) : null;
-    const window = windowMs != null && windowMs > registry.reconnectWindowMs ? windowMs : registry.reconnectWindowMs;
+    const { extension: windowMs, window } = resumeWindowMs(s, registry, lobby, soloIds.has(s.playerId));
     if (now - since > window) { stats.expired++; continue; }
     try {
       const session = registry.adopt({
@@ -252,13 +255,25 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
     || (Number(b?.savedAt) || 0) - (Number(a?.savedAt) || 0));
   const pendingRestores = [];
   const deferMatch = (key, raw) => {
-    stats.deferredMatches++;
     const ids = new Set(Array.isArray(raw.players) ? raw.players.map((p) => p?.playerId) : []);
-    lobby.recoveryDocs?.set(key, { checkpoint: raw, room: roomDocs.get(key) || null,
-      sessions: [...sessionDocs.values()].filter((s) => ids.has(s.playerId)), departedPlayerIds: departures(key),
-      battleSeq: Number(doc.matchBattleSeq?.[key]) || Number(retained[key]?.battleSeq) || 0 });
+    const entry = { checkpoint: raw, room: roomDocs.get(key) || null,
+      sessions: [...sessionDocs.values()].filter(s => ids.has(s.playerId)).map(s => {
+        const live = registry.byId(s.playerId);
+        if (live?.token === s.token) return sessionDoc(live, now, s.activeMatchKey || null);
+        return { ...s, connected: false, disconnectedAt: s.connected === false && Number.isFinite(s.disconnectedAt)
+          ? s.disconnectedAt : retained[key]?.retainedAt ?? now };
+      }), departedPlayerIds: departures(key), retainedAt: retained[key]?.retainedAt ?? now,
+      battleSeq: Number(doc.matchBattleSeq?.[key]) || Number(retained[key]?.battleSeq) || 0 };
     const room = lobby.getRoom(key);
     if (room && !room.match) lobby.disposeEmptyRoom(room);
+    const reason = recoveryRemovalReason(key, entry, registry, lobby, now);
+    if (reason) {
+      lobby.recoveryDocs?.delete(key);
+      countRecoveryRemoval(lobby, reason);
+      return;
+    }
+    stats.deferredMatches++;
+    lobby.recoveryDocs?.set(key, entry);
     log.warn?.(`[persist] ${key}: checkpoint retained for a later recovery attempt`);
   };
   for (const [key, raw] of ordered) {
@@ -325,20 +340,18 @@ export class Persister {
     this.writes = 0;
     this.skipped = 0;
     this.failures = 0;
+    this.lastTiming = null;
     this.running = false;
     this._busy = false;
     this._flush = null;
     this.pendingLoad = false;
-    this._startFlush = false;
-    this._startFlushTimer = null;
     this.previousMatchStarted = lobby.onMatchStarted;
     this.matchStarted = (item) => {
       try { this.previousMatchStarted?.(item); }
       catch (e) { this.log.warn?.(`[persist] ${item.key}: previous start hook failed (${e.message}); checkpoint capture continues`); }
       // request() structured-clones the capture before the next client action can mutate the match.
-      this.checkpoint(item).then((captured) => {
-        if (captured && this.running) this.flush('match-start').catch(() => {});
-      }).catch((e) => this.log.warn?.(`[persist] ${item.key}: initial checkpoint failed (${e.message})`));
+      // Capture immediately even if combat starts before the next tick; Redis writes stay on the save interval.
+      this.checkpoint(item).catch((e) => this.log.warn?.(`[persist] ${item.key}: initial checkpoint failed (${e.message})`));
     };
     lobby.onMatchStarted = this.matchStarted;
   }
@@ -384,7 +397,8 @@ export class Persister {
       matches[key] = cp;
       this.checkpointTimes.set(match, Number.isFinite(doc.savedAt) ? doc.savedAt : this.now());
     }
-    const seedDoc = { ...doc, matches };
+    // Use normalized current sessions/recovery: old connected flags must never renew a deferred identity.
+    const seedDoc = { ...snapshotServer({ registry: this.registry, lobby: this.lobby, now: this.now() }), matches };
     this.encoder.rememberDocument(seedDoc, entries);
     this.checkpointKeys = new Set(entries.filter(({ key }) => matches[key]).map(({ key }) => key));
     try {
@@ -482,13 +496,17 @@ export class Persister {
   }
 
   async serialized() {
+    const started = performance.now();
     await this.checkpointMatches();
+    const captured = performance.now();
     // Re-enumerate after yields: ended matches or a new match in the same room must never get an old checkpoint.
     const entries = this.entries().map(({ key, generation }) => ({ key, generation }));
     const doc = snapshotServer({ registry: this.registry, lobby: this.lobby, now: this.now() });
-    const result = await this.encoder.request('serialize', { doc, entries });
+    const assembled = performance.now();
+    const result = await this.encoder.serialize(doc, entries);
     this.checkpointKeys = new Set(result.keys);
-    return { ...result, entries };
+    return { ...result, entries, timing: { captureMs: captured - started, assembleMs: assembled - captured,
+      postMs: result.postMs, encodeMs: result.encodeMs, serializeMs: performance.now() - assembled } };
   }
 
   /** Diagnostic API only: decoding a whole document here does run on the calling thread. */
@@ -501,44 +519,38 @@ export class Persister {
   async flush(reason = 'tick') {
     if (!this.store) return false;
     if (this._busy) {
-      if (reason === 'match-start') this._startFlush = true;
       if (['tick', 'interval', 'match-start'].includes(reason)) return false;
       await this._flush;
       return this.flush(reason);
     }
-    this._startFlush = false;
-    if (this._startFlushTimer) { clearImmediate(this._startFlushTimer); this._startFlushTimer = null; }
     this._busy = true;
     this._flush = this.write(reason);
     try { return await this._flush; }
     finally {
       this._busy = false;
       this._flush = null;
-      if (this._startFlush && this.running && !this._startFlushTimer) {
-        this._startFlush = false;
-        this._startFlushTimer = setImmediate(() => {
-          this._startFlushTimer = null;
-          if (this.running) this.flush('match-start').catch(() => {});
-        });
-        this._startFlushTimer.unref?.();
-      }
     }
   }
 
   async write(reason) {
+    const started = performance.now();
     try {
       if (this.pendingLoad && !await this.retryLoad()) { this.skipped++; return false; }
-      const { bytes, entries } = await this.serialized();
+      const { bytes, entries, timing } = await this.serialized();
       const buffer = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
       // Real Redis takes already encoded bytes. Legacy injected stores retain their object API (tests / diagnostics).
+      const saving = performance.now();
       const ok = typeof this.store.saveSerialized === 'function'
         ? await this.store.saveSerialized(buffer)
         : await this.store.save(JSON.parse(buffer.toString('utf8')));
       if (ok) { this.writes++; this.encoder.remember(bytes, entries); }
       else { this.failures++; this.log.debug?.(`[persist] write skipped (${reason})`); }
+      this.lastTiming = { ...timing, writeMs: performance.now() - saving, totalMs: performance.now() - started,
+        sampledAt: this.now(), reason, ok };
       return ok;
     } catch (e) {
       this.failures++;
+      this.lastTiming = { sampledAt: this.now(), reason, ok: false, totalMs: performance.now() - started };
       this.log.warn?.('[persist] save failed', e);
       return false;
     }
@@ -556,8 +568,6 @@ export class Persister {
   stop() {
     this.running = false;
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
-    if (this._startFlushTimer) { clearImmediate(this._startFlushTimer); this._startFlushTimer = null; }
-    this._startFlush = false;
   }
 
   /** Stop and write the final document. */

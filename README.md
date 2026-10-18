@@ -140,7 +140,8 @@ npm start          # 启动服务器：http://localhost:3000
 | `SP_REDIS_URL` | 空 | 设置后把会话、房间与对局检查点存入 Redis（容器重启后玩家回到原座位，见 [docs/DEPLOY.md](docs/DEPLOY.md)「断点续玩」）；不设置 = 纯内存、行为与以前完全一致 |
 | `SP_REDIS_PREFIX` | `stronghold:` | Redis 键前缀（多个实例共用一个 Redis 时区分） |
 | `SP_REDIS_TTL` | `90000` | 状态键的过期秒数（默认 25 小时，兜底清理） |
-| `SP_REDIS_SAVE_MS` | `10000` | 状态写入间隔（毫秒）；优雅关闭时另会立即写一次 |
+| `SP_REDIS_SAVE_MS` | `30000` | 周期检查和状态写入间隔（毫秒）；开局捕获合并到周期写入，优雅关闭时另存最后一次 |
+| `SP_SHUTDOWN_TIMEOUT_MS` | `60000` | 正常退出等待最后存档与资源关闭的上限（毫秒）；超时退出码为 1 |
 | `SP_ASSETS_CDN` | 空 | 素材 CDN 目录，例如 `https://cdn.example.com/stronghold` 或同源 `/cdn`：素材清单里的 `/assets/…` 改写为该地址；清单从数据 CDN 读取时由浏览器改写（见 [docs/ASSETS.md](docs/ASSETS.md)「CDN」） |
 | `SP_DATA_CDN` | 空 | 数据 CDN 根目录，例如 `https://cdn.example.com/stronghold`：浏览器直接从该目录下的 `data/` 读取静态 JSON（含 `assets.json`、`asset-hashes.json`），上传原文件即可；本地 `data/` 仍须保留，本地素材清单与动态预载清单继续走游戏源站；Node 的 `/data/` 始终提供本地数据，不跳转（见 [docs/DEPLOY.md](docs/DEPLOY.md#32-素材放-cdn)） |
 | `SP_MAX_ROOMS` | `1000` | 全局同时存在的房间数上限（含正在对局的房间）；满了新房间会被拒绝 |

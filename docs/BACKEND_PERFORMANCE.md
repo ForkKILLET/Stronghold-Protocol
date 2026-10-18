@@ -41,3 +41,14 @@ node tools/server-hotpathsbench.mjs --matches 128 --lanes 4 --rounds 10 --checks
 本机 i7-14700HX / Node v26.7.0 单次前后观察：状态转发主线程 ELU active 58.35 → 22.02ms；三次保存墙钟 294.65 → 87.60ms。ELU active 不是主线程 CPU 时间。测试为 INFO_CHECK、模拟连接和内存接收器，不包含真实战斗、Redis、TLS、公网或生产容量验收。
 
 部署需要重启服务；本次没有部署、重启现网或开展 3000 人实战压测。
+
+## 2026-10-18 存档回收与周期保存补充
+
+本次用户快照为 1009 个对局、存档 67,186,924B、运行 15,434 秒、写入 5209 次，平均约 2.96 秒一次。最近十秒主线程 ELU 58.82%、P99 181.01ms、max 222.69ms，四个 Match Worker ELU 约 22%–24%；检查点超时和缺失均为 0。快照没有 recovery 分项，不能把整份 64.1MiB 都归为垃圾，也不能确认保存是每个尖峰的根因。
+
+- 失败恢复仅在至少一名原真人身份仍在有效重连窗口内时保留；所有真人过期或离场后，加载和下一次保存均清除 recovery。新局替代旧局及历史 superseded 记录直接清除。有效但缺少插件/游戏数据的检查点保留，单人六小时、同盟十分钟；冻结墙钟断线时间，保存/重启不续期，不用模拟 savedAt 计算保留期。启动时在线的单人身份即使旧记录没有扩展字段，也按当前单人窗口恢复。
+- 未变化的 recovery 对象在持久化 Worker 内缓存，主线程仅提交增删替换；线程故障后重新同步有效记录。JSON 格式及对局 generation 校验保留，不增加主线程整份编码。
+- 按用户要求，周期检查及 Redis 写入默认由十秒延长至三十秒；开局立即捕获安全检查点，整份写入等待周期，不再因开局串联额外保存。显式 SP_REDIS_SAVE_MS 仍优先。正常退出先等已有保存，再捕获并写最后一份，随后才销毁房间和 Worker。原进程五秒退出兜底改为 SP_SHUTDOWN_TIMEOUT_MS 默认六十秒，超时以失败状态退出；容器停止宽限须大于此值。
+- /metrics.persist 提供回收保留/分类删除计数、有效保存间隔、失败/跳过计数及最近一次保存的分段耗时。Exporter 提供 sp_persist_recovery_retained、sp_persist_recovery_removed_*_total、sp_persist_save_interval_seconds、sp_persist_last_*_seconds。postMs 为主线程提交序列化请求耗时，encodeMs 在 Worker，二者已包含于 serializeMs；capture/serialize/write 含等待，不能相加解释成主线程 CPU 或公网 RTT。
+
+验证包含过期回收、有效数据缺失保护、重复重启不续期、Worker 缓存/故障恢复、三十秒定时、在途写入与最后存档，以及保存超过原五秒上限后才退出。部署须重启游戏服务并更新 exporter；已有 SP_REDIS_SAVE_MS=10000 要改为 30000。本轮未部署或验证线上尖峰下降。异常崩溃、强制结束和断电只能恢复最近成功写入的进度，三十秒周期扩大了这段耐久窗口。
