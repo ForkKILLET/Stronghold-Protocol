@@ -27,6 +27,8 @@ const fields = [
   ['persist_recovery_retained', 'persist.recovery.retained'],
   ...['capture', 'assemble', 'post', 'encode', 'serialize', 'write', 'total'].map(k =>
     ['persist_last_' + k + '_seconds', 'persist.timing.' + k + 'Ms', 0.001]),
+  ['persist_last_post_max_seconds', 'persist.timing.postMaxMs', 0.001],
+  ['persist_last_post_batches', 'persist.timing.postBatches'],
   ['persist_last_sample_timestamp_seconds', 'persist.timing.sampledAt', 0.001],
   ['persist_heap_used_bytes', 'persist.workerMemory.heapUsed'], ['persist_heap_total_bytes', 'persist.workerMemory.heapTotal'],
   ['persist_memory_sample_timestamp_seconds', 'persist.workerMemory.sampledAt', 0.001],

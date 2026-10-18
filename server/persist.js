@@ -503,10 +503,11 @@ export class Persister {
     const entries = this.entries().map(({ key, generation }) => ({ key, generation }));
     const doc = snapshotServer({ registry: this.registry, lobby: this.lobby, now: this.now() });
     const assembled = performance.now();
-    const result = await this.encoder.serialize(doc, entries);
+    const result = await this.encoder.serialize(doc, entries, this.generationSeq);
     this.checkpointKeys = new Set(result.keys);
     return { ...result, entries, timing: { captureMs: captured - started, assembleMs: assembled - captured,
-      postMs: result.postMs, encodeMs: result.encodeMs, serializeMs: performance.now() - assembled } };
+      postMs: result.postMs, postMaxMs: result.postMaxMs, postBatches: result.postBatches,
+      encodeMs: result.encodeMs, serializeMs: performance.now() - assembled } };
   }
 
   /** Diagnostic API only: decoding a whole document here does run on the calling thread. */

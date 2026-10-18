@@ -52,3 +52,14 @@ node tools/server-hotpathsbench.mjs --matches 128 --lanes 4 --rounds 10 --checks
 - /metrics.persist 提供回收保留/分类删除计数、有效保存间隔、失败/跳过计数及最近一次保存的分段耗时。Exporter 提供 sp_persist_recovery_retained、sp_persist_recovery_removed_*_total、sp_persist_save_interval_seconds、sp_persist_last_*_seconds。postMs 为主线程提交序列化请求耗时，encodeMs 在 Worker，二者已包含于 serializeMs；capture/serialize/write 含等待，不能相加解释成主线程 CPU 或公网 RTT。
 
 验证包含过期回收、有效数据缺失保护、重复重启不续期、Worker 缓存/故障恢复、三十秒定时、在途写入与最后存档，以及保存超过原五秒上限后才退出。部署须重启游戏服务并更新 exporter；已有 SP_REDIS_SAVE_MS=10000 要改为 30000。本轮未部署或验证线上尖峰下降。异常崩溃、强制结束和断电只能恢复最近成功写入的进度，三十秒周期扩大了这段耐久窗口。
+
+## 2026-10-18 存档元数据分批传输
+
+`metrics/202610181435metrics.json` 的最近保存：捕获 747.71ms、组装 7.74ms、主线程提交 51.14ms、Worker 编码 299.45ms、Redis 写入 71.59ms、整轮 1242.86ms，存档 42,497,656B。这里确认的连续同步工作是整包 `postMessage` 复制，其他异步阶段不能直接解释成主线程阻塞。该快照最近十秒 max 为 35.23ms，启动以来 max 为 1715.47ms，不能从单份样本断言历史尖峰都来自保存。
+
+- 会话和房间改为每批最多八行，等待 Worker 确认后让出事件循环；Worker 负责拼装及整份编码。每次保存对 Session/Seat 共享配置建立临时引用表，减少跨批次重复复制；下一次保存重新读取，兼容恢复的可变旧结构，不引入按身份永久缓存的遗漏更新问题。
+- 中途故障丢弃整轮，不在新 Worker 上继续半份元数据。已编码的最后成功快照使用发布后只读的 `SharedArrayBuffer`，Worker 重启按同一缓冲恢复，不在主线程克隆整份字节。失败写入不推进重播种子。Redis 仍写相同 UTF-8 JSON，格式、键、TTL 和退出保存顺序不变。
+- 分批期间较新的 Match generation 不混入旧元数据，也不被旧快照的清理删除；下一次保存继续使用它的检查点。原本的旧 generation 防覆盖规则保留。
+- `timing.postMs` 现在是全部批次同步提交之和，`postMaxMs` 是最长单次提交，`postBatches` 是提交次数，线程创建也计入提交。批次打包及 GC 不计入提交计时；主线程仍组装元数据、使用 Redis 客户端发送整份字节，未宣称全部保存工作已移出主线程。单条很大的资料、有效 recovery 首次同步及其他负载仍可能造成尖峰。
+
+本地复现：`node tools/persistbench.mjs --metadata`，合成 3000 会话、1000 房间、300 项配置/人，JSON 86,020,604B，不包含 Match 捕获、真实战斗、Redis、TLS 或公网。三轮修改前提交 168.72–183.64ms，心跳最大间隔 168.94–183.79ms；最终实现单次最长提交 1.18–1.55ms、心跳最大间隔 16.02–16.89ms，整轮 498.36–527.68ms（原实现 549.75–567.71ms）。心跳由本机 1ms 定时器观察，受平台定时器精度影响；这些是单机微基准，不能推断生产容量或承诺线上尖峰消失。部署需重启游戏及更新 exporter，再对照相近负载下的 postMaxMs、事件循环近期窗口和写入计数。

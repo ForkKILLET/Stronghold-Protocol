@@ -197,6 +197,7 @@ scrape_configs:
 - sp_persist_recovery_retained：仍保留的失败恢复记录数。
 - sp_persist_recovery_removed_expired_total / superseded_total / departed_total：进程内按原因累计清理数。
 - sp_persist_last_capture_seconds / assemble_seconds / post_seconds / encode_seconds / serialize_seconds / write_seconds / total_seconds：最近保存各阶段耗时；sp_persist_last_sample_timestamp_seconds 用于判断样本是否陈旧。post 与 encode 包含在 serialize 中，不能重复相加，也不是客户端 RTT 或主线程 CPU 时间。
+- 分批传输后，post_seconds 是所有提交的同步耗时之和，sp_persist_last_post_max_seconds 对应 `/metrics.persist.timing.postMaxMs`，观察最长单次提交；sp_persist_last_post_batches 是提交次数。总提交耗时高不等于一次连续卡顿。线程创建耗时计入提交；元数据组装、批次打包、GC 和 Redis 客户端提交不包含于 postMaxMs。
 - sp_persist_failures_total / skipped_total：保存与捕获失败、因读取待恢复而跳过的次数。
 
 存档字节仍是最近成功保存的整份 JSON 大小。清理计数变化后，须看到 writes 增加才表示 Redis 已保存清理后的文档。正常退出会在等待已有写入后另存最终状态；SP_SHUTDOWN_TIMEOUT_MS 默认 60000，容器停止宽限应更长，例如 70 秒。异常强制终止不保证执行最后存档。
