@@ -137,6 +137,7 @@ export const ANIM = Object.freeze({ IDLE: 0, MOVE: 1, ATTACK: 2, SKILL: 3, DIE: 
 export const ERR = Object.freeze({
   BAD_MSG: 'BAD_MSG',             // malformed / unknown message
   SESSION_IN_USE: 'SESSION_IN_USE', // a local recovery candidate cannot replace the connected holder
+  SERVER_FULL: 'SERVER_FULL',
   NAME_REJECTED: 'NAME_REJECTED',
   CHAT_REJECTED: 'CHAT_REJECTED',
   RATE: 'RATE',                   // rate limited
@@ -188,6 +189,7 @@ export const ERR = Object.freeze({
 });
 
 export const ERR_TEXT = {
+  SERVER_FULL: N_('当前服务器容量已满'),
   SESSION_IN_USE: N_('此对局仍在其他窗口中，或当前浏览器无法安全恢复。请关闭原窗口后重试。'),
   NAME_REJECTED: N_('该名称不可用'),
   CHAT_REJECTED: N_('该内容不可用'),

@@ -47,6 +47,7 @@ export { stripLoneSurrogates, sanitizeName, isValidName } from '../ui/playerName
  * @returns {boolean} false when the name is invalid
  */
 export function enterSession(rawName) {
+  if (net.lastError?.code === 'SERVER_FULL') return false;
   const name = sanitizeName(rawName);
   if (!name) return false;
   identity.saveName(name);
@@ -56,9 +57,10 @@ export function enterSession(rawName) {
   return true;
 }
 
-/** Explicit rejection always returns to the editable title, even if a rename preserved the accepted session. */
+/** Name rejection or server capacity refusal returns to the title without abandoning the saved identity. */
 export function returnToTitleAfterNameReview(error, connection = net, sessionIdentity = identity, state = store) {
-  if (error?.code !== 'NAME_REJECTED' && !(error?.code === 'BAD_MSG' && connection.status !== 'online')) return false;
+  if (!['NAME_REJECTED', 'SERVER_FULL'].includes(error?.code)
+    && !(error?.code === 'BAD_MSG' && connection.status !== 'online')) return false;
   sessionIdentity.setEntered(false);
   state.patch('session', { entered: false });
   state.patch('ui', { restoring: false });
@@ -202,7 +204,9 @@ export function TitleScreen() {
   const cssRidges = assetsSettled && (!ridges || ridgesFailed);
 
   const valid = isValidName(name);
+  const serverFull = conn.lastError?.code === 'SERVER_FULL';
   const start = () => {
+    if (serverFull) return;
     if (!valid) { toast(t('请输入博士代号'), 'warn'); return; }
     enterSession(name);
   };
@@ -265,10 +269,10 @@ export function TitleScreen() {
         <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
-        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid} onClick=${start}>${t('开始')}<//>
+        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid || serverFull} onClick=${start}>${t('开始')}<//>
         <div class="title-conn">
           <span class=${`status-dot ${dotClass}`}></span>
-          <span>${STATUS_TEXT[conn.status] ? t(STATUS_TEXT[conn.status]) : conn.status}</span>
+          <span role=${serverFull ? 'alert' : undefined}>${serverFull ? t('当前服务器容量已满') : STATUS_TEXT[conn.status] ? t(STATUS_TEXT[conn.status]) : conn.status}</span>
           ${conn.status === 'online' ? html`<${PingPill} ms=${conn.ping} />` : null}
           <${GuideButton} class="title-guide" label=${t('玩法说明')} />
           <button type="button" class="title-settings fsbtn tapx" aria-label=${t('设置')} title=${t('设置')}

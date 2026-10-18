@@ -129,7 +129,8 @@ test('sessions older than their reconnect window are dropped, with their seats',
   const stats = restoreServer({ doc, registry, lobby, now, log: quietLog });
   assert.equal(stats.expired, 1, 'the 10-minute session is gone');
   assert.equal(stats.sessions, 2);
-  assert.ok(registry.byToken('cc'), 'the 24 h solo window survives');
+  assert.ok(registry.byToken('cc'), 'the solo window survives and is shortened for old records');
+  assert.equal(registry.byToken('cc').resumeWindowMs, 6 * 3600_000);
   assert.equal(registry.byToken('bb'), null);
   const coop = lobby.getRoom('AAAA');
   assert.ok(coop);
@@ -357,7 +358,7 @@ test('a room matchmaking match resumes from its last checkpoint', async (t) => {
   }
 });
 
-test('a checkpoint whose player lost their session is not resumed (room stays in the lobby)', async (t) => {
+test('a legacy 24-hour solo checkpoint expires after the branch 6-hour window and its empty room is reclaimed', async (t) => {
   const store = new MemoryStore();
   const servers = [];
   const boot = async () => {
@@ -383,12 +384,16 @@ test('a checkpoint whose player lost their session is not resumed (room stays in
   await c.close();
   await srvA.close();
 
-  // the player is gone for three days: the solo 24 h window is over
+  // A pre-upgrade 24-hour extension must not retain a solo room after 6 hours.
   const doc = JSON.parse(JSON.stringify(store.doc));
-  const threeDays = 3 * 24 * 3600_000;
+  const sevenHours = 7 * 3600_000;
   // both fields matter: a session that was *connected* when the document was written is measured from the load, not
   // from the recorded disconnect time (server/persist.js), so a resurrected "connected" flag would keep it alive
-  for (const s of doc.sessions) { s.connected = false; s.disconnectedAt = Date.now() - threeDays; }
+  for (const s of doc.sessions) {
+    s.connected = false;
+    s.disconnectedAt = Date.now() - sevenHours;
+    s.resumeWindowMs = 24 * 3600_000;
+  }
   doc.rooms[0].seats.forEach((s) => { s.connected = false; });
   await store.save(doc);
 
@@ -397,4 +402,35 @@ test('a checkpoint whose player lost their session is not resumed (room stays in
   // by the test runner and blow the heap up
   assert.equal(srvB.lobby.rooms.size, 0, 'no room without a session');
   assert.equal(srvB.registry.size, 0, 'no session either');
+});
+
+test('solo retention expires at the six-hour boundary and disposes the abandoned room', (t) => {
+  let now = 1_000_000;
+  const registry = new SessionRegistry({ now: () => now });
+  const lobby = new Lobby({ registry, now: () => now, log: quietLog, MatchClass: StubMatch,
+    getData: () => ({ config: { constants: { singleReconnectTime: 86_400 } } }) });
+  t.after(() => lobby.shutdown());
+  assert.equal(lobby.soloResumeWindowMs(), 6 * 3600_000);
+  lobby.opts.soloReconnectWindowMs = null;
+  assert.equal(lobby.soloResumeWindowMs(), 6 * 3600_000, 'official data does not restore 24 hours');
+  lobby.opts.soloReconnectWindowMs = 1000;
+  assert.equal(lobby.soloResumeWindowMs(), 1000, 'explicit override still works');
+  lobby.opts.soloReconnectWindowMs = 6 * 3600_000;
+  const session = registry.create('Solo');
+  session.connected = true;
+  assert.deepEqual(lobby.create(session, { mode: 'solo', difficulty: 'NORMAL' }), { ok: true });
+  const code = session.roomCode;
+  assert.deepEqual(lobby.start(session), { ok: true });
+  session.connected = false;
+  session.disconnectedAt = now;
+  lobby.onDisconnect(session);
+  assert.equal(session.resumeWindowMs, 6 * 3600_000);
+  now += 6 * 3600_000;
+  assert.equal(registry.sweep().length, 0, 'still resumable exactly at the boundary');
+  now++;
+  const expired = registry.sweep();
+  assert.equal(expired.length, 1);
+  lobby.onExpire(expired[0]);
+  assert.equal(lobby.getRoom(code), null);
+  assert.equal(registry.byToken(session.token), null);
 });

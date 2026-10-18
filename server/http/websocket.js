@@ -4,7 +4,8 @@
 //     protocol, server/net.js), built from the startServer() options (config.js decides which go where);
 //   * WebSocket (ws) at /ws, maxPayload 64 KB, permessage-deflate (WS_DEFLATE) → Network.handleConnection. Refused at
 //     the upgrade: any other path 404; per-network socket limit for internet clients (maxConnectionsPerAddr, see net.js
-//     clientAddress; local/LAN peers are exempt) 429; server full (maxConnections) or shutting down 503.
+//     clientAddress; local/LAN peers are exempt) 429; unauthenticated socket cap or shutting down 503.
+//     The online player cap (maxConnections) is checked at hello, allowing authenticated match recovery.
 
 import { WebSocketServer } from 'ws';
 import { Network, SessionRegistry, NET_DEFAULTS, send } from '../net.js';
@@ -77,7 +78,8 @@ export function createSessionStack(opts, { data, log, workerPool, matchWorkerPoo
   for (const [target, key, env, fallback] of envLimits) {
     if (target[key] == null) target[key] = parseEnvLimit(process.env[env], fallback, env, log);
   }
-  log.info(`[http] limits: rooms ${lobbyOptions.maxRooms} (${perNetwork(lobbyOptions.maxRoomsPerAddr)}/network), matches ${perNetwork(lobbyOptions.maxMatchesPerAddr)}/network, sockets ${netOptions.maxConnections} (${perNetwork(netOptions.maxConnectionsPerAddr)}/network)`);
+  netOptions.maxPendingConnections ??= NET_DEFAULTS.maxPendingConnections;
+  log.info(`[http] limits: rooms ${lobbyOptions.maxRooms} (${perNetwork(lobbyOptions.maxRoomsPerAddr)}/network), matches ${perNetwork(lobbyOptions.maxMatchesPerAddr)}/network, online ${netOptions.maxConnections}, sockets ${perNetwork(netOptions.maxConnectionsPerAddr)}/network, pending ${netOptions.maxPendingConnections}`);
   log.info(`[match] tuning: combat ${parseCombat(process.env.SP_COMBAT)}, verify ${parseVerify(process.env.SP_VERIFY)}, bot rehearsal ${parseBotRehearsal(process.env.SP_BOT_REHEARSAL)} (docs/DEPLOY.md §3.4)`);
   const registry = new SessionRegistry({ reconnectWindowMs: netOptions.reconnectWindowMs ?? NET_DEFAULTS.reconnectWindowMs });
   const lobby = new Lobby({

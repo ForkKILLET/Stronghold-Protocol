@@ -1,4 +1,5 @@
 {
+  "当前服务器容量已满": "The server is currently full",
   "部署时镜头缩放": "Deployment camera zoom",
   "放置或移动干员、装备时临时收起商店并放大棋盘，结束后恢复。默认关闭，不影响手动收起商店。": "Temporarily hide the shop and zoom in while placing or moving operators and equipment, then restore the view. Off by default; manual shop folding is unchanged.",
   "_meta": {

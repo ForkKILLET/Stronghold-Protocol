@@ -15,7 +15,7 @@
 //   * The sockets themselves (every client reconnects and is rebound by its token — that is the point).
 //   * A solo pause (g.pause) and the exact remaining clock of a battle: on restore the phase clock restarts from the
 //     remaining time the checkpoint recorded, with at least 20 s of prep (snapshot.MIN_RECOVER_PREP_SEC).
-//   * A session whose reconnect window elapsed while the server was down (10 min for a co-op room, 24 h for a solo run:
+//   * A session whose reconnect window elapsed while the server was down (10 min for a co-op room, 6 h for a solo run:
 //     lobby.soloReconnectWindowMs). Its room is dropped too when nobody is left in it; a running match whose human seat
 //     lost its session leaves the restored match; the other valid identities continue. A checkpoint with no usable
 //     human identity is retained for a later recovery attempt. Latest departures travel separately from checkpoints.
@@ -57,6 +57,7 @@ export function sessionDoc(s, now, activeMatchKey = null) {
     resumeWindowMs: typeof s.resumeWindowMs === 'number' && s.resumeWindowMs > 0 ? s.resumeWindowMs : null,
     connected: !!s.connected,
     disconnectedAt: s.connected || s.disconnectedAt == null ? now : s.disconnectedAt,
+    lastMatchAt: s.lastMatchAt ?? null,
     activeMatchKey,
     notice: s.notice || null,
     pendingResult: s.pendingResult || null,
@@ -174,7 +175,9 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
   for (const s of [...sessionDocs.values()].sort((a, b) => Number(activeIds.has(b.playerId)) - Number(activeIds.has(a.playerId)))) {
     // a session that was connected when the document was written was cut off by the restart itself: its window starts now
     const since = s.connected === false && Number.isFinite(s.disconnectedAt) ? Number(s.disconnectedAt) : now;
-    const windowMs = Number.isFinite(s.resumeWindowMs) && s.resumeWindowMs > 0 ? Number(s.resumeWindowMs) : null;
+    // Extensions are solo retention windows. Clamp old 24-hour records to the current branch setting.
+    const windowMs = Number.isFinite(s.resumeWindowMs) && s.resumeWindowMs > 0
+      ? Math.min(Number(s.resumeWindowMs), lobby.soloResumeWindowMs()) : null;
     const window = windowMs != null && windowMs > registry.reconnectWindowMs ? windowMs : registry.reconnectWindowMs;
     if (now - since > window) { stats.expired++; continue; }
     try {
@@ -183,6 +186,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
         token: s.token,
         name: typeof s.name === 'string' ? s.name : t('博士'),
         disconnectedAt: since,
+        lastMatchAt: s.lastMatchAt,
         resumeWindowMs: windowMs,
         roomCode: s.roomCode,
         loadoutCs: s.loadoutCs, notOwnedCs: s.notOwnedCs, diyCs: s.diyCs,
