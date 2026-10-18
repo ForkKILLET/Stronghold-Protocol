@@ -413,3 +413,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-18 快捷键录入时 Tab 取消录入且保留正常焦点移动，Esc 先取消录入而不关闭弹窗；随后 Esc 逐层关闭快捷键子弹窗、设置并恢复原入口焦点。取消不更改已有绑定，回归 modal.e2e.test.js 使用当前子弹窗结构。
 
 - 2026-10-18 公告的更新日志以根目录 CHANGELOG.md 的 Fork／本部署章节为唯一来源，通过 /api/changelog 按需读取并缓存 2 秒，不混入上游版本或 WebSocket 初始消息。按日期归组、默认展开最新一天，复用 Tabs／安全 Markdown 与主题滚动条；GitHub 相对链接保留来源语义，镜像必须复制 CHANGELOG。现有公告排期、自动弹出／延后、已读及撤回行为保留，运行时 config/announcements.json 不纳入此次修改。
+
+- 2026-10-18 房间席位主区与底栏分别建立层叠上下文，踢人／移除 AI、气泡和交流浮层的层级仅在房间内容内生效；共享顶栏的设置及其嵌套面板、公告和玩法说明必须完整覆盖这些控件。验证 test/ui/room-overlays.e2e.test.js（SP_E2E=1，Chrome／Firefox）。

@@ -31,6 +31,9 @@
 .room-screen .rseat__actions { display: flex; justify-content: center; min-height: .54rem; }
 .room-screen .rseat__plate { flex: none; }
 
+/* Keep seat/bubble and communication layers below the shared header and its menus. */
+.room-screen > .seats, .room-screen > .room-bar { isolation: isolate; }
+
 /* ---- invite key ---------------------------------------------------------------------------------------- */
 .room-invitation { flex:none; display:flex; justify-content:center; padding:8px 16px; border-bottom:1px solid var(--line); background:#0a1210a6; }
 .invite {
