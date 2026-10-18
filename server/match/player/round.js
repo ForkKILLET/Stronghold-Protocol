@@ -150,8 +150,10 @@ export class PlayerRound {
           const lo = this.loadoutFor(this.gd.chess(piece.id));
           u.skillIndex = lo.skillIndex;
           u.moduleId = lo.moduleId;
+        }
+        if (!u.standIn) {
           // 皮肤 (docs/SKINS.md): this player's choice for this chess, carried the same way the loadout is so it
-          // reaches the sim, the snapshot and every teammate's renderer. Absent = the operator's default model.
+          // reaches the sim, the snapshot and every teammate's renderer, including DIY picks.
           // setSkins stores only BASE chess ids, so a merged (golden) piece — whose id is its own — is looked up by
           // baseId: a skin chosen before the merge survives it instead of silently reverting to the default model.
           const baseId = (this.gd.chess(piece.id) || {}).baseId || piece.id;

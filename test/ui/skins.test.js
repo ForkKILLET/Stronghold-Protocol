@@ -77,7 +77,7 @@ test('preference sanitising caps wire size, rejects prototype keys and filters n
   assert.equal(Object.keys(cleanSkins(big)).length, SKIN_LIMITS.entries);
   assert.deepEqual(cleanSkins(JSON.parse('{"__proto__":"char_x@s#1","constructor":"char_x@s#1","x":"bad/id"}')), {});
   const chess = { good: {}, hidden: { visible: false }, golden: { isGolden: true }, diy: { isDiy: true }, alias: { baseId: 'good' } };
-  assert.deepEqual(freezeSkins(Object.fromEntries(Object.keys(chess).map((id) => [id, SKIN])), (id) => chess[id]), { good: SKIN });
+  assert.deepEqual(freezeSkins(Object.fromEntries(Object.keys(chess).map((id) => [id, SKIN])), (id) => chess[id]), { good: SKIN, diy: SKIN });
 });
 
 test('picker offers only deployed models, uses operator ids and clears only one selection', (t) => {
@@ -100,7 +100,7 @@ test('picker/catalogue are lazy and both renderer paths honour the viewer settin
   assert.doesNotMatch(picker, /setInterval|room\.skin\.install/);
   assert.match(read('public/js/screens/loadout.js'), /<\$\{SkinSection\} chess=\$\{chess\}/);
   const app = read('public/js/render/app.js');
-  assert.match(app, /skin: si \|\| dr \? null : piece.skin \?\? null/);
+  assert.match(app, /skin: si \? null : piece.skin \?\? null/);
   assert.doesNotMatch(app, /skinFor/);
   assert.match(app, /for \(const v of views.values\(\)\) v.refreshSkin\?\.\(\)/);
   const fallback = read('public/js/ui/fallbackField.js');

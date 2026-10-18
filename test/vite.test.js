@@ -146,20 +146,23 @@ test('built simulation retains operator kits and domain mechanics: same determin
   }
 });
 
-test('built simulation carries owner skins without changing deterministic combat outcomes', async () => {
+for (const [label, chessId, skin, diy] of [
+  ['preset', 'chess_char_1_01_a', 'char_498_inside@kitchen#2', null],
+  ['DIY', 'chess_char_5_diy1_a', 'char_112_siege@striker#2', { charId: 'char_112_siege', skillIndex: 2, uniEquipId: 'uniequip_002_siege' }],
+]) test(`built simulation carries ${label} owner skins without changing deterministic combat outcomes`, async () => {
   const simulation = Object.values(manifest).find(m => m.name === 'simulation');
   const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
   const spec = namespaces.find(n => typeof n?.createBattleFromSpec === 'function');
   const simdata = namespaces.find(n => typeof n?.setSimData === 'function');
   const raw = getData({ log: { warn() {} } }); simdata.setSimData(raw);
-  const unit = { uid: 1, chessId: 'chess_char_1_01_a', row: 9, col: 5, dir: 'UP' };
+  const unit = { uid: 1, chessId, row: 9, col: 5, dir: 'UP', ...(diy ? { diy } : {}) };
   const input = nativeSpec.buildBattleSpec({ seed: 29, kind: 'normal', stageId: Object.keys(raw.stages)[0],
-    players: [{ playerId: 'OTHER', units: [{ ...unit, skin: 'char_498_inside@kitchen#2' }] }],
+    players: [{ playerId: 'OTHER', units: [{ ...unit, skin }] }],
     spawns: [{ enemyKey: 'enemy_1007_slime', count: 2, time: 1 }], timeLimit: 50 });
   const native = nativeSpec.createBattleFromSpec(input, new DataSource(raw), { quiet: true });
   const built = spec.createBattleFromSpec(input, new simdata.DataSource(raw), { quiet: true });
   native.start(); built.start();
-  assert.equal(built.fieldMeta().units.find(u => u.ownerId === 'OTHER')?.skin, 'char_498_inside@kitchen#2');
+  assert.equal(built.fieldMeta().units.find(u => u.ownerId === 'OTHER')?.skin, skin);
   assert.deepEqual(built.fieldMeta(), native.fieldMeta());
   native.runToEnd(100); built.runToEnd(100);
   assert.deepEqual(spec.compactResult(built.result()), nativeSpec.compactResult(native.result()));

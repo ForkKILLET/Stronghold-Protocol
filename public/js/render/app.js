@@ -775,7 +775,7 @@ export async function createFieldView(host, options = {}) {
       kind: 'op', side: 'ally', defId: piece.id,
       spine: rec?.assets?.spine || rec?.charId || null, avatar: rec?.assets?.avatar || rec?.charId || null,
       // Owner-provided metadata only: never put this browser's choice on somebody else's/default unit.
-      skin: si || dr ? null : piece.skin ?? null,
+      skin: si ? null : piece.skin ?? null,
       tier: chess?.tier || piece.tier || 1, golden: !!(piece.golden || chess?.isGolden), dir,
       ...(si ? { standInFor: si.standInFor } : null),
       ...(dr ? { diy: { charId: pick.charId, skillIndex: pick.skillIndex ?? null, uniEquipId: pick.uniEquipId ?? null } } : null),

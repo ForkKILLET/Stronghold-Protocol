@@ -56,7 +56,7 @@ export class PlayerBasics {
     this._tempDue.set(piece.uid, this._tempDueNow());
   }
 
-  /** Cosmetic selections are public, bounded and keyed by visible base chess ids. */
+  /** Cosmetic selections are public, bounded and keyed by base chess ids (including DIY slots). */
   setSkins(skins) {
     if (this.isBot) return false;
     this.skins = freezeSkins(skins, (id) => this.gd.chess(id));

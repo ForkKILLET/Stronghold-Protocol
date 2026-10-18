@@ -17,6 +17,7 @@ import { visibleSkin } from '../shared/skins.js';
 const INSIDE = 'chess_char_1_01_a';
 const INSIDE_GOLDEN = 'chess_char_1_01_b';
 const SKIN_ID = 'char_498_inside@kitchen#2';
+const DIY_SLOT = 'chess_char_5_diy1_a', DIY_SKIN = 'char_112_siege@striker#2';
 const quiet = { info() {}, warn() {}, error() {}, debug() {} };
 
 test('base/golden skins survive two checkpoints, while old checkpoints restore default skins', t => {
@@ -55,8 +56,9 @@ for (const remote of [false, true]) {
     const room = lobby.roomOf(a);
     assert.equal(lobby.matchJoin(a, { mode: 'coop', difficulty: 'NORMAL' }).ok, true);
     const ticket = a.matchQueue;
-    assert.equal(lobby.skins(a, { skins: { [INSIDE]: SKIN_ID } }).ok, true);
+    assert.equal(lobby.skins(a, { skins: { [INSIDE]: SKIN_ID, [DIY_SLOT]: DIY_SKIN } }).ok, true);
     assert.equal(ticket.players[0].skins[INSIDE], SKIN_ID, 'queued seat gets the latest preference');
+    assert.equal(ticket.players[0].skins[DIY_SLOT], DIY_SKIN);
     lobby.removeQueueReferences(ticket);
     assert.equal((await lobby.startQueuedMatch(ticket, [
       ...ticket.players, ...sessions.slice(1).map((s, i) => lobby.humanSeat(i + 1, s)),
@@ -67,6 +69,7 @@ for (const remote of [false, true]) {
     assert.equal(cp.players.find(p => p.playerId === b.playerId).skins[INSIDE], 'char_498_inside@winter#1');
     const pub = room.match.publicView();
     assert.equal(pub.players.find(p => p.playerId === a.playerId).skins[INSIDE], SKIN_ID);
+    assert.equal(pub.players.find(p => p.playerId === a.playerId).skins[DIY_SLOT], DIY_SKIN);
     assert.equal(visibleSkin(pub.players[0].skins[INSIDE], { skinsEnabled: false }), null);
     let doc = snapshotServer({ ...first, matchDocs: new Map([[room.code, cp]]) });
     if (remote) { await room.match.dispose(); pool.release(room.code, room.match); }
@@ -77,12 +80,14 @@ for (const remote of [false, true]) {
       assert.equal(stats.matches, 1, `restore ${round}`);
       const backA = next.registry.byToken(a.token), backB = next.registry.byToken(b.token);
       assert.equal(backA.skins[INSIDE], SKIN_ID);
+      assert.equal(backA.skins[DIY_SLOT], DIY_SKIN);
       assert.equal(backB.skins[INSIDE], 'char_498_inside@winter#1');
       assert.equal(backB.roomCode, null);
       const ctx = next.lobby.activeMatchOf(backB);
       assert.ok(ctx?.match, 'external teammate reconnects to the same match container');
       const restored = remote ? await ctx.match.snapshot() : snapshotMatch(ctx.match);
       assert.equal(restored.players.find(p => p.playerId === b.playerId).skins[INSIDE], 'char_498_inside@winter#1');
+      assert.equal(restored.players.find(p => p.playerId === a.playerId).skins[DIY_SLOT], DIY_SKIN);
       // Opting out clears only the owner's published cosmetics, never the other player's state.
       if (round === 2) {
         assert.equal((await next.lobby.skins(backA, { skins: {} })).ok, true);

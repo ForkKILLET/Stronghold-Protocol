@@ -10,6 +10,8 @@
 // 练度 selects (0.2.2, screens/cultivation.js — the same per-operator settings as 干员调配, `ops`); a prototype has neither.
 
 import { OperatorPortrait } from '../ui/operatorPortrait.js';
+import { SkinSection } from '../ui/skinPicker.js';
+import { skinFor, setSkin, clearSkin } from '../ui/skins.js';
 import { useLayoutEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, Button, TierChip } from '../ui/components.js';
 import { Img, RichText, BondGlyph } from '../ui/gameComponents.js';
@@ -64,7 +66,7 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = n
   const sk = rec.skill;
   const mod = elite?.module?.active ? elite.module : null;
   return html`<div class=${cx('diy-slot', `diy-slot--t${slot.tier}`, illegal && 'is-bad')} data-slot=${slot.slotId} data-char=${rec.charId}>
-    <div class="diy-slot__art"><${OperatorPortrait} m=${m} chess=${elite || rec} skin=${null} fallback=${html`<b>${[...(rec.name || '?')][0]}</b>`} /></div>
+    <div class="diy-slot__art"><${OperatorPortrait} m=${m} chess=${elite || rec} fallback=${html`<b>${[...(rec.name || '?')][0]}</b>`} /></div>
     <div class="diy-slot__body">
       <div class="diy-slot__head"><${TierChip} tier=${slot.tier} size="sm" /><span class="diy-slot__label">${label}</span><${KindTag} proto=${proto} /></div>
       <b class="diy-slot__name">${rec.name}</b>
@@ -152,6 +154,15 @@ export function DiyPicker(props) {
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [draft, setDraft] = useState(cur ? { ...cur } : null);
+  // Keep cosmetic drafts per operator while browsing; only 确认 publishes the chosen slot's skin.
+  const [skinDrafts, setSkinDrafts] = useState(cur ? { [cur.charId]: skinFor(props.slot.slotId) } : {});
+  const selectedSkin = skinDrafts[draft?.charId] || null;
+  const onSelectSkin = (skin) => setSkinDrafts({ ...skinDrafts, [draft.charId]: skin });
+  const onDone = (pick) => {
+    if (selectedSkin) setSkin(props.slot.slotId, selectedSkin);
+    else clearSkin(props.slot.slotId);
+    props.onDone(pick);
+  };
   // Esc cancels only the picker, like its 取消 (GitHub #284, idea from PR #286); the 干员调配 overlay's own Esc skips
   // while a picker is open, and a dialog over the picker (导入) still takes Esc first. A layout effect: the listener is
   // attached in the same commit as the picker (a plain effect waits for the next frame, and an Esc pressed in between
@@ -166,14 +177,14 @@ export function DiyPicker(props) {
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [props.onClose]);
-  return DiyPickerView({ ...props, previewLevel, onPreviewLevel: setPreviewLevel, filter, query, draft, onFilter: setFilter, onQuery: setQuery, onDraft: setDraft });
+  return DiyPickerView({ ...props, onDone, selectedSkin, onSelectSkin, previewLevel, onPreviewLevel: setPreviewLevel, filter, query, draft, onFilter: setFilter, onQuery: setQuery, onDraft: setDraft });
 }
 
 /**
  * The picker's view (no hooks: the tests draw it): `filter` 'all' | 'proto' | 'owned', `query`, `draft` the pick being
  * made (null = none chosen yet) and their setters.
  */
-export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter, query, draft, onFilter: setFilter, onQuery: setQuery, onDraft: setDraft, ops = {}, onOps = null, previewLevel = 'elite', onPreviewLevel = () => {} }) {
+export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter, query, draft, onFilter: setFilter, onQuery: setQuery, onDraft: setDraft, selectedSkin = null, onSelectSkin = () => {}, ops = {}, onOps = null, previewLevel = 'elite', onPreviewLevel = () => {} }) {
   const D = diyData();
   const cur = picks[slot.slotId] || null;
   const options = pickOptions(slot.slotId, picks, D, kitted);
@@ -225,6 +236,7 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
           ${!ch.proto && onOps ? html`<section class="lo-sec"><header class="lo-sec__head"><h3>${t('潜能与练度')}</h3></header><${CultivationSelects} charId=${draft.charId} ops=${ops} onSet=${onOps} /></section>` : null}
           <${LoadoutStats} base=${base} golden=${golden} entries=${previewEntries} level=${previewLevel}
             onLevel=${onPreviewLevel} getChess=${previewChess} ops=${ch.proto ? null : ops} />
+          <${SkinSection} chess=${base} selectedSkin=${selectedSkin} onSelectSkin=${onSelectSkin} />
           <h4 class="diy-pick__sec">${t('技能')}${ch.proto ? html`<small>${t('原型干员的技能与补位时一致，不可更改')}</small>` : null}</h4>
           <div role="radiogroup" aria-label=${t('选择技能')} class="diy-pick__choices">
             ${ch.skills.filter((s) => !ch.proto || s.index === skillOn).map((s) => html`<${SkillRow} key=${s.index} m=${m} s=${s} level=${previewLevel} on=${s.index === skillOn} locked=${ch.proto}

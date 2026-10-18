@@ -8,7 +8,7 @@ import { settingsStore } from './settings.js';
 import { visibleSkin } from '../../../shared/skins.js';
 
 export function portraitSkin(chess, { state, entries, settings, ownerId, skin } = {}) {
-  if (!chess || chess.isDiy || chess.isHidden || chess.standInFor) return null;
+  if (!chess || (chess.isDiy && !chess.diyFor) || chess.isHidden || chess.standInFor) return null;
   if (skin !== undefined) return visibleSkin(skin, settings);
   const id = chess.baseId || chess.chessId;
   const owner = ownerId === undefined ? state?.me?.playerId : ownerId;

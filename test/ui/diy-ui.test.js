@@ -26,6 +26,8 @@ const { installDiySync, SYNC_DEBOUNCE_MS } = await import('../../public/js/ui/lo
 const { createStore } = await import('../../public/js/store.js');
 const G = await import('../../public/js/ui/gameLogic.js');
 const { ChessCard } = await import('../../public/js/ui/shopBar.js');
+const { OperatorPortrait } = await import('../../public/js/ui/operatorPortrait.js');
+const { OpCard } = await import('../../public/js/screens/settle.js');
 const { consoleEntries } = await import('../../public/js/ui/console.js');
 const { ChessDetail, resolveDetail } = await import('../../public/js/ui/detailPanel.js');
 const { BondPopup } = await import('../../public/js/ui/bondStrip.js');
@@ -323,6 +325,9 @@ describe('match UI of a 自选 piece', () => {
   test('shop / reward card: the operator\'s name and bonds, the 「自选」 badge, the pick\'s skill', () => {
     const card = ChessCard({ slot: { kind: 'chess', id: T5A, price: 4, basePrice: 4 }, idx: 0, priv, onBuy() {}, onDetail() {} });
     const nodes = [...walk(card)];
+    const portrait = nodes.find(v => v.type === OperatorPortrait);
+    assert.equal(portrait.props.chess.charId, SIEGE);
+    assert.equal(portrait.props.skin, undefined, 'shop portraits resolve the owner choice instead of forcing default');
     const badge = nodes.find((v) => hasClass(v, 'scard__diy'));
     assert.ok(badge);
     assert.equal(badge.props['data-diy'], SIEGE);
@@ -346,6 +351,7 @@ describe('match UI of a 自选 piece', () => {
     assert.equal(u.chess.charId, SHARP);
     const blocks = ChessDetail({ chess: r.chess, piece, editable: false, bonds: [], loadout: priv.loadout, diy: r.diy });
     const head = blocks.find((b) => b.key === 'head');
+    assert.equal([...walk(head)].find(v => v.type === OperatorPortrait).props.skin, undefined, 'DIY detail inherits the owner skin');
     assert.equal([...walk(head)].find((v) => hasClass(v, 'dtag-diy'))?.props.children, '自选');
     assert.equal([...walk(head)].find((v) => hasClass(v, 'dhead__name')).props.children, DATA.backups.units[SIEGE].name);
     const skill = blocks.find((b) => b.key === 'skill');
@@ -353,6 +359,15 @@ describe('match UI of a 自选 piece', () => {
     const mod = blocks.find((b) => b.key === 'module');
     assert.ok(JSON.stringify(mod.props).includes('uniequip_002_siege'), 'the pick\'s module (elite)');
     assert.ok(!blocks.some((b) => b.key === 'garrison'), 'no 特质');
+  });
+
+  test('settlement DIY portrait keeps the unit skin and still defaults bot appearances', () => {
+    const skin = `${SIEGE}@striker#2`;
+    const u = { id: T5A, diy: SIEGE_PICK, skin };
+    const gd = { m: data.get('assets'), chess: getChess, backups: D.backups };
+    const view = player => [...walk(OpCard({ u, gd, i: 0, player }))].find(v => v.type === OperatorPortrait);
+    assert.equal(view({ playerId: 'mate' }).props.skin, skin);
+    assert.equal(view({ playerId: 'bot', isBot: true }).props.skin, null);
   });
 
   test('own prep pieces of a filled slot get the 「自选」 tag', () => {

@@ -249,7 +249,7 @@ export function OpCard({ u, gd, i, player }) {
   const v = unitView(u, gd);
   return html`<div class=${cx('sop', v.tier && `sop--t${v.tier}`, v.golden && 'is-golden')} style=${`--i:${i}`} title=${v.title}>
     <span class="sop__art"><${OperatorPortrait} m=${gd.m} chess=${v.record} ownerId=${player?.playerId}
-      skin=${v.si || u.diy || player?.isBot ? null : u.skin} class=${v.art ? 'is-portrait' : 'is-avatar'}
+      skin=${v.si || player?.isBot ? null : u.skin} class=${v.art ? 'is-portrait' : 'is-avatar'}
       fallback=${html`<${Img} src=${v.avatar} class="is-avatar" fallback=${html`<span class="sop__glyph">${[...(v.name || '?')][0]}</span>`} />`} /></span>
     ${v.tier ? html`<b class="sop__tier">${ROMAN[v.tier]}</b>` : null}
     ${v.si ? html`<span class="sop__si" data-standin=${v.si.charId}>${t('替补')}</span>` : null}

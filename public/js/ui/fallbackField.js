@@ -158,9 +158,11 @@ export function createFallbackView(host, opts = {}) {
     if (p.kind === 'item') return itemIconUrl(mm, lookup('items', p.id));
     if (p.kind === 'token') return tokenAvatarUrl(mm, p.id);
     const chess = lookup('chess', p.id);
-    const replacement = ownSi(chess) || ownDiy(chess);
-    const skin = replacement ? null : visibleSkin(p.skin, st.settings);
-    return (skin ? avatarUrl(mm, chess?.assets?.avatar || chess?.charId, { skin }) : null)
+    const si = ownSi(chess);
+    const replacement = si || ownDiy(chess);
+    const rec = replacement || chess;
+    const skin = si ? null : visibleSkin(p.skin, st.settings);
+    return (skin ? avatarUrl(mm, rec?.assets?.avatar || rec?.charId, { skin }) : null)
       || chessAvatarUrl(mm, replacement || chess);
   }
   /** 0.2.0 补位: the player's own piece of a chess it does not own is its stand-in, bench and board alike (render/app.js pieceInfo) */

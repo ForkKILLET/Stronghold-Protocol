@@ -16,8 +16,8 @@ function render(type, props) {
   try { options.__r(vnode); return type(props); }
   finally { options.diffed(vnode); options.unmount(vnode); options.__s = old; }
 }
-function section() {
-  const tree = render(SkinSection, { chess });
+function section(props = {}) {
+  const tree = render(SkinSection, { chess, ...props });
   return typeof tree?.type === 'function' ? render(tree.type, tree.props) : tree;
 }
 function* walk(v) {
@@ -97,4 +97,23 @@ test('loadout includes one picker and does not eagerly load the optional catalog
   const source = readFileSync(new URL('../../public/js/screens/loadout.js', import.meta.url), 'utf8');
   assert.equal([...source.matchAll(/<\$\{SkinSection\} chess=\$\{chess\}/g)].length, 1);
   assert.doesNotMatch(source, /useData\([^)]*'skins'/);
+});
+
+test('a composed DIY operator exposes the same picker and keeps skin edits in a controlled draft', (t) => {
+  setup(t, { installed: true });
+  const slot = 'chess_char_5_diy1_a';
+  const diy = { ...chess, chessId: `${slot.slice(0, -1)}b`, baseId: slot, isDiy: true, diyFor: slot, isGolden: true };
+  skinsStore.set({ entries: { [CHESS]: SKIN } });
+  const before = { ...skinsStore.get().entries };
+  let selectedSkin = null;
+  const draw = () => section({ chess: diy, selectedSkin, onSelectSkin: (skin) => { selectedSkin = skin; } });
+  const tree = draw();
+  assert.equal(tree.props['data-state'], 'ready');
+  [...walk(tree)].find((v) => v.props?.['data-skin'] === SKIN).props.onClick();
+  assert.equal(selectedSkin, SKIN);
+  assert.equal([...walk(draw())].find((v) => v.props?.['data-skin'] === SKIN).props['aria-checked'], 'true');
+  assert.deepEqual(skinsStore.get().entries, before, 'browsing and choosing a draft never writes global preferences');
+  [...walk(draw())].find((v) => v.props?.['data-skin'] === '').props.onClick();
+  assert.equal(selectedSkin, null);
+  assert.equal(section({ chess: { ...diy, diyFor: undefined } }), null, 'an unfilled slot has no skin picker');
 });

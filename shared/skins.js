@@ -17,12 +17,12 @@ export function cleanSkins(raw) {
   return out;
 }
 
-/** Choices use base chess ids; models/catalogue use char ids. Unknown skins safely render the default. */
+/** Choices use base chess ids (including DIY slots); models/catalogue use char ids. */
 export function freezeSkins(raw, getChess) {
   const out = {};
   for (const [id, skin] of Object.entries(cleanSkins(raw))) {
     const rec = getChess(id);
-    if (!rec || rec.isGolden || rec.visible === false || rec.isHidden || rec.isDiy
+    if (!rec || rec.isGolden || (rec.visible === false && !rec.isDiy) || rec.isHidden
         || (rec.baseId && rec.baseId !== id)) continue;
     out[id] = skin;
   }

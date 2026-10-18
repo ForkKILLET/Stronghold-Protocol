@@ -74,6 +74,23 @@ test('live portrait changes use subscribed state and a failed skin request has a
   assert.equal(render(OperatorPortrait, { m, chess: elite }).props.src, '/assets/elite.png');
 });
 
+test('DIY portraits use the selected slot and owner; replacing the operator cannot apply a different operator skin', () => {
+  const slot = 'chess_char_5_diy1_a';
+  const diy = { ...elite, baseId: slot, isDiy: true, diyFor: slot };
+  const context = { settings: { skinsEnabled: true }, entries: { [slot]: skin }, state: { me: { playerId: 'me' } } };
+  assert.equal(portraitSkin(diy, context), skin);
+  assert.equal(chessPortraitUrl(m, diy, { skin: portraitSkin(diy, context) }), '/assets/summer.png');
+  const foreign = { ...context, ownerId: 'mate', state: { ...context.state, match: { public: { players: [
+    { playerId: 'mate', skins: { [slot]: mateSkin } },
+  ] } } } };
+  assert.equal(portraitSkin(diy, foreign), mateSkin);
+  assert.equal(portraitSkin(diy, { ...foreign, skin }), skin, 'battle skin stays frozen');
+  assert.equal(portraitSkin(diy, { ...context, settings: { skinsEnabled: false } }), null);
+  const other = { ...diy, charId: 'char_other', assets: { portrait: 'char_other_2' } };
+  const manifest = { chars: { ...m.chars, char_other: { portraitE2: '/assets/other.png' } } };
+  assert.equal(chessPortraitUrl(manifest, other, { skin: portraitSkin(other, context) }), '/assets/other.png');
+});
+
 test('room portraits use their own selection and require only deployed portrait files', () => {
   const catalogue = { chars: { [charId]: [{ id: skin, name: 'Summer', group: 'I' }, { id: 'char_other@x#1' }, { id: `${charId}@missing#1` }] } };
   assert.deepEqual(cardPortraitSkins(charId, m, catalogue), [catalogue.chars[charId][0]]);
