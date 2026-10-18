@@ -177,6 +177,51 @@ h1, h2, h3, h4, p { margin: 0; }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
 
+/* Shared checkbox skin: keep the input's label, keyboard and form behavior in every frontend.
+   A global rule also covers manifest-driven plugin controls and read-only Markdown task lists. */
+input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--checkbox-size, max(.18rem, 16px));
+  height: var(--checkbox-size, max(.18rem, 16px));
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
+  border: 1px solid var(--line-3);
+  border-radius: 0;
+  background: var(--bg-0);
+  color: var(--text-on-mint);
+  cursor: pointer;
+  transition: background-color var(--t-fast), border-color var(--t-fast);
+}
+input[type="checkbox"]::before {
+  content: '';
+  width: 70%;
+  height: 70%;
+  background: currentColor;
+  clip-path: polygon(14% 38%, 0 54%, 38% 92%, 100% 18%, 82% 4%, 36% 62%);
+  opacity: 0;
+}
+input[type="checkbox"]:not(:disabled):hover,
+label:hover > input[type="checkbox"]:not(:disabled) { border-color: var(--mint-400); }
+input[type="checkbox"]:checked,
+input[type="checkbox"]:indeterminate { background: var(--mint-500); border-color: var(--mint-500); }
+input[type="checkbox"]:checked::before,
+input[type="checkbox"]:indeterminate::before { opacity: 1; }
+input[type="checkbox"]:indeterminate::before { clip-path: inset(40% 4%); }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 3px; }
+input[type="checkbox"]:disabled { opacity: .5; cursor: not-allowed; }
+@media (forced-colors: active) {
+  input[type="checkbox"] { forced-color-adjust: none; border-color: ButtonText; background: Canvas; }
+  input[type="checkbox"]:checked,
+  input[type="checkbox"]:indeterminate { border-color: Highlight; background: Highlight; color: HighlightText; }
+  input[type="checkbox"]:focus-visible { outline-color: Highlight; }
+  input[type="checkbox"]:disabled { border-color: GrayText; }
+}
+
 ::selection { background: var(--mint-500); color: var(--text-on-mint); }
 
 /* Firefox uses standard colors/width even when it recognizes the WebKit selector for compatibility.

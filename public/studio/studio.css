@@ -38,7 +38,7 @@ body.studio { overflow: auto; height: auto; min-height: 100%; -webkit-user-selec
 /* 删除所选 (public/studio/js/remove.js): a checkbox beside each plugin, the tools above the list, the note of what went */
 .st-list__row { display: flex; align-items: stretch; gap: .05rem; }
 .st-list__row .st-list__item { flex: 1; min-width: 0; }
-.st-list__check { flex: none; align-self: center; width: max(.16rem, 14px); height: max(.16rem, 14px); margin: 0; }
+.st-list__check { align-self: center; }
 .st-select { display: flex; flex-direction: column; gap: .06rem; }
 .st-select__row { display: flex; align-items: center; justify-content: space-between; gap: .08rem; font-size: calc(.12 * var(--t)); }
 .st-side__result { margin: 0; font-size: calc(.12 * var(--t)); line-height: 1.5; }

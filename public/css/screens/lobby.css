@@ -1346,7 +1346,6 @@ button.sw-eth:hover { border-color: #fff; }
 .hub-backdrop-panel .bgset__name { white-space: normal; font-size: max(calc(.15 * var(--utility-text, var(--t))), 12px); }
 .hub-backdrop-panel .bgset__en { white-space: normal; overflow-wrap: anywhere; }
 .hub-backdrop-panel .bgset__slider { grid-template-columns: max-content minmax(0, 1fr) max-content; }
-.hub-backdrop-panel .bgset__check input { width: max(.16rem, 18px); height: max(.16rem, 18px); flex: none; }
 .hub-backdrop-panel .bgset__check { min-height: 36px; }
 .hub-backdrop-panel :is(.bgset__note, .bgset__slider, .bgset__check), .lobby-music-panel .bgset__note { font-size: max(calc(.14 * var(--utility-text, var(--t))), 12px); line-height: 1.6; }
 @media (max-width: 560px) { .hub-backdrop-panel .bgset__themes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -1408,7 +1407,6 @@ button.sw-eth:hover { border-color: #fff; }
 .bgset__slider input { width: 100%; accent-color: var(--mint-500); }
 .bgset__slider b { text-align: right; color: var(--mint-400); }
 .bgset__check { display: flex; align-items: center; gap: .08rem; font-size: calc(.14 * var(--utility-text, var(--t))); color: rgba(223, 230, 226, .85); cursor: pointer; }
-.bgset__check input { width: .16rem; height: .16rem; accent-color: var(--mint-500); }
 .bgset__note { margin: 0; font-size: calc(.12 * var(--utility-text, var(--t))); color: var(--text-dim); }
 
 /* Skin portraits keep the same tall framing as operator art. */

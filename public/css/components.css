@@ -498,7 +498,6 @@
 .resource-tier__head { display: flex; gap: .12rem; align-items: flex-start; justify-content: space-between; }
 .resource-tier__head p, .resource-archive p { font-size: calc(.14 * var(--utility-text, var(--t))); color: var(--text-md); }
 .resource-choice { display: flex; align-items: center; gap: .06rem; white-space: nowrap; color: var(--mint-400); cursor: pointer; }
-.resource-choice input { accent-color: var(--mint-400); }
 .resource-skin-choice { min-height: 44px; margin-top: .08rem; color: var(--text-hi); white-space: normal; }
 .resource-skin-choice + p { color: var(--text-md); font-size: calc(.13 * var(--utility-text, var(--t))); }
 .resource-voice-choice { min-width: 0; margin: .14rem 0 0; padding: .1rem; border: 1px solid var(--line-2); }
@@ -1380,8 +1379,8 @@
 .modmark--compact { height: .2rem; padding: 0 .06rem; font-size: calc(.11 * var(--t)); }
 
 .plugin-settings { display: grid; gap: .06rem; margin-top: .08rem; }
-.plugin-settings__row { display: flex; gap: .1rem; align-items: center; justify-content: space-between; }
-.plugin-settings input, .plugin-settings select { color: var(--text-hi); background: var(--bg-2); border: 1px solid var(--line-2); padding: .03rem .06rem; max-width: 2rem; }
+.plugin-settings .plugin-settings__row { display: flex; flex-direction: row; gap: .1rem; align-items: center; justify-content: space-between; }
+.plugin-settings input:not([type="checkbox"]), .plugin-settings select { color: var(--text-hi); background: var(--bg-2); border: 1px solid var(--line-2); padding: .03rem .06rem; max-width: 2rem; }
 .plugin-settings input[aria-invalid="true"] { border-color: var(--orange); }
 
 /* One select surface for game and studio; the menu is mounted outside clipping/scrolling panels. */

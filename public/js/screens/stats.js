@@ -360,7 +360,7 @@ function StatsScreen({ tab }) {
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}
     ${stats.dropped ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('有 {n} 条记录已损坏，已忽略。', { n: stats.dropped })}</p>` : null}
     <main class="st-body" data-tab=${tab}>
-      ${!['profile','manage'].includes(tab)?html`<button type="button" class=${cx('doctor-modded',withModded&&'is-on')} role="switch" aria-checked=${withModded} disabled=${loading} onClick=${()=>{setAccount(null);setWithModded(!withModded);}}><i><${Icon} name="check" /></i>${t('含插件对局')}</button>`:null}
+      ${!['profile','manage'].includes(tab)?html`<label class=${cx('doctor-modded',withModded&&'is-on')}><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>`:null}
       ${!ready ? html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : tab==='profile'&&profile.user ? html`<${ProfileEditor} user=${profile.user} />`
         : tab==='manage' ? html`<div class="doctor-management">${profile.enabled?html`<${ProfileRecovery} />`:null}

@@ -95,7 +95,6 @@
   .resource-choice, .resource-voice-choice .resource-choice {
     min-height: 28px; gap: 5px; white-space: normal; font-size: max(calc(.14 * var(--utility-text, var(--t))), 11px);
   }
-  .resource-choice input { flex: none; width: 14px; height: 14px; margin: 0; }
   .resource-voice-choice { margin-top: 6px; padding: 4px 6px; }
   .resource-voice-choice__options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 6px; }
   .resource-tier__summary { margin: 6px 0 4px; gap: 3px; }
@@ -171,7 +170,6 @@
   .resource-choice, .resource-voice-choice .resource-choice {
     min-height: .7rem; gap: .125rem; font-size: calc(.14 * var(--t));
   }
-  .resource-choice input { width: .35rem; height: .35rem; }
   .resource-voice-choice { margin-top: .15rem; padding: .1rem .15rem; }
   .resource-voice-choice__options { gap: .05rem .15rem; }
   .resource-tier__summary { margin: .1rem 0 .06rem; gap: .05rem; }

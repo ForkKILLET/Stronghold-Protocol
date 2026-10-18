@@ -248,8 +248,12 @@ Audio: autochess BGM per phase, UI SFX (buy/sell/refresh/level/merge/ready/timer
 `ui/roomOptions.js` is a separate room-configuration page; LobbyScreen owns the
 creation draft so returning preserves values. The bracket frame is outside the
 scrolling body to avoid its outward pseudo-element producing spurious overflow.
-Small viewports keep vertical scrolling. Matchmaking/AI-fill inputs retain native
-checkbox semantics with square mint styling, focus/disabled states and touch targets.
+Small viewports keep vertical scrolling. Room binary options use the shared square
+slider switch. All checkbox inputs use the single `theme.css` skin: dark square,
+mint fill/checkmark, mixed-state bar, hover, keyboard focus and disabled states.
+This includes resource scopes, backdrop settings, profile filters, plugin settings,
+studio controls and read-only announcement task lists. Input/label semantics and
+Space-key operation remain native; the browser's checkbox appearance is disabled.
 
 Equipment and bounty decisions share local hide/reopen behavior through
 `draftLogic.js`; hiding leaves the server timer active. A new round or decider

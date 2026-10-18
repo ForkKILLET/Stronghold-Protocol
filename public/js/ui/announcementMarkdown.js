@@ -37,6 +37,8 @@ export function renderAnnouncementMarkdown(source) {
       const children = () => render(token.tokens, depth + 1);
       switch (token.type) {
         case 'space': return null;
+        // Marked includes a checkbox token inside task items; the list renderer supplies the styled input once.
+        case 'checkbox': return null;
         case 'text': return token.tokens ? children() : textValue(token.text);
         case 'escape': return textValue(token.text);
         case 'html': return token.raw || token.text || '';

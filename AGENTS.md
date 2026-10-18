@@ -382,6 +382,8 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 统一选择控件
 
+- 2026-10-18 所有 checkbox 共用 theme.css 的 input[type="checkbox"] 样式，禁用原生外观，统一方角／薄荷色勾选、半选横线、hover／focus-visible／disabled 和强制颜色模式；保留真实 input、label、空格切换及表单语义。资源、背景、博士档案、插件动态设置、工作台、公告任务列表不单独复制外观或尺寸规则；现有 set-toggle 滑块开关保持原有用途。
+
 - 2026-10-17 游戏和工作台使用 ui/select.js 的 Select，菜单浮出滚动容器，保留触发器焦点；支持键盘、Esc、禁用项与视口边界。新增选择项不得使用原生 select。回归 test/ui/select.e2e.test.js（SP_E2E=1）。
 
 - 2026-10-17 创建模拟页直接复用 RoomPacingControls 编辑休整期／倍速，公共匹配仅显示固定规则；四档难度不单独滚动，短屏使用整页滚动。创建参数必须传入 room.create，不能仅展示摘要。
