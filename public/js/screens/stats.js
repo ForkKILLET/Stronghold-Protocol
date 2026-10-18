@@ -241,11 +241,11 @@ function History({ records, gd, onOpen, more, loading, onMore }) {
 }
 
 /** A stored match re-viewed as its settlement screen: the full game data is loaded now (the lobby alone never loads it). */
-function Replay({ rec, onBack }) {
+function Replay({ rec }) {
   const gd = useGameData();
   const res = useMemo(() => recordToResult(rec), [rec]);
   if (!gd.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;
-  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} backLabel=${t('返回统计')} onBack=${onBack} quiet=${true} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
+  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} quiet=${true} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
 }
 
 /** The overlay, rendered while open (its data hooks run only then). */
@@ -339,7 +339,7 @@ function StatsScreen({ tab }) {
 
   if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
     <${PageHeader} onBack=${() => setReplay(null)} backTitle=${t('返回统计')} title=${t('对局记录')} micro="MATCH RECORD" />
-    <${Replay} rec=${replay} onBack=${() => setReplay(null)} />
+    <${Replay} rec=${replay} />
   </div>`;
 
   const empty = !records.length;

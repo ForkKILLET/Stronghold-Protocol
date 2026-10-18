@@ -1,7 +1,7 @@
 import { PageHeader } from '../ui/pageHeader.js';
 // Settlement presentation adapted from isomerpoi UI b2bd17af. Uses existing results only; no account, social or XP system.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Icon, DifficultyTag } from '../ui/components.js';
+import { html, Button, Icon, DifficultyTag, TierChip } from '../ui/components.js';
 import { useGameData, Img, Sprite, BondGlyph, BandIcon } from '../ui/gameComponents.js';
 import { ResultAvatar, ResultPortrait } from '../ui/resultAvatar.js';
 import { normalizeResult, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
@@ -18,7 +18,6 @@ import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const pad2 = (n) => String(Math.max(0, Math.trunc(n) || 0)).padStart(2, '0');
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 /** The radar intro and the page change after 下一步. */
 export const INTRO_MS = 1500;
@@ -251,7 +250,7 @@ export function OpCard({ u, gd, i, player }) {
     <span class="sop__art"><${OperatorPortrait} m=${gd.m} chess=${v.record} ownerId=${player?.playerId}
       skin=${v.si || player?.isBot ? null : u.skin} class=${v.art ? 'is-portrait' : 'is-avatar'}
       fallback=${html`<${Img} src=${v.avatar} class="is-avatar" fallback=${html`<span class="sop__glyph">${[...(v.name || '?')][0]}</span>`} />`} /></span>
-    ${v.tier ? html`<b class="sop__tier">${ROMAN[v.tier]}</b>` : null}
+    ${v.tier ? html`<${TierChip} tier=${v.tier} golden=${v.golden} size="lg" class="sop__tier" />` : null}
     ${v.si ? html`<span class="sop__si" data-standin=${v.si.charId}>${t('替补')}</span>` : null}
     <span class="sop__slots">${[0, 1].map((k) => {
       const it = v.items[k];
@@ -385,16 +384,14 @@ function TeamCard({ p, i, gd, self, victory, raw }) {
   </article>`;
 }
 
-function TeamPage({ r, res, gd, myId, at, backLabel, onBack, onDetail }) {
+function TeamPage({ r, res, gd, myId, at, onDetail, inactive = false }) {
   const rounds = useCountUp(r.roundsPassed, { ms: 900, delay: 450 });
-  const backRef = useRef(null);
   const rawOf = (pid) => (Array.isArray(res?.players) ? res.players.find((x) => x && x.playerId === pid) : null) || null;
   useEffect(() => {
     audio.sfx('settlementTeam');
-    const id = setTimeout(() => backRef.current?.focus({ preventScroll: true }), 900);
-    return () => clearTimeout(id);
   }, []);
-  return html`<section class=${cx('steam', r.victory ? 'is-win' : 'is-lose')} data-testid="settle-team">
+  return html`<section class=${cx('steam', r.victory ? 'is-win' : 'is-lose')} data-testid="settle-team"
+    inert=${inactive} aria-hidden=${inactive ? 'true' : undefined}>
     <div class="settle__stage">
       <div class="steam__bg" aria-hidden="true"></div>
       <${Logo} />
@@ -409,10 +406,9 @@ function TeamPage({ r, res, gd, myId, at, backLabel, onBack, onDetail }) {
         <span class="steam__row"><${SvgPath} d=${CLOCK} />${fmtDuration(r.durationMs)}</span>
         <span class="steam__row"><${SvgPath} d=${CALENDAR} />${fmtDate(at)}</span>
       </div>
-      <button type="button" class="sbtn sbtn--ghost steam__detail" onClick=${onDetail}><${Icon} name="chart" /><span>${t('数据详情')}</span></button>
-      <button type="button" ref=${backRef} class="btn btn--ghost btn--sm app-back settle__back" onClick=${onBack}>
-        <${Icon} name="chevronLeft" />
-        <span>${backLabel}</span></button>
+      <div class="steam__actions">
+        <${Button} variant="secondary" size="lg" icon="chart" class="steam__detail" onClick=${onDetail}>${t('数据详情')}<//>
+      </div>
     </div>
   </section>`;
 }
@@ -439,14 +435,23 @@ export function SettleFlow({ res, pub = null, myId = null, backLabel, onBack }) 
     return { at };
   }, []);
   const rootRef = useRef(null);
+  const shellRef = useRef(null);
   useStageFit(rootRef);
+  useEffect(() => {
+    const target = detail ? shellRef.current?.querySelector('.app-header .app-back') : rootRef.current?.querySelector('.steam__detail');
+    target?.focus({ preventScroll: true });
+  }, [page, detail]);
   const lose = self ? !rowCleared(rawSelf, self, r.victory) : !r.victory;
-  return html`<div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`)} data-testid="settle">
+  return html`<div class="screen result-page" ref=${shellRef}>
+    <${PageHeader} onBack=${detail ? () => setDetail(false) : onBack} backTitle=${detail ? t('返回') : backLabel}
+      title=${detail ? t('数据详情') : t('结算')} micro=${detail ? 'SIMULATION REPORT' : 'SIMULATION RESULT'} />
+    <div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`)} data-testid="settle">
     ${page === 'intro' ? html`<${SettleIntro} players=${r.players} myId=${myId} lose=${lose} onDone=${() => setPage('self')} />` : null}
     ${page === 'self' ? html`<${SelfPage} r=${r} raw=${rawSelf} self=${self} gd=${gd} seed=${res?.seed} onNext=${() => setPage('team')} />` : null}
-    ${page === 'team' ? html`<${TeamPage} r=${r} res=${res} gd=${gd} myId=${myId} at=${ctx.at} backLabel=${backLabel} onBack=${onBack} onDetail=${() => setDetail(true)} />` : null}
+    ${page === 'team' ? html`<${TeamPage} r=${r} res=${res} gd=${gd} myId=${myId} at=${ctx.at} onDetail=${() => setDetail(true)} inactive=${detail} />` : null}
     ${detail ? html`<div class="settle__detail" data-testid="settle-detail">
-      <${ResultView} res=${res} pub=${pub} myId=${myId} quiet=${true} backLabel=${t('返回')} onBack=${() => setDetail(false)} /></div>` : null}
+      <${ResultView} res=${res} pub=${pub} myId=${myId} quiet=${true} /></div>` : null}
+    </div>
   </div>`;
 }
 
@@ -457,5 +462,5 @@ export function ResultScreen() {
   const myId = useStore((s) => s.me.playerId);
   const hasRoom = useStore((s) => !!s.room);
   const back = () => store.set({ match: emptyMatch() });
-  return html`<div class="screen result-page"><${PageHeader} onBack=${back} backTitle=${hasRoom ? t('返回同盟') : t('返回大厅')} title=${t('结算')} micro="SIMULATION RESULT" /><${SettleFlow} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} /></div>`;
+  return html`<${SettleFlow} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} />`;
 }

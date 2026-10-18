@@ -1,7 +1,7 @@
-import { BackButton } from '../ui/pageHeader.js';
+import { PageHeader } from '../ui/pageHeader.js';
 // Result screen (research 06 §10.6): victory / defeat hero with rounds passed, boss medallions, and a
 // card per player — band, final lineup avatars with elite marks, stats, title (评语) with its icon —
-// plus 返回同盟.
+// Navigation belongs to the containing page's shared header.
 //
 // Expected m.result (free-form in DESIGN §8.2; fields read tolerantly, see gameLogic.normalizeResult):
 //   { victory, roundsPassed, lastRound?, hiddenCleared?, bossId?, hiddenBossId?, difficulty?, modeId?, durationMs?,
@@ -115,7 +115,10 @@ export function ResultScreen() {
   const hasRoom = useStore((s) => !!s.room);
   const content = useStore((s) => s.room?.content ?? null);
   const back = () => store.set({ match: emptyMatch() });
-  return html`<${ResultView} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} content=${content} />`;
+  return html`<div class="screen result-page">
+    <${PageHeader} onBack=${back} backTitle=${hasRoom ? t('返回同盟') : t('返回大厅')} title=${t('数据详情')} micro="SIMULATION REPORT" />
+    <${ResultView} res=${res} pub=${pub} myId=${myId} content=${content} />
+  </div>`;
 }
 
 /**
@@ -123,9 +126,10 @@ export function ResultScreen() {
  * (screens/stats.js, which hands it the payload recordToResult rebuilt; `quiet`: no settlement jingle).
  * `content`: the room's content (room.state.content, or a stats record's) — gameplay plugins mark the result unofficial
  * (DESIGN §32.6).
- * @param {{ res: any, pub?: any, myId?: string|null, backLabel: string, onBack: () => void, quiet?: boolean, content?: any }} props
+ * The containing settlement/history page supplies the shared header and return action.
+ * @param {{ res: any, pub?: any, myId?: string|null, quiet?: boolean, content?: any }} props
  */
-export function ResultView({ res, pub = null, myId = null, backLabel, onBack, quiet = false, content = null }) {
+export function ResultView({ res, pub = null, myId = null, quiet = false, content = null }) {
   const gd = useGameData();
   const [metricsOpen, setMetricsOpen] = useState(false);
   const r = normalizeResult(res, pub);
@@ -169,9 +173,6 @@ export function ResultView({ res, pub = null, myId = null, backLabel, onBack, qu
         </div>
         ${mins ? html`<p class="result__time t-lo">${tParts('本局耗时 {n} 分钟', { n: html`<b class="num">${mins}</b>`, mins })}</p>` : null}
         </div>
-        <footer class="result__foot">
-          <${BackButton} onClick=${onBack} title=${backLabel} />
-        </footer>
       </section>
       <section class="result__players">
         <h2 class="brief-h"><span>${t('同盟成员')}</span><${MicroLabel}>ALLIANCE REPORT</${MicroLabel}></h2>

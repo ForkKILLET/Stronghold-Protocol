@@ -255,6 +255,13 @@ This includes resource scopes, backdrop settings, profile filters, plugin settin
 studio controls and read-only announcement task lists. Input/label semantics and
 Space-key operation remain native; the browser's checkbox appearance is disabled.
 
+Settlement overview/details and archived reports use their containing page's shared
+header for navigation, with no second return button inside the report. In the live
+flow, returning from details restores the team overview and its details-button focus;
+returning from the overview leaves the match. The team details action reuses `Button`,
+keeps a readable label and click target when the presentation stage shrinks, and the
+preceding personal lineup reuses `TierChip`, including elite styling and art fallback.
+
 Equipment and bounty decisions share local hide/reopen behavior through
 `draftLogic.js`; hiding leaves the server timer active. A new round or decider
 resets disclosure and unconfirmed selections. Pause controls on the top bar and

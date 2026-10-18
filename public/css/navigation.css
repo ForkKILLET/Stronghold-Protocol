@@ -58,8 +58,7 @@
 .stephead--context .stephead__right .countdown { flex:none; width:auto; }
 .stephead--context .stephead__right .countdown--untimed { width:32px; }
 .stephead--context .draft-pause { position:static; display:flex; z-index:auto; }
-.result-page > .settle, .st--replay > .result { position:relative; inset:auto; flex:1; width:100%; height:auto; min-height:0; }
-.result-page .settle__back { min-width:0; background:none; color:var(--text-hi); box-shadow:none; }
+.result-page > .result, .st--replay > .result { position:relative; inset:auto; flex:1; width:100%; height:auto; min-height:0; }
 .lobby-hub .hub-center { container-type:size; min-height:220px; }
 .lobby-hub .hub-radar { width:min(72cqh,90cqw,420px); height:min(72cqh,90cqw,420px); }
 .utility-modal.hub-dialog { width:min(760px,calc(100vw - 32px)); box-sizing:border-box; }

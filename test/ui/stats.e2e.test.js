@@ -216,7 +216,7 @@ describe('统计数据 page (real server, headless Chrome)', { skip: !ENABLED &&
     await c.page.waitForSelector('.st--replay .result', { visible: true, timeout: 20000 });
     await sleep(900);
     await c.page.screenshot({ path: path.join(OUT, 'stats-replay-phone.png') });
-    await c.click('.st--replay .btn--primary', '返回统计');
+    await c.click('.st--replay .app-header .app-back');
     await c.page.waitForSelector('.st .st-tab', { timeout: 5000 });
     noProblems(c);
   });

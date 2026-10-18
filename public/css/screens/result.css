@@ -75,8 +75,6 @@
 .rstat { display: flex; align-items: baseline; justify-content: space-between; gap: .06rem; padding: .05rem .1rem; background: #0e1210; box-shadow: 0 0 0 1px var(--line); font-size: calc(.13 * var(--t)); color: var(--text-lo); white-space: nowrap; min-width: 0; }
 .rstat b { font-size: calc(.18 * var(--t)); color: #fff; }
 .rstat.is-best b { color: var(--gold); }
-.result__foot { flex: 0 0 auto; margin-top: auto; padding-top: .2rem; display: flex; }
-.result__foot .btn { min-width: 3.4rem; }
 
 .result__metrics { position: fixed; z-index: 55; }
 
@@ -232,11 +230,7 @@
 .sop__art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; }
 .sop__art img.is-avatar { object-position: 50% 30%; }
 .sop__glyph { font-size: calc(.5 * var(--t)); font-weight: 900; color: #6c7472; }
-.sop__tier { position: absolute; left: -.2rem; top: -.12rem; min-width: .44rem; height: .44rem; padding: 0 .05rem; display: grid; place-items: center;
-  font-family: var(--font-display); font-size: calc(.25 * var(--t)); font-weight: 700; line-height: 1; color: var(--tc, #e6eae8); background: #151818; border: 2px solid var(--tc, #e6eae8); }
-.sop--t1 { --tc: #cfd4d2; } .sop--t2 { --tc: #f0f3f2; } .sop--t3 { --tc: #50e08d; } .sop--t4 { --tc: #39b8f2; }
-.sop--t5 .sop__tier { background: #ffc81e; border-color: #ffc81e; color: #241a00; }
-.sop--t6 .sop__tier { background: #ff8a1d; border-color: #ff8a1d; color: #fff; }
+.sop__tier { --tier-h: .44rem; position: absolute; left: -.2rem; top: -.12rem; }
 .sop__lv { position: absolute; left: -.2rem; top: .48rem; width: .42rem; height: .76rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .02rem;
   border-radius: 0; background: #2a2f2e; border: 1px solid rgba(255, 255, 255, .3); color: #c9cfcd; }
 .sop.is-golden .sop__lv { color: #ffd34d; border-color: rgba(255, 211, 77, .55); }
@@ -365,16 +359,11 @@
 .steam__row { height: .48rem; display: flex; align-items: center; gap: .14rem; padding: 0 .16rem; border-radius: 0; background: linear-gradient(90deg, rgba(220, 230, 226, .1), rgba(220, 230, 226, .02));
   font-size: calc(.25 * var(--t)); color: #dfe6e3; white-space: nowrap; }
 .steam__row .sico { width: .28rem; height: .28rem; color: #dfe6e3; }
-.sbtn { position: absolute; top: 9.55rem; height: 1.03rem; display: flex; align-items: center; justify-content: center; gap: .16rem; padding: 0 .2rem; border: 0; cursor: pointer; white-space: nowrap; }
-.sbtn--ghost { left: 12.18rem; width: 2.57rem; background: #2a2f2e; color: #e2e8e6; box-shadow: inset 0 0 0 2px rgba(220, 230, 226, .2); font-size: calc(.3 * var(--t)); }
-.sbtn--ghost .icon { width: .3rem; height: .3rem; padding: .03rem; border-radius: 0; background: #e2e8e6; color: #2a2f2e; }
-.sbtn--primary { left: 15.12rem; width: 4.08rem; background: linear-gradient(90deg, #44e6b8, #33d8ab); color: #062a20; font-size: calc(.38 * var(--t)); font-weight: 700; letter-spacing: .04em;
-  clip-path: polygon(.12rem 0, 100% 0, 100% 100%, 0 100%, 0 .12rem); }
-.sbtn--primary::after { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: .7rem; background: repeating-linear-gradient(135deg, rgba(0, 0, 0, .14) 0 .05rem, transparent .05rem .14rem); }
-.sbtn__mark svg { width: .5rem; height: .38rem; }
-.sbtn:hover, .sbtn:focus-visible { filter: brightness(1.14); outline: none; }
-.sbtn:focus-visible { box-shadow: inset 0 0 0 3px #fff; }
-.steam__outcome, .steam__rounds, .steam__when, .sbtn { animation: steam-bar 420ms var(--ease-out) 520ms both; }
+.steam__actions { position: absolute; right: .6rem; bottom: .22rem; height: max(1.03rem, calc(36px / var(--k, 1))); display: flex; align-items: center; justify-content: flex-end; }
+/* Keep the standard action readable/clickable when the presentation stage shrinks on short screens. */
+.steam__detail { min-height: calc(36px / var(--k, 1)); min-width: calc(112px / var(--k, 1));
+  font-size: max(calc(.22 * var(--utility-text, var(--t))), calc(12px / var(--k, 1))); gap: max(.12rem, calc(8px / var(--k, 1))); }
+.steam__outcome, .steam__rounds, .steam__when, .steam__actions { animation: steam-bar 420ms var(--ease-out) 520ms both; }
 @keyframes steam-bar { from { opacity: 0; transform: translateY(.2rem); } }
 
 @media (prefers-reduced-motion: reduce) {
