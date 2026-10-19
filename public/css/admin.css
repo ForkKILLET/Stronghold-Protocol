@@ -179,3 +179,14 @@ body.admin { height:auto; min-height:100vh; overflow:auto; font-size:15px; line-
   .ad-login { margin:40px auto; padding:26px; }
 }
 @media (prefers-reduced-motion:reduce) { .admin * { transition:none!important; animation:none!important; } }
+
+/* Keep spectator navigation outside the expand button and out of player seats. */
+.ad-row-head { display:flex; align-items:center; min-width:0; }
+.ad-row-head .ad-row-toggle { flex:1; min-width:0; width:auto; }
+.ad-spectate { flex:none; display:inline-flex; align-items:center; gap:8px; margin-right:20px; text-decoration:none; }
+.ad-spectate .icon { width:18px; height:18px; }
+@media (max-width:760px) {
+ .ad-row-head { flex-wrap:wrap; }
+ .ad-row-head .ad-row-toggle { flex-basis:100%; }
+ .ad-spectate { margin:0 12px 12px auto; }
+}

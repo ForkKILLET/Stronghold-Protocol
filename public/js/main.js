@@ -88,8 +88,9 @@ function payload(msg) {
 function clearRoomParam() {
   try {
     const url = new URL(location.href);
-    if (!url.searchParams.has('room')) return;
+    if (!url.searchParams.has('room') && !url.searchParams.has('spectate')) return;
     url.searchParams.delete('room');
+    url.searchParams.delete('spectate');
     history.replaceState(history.state, '', url.pathname + (url.search || '') + url.hash);
   } catch { /* ignore */ }
 }
@@ -107,7 +108,7 @@ let joinInFlight = false;
 let rehearsal = null;
 
 function clearPendingJoin() {
-  store.patch('ui', { pendingJoin: null });
+  store.patch('ui', { pendingJoin: null, pendingSpectate: false });
   clearRoomParam();
 }
 
@@ -125,7 +126,7 @@ function schedulePendingJoin() {
     }
     joinInFlight = true;
     try {
-      await net.request('room.join', { code });
+      await net.request(s.ui.pendingSpectate ? 'room.spectate' : 'room.join', { code });
     } catch (err) {
       toastError(err);
     } finally {
@@ -431,13 +432,14 @@ async function boot() {
   const identityReady = identity.init();
   await initProfile();
 
-  const pendingJoin = parseRoomParam(location.search);
+  const spectateCode = parseRoomParam(location.search, 'spectate');
+  const pendingJoin = spectateCode || parseRoomParam(location.search);
   const savedName = sanitizeName(identity.loadName());
-  const entered = identity.wasEntered() && !!savedName;
+  const entered = (identity.wasEntered() || !!spectateCode) && !!savedName;
   store.set((s) => ({
     me: { ...s.me, name: savedName },
     session: { entered },
-    ui: { ...s.ui, pendingJoin },
+    ui: { ...s.ui, pendingJoin, pendingSpectate: !!spectateCode },
   }));
 
   wireNet();

@@ -1051,6 +1051,8 @@ describe('screen helpers', () => {
     assert.equal(normalizeCode('http://192.168.1.2:3000/?room=wxyz'), 'WXYZ');
     assert.equal(normalizeCode(undefined), '');
     assert.equal(parseRoomParam('?room=abcd'), 'ABCD');
+    assert.equal(parseRoomParam('?spectate=abcd', 'spectate'), 'ABCD');
+    assert.equal(parseRoomParam('?spectate=%3Cbad%3E', 'spectate'), null);
     assert.equal(parseRoomParam('?x=1&room=ABCDEF'), 'ABCDEF');
     assert.equal(parseRoomParam('?room=ABCDEFG'), null);
     assert.equal(parseRoomParam('?room=AB'), null);

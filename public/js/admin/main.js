@@ -83,13 +83,16 @@ function ListRow({kind,row,now}) {
     <span class="ad-row-context">${row.roomCode?`${t('同盟')} ${row.roomCode}`:row.matchId?t('公共匹配对局'):'—'}</span><span class="ad-row-time ad-muted">${row.connected?t('在线'):t('断线 {time}',{time:elapsed(row.disconnectedAt,now)})}</span>
     <details class="ad-player-details"><summary>${t('会话详情')}</summary><span class="ad-muted">${t('公开编号')} ${row.id} · ${t('保留会话 {n} 个',{n:row.sessionCount})}</span></details></article>`;
   const title=row.roomCode || (kind==='queue'?t('公共匹配'):t('公共匹配对局'));
-  return html`<article class=${`ad-list-row ${open?'is-open':''}`}><button class="ad-row-toggle" aria-expanded=${open} onClick=${()=>setOpen(!open)}>
+  return html`<article class=${`ad-list-row ${open?'is-open':''}`}><div class="ad-row-head"><button class="ad-row-toggle" aria-expanded=${open} onClick=${()=>setOpen(!open)}>
     <span class="ad-row-title"><span class="ad-micro">${kind==='matches'?'OPERATION':kind==='rooms'?'ALLIANCE':'QUEUE'}</span><strong>${title}</strong></span>
     <span class="ad-row-mode">${mode(row.mode)}<small>${difficulty(row.difficulty)}${row.modded?` · ${t('含插件')}`:''}</small></span>
     <span class="ad-row-phase">${kind==='matches'?html`<span class="ad-tag">${row.paused?t('已暂停'):t(PHASE_NAMES[row.phase] || row.phase || '—')}</span><small>${t('第 {n} 回合',{n:row.round??'—'})}</small>`
       :html`<span class="ad-tag">${kind==='queue'?t('匹配中'):stateLabel(row.state)}</span><small>${t('真人 {humans} · AI {bots}',{humans,bots})}</small>`}</span>
     <span class="ad-row-time"><b>${elapsed(kind==='matches'?row.startedAt:kind==='queue'?row.queuedAt:row.createdAt,now)}</b><small>${kind==='matches'?t('对局时长'):kind==='queue'?t('已等待'):t('创建至今')}</small></span>
     <span class="ad-expand" aria-hidden="true">${open?'−':'+'}</span></button>
+    ${['rooms','matches'].includes(kind) && row.mode==='coop' && /^[A-Z0-9]{4}$/.test(row.roomCode || '') ? html`
+      <a class="btn btn--secondary btn--sm ad-spectate" href=${`/?spectate=${encodeURIComponent(row.roomCode)}`} target="_blank" rel="noopener noreferrer"
+        title=${t('在新标签页观战')} aria-label=${t('观战同盟 {code}',{code:row.roomCode})}><${Icon} name="eye"/>${t('观战')}</a>` : null}</div>
     ${open?html`<div class="ad-row-details"><${Roster} players=${row.players}/>${kind==='rooms'?html`<p class="ad-note">${t('创建者')} ${row.host || '—'} · ${t('战斗倍速')} ${row.battleSpeed || 2}× · ${t('观战人数')} ${row.spectators?.length || 0}</p>`:null}
       ${kind==='matches'?html`<p class="ad-note">${t('公开对局编号')} <span class="ad-id">${row.id}</span></p>`:null}</div>`:null}</article>`;
 }

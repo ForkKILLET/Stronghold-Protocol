@@ -162,6 +162,7 @@ function Ridges() {
 /** Title screen component. */
 export function TitleScreen() {
   const pendingJoin = useStore((s) => s.ui.pendingJoin);
+  const pendingSpectate = useStore((s) => s.ui.pendingSpectate);
   const settings = useSettings();
   useLang(); // re-render on a language switch
   const currentName = useStore((s) => s.me.name);
@@ -248,7 +249,7 @@ export function TitleScreen() {
       <div class="title-login">
         ${pendingJoin ? html`<div class="title-invite">
           <${Icon} name="key" />
-          <span>${t('收到同盟邀请')}</span><b class="num">${pendingJoin}</b><span class="t-lo">${t('· 输入代号后将自动加入')}</span>
+          <span>${pendingSpectate ? t('收到观战邀请') : t('收到同盟邀请')}</span><b class="num">${pendingJoin}</b><span class="t-lo">${pendingSpectate ? t('· 输入代号后将自动观战') : t('· 输入代号后将自动加入')}</span>
         </div>` : null}
         <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
