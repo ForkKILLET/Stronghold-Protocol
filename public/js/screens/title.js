@@ -291,6 +291,10 @@ export function TitleScreen() {
           <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol/issues" target="_blank" rel="noopener noreferrer">${t('本分支问题反馈')}</a></dd>
         </div>
         <div>
+          <dt>${t('本服联系邮箱')}</dt>
+          <dd><a href="mailto:fork_killet@outlook.com">fork_killet@outlook.com</a></dd>
+        </div>
+        <div>
           <dt>${t('上游来源')}</dt>
           <dd><a href="https://github.com/xinhai-ai/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">xinhai-ai/Stronghold-Protocol</a></dd>
           <dd><a href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">sganggs/Stronghold-Protocol</a></dd>
@@ -302,7 +306,7 @@ export function TitleScreen() {
         <div>
           <dt>${t('上游作者反馈入口')}</dt>
           <dd><a href="https://space.bilibili.com/401522003" target="_blank" rel="noopener noreferrer">${t('B 站：临夏俨然')}</a></dd>
-          <p class="title-about__hint">${t('以上联系方式属于上游作者；本服及本分支问题请使用本分支问题反馈入口。')}</p>
+          <p class="title-about__hint">${t('上游联系方式仅用于联系上游作者；本服及本分支问题请通过本服邮箱或本分支问题反馈入口联系。')}</p>
         </div>
         <div>
           <dt>${t('UI 制作')}</dt>
