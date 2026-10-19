@@ -23,6 +23,7 @@
 
 /* ---- top bar -------------------------------------------------------------------------------------- */
 .gtop {
+  --ready-button-width: 2.3rem;
   position: absolute; left: 0; right: 0; top: 0;
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start;
   padding: .2rem .3rem 0 .26rem; gap: .2rem; pointer-events: none;
@@ -182,7 +183,10 @@
 .gtop__iconbtn .enemybtn__chev { color: #fff; }
 .gtop__right { display: flex; flex-direction: column; align-items: flex-end; gap: .1rem; justify-self: end; }
 .gtop__right .countdown { --cd-h: .7rem; filter: drop-shadow(0 0 .12rem rgba(0, 0, 0, .8)); }
-.gtop__clock { display: flex; align-items: flex-start; gap: .14rem; }
+/* Keep the timer's .7rem digits + .05rem label gap + .098rem label even in untimed prep. */
+.gtop__clock { position: relative; display: flex; align-items: flex-start; gap: .14rem; min-height: .848rem; }
+/* The ready row's left edge remains measurable in combat, without adding a hidden ready button. */
+.gtop__subtitle-anchor { position: absolute; right: 0; top: calc(100% + .1rem); width: var(--ready-button-width); height: 0; visibility: hidden; pointer-events: none; }
 
 /* solo pause / resume (ui/hud.js PauseButton, official battle pause: two bars on a dark square) */
 .pausebtn {
@@ -329,7 +333,7 @@
 .readywrap__why .icon { width: .16rem; height: .16rem; color: #ff6a55; flex: none; }
 .readywrap__why b { color: #ff8a78; font-size: .16rem; }
 .readybtn {
-  display: flex; align-items: center; gap: .12rem; height: .56rem; padding: 0 .16rem 0 .12rem; min-width: 2.3rem;
+  display: flex; align-items: center; gap: .12rem; height: .56rem; padding: 0 .16rem 0 .12rem; min-width: var(--ready-button-width, 2.3rem);
   background: rgba(10, 14, 12, .9); border: 2px solid var(--mint-500); color: var(--text-hi);
   font-size: .22rem; font-weight: 700; letter-spacing: .14em;
   box-shadow: 0 0 .18rem rgba(23, 249, 183, .15);

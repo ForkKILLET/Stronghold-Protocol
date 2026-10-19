@@ -511,6 +511,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
           ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
           : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
         ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} requested=${pause.requested} votes=${pause.votes} required=${pause.required} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
+        <span class="gtop__subtitle-anchor" aria-hidden="true"></span>
       </div>
       <${OvertimeWarning} ot=${ot} />
       ${showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} />` : null}

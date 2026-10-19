@@ -16,6 +16,7 @@ import { store, emptyMatch, selectRoute } from '/js/store.js';
 import { net, NetError } from '/js/net.js';
 import { data } from '/js/data.js';
 import { installAudio } from '/js/audio.js';
+import { VoiceSubtitleHost } from '/js/ui/voiceSubtitles.js';
 import { settingsStore } from '/js/ui/settings.js';
 import { awayStore } from '/js/ui/matchChrome.js';
 import { GAME_FILES } from '/js/ui/gameComponents.js';
@@ -842,7 +843,7 @@ async function boot() {
   installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get() });
   const phase = params.get('phase') || 'PREP';
   setPhase(PHASE[phase] || PHASE.PREP, params.get('variant') || '');
-  render(html`<div class="app-root"><div class="app-bg" aria-hidden="true"></div><${GameScreen} /><${ConnectionBanner} /><${ToastHost} /><${UiHosts} /><${TermHelpHost} /><${GuideHost} /></div>`, document.getElementById('app'));
+  render(html`<div class="app-root"><div class="app-bg" aria-hidden="true"></div><${GameScreen} /><${ConnectionBanner} /><${ToastHost} /><${UiHosts} /><${TermHelpHost} /><${VoiceSubtitleHost} /><${GuideHost} /></div>`, document.getElementById('app'));
   renderBar();
   store.subscribe(() => renderBar());
   globalThis.__MOCK__ = { store, S: () => S, setPhase, mutate: (fn) => { fn(S); refreshPrivate(); }, pushPublic: () => pushPublic(),

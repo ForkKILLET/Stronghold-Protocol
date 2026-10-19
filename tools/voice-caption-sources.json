@@ -1,0 +1,32 @@
+[
+  {
+    "lang": "zh",
+    "url": "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/bee3f83c5d60590b5e1cd42b8d09d00ce32ab10d/zh_CN/gamedata/excel/charword_table.json",
+    "sha256": "5d630ffb7973021f351db14e0d9ac112cd58e741468f9f6e64fb2e11c8e70685",
+    "revision": "bee3f83c5d60590b5e1cd42b8d09d00ce32ab10d"
+  },
+  {
+    "lang": "en",
+    "url": "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData_YoStar/57010cb5b2afea112cae57daa756b58676ba6850/en_US/gamedata/excel/charword_table.json",
+    "sha256": "c68ef25466904a35368524362c59916916e8f8b55a556e8db7c128f2ac4b2729",
+    "revision": "57010cb5b2afea112cae57daa756b58676ba6850"
+  },
+  {
+    "lang": "ja",
+    "url": "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData_YoStar/57010cb5b2afea112cae57daa756b58676ba6850/ja_JP/gamedata/excel/charword_table.json",
+    "sha256": "002fd9242205859192dc97abaeef86eda8d7c5aa66343bfb960b79d554fc9a63",
+    "revision": "57010cb5b2afea112cae57daa756b58676ba6850"
+  },
+  {
+    "lang": "ko",
+    "url": "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData_YoStar/57010cb5b2afea112cae57daa756b58676ba6850/ko_KR/gamedata/excel/charword_table.json",
+    "sha256": "1cbc9f34b71f4e71f6bd8eafe34bf47c25d9d2a4b2aa6c89838249e65c505bf7",
+    "revision": "57010cb5b2afea112cae57daa756b58676ba6850"
+  },
+  {
+    "lang": "zh-TW",
+    "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsGamedata/db6f9ef8046ad17dbebe3ff1d0dd88844a5bc78c/tw/gamedata/excel/charword_table.json",
+    "sha256": "c0e5152a4b90cf04d7ccfc93dacdc3a275cc2eb4fba39fb6943e37dc80b6a726",
+    "revision": "db6f9ef8046ad17dbebe3ff1d0dd88844a5bc78c"
+  }
+]

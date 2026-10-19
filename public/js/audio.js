@@ -580,6 +580,7 @@ export class AudioManager {
     this.landWarm = false;     // the field view asked for the landing sounds ahead while they could not be fetched (warmLandings)
     this.voiceGate = new VoiceGate();
     this.voiceNode = null;    // { src, gain, url, token } of the line on air
+    this.voiceListeners = new Set(); // successful playback only; never queued or merely requested lines
     this.voiceToken = 0;
     this.bondCueNode = null;
     this.bondCueToken = 0;
@@ -656,6 +657,7 @@ export class AudioManager {
         this.ctx.addEventListener?.('statechange', () => {
           const s = this.ctx?.state;
           if (s && s !== 'running' && s !== 'closed' && !this.win?.document?.hidden) this._armUnlock();
+          this._emitVoice();
         });
       } catch { /* ignore */ }
       this._applyVolumes();
@@ -702,6 +704,7 @@ export class AudioManager {
   _onVis() {
     try {
       if (!this.ctx) return;
+      this._emitVoice();
       this._syncLobbyMusic();
       if (this.win?.document?.hidden) this.ctx.suspend().catch(() => {});
       else if (this.ctx.state !== 'running') {
@@ -732,6 +735,7 @@ export class AudioManager {
       muted: typeof v?.muted === 'boolean' ? v.muted : this.volumes.muted,
     };
     this._applyVolumes();
+    this._emitVoice();
     this._syncLobbyMusic();
     if (this.volumes.muted || this.volumes.sfx <= 0) this.stopBondCue();
     // the music became audible again: download and start the track the screen wants now (none was fetched meanwhile)
@@ -1177,6 +1181,17 @@ export class AudioManager {
 
   // ---- operator battle voice ----------------------------------------------------------------------------------
 
+  /** Read-only playback subscription, shared by battle, inspection and voice previews. */
+  currentVoice() {
+    if (this.volumes.muted || this.volumes.voice <= 0 || this.win?.document?.hidden
+      || ['suspended', 'interrupted', 'closed'].includes(this.ctx?.state)) return null;
+    return this.voiceNode?.caption || null;
+  }
+  subscribeVoice(fn) { this.voiceListeners.add(fn); fn(this.currentVoice()); return () => this.voiceListeners.delete(fn); }
+  _emitVoice() {
+    for (const fn of this.voiceListeners) { try { fn(this.currentVoice()); } catch { /* UI never interrupts audio */ } }
+  }
+
   /**
    * Play an operator's battle line (the tree voiceLangFor picks — voiceLine; a slot with several lines draws one
    * at random).
@@ -1203,7 +1218,7 @@ export class AudioManager {
       if (verdict === 'preempt') this._stopVoice();
       this.voiceGate.start(slot, o.unitKey ?? null, now);
       const token = ++this.voiceToken;
-      this._playVoice(line.url, token, o.volume, line.fallback, pick);
+      this._playVoice(line.url, token, o.volume, line.fallback, pick, charId);
       return true;
     } catch (err) { this._warn('voice', err); return false; }
   }
@@ -1231,7 +1246,7 @@ export class AudioManager {
       this._stopVoice();
       this.voiceGate.start(slot, null, typeof performance !== 'undefined' ? performance.now() : Date.now());
       const token = ++this.voiceToken;
-      this._playVoice(line.url, token, 1, line.fallback);
+      this._playVoice(line.url, token, 1, line.fallback, null, charId);
       return true;
     } catch (err) { this._warn('voice-preview', err); return false; }
   }
@@ -1242,7 +1257,7 @@ export class AudioManager {
    * `again`: the slot's line picked from the manifest again — played instead (once) when this one was a cosmetic plugin's
    * file that would not load (its entry fell back: see the header).
    */
-  _playVoice(url, token, volume, fallback = null, again = null) {
+  _playVoice(url, token, volume, fallback = null, again = null, charId = null) {
     // `token` is the line's own `voiceToken`. Every deferred step below — the decode, a failed fetch, `onended` and the
     // safety timer — can land AFTER this line was taken over or stopped: `voiceToken` has moved on and the channel then
     // belongs to the line that replaced it. So each step re-checks its token and, when it is stale, touches NOTHING:
@@ -1252,8 +1267,8 @@ export class AudioManager {
     const failed = () => {
       if (token !== this.voiceToken) return;   // taken over / stopped meanwhile: not ours to release
       const next = again && this.fellBack.has(url) ? again() : null;
-      if (next && next.url !== url && this.ctx && this.voiceGain) this._playVoice(next.url, token, volume, next.fallback);
-      else if (fallback && fallback !== url && this.ctx && this.voiceGain) this._playVoice(fallback, token, volume);
+      if (next && next.url !== url && this.ctx && this.voiceGain) this._playVoice(next.url, token, volume, next.fallback, null, charId);
+      else if (fallback && fallback !== url && this.ctx && this.voiceGain) this._playVoice(fallback, token, volume, null, null, charId);
       else this.voiceGate.release();
     };
     this._buffer(url).then((buf) => {
@@ -1266,23 +1281,36 @@ export class AudioManager {
         const gain = this.ctx.createGain();
         gain.gain.value = Math.max(0, Math.min(1.5, Number.isFinite(volume) ? volume : 1));
         src.connect(gain); gain.connect(this.voiceGain);
-        const node = { src, gain, url, token };
+        const node = { src, gain, url, token, timer: null,
+          caption: gain.gain.value > 0 ? { url, charId, token, duration: buf.duration,
+            nativeType: this.getManifest()?.audio?.voiceNativeLangType?.[charId] || null } : null };
+        const startedAt = this.ctx.currentTime;
         let done = false;
         const end = () => {
           if (done) return;
           done = true;
+          clearTimeout(node.timer);
           // this line's own end (natural, or the safety timer): only the line that still owns the channel may free it.
           // A stale end is the takeover's leftovers — `_stopVoice` already faded it out and released the gate.
           if (token === this.voiceToken) {
             if (this.voiceNode === node) this.voiceNode = null;
             this.voiceGate.release();
+            this._emitVoice();
           }
           try { gain.disconnect(); } catch { /* ignore */ }
         };
         src.onended = end;
-        setTimeout(end, (buf.duration + 0.3) * 1000); // safety if onended never fires
+        // AudioContext time freezes in the background. A wall-clock timeout must not end its caption/gate early.
+        const safety = () => {
+          if (done || token !== this.voiceToken) return;
+          const remaining = buf.duration - (this.ctx.currentTime - startedAt);
+          if (remaining <= 0) end();
+          else { node.timer = setTimeout(safety, Math.max(300, remaining * 1000 + 300)); node.timer.unref?.(); }
+        };
         src.start();
         this.voiceNode = node;
+        node.timer = setTimeout(safety, (buf.duration + 0.3) * 1000); node.timer.unref?.();
+        this._emitVoice();
       } catch (err) {
         this._warn('voice-play', err);
         if (token === this.voiceToken) this.voiceGate.release();
@@ -1296,6 +1324,8 @@ export class AudioManager {
     this.voiceNode = null;
     this.voiceToken += 1;              // a line still decoding must not start afterwards
     this.voiceGate.release();
+    clearTimeout(cur?.timer);
+    this._emitVoice();
     if (!cur || !this.ctx) return;
     try {
       const t = this.ctx.currentTime;

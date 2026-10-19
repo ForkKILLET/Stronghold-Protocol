@@ -446,3 +446,7 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 术语说明卡四边使用统一 1px 边框，不添加加粗顶边；移除“点击术语可固定说明”提示行及译文，预览与固定共用同一内容结构，不因固定改变高度。卡片宽度、字号及留白保持紧凑，同时保留大字／窄屏滚动及最小 24px 关闭控件；term-help.e2e.test.js 验证预览／固定尺寸一致。
 
 - 2026-10-19 运行时资源先用限定 CACHE_NAME 的 CacheStorage.match 一次查询当前缓存，仅未命中才枚举本应用旧缓存；不保留跨请求 Cache 句柄，清理／替换缓存必须立即生效，不查询其他应用缓存。保留普通路径／旧方括号、CDN、Range 及音频网络优先行为；预载保存文件，不承诺提前解析所有模型或常驻显存。回归 resources/store.test.js、archive.test.js 及 service.e2e.test.js（SP_E2E=1，Chrome／Firefox）。
+
+- 2026-10-19 干员字幕提供 voiceSubtitles（默认关）及 voiceSubtitleMode（ui／dual／voice，默认 ui），沿用主题 Toggle／Select、本机持久化。字幕只订阅 AudioManager 真正开始的语音，按最终文件／完整 wordKey 匹配随机句及回退；旧异步回调不能覆盖新句，语音安全结束跟随 AudioContext 时钟。语种取目录和本土类型，不按 cn_025 文件名或 UI 语言猜配音；双语同语言只显示一次，缺少本土原文时仅语音模式不显示。字幕文本由固定源／SHA-256 生成，按需读取本站或 DATA_CDN，不进入首屏或素材 ZIP、不更改模拟。名称单独完整显示，可换行但不省略；对局字幕右对齐到准备就绪按钮左侧，gtop__subtitle-anchor 在正式战斗继续保留且不添加隐藏的准备按钮；无倒计时的单人／不限时休整也保留时钟区域高度，不能让锚点抬进回合栏；窗口决定宽度，不随商店／EFFECTS 列表变化，不自动换位。局外试听保留底部空隙布局。测量换行高度后避让详情卡、盟约说明、交流、统计、HUD 及重要弹窗，重叠或空间不足暂隐；关闭后仅恢复当前句。盟约条只测实际图标／控件，不把容器空白当作遮挡；不改详情卡原有自动换边规则。维护见 docs/VOICE_SUBTITLES.md；回归 ui/voice-subtitles.test.js、audio.test.js 及 voice-subtitles.e2e.test.js（Chrome／Firefox 截图）。
+
+- 2026-10-20 鼠标悬停字幕时保留当前句，新语音仍正常播放但不替换保留文本；离开立即跟随当前语音，无在播句则收起，不建立队列。保持 pointer-events:none，只被动观察鼠标位置，不阻断战场点击或触摸，触摸不固定。面板遮挡、空间不足、静音、后台／失焦、音频暂停、关闭字幕及切换页面／语言／字幕模式均解除保留，不恢复过期句；沿用现有 HUD 避让和音频生命周期，回归 voice-subtitles.e2e.test.js。

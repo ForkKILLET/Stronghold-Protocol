@@ -757,3 +757,10 @@ not a zero-occupancy flag or a manually maintained second list in generated data
 `terms.json` maps official term IDs to `{ id, name, descRaw }`, independently of simulation data. The pinned extractor
 `tools/build-terms.mjs` writes this file and existing language overlays. RichText uses the original `$` tag ID to show
 definitions across the encyclopedia and game panels. See [TERMS.md](TERMS.md) for sources, regeneration and interaction rules.
+
+## Voice subtitles
+
+`voice-captions/{zh,en,ja,ko,zh-TW}.json` contains only display text, keyed by full operator word key and voice ID.
+`tools/build-voice-captions.mjs` extracts the original tables at pinned revisions/checksums; runtime loads only the
+languages requested by the opt-in subtitle setting. These files do not change game rules or the asset manifest.
+Playback/fallback identity, language modes and HUD clearance are described in [VOICE_SUBTITLES.md](VOICE_SUBTITLES.md).

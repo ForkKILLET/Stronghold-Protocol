@@ -543,6 +543,17 @@
 @keyframes modal-in { from { opacity: 0; transform: translateY(.14rem) scale(.985); } }
 
 /* ---- tooltip -------------------------------------------------------------------------------------- */
+.voice-subtitles { position:fixed; z-index:70; box-sizing:border-box; width:520px; max-width:calc(100vw - 24px - var(--sa-l,0px) - var(--sa-r,0px)); display:flex; flex-direction:column; gap:4px; padding:9px 14px; border:1px solid var(--line-2); background:rgba(10,16,14,.94); color:var(--text-hi); pointer-events:none; font-size:clamp(12px,calc(.17 * var(--t)),18px); line-height:1.45; box-shadow:0 3px 14px #0006; }
+.voice-subtitles__speaker { display:flex; align-items:baseline; gap:6px; width:100%; color:var(--mint-400); font-weight:700; }
+.voice-subtitles__speaker .icon { flex:none; align-self:flex-start; width:14px; height:14px; margin-top:2px; }
+.voice-subtitles__speaker span { min-width:0; overflow-wrap:anywhere; }
+.voice-subtitles__text { width:100%; min-width:0; }
+.voice-subtitles__line { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; margin:0; overflow:hidden; overflow-wrap:anywhere; white-space:pre-line; }
+.voice-subtitles__line.is-translation { color:var(--text-lo); }
+.voice-subtitles__line + .voice-subtitles__line { margin-top:3px; }
+.voice-subtitles.is-held { border-color:var(--mint-400); }
+@media (max-height:560px) { .voice-subtitles { gap:3px; padding:6px 10px; } .voice-subtitles__line { -webkit-line-clamp:1; } }
+
 .term-help { position: fixed; z-index: calc(var(--z-tooltip) + 1); box-sizing: border-box; width: min(360px, calc(100vw - 24px)); max-height: min(440px, calc(100dvh - 24px)); overflow: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid var(--mint-600); background: rgba(10, 16, 14, .98); box-shadow: 0 6px 24px #000a; color: var(--text-md); font-size: max(12px, calc(.15 * var(--utility-text, var(--t)))); line-height: 1.55; overflow-wrap: anywhere; text-align: left; }
 .term-help:focus { outline: none; }
 .term-help__head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line-2); }

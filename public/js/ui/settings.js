@@ -300,6 +300,14 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint">${t('本土配音由干员决定，不是界面语言；单独指定的干员配音优先于全局设置。')}</p>
+      <${Toggle} label=${t('显示字幕')} micro="SUBTITLES" value=${s.voiceSubtitles} onChange=${voiceSubtitles => updateSettings({ voiceSubtitles })} />
+      <div class="set-row">
+        <span class="set-row__label">${t('其它语种字幕')}<${MicroLabel}>SUBTITLE LANGUAGE<//></span>
+        <${Select} label=${t('其它语种字幕')} data-testid="voice-subtitle-mode" value=${s.voiceSubtitleMode} disabled=${!s.voiceSubtitles}
+          options=${[{ value: 'ui', label: t('仅 UI 语言') }, { value: 'dual', label: t('双语') }, { value: 'voice', label: t('仅语音语言') }]}
+          onChange=${voiceSubtitleMode => updateSettings({ voiceSubtitleMode })} />
+      </div>
+      <p class="set-hint">${t('字幕跟随实际播放的台词；相同语言不重复显示。部分本土配音暂无原文字幕。')}</p>
       <${Slider} label=${t('音效')} micro="SFX" icon="signal" value=${s.sfx}
                  onInput=${(v) => { updateSettings({ sfx: v }); if (!tested) { setTested(true); setTimeout(() => setTested(false), 400); audio.sfx('click'); } }} />
       <${Toggle} label=${t('静音')} micro="MUTE" value=${s.muted} onChange=${(v) => updateSettings({ muted: v })} />

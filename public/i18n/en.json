@@ -2522,5 +2522,12 @@
   "运行时长": "Uptime",
   "更新于": "Updated",
   "游戏服务暂时不可用，显示最后一次成功读取的数据": "Game service unavailable; showing the last successful snapshot",
-  "游戏数据接口版本不匹配": "Game data API version mismatch"
+  "游戏数据接口版本不匹配": "Game data API version mismatch",
+  "显示字幕": "Show subtitles",
+  "其它语种字幕": "Subtitles for other voice languages",
+  "仅 UI 语言": "UI language only",
+  "双语": "Bilingual",
+  "仅语音语言": "Voice language only",
+  "字幕跟随实际播放的台词；相同语言不重复显示。部分本土配音暂无原文字幕。": "Subtitles follow the line actually played. Matching languages are shown once. Original subtitles are unavailable for some native dubs.",
+  "干员台词": "Operator subtitles"
 }

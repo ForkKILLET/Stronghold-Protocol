@@ -708,7 +708,7 @@ describe('keyboard & settings', () => {
   test('sanitizeSettings', () => {
     assert.deepEqual(sanitizeSettings(null), { ...DEFAULT_SETTINGS });
     assert.deepEqual(sanitizeSettings({ bgm: 3, sfx: -1, voice: 2, muted: 'yes', damageNumbers: false, quality: 'ultra' }),
-      { bgm: 1, sfx: 0, voice: 1, voiceLang: 'cn', voiceNative: false, mysticEnergy: false, officialFx: 'auto', voiceOverrides: {}, textSize: 'sm', muted: false, damageNumbers: false, officialDamageNumbers: false, ammoCount: false, deploymentZoom: false, quality: 'high', fpsLimit: 0, skinsEnabled: false, preload: false, preloadOptional: false, preloadVoiceLang: ['cn'], preloadSkins: false });
+      { bgm: 1, sfx: 0, voice: 1, voiceLang: 'cn', voiceNative: false, voiceSubtitles: false, voiceSubtitleMode: 'ui', mysticEnergy: false, officialFx: 'auto', voiceOverrides: {}, textSize: 'sm', muted: false, damageNumbers: false, officialDamageNumbers: false, ammoCount: false, deploymentZoom: false, quality: 'high', fpsLimit: 0, skinsEnabled: false, preload: false, preloadOptional: false, preloadVoiceLang: ['cn'], preloadSkins: false });
     assert.equal(sanitizeSettings({ bgm: 0.5 }).voice, DEFAULT_SETTINGS.voice, 'a saved profile without `voice` gets the default');
     // 语音语言: 中文 by default. en / kr are dubs (0.3.0); anything else, including the per-operator 'native', stays 中文.
     assert.equal(DEFAULT_SETTINGS.voiceLang, 'cn');
