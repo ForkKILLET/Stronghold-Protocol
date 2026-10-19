@@ -121,6 +121,5 @@ export function TermHelpHost() {
       <button type="button" class="term-help__button" aria-label=${t('关闭')} title=${t('关闭')} onClick=${() => closeTermHelp(true)}><${Icon} name="close" /></button>
     </header>
     <div class="term-help__body" id="term-help-body"><${TermMarkup} segments=${segments} /></div>
-    ${!s.pinned ? html`<p class="term-help__hint">${t('点击术语可固定说明')}</p>` : null}
   </section>`;
 }

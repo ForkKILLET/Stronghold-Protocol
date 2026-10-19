@@ -442,3 +442,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 观战／淘汰说明使用 WatchHint，本局在 MatchScreen 内共享关闭状态，不随回合、阶段或查看对象重置；新局重新显示。休整期已有阵地查看说明时不叠加 gm__dead，提示仅在底部展示。关闭只影响说明，不退出观战、不发游戏指令，保留返回及联防／领袖镜头切换控件；回归 spectator-hint.e2e.test.js、watch-bonds.test.js 与 spectator.e2e.test.js。
 
 - 2026-10-19 关键词说明复用 RichText／TermMarkup 与全局 TermHelpHost。按 `$` 标记的原始 termId 查询，不按显示名称猜测；未知词无链接样式。悬停／聚焦预览、点击／轻点固定，关联词复用同一浮层及返回栈；固定时进入既有焦点栈，Esc 先关闭词条，不穿透选卡／购买。百科及调配的 capture 键盘处理须让术语层优先。数据由 tools/build-terms.mjs 及固定 URL／SHA-256 提取，译文复用现有 overlay；不手改生成 JSON、不运行时访问外站。维护见 docs/TERMS.md，回归 terms.test.js、richText.test.js、term-help*.e2e.test.js。
+
+- 2026-10-19 术语说明卡四边使用统一 1px 边框，不添加加粗顶边；移除“点击术语可固定说明”提示行及译文，预览与固定共用同一内容结构，不因固定改变高度。卡片宽度、字号及留白保持紧凑，同时保留大字／窄屏滚动及最小 24px 关闭控件；term-help.e2e.test.js 验证预览／固定尺寸一致。

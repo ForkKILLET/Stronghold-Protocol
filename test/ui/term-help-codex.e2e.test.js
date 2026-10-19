@@ -35,6 +35,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
     await page.screenshot({ path: new URL(`term-help-codex-${engine}-1366.png`, out).pathname });
     await page.keyboard.press('Escape'); await page.waitForSelector('#term-help', { hidden: true });
     assert.ok(await page.$('.sw-codex'), 'Escape closes the explanation, keeping the encyclopedia and selection');
+    await page.waitForFunction(() => document.activeElement?.matches('.sw-cd .rt-term'));
     await page.focus('.sw-search input');
     await page.focus('.sw-cd .rt-term'); await page.waitForSelector('#term-help[role=tooltip]');
     await page.keyboard.press('Escape'); await page.waitForSelector('#term-help', { hidden: true });

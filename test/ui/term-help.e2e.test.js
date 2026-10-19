@@ -42,7 +42,12 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
     assert.equal(await page.$('#unknown .rt-term'), null, 'missing definitions never look like a link');
     await page.hover('#term-anchor .rt-term'); await page.waitForSelector('#term-help[role=tooltip]');
     assert.match(await page.$eval('#term-help-body', e => e.textContent), /攻击速度下降30/);
+    const preview = await page.$eval('#term-help', e => { const r = e.getBoundingClientRect(), s = getComputedStyle(e); return { width: r.width, height: r.height, borders: [s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth] }; });
+    assert.deepEqual(preview.borders, ['1px', '1px', '1px', '1px']);
     await page.click('#term-anchor .rt-term'); await page.waitForSelector('#term-help[data-pinned=true]');
+    const pinned = await page.$eval('#term-help', e => { const r = e.getBoundingClientRect(); return { width: r.width, height: r.height }; });
+    assert.equal(pinned.width, preview.width);
+    assert.equal(pinned.height, preview.height, 'pinning keeps the same content and height');
     await page.mouse.move(1, 1);
     await page.click('#term-help-body .rt-term');
     assert.equal(await page.$eval('#term-help-title', e => e.textContent), '冻结');
