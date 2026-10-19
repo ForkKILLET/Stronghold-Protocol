@@ -277,17 +277,32 @@ export function TitleScreen() {
       actions=${html`<${Button} variant="primary" data-autofocus onClick=${() => setAboutOpen(false)}>${t('关闭')}<//>`}>
       <dl class="title-about__links">
         <div>
-          <dt>${t('联系邮箱')}</dt>
+          <dt>${t('本服务器使用的 GitHub 仓库')}</dt>
+          <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">ForkKILLET/Stronghold-Protocol</a></dd>
+          <p class="title-about__hint">${t('本分支由 ForkKILLET 维护，面向公开服务器优化运行稳定性、加载效率与游玩体验，持续同步上游玩法。')}</p>
+        </div>
+        <div>
+          <dt>${t('本分支特色')}</dt>
+          <dd>${t('服务器端博士档案与战绩、房间规则配置、全局暂停、交流与观战、逐回合作战统计、资源预载及界面优化。')}</dd>
+        </div>
+        <div>
+          <dt>${t('本分支更新与反馈')}</dt>
+          <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol/blob/deployment/genshin/CHANGELOG.md" target="_blank" rel="noopener noreferrer">${t('更新日志')}</a></dd>
+          <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol/issues" target="_blank" rel="noopener noreferrer">${t('本分支问题反馈')}</a></dd>
+        </div>
+        <div>
+          <dt>${t('上游来源')}</dt>
+          <dd><a href="https://github.com/xinhai-ai/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">xinhai-ai/Stronghold-Protocol</a></dd>
+          <dd><a href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">sganggs/Stronghold-Protocol</a></dd>
+        </div>
+        <div>
+          <dt>${t('上游作者联系邮箱')}</dt>
           <dd><a href="mailto:linxia@fastmail.com">linxia@fastmail.com</a></dd>
         </div>
         <div>
-          <dt>${t('问题反馈')}</dt>
+          <dt>${t('上游作者反馈入口')}</dt>
           <dd><a href="https://space.bilibili.com/401522003" target="_blank" rel="noopener noreferrer">${t('B 站：临夏俨然')}</a></dd>
-          <p class="title-about__hint">${t('如果遇到服务器方面的问题，可以通过 B 站私信或发送邮件联系。')}</p>
-        </div>
-        <div>
-          <dt>${t('本服务器使用的 GitHub 仓库')}</dt>
-          <dd><a href="https://github.com/xinhai-ai/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">https://github.com/xinhai-ai/Stronghold-Protocol</a></dd>
+          <p class="title-about__hint">${t('以上联系方式属于上游作者；本服及本分支问题请使用本分支问题反馈入口。')}</p>
         </div>
         <div>
           <dt>${t('UI 制作')}</dt>
