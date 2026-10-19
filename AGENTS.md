@@ -444,3 +444,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 关键词说明复用 RichText／TermMarkup 与全局 TermHelpHost。按 `$` 标记的原始 termId 查询，不按显示名称猜测；未知词无链接样式。悬停／聚焦预览、点击／轻点固定，关联词复用同一浮层及返回栈；固定时进入既有焦点栈，Esc 先关闭词条，不穿透选卡／购买。百科及调配的 capture 键盘处理须让术语层优先。数据由 tools/build-terms.mjs 及固定 URL／SHA-256 提取，译文复用现有 overlay；不手改生成 JSON、不运行时访问外站。维护见 docs/TERMS.md，回归 terms.test.js、richText.test.js、term-help*.e2e.test.js。
 
 - 2026-10-19 术语说明卡四边使用统一 1px 边框，不添加加粗顶边；移除“点击术语可固定说明”提示行及译文，预览与固定共用同一内容结构，不因固定改变高度。卡片宽度、字号及留白保持紧凑，同时保留大字／窄屏滚动及最小 24px 关闭控件；term-help.e2e.test.js 验证预览／固定尺寸一致。
+
+- 2026-10-19 运行时资源先用限定 CACHE_NAME 的 CacheStorage.match 一次查询当前缓存，仅未命中才枚举本应用旧缓存；不保留跨请求 Cache 句柄，清理／替换缓存必须立即生效，不查询其他应用缓存。保留普通路径／旧方括号、CDN、Range 及音频网络优先行为；预载保存文件，不承诺提前解析所有模型或常驻显存。回归 resources/store.test.js、archive.test.js 及 service.e2e.test.js（SP_E2E=1，Chrome／Firefox）。

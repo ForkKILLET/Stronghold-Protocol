@@ -23,6 +23,11 @@ class MemoryCaches {
   async open(name) { if (!this.entries.has(name)) this.entries.set(name, new MemoryCache()); return this.entries.get(name); }
   async keys() { return [...this.entries.keys()]; }
   async delete(name) { return this.entries.delete(name); }
+  async match(key, { cacheName } = {}) {
+    const candidates = cacheName === undefined ? this.entries.values() : [this.entries.get(cacheName)].filter(Boolean);
+    for (const cache of candidates) { const hit = await cache.match(key); if (hit) return hit; }
+    return undefined;
+  }
 }
 
 test('vendor preparation supplies the upstream zip.js CRC codec used for stored-entry verification', () => {

@@ -296,6 +296,9 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   (the CDN) cannot resolve `/media/…`. It needs HTTPS (or localhost); on plain HTTP the switch says why it cannot be
   used instead of failing silently. `updateViaCache: 'none'` matters: it is what makes a new worker (and its module
   imports) reach the browser on the next reload instead of being served from the HTTP cache.
+  The usual hit uses a single `CacheStorage.match` scoped to the current cache; only a miss enumerates older app caches.
+  No Cache handles are retained, so clearing/replacing a cache takes effect immediately. Preloading stores file bytes;
+  first-use Spine parsing, image decoding and GPU upload still happen when the scene needs each model.
 - 「清理缓存」 deletes every cache the app owns; turning the switch off stops the downloads and keeps what is cached
   (still served from the cache by the worker), and the worker is removed once there is nothing left to serve. Once a run
   has brought the set up to date, the caches of earlier layouts and the entries the manifest no longer lists are

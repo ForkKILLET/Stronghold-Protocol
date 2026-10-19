@@ -25,7 +25,11 @@ class MemoryCaches {
   async open(name) { if (!this.map.has(name)) this.map.set(name, new MemoryCache()); return this.map.get(name); }
   async keys() { return [...this.map.keys()]; }
   async delete(name) { return this.map.delete(name); }
-  async match(url) { for (const c of this.map.values()) { const hit = await c.match(url); if (hit) return hit; } return undefined; }
+  async match(url, { cacheName } = {}) {
+    const candidates = cacheName === undefined ? this.map.values() : [this.map.get(cacheName)].filter(Boolean);
+    for (const c of candidates) { const hit = await c.match(url); if (hit) return hit; }
+    return undefined;
+  }
 }
 
 const ORIGIN = 'https://game.example';
@@ -784,6 +788,26 @@ describe('the Service Worker handler', () => {
     assert.equal(part.status, 206);
     assert.equal(await part.text(), '234');
     assert.equal(part.headers.get('content-range'), 'bytes 2-4/10');
+  });
+
+  test('current-cache hits avoid storage enumeration and opening cache handles', async () => {
+    const caches = await cached();
+    caches.keys = caches.open = async () => { throw new Error('unnecessary storage round trip'); };
+    const response = await handleResourceRequest(new Request(`${ORIGIN}/assets/a.png`), {
+      caches, fetcher: async () => { throw new Error('cached art must not use the network'); },
+    });
+    assert.equal(await response.text(), '0123456789');
+  });
+
+  test('clearing the current cache is immediate and unrelated caches cannot supply art', async () => {
+    const caches = await cached(), key = `${ORIGIN}/assets/a.png`;
+    await (await caches.open('unrelated-cache')).put(key, new Response('unrelated'));
+    assert.equal(await (await handleResourceRequest(new Request(key), { caches })).text(), '0123456789');
+    await caches.delete(CACHE_NAME);
+    assert.equal(await handleResourceRequest(new Request(key), { caches, fetcher: async () => { throw new Error('offline'); } }), null);
+    assert.equal(caches.map.has(CACHE_NAME), false, 'a read miss does not recreate the cleared cache');
+    await seed(caches, key, 'replacement');
+    assert.equal(await (await handleResourceRequest(new Request(key), { caches })).text(), 'replacement');
   });
 
   test('a CDN URL is answered from the cache as well (the resource may live elsewhere)', async () => {

@@ -120,8 +120,14 @@ function cacheKeys(url) {
  */
 async function matchResource(url, caches) {
   const keys = cacheKeys(url);
-  const names = (await caches.keys()).filter((n) => n.startsWith(CACHE_PREFIX));
-  names.sort((a, b) => (a === CACHE_NAME ? -1 : b === CACHE_NAME ? 1 : 0));
+  // One storage round trip for the usual hit. Firefox can spend hundreds of
+  // milliseconds listing/opening a large preload cache before even matching it.
+  // Do not retain Cache handles: clearing a cache must take effect immediately.
+  for (const key of keys) {
+    const res = await caches.match(key, { cacheName: CACHE_NAME });
+    if (res) return res;
+  }
+  const names = (await caches.keys()).filter((n) => n !== CACHE_NAME && n.startsWith(CACHE_PREFIX));
   for (const name of names) {
     const cache = await caches.open(name);
     for (const key of keys) {
