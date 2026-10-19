@@ -432,3 +432,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 公告弹窗页签位于独立正文滚动区之外，不在整个 modal__body 上做 sticky 遮盖；标题／页签／关闭操作不得被正文穿过。板块切换重置阅读位置，保留键盘翻页及主题滚动条；回归 test/ui/announcement-scroll.e2e.test.js（SP_E2E=1，Chrome／Firefox；SP_E2E_BUILD=1 验证生产构建）。
 
 - 2026-10-18 房间席位主区与底栏分别建立层叠上下文，踢人／移除 AI、气泡和交流浮层的层级仅在房间内容内生效；共享顶栏的设置及其嵌套面板、公告和玩法说明必须完整覆盖这些控件。验证 test/ui/room-overlays.e2e.test.js（SP_E2E=1，Chrome／Firefox）。
+
+- 2026-10-19 开始页使用 PageHeader 的 title 变体，复用公告／工具／博士档案入口，语言为档案旁插槽；中央 h1 与开始流程保留。连接状态标签和状态点保持整组不折行，首次 hello 之前不展示延迟／人数；窄屏按组换行。全屏在共享工具栏使用标准方形按钮，正式对局保留原 HUD。回归 test/ui/title-navigation.e2e.test.js（Chrome／Firefox，源码及生产构建）。

@@ -1037,11 +1037,12 @@ describe('screen helpers', () => {
     assert.equal(findUiAsset({ ui: {} }, ['x']), null);
   });
 
-  test('title exposes the shared settings modal', () => {
+  test('title uses the shared navigation and settings entry', () => {
     const source = readFileSync(path.join(PUBLIC, 'js/screens/title.js'), 'utf8');
-    assert.match(source, /import \{ SettingsModal \} from '\.\.\/ui\/settings\.js'/);
-    assert.match(source, /class="title-settings fsbtn tapx"/, 'title screen includes the settings control');
-    assert.match(source, /<\$\{SettingsModal\} open=\$\{settingsOpen\}/, 'settings control opens the shared modal');
+    assert.match(source, /<\$\{PageHeader\} variant="title"/);
+    const header = readFileSync(path.join(PUBLIC, 'js/ui/pageHeader.js'), 'utf8');
+    assert.match(header, /<\$\{SettingsButton\}/);
+    assert.doesNotMatch(source, /SettingsModal|title-settings|title-conn/);
   });
 
   test('lobby: normalizeCode / parseRoomParam / difficultyInfo', async () => {

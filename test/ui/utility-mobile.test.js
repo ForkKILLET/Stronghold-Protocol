@@ -71,7 +71,6 @@ test('the source and build entry load the density layer after the existing touch
   assert.equal(declaration(':is(.lobby-screen, .room-screen) .btn', 'min-height', MOBILE), '.75rem');
   assert.match(declaration(':is(.lobby-screen, .room-screen) .field__input', 'font-size', MOBILE), /16px/);
   assert.equal(declaration('.title-screen .title-login .field__input', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
-  assert.equal(declaration('.title-screen .lang-select select', 'font-size', MOBILE), 'calc(.2 * var(--utility-text, var(--t)))');
   const settingsControls = ':is(.utility-modal.settings-modal, .utility-modal.settings-shortcuts-modal) :is(.btn, .set-seg button, .set-toggle, .set-native, .shortcut-key)';
   assert.equal(declaration(settingsControls, 'font-size', MOBILE),
     'calc(.16 * var(--t))');
@@ -87,7 +86,7 @@ test('short-screen density does not change field/shop/chat layout or hide functi
   assert.equal(declaration('.lobby-screen .tips', 'display', MOBILE), 'block');
   assert.equal(declaration('.st-note.is-warn', 'display', MOBILE), 'flex');
   assert.equal(declaration('.lo-card__bonds', 'display', MOBILE), 'flex');
-  assert.equal(declaration('.title-screen .title-corner--tr', 'position', MOBILE), 'relative', 'language/stats entries remain accessible');
+  assert.equal(declaration('.title-screen', 'overflow-y', MOBILE), 'auto', 'entry content remains reachable on short screens');
 });
 
 test('compact utility controls have real hit boxes instead of overlapping 44px pseudo-elements', () => {

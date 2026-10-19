@@ -22,6 +22,16 @@
 .app-header .topbar-announcement .icon { width:16px; height:16px; }
 .app-header .ping__unit { font-size:11px; }
 .app-header .ping__icon { width:13px; height:13px; }
+.app-header__account { grid-area:identity; align-self:start; justify-self:end; min-width:0; display:flex; align-items:center; gap:12px; }
+.app-header__language { flex:none; width:140px; }
+.app-header__language .lang-toggle { width:100%; margin:0; }
+.app-header__language .game-select { box-sizing:border-box; width:100%; min-width:0; height:36px; min-height:36px; }
+.app-header__language [role="radio"] { height:36px; min-width:0; padding:6px; font-size:12px; }
+/* The entry page shares navigation, while its central title remains the primary heading. */
+.app-header--title { width:100%; background:linear-gradient(180deg,#080f0de6,#0b131166); }
+.app-header__connection { flex:none; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); color:var(--text-lo); }
+.app-header__connection .status-dot { flex:none; }
+.app-header__brand > .micro { font-size:11px; letter-spacing:.18em; }
 .app-header__identity { grid-area:identity; align-self:start; justify-self:end; box-sizing:border-box; min-width:150px; max-width:230px; height:44px; min-height:44px; margin:0; padding:6px 10px; }
 .app-header__identity .avatar { --av:32px; }
 .app-header__identity .me-chip__name { font-size:max(13px,calc(.18 * var(--utility-text,var(--t)))); }
@@ -73,6 +83,7 @@
 @media (max-width:1100px) {
  .app-header__row { grid-template-columns:minmax(0,1fr) 220px minmax(0,1fr); gap:8px 12px; padding-inline:16px; }
  .app-header__links { gap:8px; }
+ .app-header__language { width:120px; }
  .app-header__identity { min-width:44px; max-width:44px; width:44px; padding:4px; justify-content:center; }
  .app-header__identity .me-chip__text, .app-header__identity .me-chip__stats { display:none; }
  .app-header .app-header__status, .app-header__tools { gap:6px; }
@@ -82,6 +93,12 @@
 }
 @media (max-width:760px) {
  .app-header__row { grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:44px 36px 56px; grid-template-areas:"links identity" "tools tools" "heading heading"; height:168px; gap:8px 12px; padding:8px 12px; }
+ .app-header__account { display:contents; }
+ .app-header__language { grid-area:tools; justify-self:end; width:112px; }
+ .app-header--title .app-header__tools { max-width:calc(100% - 124px); }
+ .app-header--title .app-header__row { grid-template-rows:minmax(44px,auto) 36px; grid-template-areas:"links identity" "tools tools"; height:auto; min-height:104px; }
+ .app-header--title .app-header__heading { display:none; }
+ .app-header--title .app-header__links { height:auto; min-height:44px; flex-wrap:wrap; gap:4px 6px; }
  .app-header__heading h1 { font-size:max(26px,calc(.34 * var(--utility-text,var(--t)))); }
  .app-header__status .online-count { padding-inline:5px; }
  .app-header__status .online-count .ping__unit { font-size:10px; }

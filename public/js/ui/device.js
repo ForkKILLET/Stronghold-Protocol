@@ -144,7 +144,7 @@ export const fullscreen = {
 };
 
 /** Fullscreen toggle (hidden where the browser has no element fullscreen, e.g. iPhone Safari). */
-export function FullscreenButton({ class: cls = '' }) {
+export function FullscreenButton({ class: cls = '', square = false }) {
   const [on, setOn] = useState(() => fullscreen.active());
   const [ok] = useState(() => fullscreen.supported());
   useEffect(() => {
@@ -157,6 +157,9 @@ export function FullscreenButton({ class: cls = '' }) {
   }, []);
   if (!ok) return null;
   const label = on ? t('退出全屏') : t('全屏');
+  if (square) return html`<${Button} variant="secondary" square=${true} size="sm" icon=${on ? 'collapse' : 'expand'}
+    class=${`fullscreen-btn ${cls}`} title=${label} aria-label=${label} aria-pressed=${on ? 'true' : 'false'}
+    onClick=${() => fullscreen.toggle()} />`;
   return html`<button type="button" class=${`fsbtn tapx ${cls}`} aria-label=${label} title=${label} aria-pressed=${on ? 'true' : 'false'}
       onClick=${() => fullscreen.toggle()}>
     <${Icon} name=${on ? 'collapse' : 'expand'} />

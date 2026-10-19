@@ -128,7 +128,7 @@ describe('统计数据 page (real server, headless Chrome)', { skip: !ENABLED &&
     writeFileSync(file, JSON.stringify(env));
     for (const nickname of [null, 'SessionID']) {
       const c = await open({ entered: false, nickname });
-      await openStats(c, '.title-corner .btn');
+      await openStats(c, '.title-screen .stats-entry');
       await c.page.waitForSelector('.st-empty'); // no records yet: the empty page, no profile until the import
       const input = await c.page.$('.st input[type="file"]');
       await input.uploadFile(file);
@@ -187,7 +187,7 @@ describe('统计数据 page (real server, headless Chrome)', { skip: !ENABLED &&
     await c.close();
     // the title screen's entry (not entered yet: no connection needed), in English
     const t = await open({ stored: JSON.stringify(env), entered: false, lang: 'en' });
-    await t.click('.title-corner .btn', 'Stats');
+    await t.click('.title-screen .stats-entry', 'Stats');
     await t.page.waitForSelector('.st .st-tab', { visible: true, timeout: 15000 });
     assert.match(await t.page.$eval('.st-top', (e) => e.textContent), /Overview/);
     await t.page.screenshot({ path: path.join(OUT, 'stats-overview-title-en.png') });

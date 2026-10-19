@@ -5,8 +5,8 @@ import { DoctorAvatar, profileStore } from './profile.js';
 import { SettingsButton } from './settings.js';
 import { GuideButton } from './guide.js';
 import { AnnouncementButton } from './announcement.js';
-import { PwaInstallButton } from './device.js';
-import { t } from '../../../shared/i18n.js';
+import { FullscreenButton, PwaInstallButton } from './device.js';
+import { t, N_ } from '../../../shared/i18n.js';
 
 /** Same return treatment for page navigation and nested report/detail views. */
 export function BackButton({ onClick, title = t('返回'), busy = false, class: cls = '', ...props }) {
@@ -14,37 +14,53 @@ export function BackButton({ onClick, title = t('返回'), busy = false, class: 
     loading=${busy} onClick=${onClick} title=${title} aria-label=${title}>${t('返回')}<//>`;
 }
 
+const STATUS_TEXT = {
+  idle: N_('准备连接'), connecting: N_('连接中'), connected: N_('已连接'), handshaking: N_('验证中'),
+  online: N_('已连接'), reconnecting: N_('重连中'), closed: N_('未连接'),
+};
+
 /** Every page uses the same navigation geometry; only its title and return action vary. */
-export function PageHeader({ onBack, backTitle, backBusy = false, title = null, micro = null, subtitle = null, heading = null }) {
+export function PageHeader({ onBack, backTitle, backBusy = false, title = null, micro = null, subtitle = null, heading = null, variant = 'page', language = null }) {
   const connection = useStore(s => s.connection, shallowEqual);
   const presence = useStore(s => s.presence, shallowEqual);
   const me = useStore(s => s.me, shallowEqual);
   const profile = useStore(s => s.user, Object.is, profileStore);
+  const isTitle = variant === 'title';
+  const dot = ['connected', 'online'].includes(connection.status) ? 'is-on'
+    : ['connecting', 'handshaking', 'reconnecting'].includes(connection.status) ? 'is-warn' : 'is-bad';
   const name = profile?.name || me.name || t('博士');
   const openArchive = () => import('../screens/stats.js').then(m => m.openStats());
-  const backButton = html`<${BackButton} onClick=${onBack} title=${backTitle || t('返回')} busy=${backBusy} />`;
+  const backButton = isTitle ? html`<span class="app-header__connection" role="status">
+    <span class=${`status-dot ${dot}`} aria-hidden="true"></span>
+    <span>${t(STATUS_TEXT[connection.status] || '未连接')}</span>
+  </span>` : html`<${BackButton} onClick=${onBack} title=${backTitle || t('返回')} busy=${backBusy} />`;
   const status = html`<div class="app-header__status connection-status">
-        <${PingPill} ms=${connection.ping} online=${connection.status === 'online'} />
-        <${OnlineCount} online=${presence.online} />
-        <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
-      </div>`;
+    ${!isTitle || connection.status === 'online' ? html`
+      <${PingPill} ms=${connection.ping} online=${connection.status === 'online'} />
+      <${OnlineCount} online=${presence.online} />` : null}
+    <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
+  </div>`;
   const tools = html`<div class="app-header__tools">
-        <${SettingsButton} variant="secondary" square=${true} />
-        <${GuideButton} variant="secondary" square=${true} />
-        <${PwaInstallButton} square=${true} />
-      </div>`;
+    <${SettingsButton} variant="secondary" square=${true} />
+    <${GuideButton} variant="secondary" square=${true} />
+    <${FullscreenButton} square=${true} />
+    <${PwaInstallButton} square=${true} />
+  </div>`;
   const identity = html`<button type="button" class="app-header__identity me-chip me-chip--btn stats-entry" onClick=${openArchive}
         title=${t('博士档案')} aria-label=${t('博士档案')}>
         <${DoctorAvatar} name=${name} />
         <span class="me-chip__text"><span class="me-chip__name">${name}</span><${MicroLabel}>DOCTOR ARCHIVE<//></span>
         <${Icon} name="user" class="me-chip__stats" />
       </button>`;
-  return html`<header class="app-header" aria-label=${t('全局导航')} data-testid="page-header">
+  return html`<header class=${`app-header${isTitle ? ' app-header--title' : ''}`} aria-label=${t('全局导航')} data-testid="page-header">
     <div class="app-header__row">
       <div class="app-header__links">${backButton}${status}</div>
       ${tools}
       ${heading || html`<${PageHeading} title=${title || t('卫戍协议：盟约')} micro=${micro} subtitle=${subtitle} />`}
-      ${identity}
+      <div class="app-header__account">
+        ${language ? html`<div class="app-header__language">${language}</div>` : null}
+        ${identity}
+      </div>
     </div>
   </header>`;
 }

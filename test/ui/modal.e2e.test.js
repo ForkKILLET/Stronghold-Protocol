@@ -155,8 +155,8 @@ describe('Modal keyboard focus', { skip: !ENABLED && 'set SP_E2E=1 and have Chro
       await page.setViewport({ width: 1280, height: 720 });
       page.setDefaultTimeout(5000);
       await page.goto(srv.url, { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('.title-settings');
-      await page.click('.title-settings');
+      await page.waitForSelector('.title-screen [data-testid="settings-btn"]');
+      await page.click('.title-screen [data-testid="settings-btn"]');
       await page.waitForFunction(() => document.querySelector('.modal__box')?.contains(document.activeElement));
       const assertInside = async () => assert.equal(await page.evaluate(() => document.querySelector('.modal__box').contains(document.activeElement)), true);
       for (const reverse of [false, true]) for (let i = 0; i < 25; i++) { await tab(page, reverse); await assertInside(); }
@@ -188,7 +188,7 @@ describe('Modal keyboard focus', { skip: !ENABLED && 'set SP_E2E=1 and have Chro
       await assertInside();
       await page.keyboard.press('Escape');
       await page.waitForSelector('.modal', { hidden: true });
-      assert.equal(await page.evaluate(() => document.activeElement.matches('.title-settings')), true);
+      assert.equal(await page.evaluate(() => document.activeElement.matches('.title-screen [data-testid="settings-btn"]')), true);
       assert.ok(await page.$('.title-screen'), 'the background start button was not activated');
     } finally { await page.close(); }
   });
@@ -198,8 +198,8 @@ describe('Modal keyboard focus', { skip: !ENABLED && 'set SP_E2E=1 and have Chro
     try {
       page.setDefaultTimeout(5000);
       await page.goto(srv.url, { waitUntil: 'domcontentloaded' });
-      await page.waitForSelector('.title-settings');
-      await page.click('.title-settings');
+      await page.waitForSelector('.title-screen [data-testid="settings-btn"]');
+      await page.click('.title-screen [data-testid="settings-btn"]');
       await page.waitForSelector('.set-guide');
       await page.waitForFunction(() => !document.querySelector('.modal__box').getAnimations().some((a) => a.playState === 'running'));
       await page.click('.set-guide');

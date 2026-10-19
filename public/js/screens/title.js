@@ -21,22 +21,18 @@ import {persistProfileName} from '../ui/profile.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useMemo, useState } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION, DEV_BUILD } from '../../../shared/constants.js';
-import { html, Button, Icon, MicroLabel, TextField, PingPill, Modal } from '../ui/components.js';
-import { AnnouncementButton } from '../ui/announcement.js';
-import { GuideButton } from '../ui/guide.js';
-import { openStats } from './stats.js';
+import { html, Button, Icon, MicroLabel, TextField, Modal } from '../ui/components.js';
 import { toast } from '../ui/toasts.js';
 import { net, identity } from '../net.js';
-import { store, useStore, shallowEqual } from '../store.js';
+import { store, useStore } from '../store.js';
 import { data, useData } from '../data.js';
-import { FullscreenButton, PwaInstallButton, detectFeatures } from '../ui/device.js';
+import { detectFeatures } from '../ui/device.js';
 import { updateSettings, useSettings } from '../ui/settings.js';
 import { LangToggle, useLang } from '../ui/lang.js';
-import { t, N_ } from '../../../shared/i18n.js';
+import { t } from '../../../shared/i18n.js';
 import { scriptOf } from '../../../shared/i18nPacks.js';
-import { SettingsModal } from '../ui/settings.js';
+import { PageHeader } from '../ui/pageHeader.js';
 import { ResourceLauncher } from '../ui/resourcePanel.js';
-import { GIcon } from '../ui/gameComponents.js';
 import { installedCount } from '../content.js';
 import { sanitizeName, isValidName } from '../ui/playerName.js';
 
@@ -163,14 +159,8 @@ function Ridges() {
   </svg>`;
 }
 
-const STATUS_TEXT = {
-  idle: N_('准备连接'), connecting: N_('正在连接服务器'), connected: N_('已连接服务器'), handshaking: N_('正在验证身份'),
-  online: N_('已连接服务器'), reconnecting: N_('连接中断，正在重连'), closed: N_('连接已关闭'),
-};
-
 /** Title screen component. */
 export function TitleScreen() {
-  const conn = useStore((s) => s.connection, shallowEqual);
   const pendingJoin = useStore((s) => s.ui.pendingJoin);
   const settings = useSettings();
   useLang(); // re-render on a language switch
@@ -181,7 +171,6 @@ export function TitleScreen() {
     if (currentName) setName((draft) => draft || currentName);
   }, [currentName]);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   // the list of the server's plugins once loaded (ui/pluginPanel.js — a component in state: set through an updater)
   const [Installed, setInstalled] = useState(null);
   const openPlugins = () => {
@@ -217,9 +206,6 @@ export function TitleScreen() {
     } finally { setStarting(false); }
   };
 
-  const online = conn.status === 'online' || conn.status === 'connected';
-  const dotClass = online ? 'is-on' : conn.status === 'reconnecting' || conn.status === 'connecting' || conn.status === 'handshaking' ? 'is-warn' : 'is-bad';
-
   // touch screens: no autofocus (it would pop the on-screen keyboard over a landscape phone's whole view)
   const touchUi = useMemo(() => detectFeatures().coarse, []);
   // a title in an alphabetic script (English, French …) is the big one in the display face and the wordmark above it
@@ -244,19 +230,11 @@ export function TitleScreen() {
       <span class="cross" style="left:60%;top:12%"></span>
     </div>
 
-    <div class="title-corner title-corner--tl">
-      <span class="title-corner__mark"></span>
-      <div><${MicroLabel} tone="mint">RHODES ISLAND // SIMULATION SERVICE<//><br /><${MicroLabel}>TACTICAL CO-OP NODE · 02<//></div>
-    </div>
-    <div class="title-corner title-corner--tr">
-      <div>
-        <div class="title-corner__tools">
-          <${Button} variant="ghost" size="sm" icon="chart" class="title-stats" onClick=${openStats} title=${t('博士档案')}>${t('博士档案')}<//>
-          <${LangToggle} class="title-lang" />
-        </div>
-        <${MicroLabel} tone="hi">TARGET POINT<//><br /><${MicroLabel}>STRONGHOLD PROTOCOL<//>
-      </div>
-    </div>
+    <${PageHeader} variant="title" language=${html`<${LangToggle} />`}
+      heading=${html`<div class="app-header__heading app-header__brand" aria-hidden="true">
+        <${MicroLabel} tone="mint">RHODES ISLAND<//>
+        <${MicroLabel}>SIMULATION SERVICE<//>
+      </div>`} />
 
     <main class="title-main">
       <${Emblem} />
@@ -264,7 +242,7 @@ export function TitleScreen() {
         <span class="title-en__a">STRONGHOLD PROTOCOL</span>
         <span class="title-en__b">ALLIANCE</span>
       </div>`}
-      <h1 class=${`title-cn${alphabetic ? ' title-cn--latin' : ''}`}>${t('卫戍协议')}<span class="title-cn__colon">${alphabetic ? ': ' : '：'}</span><em>${t('盟约')}</em></h1>
+      <h1 class=${`title-cn${alphabetic ? ' title-cn--latin' : ''}`}><span class="title-cn__name">${t('卫戍协议')}<span class="title-cn__colon">${alphabetic ? ': ' : '：'}</span></span><em>${t('盟约')}</em></h1>
       <p class="title-tag">${t('调配资金与干员，与同伴协同布防，抵御多波次进攻，直至击败敌方领袖。')}</p>
 
       <div class="title-login">
@@ -276,30 +254,18 @@ export function TitleScreen() {
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
         <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid || starting} onClick=${start}>${t('开始')}<//>
-        <div class="title-conn">
-          <span class=${`status-dot ${dotClass}`}></span>
-          <span>${STATUS_TEXT[conn.status] ? t(STATUS_TEXT[conn.status]) : conn.status}</span>
-          ${conn.status === 'online' ? html`<${PingPill} ms=${conn.ping} />` : null}
-          <${GuideButton} class="title-guide" label=${t('玩法说明')} />
-          <button type="button" class="title-settings fsbtn tapx" aria-label=${t('设置')} title=${t('设置')}
-            onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>
-          <${FullscreenButton} class="title-fs" />
-        </div>
       </div>
       <div class="title-about-wrap">
-        <${AnnouncementButton} variant="ghost" />
         <${Button} variant="ghost" size="sm" class="title-about-button" aria-haspopup="dialog"
           onClick=${() => setAboutOpen(true)}>${t('关于本服务器')}<//>
       </div>
     </main>
 
     <div class="title-preload"><${ResourceLauncher} enabled=${settings.preload} onChange=${(v) => updateSettings({ preload: v })} /></div>
-    <${SettingsModal} open=${settingsOpen} onClose=${() => setSettingsOpen(false)} />
     ${Installed ? html`<${Installed} open=${true} onClose=${() => setInstalled(null)} />` : null}
 
     <footer class="title-foot">
       <${ResumeMatchButton} />
-      <${PwaInstallButton} />
       ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
         <${Icon} name="info" />${t('本服务器安装了 {n} 个插件', { n: installed })}</button>` : null}
       <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>

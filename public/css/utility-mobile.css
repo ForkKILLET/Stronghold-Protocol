@@ -359,23 +359,17 @@
   .title-screen { overflow-y: auto; justify-content: flex-start; }
   .title-screen .title-main { flex: none; width: 100%; min-width: 0; margin: auto 0; padding: .25rem .2rem; }
   .title-screen .title-cn { font-size: calc(.72 * var(--t)); line-height: 1.1; letter-spacing: .04em; }
-  .title-screen .title-cn--latin { font-size: calc(.44 * var(--t)); }
+  .title-screen .title-cn--latin { font-size: calc(.44 * var(--t)); white-space:normal; text-align:center; }
   .title-screen .title-tag { max-width: 7rem; }
   .title-screen .title-login { width: min(7.2rem, 100%); margin-top: .3rem; gap: .15rem; padding: .25rem; }
   .title-screen .title-login .field__box { min-height: .85rem; height: auto; }
   .title-screen .title-login .field__input { font-size: calc(.2 * var(--utility-text, var(--t))); }
   .title-screen .title-login .btn--xl { height: auto; min-height: 36px; padding: 6px 10px; letter-spacing: .16em; font-size: calc(.24 * var(--utility-text, var(--t))); }
-  .title-screen .title-login .title-invite, .title-screen .title-conn { font-size: calc(.14 * var(--utility-text, var(--t))); }
-  .title-screen .title-conn { flex-wrap: wrap; gap: .1rem; }
-  .title-screen .title-settings, .title-screen .title-fs { width: .7rem; height: .7rem; }
+  .title-screen .title-login .title-invite { font-size: calc(.14 * var(--utility-text, var(--t))); }
   .title-screen .title-tag { font-size: calc(.16 * var(--utility-text, var(--t))); letter-spacing: .02em; text-align: center; }
   .title-screen .title-foot { position: relative; inset: auto; width: 100%; flex-wrap: wrap; padding: .15rem .25rem; gap: .1rem; font-size: calc(.13 * var(--utility-text, var(--t))); }
-  .title-screen .title-corner--tl { display: none; }
-  .title-screen .title-corner--tr { position: relative; inset: auto; flex: none; width: 100%; padding: .15rem .25rem; justify-content: flex-end; }
-  .title-screen .title-corner--tr > div > .micro, .title-screen .title-corner--tr > div > br { display: none; }
-  .title-screen .title-corner__tools { margin: 0; gap: .15rem; }
-  .title-screen .title-corner__tools .btn, .title-screen .title-lang button { height: auto; min-height: .75rem; font-size: calc(.16 * var(--utility-text, var(--t))); }
-  .title-screen .lang-select select { height: .75rem; font-size: calc(.2 * var(--utility-text, var(--t))); }
+  .title-screen .title-preload { position:relative; inset:auto; flex:none; width:min(300px,calc(100% - 32px)); margin:0 auto 12px; }
+  .title-screen .res-pill { width:100%; }
   .title-screen .res-pill__head { min-height: .75rem; flex-wrap: wrap; font-size: calc(.16 * var(--utility-text, var(--t))); }
   .title-screen .res-pill__state { font-size: calc(.14 * var(--utility-text, var(--t))); }
   .title-screen .title-en { display: none; }
@@ -604,3 +598,5 @@
  .room-screen--coop .seats { flex:1 0 100px; min-height:100px; padding-block:4px; }
  .room-screen .rseat__plate:not(.rseat__plate--empty) { flex-direction:row; }
 }
+
+@media (max-width:400px) { .title-screen .title-cn:not(.title-cn--latin) { font-size:min(calc(.72 * var(--t)),48px); } }

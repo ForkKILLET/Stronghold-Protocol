@@ -35,20 +35,31 @@ describe('language switch on the title screen', { skip: !ENABLED && 'set SP_E2E=
   before(async () => {
     const { startServer } = await import('../../server/index.js');
     const puppeteer = (await import('puppeteer-core')).default;
-    srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
+    srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, userFile: ':memory:' });
     base = `http://127.0.0.1:${srv.port}`;
     browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--force-device-scale-factor=1'] });
   });
   after(async () => { removePacks(); await browser?.close(); await srv?.close(); });
 
   const text = (page, sel) => page.$eval(sel, (el) => el.textContent.replace(/\s+/g, ' ').trim());
-  /** The menu's languages, [code, label] — its buttons, or the options of its list. */
-  const menu = (page) => page.$$eval('[data-testid="lang-toggle"] button, [data-testid="lang-toggle"] option',
-    (els) => els.map((e) => [e.dataset.lang ?? e.value, e.textContent.trim()]));
-  /** Pick a language: its button, or its option in the list. */
+  /** Read/pick through the themed menu; small language catalogues use radio buttons. */
+  const menu = async (page) => {
+    if (await page.$('[data-testid="lang-toggle"] [role="combobox"]')) {
+      await page.click('[data-testid="lang-toggle"] [role="combobox"]');
+      await page.waitForSelector('.game-select-popover [role="option"]');
+      const entries = await page.$$eval('.game-select-popover [role="option"]', els => els.map(e => [e.lang === 'zh-CN' ? 'zh' : e.lang, e.textContent.trim()]));
+      await page.keyboard.press('Escape');
+      return entries;
+    }
+    return page.$$eval('[data-testid="lang-toggle"] [role="radio"]', els => els.map(e => [e.dataset.lang, e.textContent.trim()]));
+  };
   const pick = async (page, code) => {
-    if (await page.$('[data-testid="lang-toggle"] select')) await page.select('[data-testid="lang-toggle"] select', code);
-    else await page.click(`[data-testid="lang-toggle"] button[data-lang="${code}"]`);
+    if (await page.$('[data-testid="lang-toggle"] [role="combobox"]')) {
+      await page.click('[data-testid="lang-toggle"] [role="combobox"]');
+      await page.waitForSelector('.game-select-popover [role="option"]');
+      await page.evaluate(code => [...document.querySelectorAll('.game-select-popover [role="option"]')]
+        .find(e => e.lang === code || (code === 'zh' && e.lang === 'zh-CN')).click(), code);
+    } else await page.click(`[data-testid="lang-toggle"] button[data-lang="${code}"]`);
   };
   const SHIPPED = [['zh', '中文'], ['en', 'English'], ['ja', '日本語'], ['ko', '한국어'], ['zh-TW', '繁體中文']];
   const pack = (code) => JSON.parse(fs.readFileSync(path.join(ROOT, `public/i18n/${code}.json`), 'utf8'));
@@ -61,7 +72,7 @@ describe('language switch on the title screen', { skip: !ENABLED && 'set SP_E2E=
   const MT_NOTE = '当前语言的界面文字为机器翻译，可能不够准确，欢迎在 GitHub 上指正。';
   /** The note under the language switch in 设置 (null when there is none); the dialog opens from the title screen and closes. */
   const settingsNote = async (page) => {
-    await page.click('.title-settings');
+    await page.click('.title-screen [data-testid="settings-btn"]');
     await page.waitForSelector('.modal .set-list');
     const note = await page.$eval('.modal [data-testid="lang-mt-note"]', (el) => el.textContent.trim()).catch(() => null);
     await page.click('.modal__actions .btn--primary'); // 完成 (an Esc right after the dialog shows may beat its key listener)
@@ -90,7 +101,7 @@ describe('language switch on the title screen', { skip: !ENABLED && 'set SP_E2E=
     assert.equal(await text(page, '.title-cn'), 'Stronghold Protocol: Alliance');
     assert.equal(await text(page, '.title-login .btn--primary'), 'Start');
     assert.match(await text(page, '.title-tag'), /^Allocate Funds and Operators/);
-    assert.match(await text(page, '.title-conn'), /Connect|Ready to connect/);
+    assert.match(await text(page, '.app-header__connection'), /Connect|Ready to connect/);
     assert.equal(await page.$eval('.title-login input', (el) => el.placeholder), `Callsign (max ${NAME_MAX_LEN} chars)`);
     assert.deepEqual(await page.evaluate(() => ({ lang: document.documentElement.lang, title: document.title, pref: localStorage.getItem('sp.pref.lang') })),
       { lang: 'en', title: 'Stronghold Protocol: Alliance · Web Simulation', pref: '"en"' });
@@ -126,7 +137,7 @@ describe('language switch on the title screen', { skip: !ENABLED && 'set SP_E2E=
       fs.writeFileSync(path.join(PACK_DIR, 'ui.json'), JSON.stringify({ 开始: 'Qab-Start' }));
       await sleep(1100); // the server's registry looks at the folders again after a second
       await page.goto(`${base}/?lang=zh`, { waitUntil: 'networkidle0' });
-      await page.waitForFunction(() => [...document.querySelectorAll('.title-screen [data-testid="lang-toggle"] :is(button, option)')].some((e) => (e.dataset.lang ?? e.value) === 'qaa'), { timeout: 8000 });
+      assert.ok((await menu(page)).some(([code]) => code === 'qaa'));
       assert.deepEqual(await menu(page), [...SHIPPED.slice(0, 4), ['qaa', 'Testisch'], ['qab', 'Qabisch'], SHIPPED[4]]);
 
       await pick(page, 'qaa');
