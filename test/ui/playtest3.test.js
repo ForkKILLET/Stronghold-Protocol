@@ -493,6 +493,10 @@ describe('9: busy indicators and data loading', () => {
     used.delete('skins');
     // Doctor profile editing awaits its optional avatar catalogue; battles only read assets.profileAvatars.
     used.delete('profile-avatars');
+    // Optional term explanations load with their markers; they do not gate the match.
+    used.delete('terms');
+    assert.match(read('public/js/ui/termHelp.js'), /useData\('terms'\)/);
+    assert.ok(!GAME_FILES.includes('terms'), 'optional explanations must not delay starting a match');
     assert.match(read('public/js/ui/profile.js'), /useData\('profile-avatars','assets'\)/);
     assert.match(read('public/js/ui/skinPicker.js'), /useData\('skins', 'assets'\)/);
     assert.ok(!GAME_FILES.includes('skins'), 'disabled skins must not warm the catalogue');

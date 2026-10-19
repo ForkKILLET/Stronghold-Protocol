@@ -393,7 +393,7 @@ node tools/plugin.mjs pack my-script
 node tools/plugin.mjs test my-script
 ```
 
-`test` 会在本机执行作者的测试代码，不受服务器沙箱开关和受信任哈希许可限制；它不是生产环境的安全检查。
+`test` 会在本机执行作者的测试代码，不受服务器沙箱开关和受信任哈希许可限制；它不是生产环境的安全检查。测试报告固定为 TAP，便于脚本在 Node 22／24 上读取相同格式。
 正式房间默认不开脚本。服主设置 `SP_PLUGIN_SCRIPTS=sandbox` 后（也可以启动时加 `--scripts sandbox`，Windows 上直接
 双击 `scripts\start-windows-sandbox.bat`），`script` 类在 SES 沙箱中运行，浏览器用 Worker，服务器用受限子进程；要求锁文件与全部文件一致，不要求每位玩家逐个同意，也允许公网监听。修改文件后需重新打包。
 

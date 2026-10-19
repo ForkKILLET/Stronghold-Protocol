@@ -24,5 +24,5 @@
 @media (max-width: 760px) { .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1fr); } }
 .doctor-modded { display:inline-flex; align-items:center; gap:10px; width:max-content; max-width:100%; padding:8px 12px; border:1px solid var(--line-2); border-radius:0; background:var(--bg-1); color:var(--text-md); font:inherit; font-size:max(calc(.15 * var(--t)),12px); cursor:pointer; }
 .doctor-modded.is-on { color:var(--mint-400); border-color:var(--mint-700); }
-.doctor-modded:not(:has(input:disabled)):hover { border-color:var(--mint-700); }
-.doctor-modded:has(input:disabled) { color:var(--text-dim); cursor:not-allowed; }
+.doctor-modded:not(.is-disabled):hover { border-color:var(--mint-700); }
+.doctor-modded.is-disabled { color:var(--text-dim); cursor:not-allowed; }

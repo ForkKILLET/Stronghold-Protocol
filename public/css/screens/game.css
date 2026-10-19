@@ -826,7 +826,7 @@
 .settings-btn.btn--square .btn__label { display: contents; }
 .settings-btn.btn--square .btn__icon { width: 62%; height: 62%; } /* the gear glyph is drawn smaller in its box than the book */
 .set-list { display: flex; flex-direction: column; gap: .16rem; padding-top: .06rem; }
-.set-personalization { padding:12px; border:1px solid var(--line); background:color-mix(in srgb,var(--bg-0) 45%,transparent); }
+.set-personalization { padding:12px; border:1px solid var(--line); background:rgba(8,11,10,.45); background:color-mix(in srgb,var(--bg-0) 45%,transparent); }
 .set-personalization h3 { margin:0; font-weight:600; }
 .set-personalization__entries { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
 .set-personalization__entry.btn { width:100%; min-width:0; min-height:44px; height:auto; padding:10px 12px; font-size:max(12px,calc(.17 * var(--utility-text,var(--t)))); }

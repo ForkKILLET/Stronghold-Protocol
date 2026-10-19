@@ -24,14 +24,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
 const CSS = 'public/css';
 
-/** Every stylesheet under public/css (index.html loads all, utility-mobile.css after devices.css), as { rel, src }. */
+/** Game stylesheets only. The independently served admin page owns its own fixed-size text root. */
 function stylesheets() {
   const out = [];
+  const loaded = new Set([...read('public/index.html').matchAll(/<link rel="stylesheet" href="(\/css\/[^"?]+\.css)"/g)].map(m => `public${m[1]}`));
   const visit = (rel) => {
     for (const e of readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
       const r = `${rel}/${e.name}`;
       if (e.isDirectory()) visit(r);
-      else if (r.endsWith('.css')) out.push({ rel: r, src: read(r).replace(/\/\*[\s\S]*?\*\//g, '') });
+      else if (loaded.has(r)) out.push({ rel: r, src: read(r).replace(/\/\*[\s\S]*?\*\//g, '') });
     }
   };
   visit(CSS);

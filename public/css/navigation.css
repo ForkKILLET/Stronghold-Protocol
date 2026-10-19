@@ -70,7 +70,8 @@
 .stephead--context .draft-pause { position:static; display:flex; z-index:auto; }
 .result-page > .result, .st--replay > .result { position:relative; inset:auto; flex:1; width:100%; height:auto; min-height:0; }
 .lobby-hub .hub-center { container-type:size; min-height:220px; }
-.lobby-hub .hub-radar { width:min(72cqh,90cqw,420px); height:min(72cqh,90cqw,420px); }
+/* Older engines ignore container-type/units; keep a bounded viewport-size fallback. */
+.lobby-hub .hub-radar { width:min(28vw,30vh,420px); height:min(28vw,30vh,420px); width:min(72cqh,90cqw,420px); height:min(72cqh,90cqw,420px); }
 .utility-modal.hub-dialog { width:min(760px,calc(100vw - 32px)); box-sizing:border-box; }
 .st:not(.st--replay) { inset:0; width:auto; height:calc(var(--sp-vh,1vh) * 100); transform:none; }
 .app-back.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; min-height:36px; padding:6px 10px; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); }

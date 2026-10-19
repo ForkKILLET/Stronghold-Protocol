@@ -249,6 +249,8 @@
 
 ## 合并后的验证
 
+- 2026-10-20 全量测试统一用 `npm test`（`node --test --test-concurrency=2 "test/**/*.test.js"`），本地 CI 与 GitHub 工作流保持一致；不得用裸 `node --test` 误执行 fixtures／helpers。限制文件并行度以减少真实模拟与性能阈值之间的 CPU 争抢，不降低性能阈值或减少默认随机种子。插件 CLI 测试固定 TAP 报告；资源缓存 mock 须实现限定 cacheName 的 CacheStorage.match。静态 UI 验证按实际加载的游戏样式及公共 PageHeader 检查，独立管理页的字号不受游戏文字大小设置控制；术语是独立生成、按需读取的可选数据。插件超时测试仍须证明 setup 已运行且子进程被回收，不能因慢启动而跳过此断言。
+
 - 0.2.4 同步 `278a06ca` 时，上游隔离基线复现了缺少三条真人匹配英文提示、旧“匹配剩余”模板断言和 Node 26 普通 HTTP 代理转发测试问题，本次已修正。并发测试中的性能阈值独立复测通过；临时全小写仓库路径导致的 Windows 大小写测试失败与原工作路径不同，不作为跳过依据。测试中离开房间的 ACK 不代表远端 Match 命令已结束，关闭测试 Worker 池前须等待代理队列及派生的销毁任务。
 
 - 2026-10-13 合并 v0.2.6 标签 `488db49f`，按用户指示排除素材 URL 内容哈希及对应索引/路由/清单/文档/测试，保留原 CDN 和预载/ZIP SHA-1 指纹。Node 22.23.3 限并发全量：合并前 6874 通过、0 失败、21 跳过；合并后 6955 通过、0 失败、21 跳过。构建、7 项打包模拟回归、类型检查通过，lint 0 错误/154 警告；本分支及独立副本还原已记录玩法差异后均完整匹配 287 个黄金场景。真实 Redis/Worker 连续恢复通过；浏览器、真机和 Docker 未实测。详见 `docs/MERGE_0.2.6.md`。
@@ -264,7 +266,7 @@ npm run build
 node --test test/vite.test.js test/metrics.test.js test/build.test.js test/ui/buildGuard.test.js test/cdn.test.js test/resources/common.test.js test/resources/index.test.js test/resources/manifest.test.js test/resources/store.test.js
 node --test test/lobby.test.js test/workers.test.js test/memory-lifecycle.test.js test/announcements.test.js test/persist.test.js test/persist-worker.test.js test/windows-bundle.test.js test/doctor.test.js test/version.test.js
 npm run golden
-node --test
+npm test
 git diff --check
 ```
 
@@ -344,7 +346,7 @@ Run the tests of what you touched first, then everything before opening the PR:
 
 ```bash
 node --test test/<area>/<file>.test.js      # targeted
-npm run ci                                  # the CI checks locally (tools/ci.mjs): node --test, smoke, lint, imports, types
+npm run ci                                  # the CI checks locally (tools/ci.mjs): build, npm test, smoke, lint, imports, types
 npm run golden                              # golden results
 ```
 

@@ -2,22 +2,25 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-test('lobby and room place announcements immediately after online count', async () => {
-  const [lobby, room] = await Promise.all([
+test('lobby and room share the header that places announcements after online count', async () => {
+  const [lobby, room, header] = await Promise.all([
     readFile(new URL('../../public/js/screens/lobby.js', import.meta.url), 'utf8'),
     readFile(new URL('../../public/js/screens/room.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../public/js/ui/pageHeader.js', import.meta.url), 'utf8'),
   ]);
   for (const source of [lobby, room]) {
-    const announcement = source.indexOf('<${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />');
-    const online = source.indexOf('<${OnlineCount} online=${presence.online} />');
-    assert.ok(announcement > online, 'announcement must follow online count');
-    assert.equal((source.match(/<\$\{AnnouncementButton\}/g) || []).length, 1, 'topbar has one announcement action');
+    assert.match(source, /<\$\{PageHeader\}/, 'page renders the shared header');
+    assert.doesNotMatch(source, /<\$\{(?:AnnouncementButton|OnlineCount)\}/, 'pages do not duplicate header controls');
   }
+  const announcement = header.indexOf('<${AnnouncementButton}');
+  const online = header.indexOf('<${OnlineCount}');
+  assert.ok(online >= 0 && announcement > online, 'announcement must follow online count in the shared header');
+  assert.equal((header.match(/<\$\{AnnouncementButton\}/g) || []).length, 1, 'shared header has one announcement action');
 });
 
-test('narrow topbars wrap the title and collapse secondary labels without clipping the connection cluster', async () => {
-  const css = await readFile(new URL('../../public/css/components.css', import.meta.url), 'utf8');
-  assert.match(css, /@media \(max-width: 760px\)[\s\S]*grid-template-areas: "left right" "center center"/);
-  assert.match(css, /\.topbar-announcement \.btn__label[\s\S]*clip: rect/);
-  assert.match(css, /\.topbar__right \.me-chip__text \{ display: none; \}/);
+test('narrow shared headers keep connection controls visible and give headings their own row', async () => {
+  const css = await readFile(new URL('../../public/css/navigation.css', import.meta.url), 'utf8');
+  assert.match(css, /\.app-header \.app-header__status\s*\{[^}]*overflow:visible/);
+  assert.match(css, /grid-template-areas:"links identity" "tools tools" "heading heading"/);
+  assert.match(css, /\.app-header__status \.topbar-announcement\s*\{[^}]*width:32px/);
 });

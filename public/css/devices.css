@@ -121,7 +121,7 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
    The detail card reserves the same row height and gaps (one more row when the console is available). */
 @media (max-width: 767px) {
   .gm { --corner-rows: 3; }
-  .gm:has(.gm__console) { --corner-rows: 4; }
+  .gm.has-console { --corner-rows: 4; }
   .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; width: max(88px, calc(2 * var(--corner-button-size) + .1rem)); }
   .dpanel:not(.dpanel--right) { bottom: calc(.24rem + var(--corner-rows, 3) * (var(--corner-button-size, .56rem) + .1rem) + max(0px, (var(--tap-min, 44px) - var(--corner-button-size, .56rem)) / 2)); }
 }

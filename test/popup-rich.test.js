@@ -135,7 +135,8 @@ test('Markdown limits degrade deep input to escaped text, and CSS bounds images/
   assert.match(css, /\.announcement-content__plain\s*\{[^}]*white-space:\s*pre-wrap/);
   assert.match(css, /\.announcement-markdown img\s*\{[^}]*max-width:\s*100%[^}]*height:\s*auto/);
   assert.match(css, /\.announcement-markdown__table\s*\{[^}]*overflow-x:\s*auto/);
-  assert.match(css, /\.announcement-modal \.modal__body\s*\{[^}]*min-height:\s*0[^}]*overflow-y:\s*auto/);
+  assert.match(css, /\.announcement-modal\.utility-modal \.modal__body\s*\{[^}]*min-height:\s*0[^}]*overflow:\s*hidden/);
+  assert.match(css, /\.announcement-sections__panel\s*\{[^}]*min-height:\s*0[^}]*overflow-y:\s*auto/);
 });
 
 test('permanent popup survives elapsed time, invalid edits and restart; withdrawing it leaves scroll selection intact', async t => {

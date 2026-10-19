@@ -110,7 +110,8 @@ describe('hudBands: the folded shop\'s band', () => {
     assert.match(game, /\.gm__gear \{\n {2}width: \.56rem; height: \.56rem;/);
     assert.ok(Math.abs(HUD_REM.cornerTop - (0.24 + 0.56)) < 1e-9);
     // folded, the narrow phones' corner is one row again (the bar that made it wrap is gone)
-    assert.match(read('public/css/devices.css'), /@media \(max-width: 767px\) \{\n {2}\.gm\.is-collapsed \.gm__corner \{ flex-wrap: nowrap; width: auto; \}\n\}/);
+    const devices = read('public/css/devices.css');
+    assert.match(devices, /@media \(max-width: 767px\) \{\s*\.gm\.is-collapsed \{ --corner-rows: 1; \}\s*\.gm\.is-collapsed \.gm__corner \{ flex-wrap: nowrap; width: auto; \}\s*\}/);
   });
 
   test('prep / Final Assault prep only; open = the bar (unchanged), folded = the higher of the tab and the corner', () => {

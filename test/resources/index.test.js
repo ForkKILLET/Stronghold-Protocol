@@ -21,6 +21,13 @@ class MemoryCache {
 class MemoryCaches {
   constructor() { this.map = new Map(); }
   async open(name) { if (!this.map.has(name)) this.map.set(name, new MemoryCache()); return this.map.get(name); }
+  async match(request, { cacheName } = {}) {
+    const caches = cacheName === undefined ? [...this.map.values()] : [this.map.get(cacheName)];
+    for (const cache of caches) {
+      const hit = await cache?.match(request);
+      if (hit) return hit;
+    }
+  }
   async keys() { return [...this.map.keys()]; }
   async delete(name) { return this.map.delete(name); }
 }

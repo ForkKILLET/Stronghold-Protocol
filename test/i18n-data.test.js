@@ -126,7 +126,9 @@ test('data/i18n/en.json: shape, the 盟约 season of the EN build, coverage and 
     assert.ok(c && c.texts > 0, `coverage of ${kind}`);
     assert.ok(c.pct >= (kind === 'talents' ? 94.9 : ['operators', 'skills', 'modules'].includes(kind) ? 95 : 98), `${kind}: ${c.pct} %`);
   }
-  assert.deepEqual(Object.keys(OVERLAY.files).filter((f) => !DATA_FILES.includes(f)), []);
+  // Terminology is generated separately by build-terms.mjs and shares the normal overlay format.
+  assert.ok(OVERLAY.files.terms && Object.keys(OVERLAY.files.terms).length > 0);
+  assert.deepEqual(Object.keys(OVERLAY.files).filter((f) => ![...DATA_FILES, 'terms'].includes(f)), []);
   assert.equal(OVERLAY.names['琳琅诗怀雅'], 'Swire the Elegant Wit');
   assert.equal(OVERLAY.names['维式重锤'], 'Victorian Hammer');
   assert.equal(OVERLAY.names['奇迹'], 'Marvel');

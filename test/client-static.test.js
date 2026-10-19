@@ -1236,8 +1236,8 @@ describe('multi-device & browser compatibility (static)', () => {
     const vp = index.match(/<meta name="viewport" content="([^"]+)"/)?.[1] || '';
     for (const k of ['width=device-width', 'initial-scale=1', 'maximum-scale=1', 'user-scalable=no', 'viewport-fit=cover']) assert.ok(vp.includes(k), `viewport has ${k}`);
     const sheets = [...index.matchAll(/<link rel="stylesheet" href="(\/css\/[^"]+)"/g)].map((x) => x[1]);
-    assert.deepEqual(sheets.slice(-2), ['/css/devices.css', '/css/utility-mobile.css'],
-      'only the scoped management density layer follows devices.css');
+    assert.deepEqual(sheets.slice(-3), ['/css/devices.css', '/css/utility-mobile.css', '/css/navigation.css'],
+      'shared navigation follows device and management density overrides');
     assert.match(index, /<script nomodule(?:\s[^>]*)?>/, 'a browser without ES modules gets a message');
     assert.match(index, /src="\/js\/boot\.js"/, 'external diagnostics run before the module');
     assert.match(readFileSync(path.join(PUBLIC, 'js/boot.js'), 'utf8'), /__spBootFail\('load'\)/, 'a module graph that cannot load gets a message');
@@ -1298,21 +1298,22 @@ describe('multi-device & browser compatibility (static)', () => {
     }
   });
 
-  test('CSS: no :has(), container queries, @layer or nesting; prefixed backdrop-filter; color-mix() has a fallback', () => {
+  test('CSS: no :has(), container queries, @layer or nesting; prefixed backdrop-filter; modern values have fallbacks', () => {
     for (const file of CSS_FILES) {
       const rel = path.relative(ROOT, file);
       const src = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
       assert.doesNotMatch(src, /:has\(/, `${rel}: :has() (Firefox ESR 115, Safari < 15.4)`);
-      assert.doesNotMatch(src, /@container|container-type|@layer/, `${rel}: container queries / cascade layers`);
+      // A bare container-type is safely ignored by older engines; dependent cqw/cqh values need fallbacks below.
+      assert.doesNotMatch(src, /@container|@layer/, `${rel}: container queries / cascade layers`);
       for (const r of cssRules(src)) {
         assert.ok(!/(^|[\s,])&/.test(r.selector), `${rel}: CSS nesting in '${r.selector}'`);
         const decls = r.body.split(';').map((d) => d.trim()).filter(Boolean);
         decls.forEach((d, i) => {
           const prop = d.split(':')[0].trim();
           if (prop === 'backdrop-filter') assert.ok(decls.some((x) => x.startsWith('-webkit-backdrop-filter')), `${rel} '${r.selector}': backdrop-filter without -webkit- twin`);
-          if (/color-mix\(/.test(d)) {
-            const fallback = decls.slice(0, i).some((x) => x.split(':')[0].trim() === prop && !/color-mix\(/.test(x));
-            assert.ok(fallback, `${rel} '${r.selector}': ${prop} uses color-mix() without a fallback before it`);
+          if (/color-mix\(|\d(?:\.\d+)?cq(?:w|h|i|b|min|max)\b/.test(d)) {
+            const fallback = decls.slice(0, i).some((x) => x.split(':')[0].trim() === prop && !/color-mix\(|\d(?:\.\d+)?cq(?:w|h|i|b|min|max)\b/.test(x));
+            assert.ok(fallback, `${rel} '${r.selector}': ${prop} uses a modern value without a fallback before it`);
           }
         });
       }

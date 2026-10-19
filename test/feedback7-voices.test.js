@@ -103,7 +103,8 @@ test('settings 语音语言: 中文 by default, 日本語 / English / 한국어 
   assert.equal(sanitizeSettings({ voiceNative: true }).voiceNative, true);
   assert.equal(sanitizeSettings({ voiceNative: 'yes' }).voiceNative, false);
   const ui = fs.readFileSync(path.join(ROOT, 'public/js/ui/settings.js'), 'utf8');
-  assert.match(ui, /updateSettings\(\{ voiceLang: id \}\)/);
+  assert.match(ui, /<\$\{Select\}[^]*?data-testid="voice-lang" value=\$\{s\.voiceLang\}/);
+  assert.match(ui, /onChange=\$\{voiceLang\s*=>\s*updateSettings\(\{\s*voiceLang\s*\}\)\}/);
   assert.match(ui, /const VOICE_LANG_NAMES = \{ cn: '中文', jp: '日本語', en: 'English', kr: '한국어' \};/, 'each dub named in its own language');
   assert.match(ui, /updateSettings\(\{ voiceNative: !s\.voiceNative \}\)/);
   assert.match(ui, /audio\.setVoiceLang\(s\.voiceLang, s\.voiceOverrides\)/);
