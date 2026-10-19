@@ -378,7 +378,7 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - `SP_USER_DB` 启用独立 SQLite 用户存储（`server/users/`），不替代 Redis 对局恢复。用户 ID 独立于会话／重连令牌；Cookie 只存随机凭证，数据库存哈希。头像／昵称／结算为长期数据，设备设置仍在本机。Cookie 关联不允许跨档案复用游戏令牌。
 - 同源 HTTP 写操作须限制 JSON 大小、校验昵称和预设头像、保留恢复码限流和一次性事务语义；不得记录 Cookie／恢复码原文。自动重连不能覆盖服务器昵称。恢复到另一档案不合并数据，当前用户有对局时不能切换。
 - SQLite 只在独立 Worker 中读写，schema 有版本，WAL／备份目录随数据卷保留。每局 UUID、玩家内部 userId 随检查点和完整 Match Worker 保存，公开视图不得暴露 userId；结算按对局／用户唯一键去重，正常关停等待写入。
-- 右上角头像、设置和旧统计入口统一打开博士档案；档案累计覆盖全部服务器本人结算，统一历史按 matchId 去重，以服务器本人行优先、本机详情补充。旧本机记录不猜测匹配、不累计到账号；本机 v2 保留 matchId，旧数据迁移不得丢弃。跨账号缓存按 userId 隔离，缺少旧 frame 的时长／隐秘核心不当作零。资料／恢复码与本机导入导出均在同一全屏页内。
+- 右上角头像和旧统计入口统一打开博士档案；设置不再重复提供入口。档案累计覆盖全部服务器本人结算，统一历史按 matchId 去重，以服务器本人行优先、本机详情补充。旧本机记录不猜测匹配、不累计到账号；本机 v2 保留 matchId，旧数据迁移不得丢弃。跨账号缓存按 userId 隔离，缺少旧 frame 的时长／隐秘核心不当作零。资料／恢复码与本机导入导出均在同一全屏页内。
 - 个人头像使用 PRTS 修订 441454 的原版目录 `data/profile-avatars.json`，不兼容 band ID。只接受目录 ID，图片通过既有 asset plan／哈希获取到本站；`profileAvatars` 根节点归可选预载、个人头像组，保留 ZIP／CDN 语义。刷新来源须显式指定并核对修订，不静默接受改变的 SHA-256；验证 `test/users/avatars.test.js` 和资源／ZIP 回归。
 - 本机旧统计不自动上报；服务器个人战绩不冒充防作弊榜。验证 `test/users/persistence.test.js`、原有会话／Redis／Worker／匹配回归，部署要求见 `docs/USERS.md`。
 
@@ -450,3 +450,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 干员字幕提供 voiceSubtitles（默认关）及 voiceSubtitleMode（ui／dual／voice，默认 ui），沿用主题 Toggle／Select、本机持久化。字幕只订阅 AudioManager 真正开始的语音，按最终文件／完整 wordKey 匹配随机句及回退；旧异步回调不能覆盖新句，语音安全结束跟随 AudioContext 时钟。语种取目录和本土类型，不按 cn_025 文件名或 UI 语言猜配音；双语同语言只显示一次，缺少本土原文时仅语音模式不显示。字幕文本由固定源／SHA-256 生成，按需读取本站或 DATA_CDN，不进入首屏或素材 ZIP、不更改模拟。名称单独完整显示，可换行但不省略；对局字幕右对齐到准备就绪按钮左侧，gtop__subtitle-anchor 在正式战斗继续保留且不添加隐藏的准备按钮；无倒计时的单人／不限时休整也保留时钟区域高度，不能让锚点抬进回合栏；窗口决定宽度，不随商店／EFFECTS 列表变化，不自动换位。局外试听保留底部空隙布局。测量换行高度后避让详情卡、盟约说明、交流、统计、HUD 及重要弹窗，重叠或空间不足暂隐；关闭后仅恢复当前句。盟约条只测实际图标／控件，不把容器空白当作遮挡；不改详情卡原有自动换边规则。维护见 docs/VOICE_SUBTITLES.md；回归 ui/voice-subtitles.test.js、audio.test.js 及 voice-subtitles.e2e.test.js（Chrome／Firefox 截图）。
 
 - 2026-10-20 鼠标悬停字幕时保留当前句，新语音仍正常播放但不替换保留文本；离开立即跟随当前语音，无在播句则收起，不建立队列。保持 pointer-events:none，只被动观察鼠标位置，不阻断战场点击或触摸，触摸不固定。面板遮挡、空间不足、静音、后台／失焦、音频暂停、关闭字幕及切换页面／语言／字幕模式均解除保留，不恢复过期句；沿用现有 HUD 避让和音频生命周期，回归 voice-subtitles.e2e.test.js。
+
+- 2026-10-20 延迟徽标用 4ch 数值槽保持宽度稳定，沿用在线人数徽标的 padding，不恢复挤压内容的固定 78px；窄屏两种徽标同步缩减 padding。局内顶栏查看按钮与中间条通过同一 gap 分隔，不添加加号。局内交流／工具按钮共用 --corner-button-size（默认至少 36px、触屏通常至少 44px；≤767×380 的极矮横屏使用 34px 紧凑外观，触屏保留原 44px 命中范围），窄屏两列换行与详情卡避让同步计算，不能覆盖商店或玩家列表。设置底栏仅保留完成；博士档案／玩法说明／公告使用原共享入口。匹配页配置摘要复用 DifficultyTag，不单独写难度图标／颜色。

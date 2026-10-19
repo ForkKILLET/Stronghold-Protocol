@@ -291,7 +291,7 @@
 .room-config-summary__values > span { position:relative; display:inline-flex; align-items:baseline; }
 /* Separators sit in the gap; clipping hides them at the start of wrapped rows. */
 .room-config-summary__values > span + span::before { content:"·"; position:absolute; inset-inline-start:calc(0px - var(--summary-gap)); width:var(--summary-gap); text-align:center; color:var(--text-dim); }
-.room-config-summary__values > span:first-child { color:var(--mint-400); font-weight:700; }
+.room-config-summary__values > .dtag { align-items:center; font-size:inherit; }
 .room-bar .room-config-summary { width:100%; box-sizing:border-box; }
 .prep-setting__choices .icon { width:.2rem; height:.2rem; margin-right:.06rem; color:var(--d-color, var(--mint-400)); }
 

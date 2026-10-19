@@ -6,7 +6,7 @@
    ========================================================================================== */
 
 /* ---- screen shell ---------------------------------------------------------------------------- */
-.gm { background: transparent; }
+.gm { --corner-button-size: max(.56rem, 36px); background: transparent; }
 .gm__field { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
 .gm__field canvas { display: block; }
 .gm__vignette {
@@ -53,13 +53,11 @@
    回合 N centred in its left half, the LP tower in its right half, faint type above both — with the phase capsule as a
    bevelled plate in a grey outer frame across the middle, then [🔍▶▶] in its own bracket frame. Outlines of bevelled
    shapes are two clipped layers (the line colour, then the fill 1–2 px inside). */
-.gtop__center { position: relative; display: flex; align-items: center; margin-top: .02rem; }
+.gtop__center { position: relative; display: flex; align-items: center; gap: .16rem; margin-top: .02rem; }
 .gtop__frame { position: relative; display: flex; align-items: center; justify-content: center; height: .64rem; padding: 0 .17rem; }
 .gtop__frame::before, .gtop__frame::after { content: ''; position: absolute; top: 0; bottom: 0; width: .12rem; border: 2px solid rgba(200, 206, 208, .42); pointer-events: none; }
 .gtop__frame::before { left: 0; border-right: 0; }
 .gtop__frame::after { right: 0; border-left: 0; }
-.gtop__plus { flex: none; width: .2rem; height: .2rem; margin: 0 .05rem; opacity: .45;
-  background: linear-gradient(#c8cecf, #c8cecf) center / 100% 1px no-repeat, linear-gradient(#c8cecf, #c8cecf) center / 1px 100% no-repeat; }
 .gtop__band { position: relative; display: grid; grid-template-columns: minmax(2.3rem, auto) auto minmax(2.3rem, auto); align-items: center;
   filter: drop-shadow(0 .04rem .1rem rgba(0, 0, 0, .45)); }
 .gm__hud .gtop__band::before, .gm__hud .gtop__band::after { content: 'STRONGHOLD TERMINAL SERVICE'; position: absolute; top: -.16rem; font-family: var(--font-num);
@@ -511,6 +509,8 @@
   border: 1px solid var(--line-2); color: var(--text-lo); transition: color var(--t-fast), border-color var(--t-fast);
 }
 .gm__gear .icon { width: .28rem; height: .28rem; }
+.gm__corner :is(.gm__gear, .ewheel__btn.is-communication) { box-sizing:border-box; height:var(--corner-button-size); min-height:var(--corner-button-size); }
+.gm__corner .gm__gear { width:var(--corner-button-size); }
 .gm__gear:hover { color: var(--mint-400); border-color: var(--mint-700); }
 .gm__metrics[aria-expanded="true"] { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-900); }
 

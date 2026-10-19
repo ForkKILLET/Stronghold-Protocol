@@ -1,5 +1,5 @@
 import { PageHeader } from './pageHeader.js';
-import { html, Fragment, Button, MicroLabel, DifficultyIcon, Icon } from './components.js';
+import { html, Fragment, Button, MicroLabel, DifficultyIcon, DifficultyTag, Icon } from './components.js';
 import { PrepTimePicker } from './prepTime.js';
 import { BATTLE_SPEEDS } from '../../../shared/roomOptions.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
@@ -31,7 +31,7 @@ import { validPrepChoice as valid } from './prepTime.js';
 
 export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSeconds=null, battleSpeed=2, onOpen, editable=true, disabled=false, contentLabel=null}) {
  return html`<div class="room-config-summary">
-  <div class="room-config-summary__values"><span>${t(DIFFICULTY_NAMES[difficulty] || difficulty)}</span>
+  <div class="room-config-summary__values"><${DifficultyTag} difficulty=${difficulty} size="sm" />
    <span>${t('休整期')} ${mode==='solo'?t('不限时'):prepSeconds!=null?t('每回合 {seconds} 秒',{seconds:prepSeconds}):prepTimeLabel(prepMultiplier)}</span>
    <span>${t('战斗倍速')} ${battleSpeed}×</span>
    ${contentLabel?html`<span>${contentLabel}</span>`:null}</div>

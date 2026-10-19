@@ -117,21 +117,21 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
    generic rule above — covered the bottom-right quarter of a phone's 67 × 97 px card and half of its 确认购买 strip, so
    the confirming tap re-opened the detail instead; user playtest #6 item 10) */
 
-/* Narrow viewports (< 768 CSS px: the root scale is clamped at 40 px, so the layout is narrower than the 19.2 rem
-   design): the shop bar would cover the corner's ⚙ / 📖 / ⛶ buttons — they wrap into a row above the 交流 button. */
-/* The left-docked detail card then ends above that two-row corner (.24rem + 交流 + .1rem gap + ⚙ row + .1rem): at its
-   desktop bottom (1.02rem) it hid ⚙ / 📖 / ⛶. (gameLogic panelSlots keeps the taller desktop slot: conservative.) */
+/* A two-column tool stack leaves the narrow shop's left edge clear even with 44px touch buttons.
+   The detail card reserves the same row height and gaps (one more row when the console is available). */
 @media (max-width: 767px) {
-  .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; width: max(72px, calc(3 * .56rem + .2rem)); }
-  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 72px) * 55 / 151 + .56rem); }
+  .gm { --corner-rows: 3; }
+  .gm:has(.gm__console) { --corner-rows: 4; }
+  .gm__corner { flex-wrap: wrap-reverse; align-content: flex-start; width: max(88px, calc(2 * var(--corner-button-size) + .1rem)); }
+  .dpanel:not(.dpanel--right) { bottom: calc(.24rem + var(--corner-rows, 3) * (var(--corner-button-size, .56rem) + .1rem) + max(0px, (var(--tap-min, 44px) - var(--corner-button-size, .56rem)) / 2)); }
 }
-@media (max-width: 767px) and (pointer: coarse), (max-width: 767px) and (any-pointer: coarse) {
-  .gm__corner { width: max(96px, calc(3 * max(.56rem, 34px) + .2rem)); }
-  .dpanel:not(.dpanel--right) { bottom: calc(.44rem + max(1.51rem, 96px) * 55 / 151 + max(.56rem, 34px)); }
-}
+@media (any-pointer:coarse) { .gm { --corner-button-size: max(.56rem, 44px); } }
+/* Very short viewports need compact buttons below the roster; touch keeps the existing 44px hit areas. */
+@media (max-width:767px) and (max-height:380px) { .gm { --corner-button-size:34px; } }
 /* With the shop folded (收起) no bar covers the corner: one row again, so the folded shop's prep camera, which keeps the
    bench above the corner's hit areas (ui/fieldHost.js hudBands), grows the board on narrow phones too (public issue #5). */
 @media (max-width: 767px) {
+  .gm.is-collapsed { --corner-rows: 1; }
   .gm.is-collapsed .gm__corner { flex-wrap: nowrap; width: auto; }
 }
 

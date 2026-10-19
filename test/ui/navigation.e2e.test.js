@@ -24,7 +24,7 @@ test('shared navigation, latency width, overlay return and pre-game pause surviv
     const h=e.querySelector('.app-header__heading'),r=h?.getBoundingClientRect();
     return {
      view:[innerWidth,innerHeight],height:row.height,positions:[...e.querySelectorAll('.app-back,.latency-pill,.online-count,.topbar-announcement,.app-header__tools button,.app-header__identity')].filter(b=>b.offsetWidth).map(b=>{const r=b.getBoundingClientRect();return[r.x,r.y,r.width,r.height];}),
-     width:row.width,ping:e.querySelector('.latency-pill').getBoundingClientRect().width,
+     width:row.width,pingPadding:[...e.querySelectorAll('.latency-pill,.online-count')].map(n=>[getComputedStyle(n).paddingLeft,getComputedStyle(n).paddingRight]),
      tools:[...e.querySelectorAll('.app-header__tools button')].map(b=>b.getAttribute('aria-label')||b.title),
      archive:!!e.querySelector('.stats-entry'),online:!!e.querySelector('.online-count'),
      heading:r?{center:r.x+r.width/2,font:parseFloat(getComputedStyle(h.querySelector('h1')).fontSize)}:null,
@@ -36,7 +36,7 @@ test('shared navigation, latency width, overlay return and pre-game pause surviv
    if(!tools)tools=result.tools;else assert.deepEqual(result.tools,tools);
    assert.ok(Math.abs(result.width-(await page.viewport()).width)<3,JSON.stringify(result));
    if(result.heading){assert.ok(Math.abs(result.heading.center-(await page.viewport()).width/2)<2,JSON.stringify(result.heading));assert.ok(result.heading.font>=25);}
-   assert.equal(result.ping,78);assert.equal(result.archive,true);assert.equal(result.online,true);
+   assert.deepEqual(result.pingPadding[0],result.pingPadding[1],'latency and online badges share padding');assert.equal(result.archive,true);assert.equal(result.online,true);
   };
   await page.goto(server.url,{waitUntil:'networkidle0'});await page.type('.title-screen input','导航验证');await text('开始');await header('.lobby-hub');
   const radar=await page.$eval('.hub-radar',e=>{const r=e.getBoundingClientRect(),s=document.querySelector('.hub-stage').getBoundingClientRect();return{top:r.top,bottom:r.bottom,stageTop:s.top,stageBottom:s.bottom};});

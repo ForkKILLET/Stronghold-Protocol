@@ -193,27 +193,27 @@ describe('Modal keyboard focus', { skip: !ENABLED && 'set SP_E2E=1 and have Chro
     } finally { await page.close(); }
   });
 
-  test('settings lets the higher guide keep keyboard focus and resumes after it closes', async () => {
+  test('settings keeps one completion action; the shared toolbar still opens the guide', async () => {
     const page = await browser.newPage();
     try {
       page.setDefaultTimeout(5000);
       await page.goto(srv.url, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('.title-screen [data-testid="settings-btn"]');
       await page.click('.title-screen [data-testid="settings-btn"]');
-      await page.waitForSelector('.set-guide');
+      await page.waitForSelector('.settings-modal');
       await page.waitForFunction(() => !document.querySelector('.modal__box').getAnimations().some((a) => a.playState === 'running'));
-      await page.click('.set-guide');
+      assert.deepEqual(await page.$$eval('.settings-modal .modal__actions button', es => es.map(e => e.textContent.trim())), ['完成']);
+      await page.click('.settings-modal .modal__actions button');
+      await page.waitForSelector('.settings-modal', { hidden: true });
+      assert.equal(await page.evaluate(() => document.activeElement.matches('.title-screen [data-testid="settings-btn"]')), true);
+      await page.click('.title-screen .app-header [aria-label="玩法说明"]');
       await page.waitForSelector('.guide');
       await page.waitForFunction(() => document.querySelector('.guide').contains(document.activeElement));
       await tab(page);
       assert.equal(await page.evaluate(() => document.querySelector('.guide').contains(document.activeElement)), true);
       await page.keyboard.press('Escape');
       await page.waitForSelector('.guide', { hidden: true });
-      assert.ok(await page.$('.modal'), 'closing the guide keeps settings');
-      await tab(page);
-      assert.equal(await page.evaluate(() => document.querySelector('.modal__box').contains(document.activeElement)), true);
-      await page.click('.modal__actions button:last-child');
-      await page.waitForSelector('.modal', { hidden: true });
+      assert.equal(await page.$('.settings-modal'), null, 'the guide does not reopen settings');
     } finally { await page.close(); }
   });
 });

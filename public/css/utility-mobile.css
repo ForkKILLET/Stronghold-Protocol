@@ -538,7 +538,6 @@
 @media (max-width: 1000px), (max-height: 600px) {
   .gtop__band { grid-template-columns: auto auto auto; }
   .gtop__half { padding-inline: .12rem; }
-  .gtop__plus { display: none; }
   .gtop__frame { padding-inline: .06rem; }
   .gtop__cap .capsule--boss { min-width: 3.2rem; }
 }

@@ -480,7 +480,6 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
             chev=${btn.left.back ? '◀◀' : null} on=${!!drawer && !pen} onClick=${onLeft} testid="check-player" />
         <//>
       </span>
-      <i class="gtop__plus" aria-hidden="true"></i>
       <div class="gtop__band">
         <div class="gtop__half gtop__half--l">
           <div class="roundbox">

@@ -1037,7 +1037,7 @@ item selection probabilities and explicit grant weights remain unchanged.
 
 ### 长期个人档案
 
-`SP_USER_DB` 开启后自动建立匿名用户，不改变免登录开始流程。右上角头像打开统一博士档案，包含资料、累计统计、统一对局历史和恢复码；本机旧记录仅作带标注的历史补充，不自动上传或加入档案累计。设置保留同一入口。用户身份独立于会话，Redis 只负责对局恢复。API、数据迁移与备份约定见 [USERS.md](USERS.md)。
+`SP_USER_DB` 开启后自动建立匿名用户，不改变免登录开始流程。共享顶栏右上角头像打开统一博士档案，包含资料、累计统计、统一对局历史和恢复码；本机旧记录仅作带标注的历史补充，不自动上传或加入档案累计。设置不再重复提供档案入口。用户身份独立于会话，Redis 只负责对局恢复。API、数据迁移与备份约定见 [USERS.md](USERS.md)。
 `take(..., { overdraw: true })` records full occupation, including authorized acquisitions beyond capacity.
 Already displayed operator shop offers remain purchasable after exhaustion (路标月报#2 2:50–2:57, #498);
 operator reward offers follow the same rule by the owner's 2026-10-11 decision. Future rolls still use available stock.

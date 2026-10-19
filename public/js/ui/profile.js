@@ -31,9 +31,6 @@ export async function persistProfileName(name){
  catch(e){if(e.userCode==='NAME_REJECTED'||e.userCode==='PROFILE')throw e;profileStore.set({status:'offline'});}
 }
 export function openProfile(tab='overview'){profileStore.set({open:true,tab});}
-export function ProfileButton({onClose}){
- return html`<${Button} variant="secondary" size="md" icon="user" onClick=${()=>{onClose?.();openProfile();}}>${t('博士档案')}<//>`;
-}
 export function DoctorAvatar({size='sm',name,seat=0,self=true}){
  const user=useStore(s=>s.user,Object.is,profileStore);useData('assets');
  return html`<${AvatarFrame} size=${size} name=${user?.name || name} seat=${seat} self=${self} src=${user?.avatarId?profileAvatarUrl(data.get('assets'),user.avatarId):null} />`;

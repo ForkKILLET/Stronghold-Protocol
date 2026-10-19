@@ -1350,13 +1350,6 @@
 }
 .crash__box h2 { font-size: calc(.3 * var(--utility-text, var(--t))); }
 
-/* Settings footer actions share a single size, including the announcement entry. */
-.settings-modal .modal__actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; }
-.settings-modal .modal__actions > .btn { width:100%; height:auto; min-width:0; min-height:max(.48rem,40px); padding:.1rem; font-size:max(calc(.18 * var(--t)),12px); }
-@media (max-width:600px) {
-  .settings-modal .modal__actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
-}
-
 /* ---- plugins (DESIGN §32 P1a): the room's tag 原版 / 插件 ×N (ui/pluginTag.js), its 插件 panel and the title's list (ui/pluginPanel.js) ---- */
 .plugtag {
   display: inline-flex; align-items: center; gap: .06rem; height: .3rem; padding: 0 .12rem;
@@ -1430,9 +1423,9 @@
 .lang-select .game-select { min-width:140px; }
 @media (any-pointer:coarse) { .game-select,.game-select__option { min-height:44px; } }
 
-/* Latency updates do not move neighboring navigation controls. */
-.latency-pill { box-sizing:border-box; width:78px; flex:0 0 78px; justify-content:center; padding-inline:6px; }
-.latency-pill .ping__value { display:inline-block; min-width:4ch; text-align:right; }
+/* Reserve the longest latency value; share the online-count padding without squeezing its contents. */
+.latency-pill { box-sizing:border-box; flex:none; justify-content:center; }
+.latency-pill .ping__value { display:inline-block; flex:none; width:4ch; text-align:right; }
 .field--code .field__input:placeholder-shown { font-family:var(--font-cjk); font-size:max(14px,calc(.18 * var(--utility-text,var(--t)))); letter-spacing:.04em; text-transform:none; }
 .field--code .field__input { padding:0; line-height:normal; }
 .field--code .field__input::placeholder { font-size:inherit; letter-spacing:inherit; }

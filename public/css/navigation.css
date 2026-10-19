@@ -100,7 +100,7 @@
  .app-header--title .app-header__heading { display:none; }
  .app-header--title .app-header__links { height:auto; min-height:44px; flex-wrap:wrap; gap:4px 6px; }
  .app-header__heading h1 { font-size:max(26px,calc(.34 * var(--utility-text,var(--t)))); }
- .app-header__status .online-count { padding-inline:5px; }
+ .app-header__status .ping { padding-inline:5px; }
  .app-header__status .online-count .ping__unit { font-size:10px; }
  .stephead.stephead--context { padding:8px 12px; }
  .stephead--context .stephead__right { gap:10px; }

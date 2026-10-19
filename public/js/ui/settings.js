@@ -1,6 +1,5 @@
 import { Select } from './select.js';
 import { PersonalizationSection } from './personalization.js';
-import {ProfileButton} from './profile.js';
 // Player settings (BGM/SFX/voice volume, the voice dub 语音语言, mute, damage numbers, the optional 弹药数量 under an ammo
 // skill's bar — not in the official HUD, off by default, PR #552 —, the optional 作战统计 panel — off by default,
 // PR #618 —, render quality, 文字大小, the
@@ -30,7 +29,6 @@ import { createStore, useStore, loadPref, savePref, store } from '../store.js';
 import { sanitizeSettings, DEFAULT_SHORTCUTS, sanitizeShortcuts, shortcutLabel, VOICE_LANGS, TEXT_SIZES } from './gameLogic.js';
 import { GIcon } from './gameComponents.js';
 import { audio } from '../audio.js';
-import { openGuide } from './guide.js';
 import { detectFeatures } from './device.js';
 import { ResourceRow } from './resourcePanel.js';
 import { FRAME_RATES } from '../frameRate.js';
@@ -46,7 +44,6 @@ import { pluginMicro } from './pluginTag.js';
 import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
 
-import { AnnouncementButton } from './announcement.js';
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 
 /** Settings store: volumes, voices, damageNumbers, officialDamageNumbers, ammoCount, deploymentZoom, quality, textSize, fpsLimit and preload options. Shortcuts persist separately. */
@@ -279,8 +276,7 @@ export function SettingsModal({ open, onClose }) {
   }, [open]);
   const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem" utility=${true} class="settings-modal"
-    actions=${html`<${ProfileButton} onClose=${onClose} /><${AnnouncementButton} size="md" onClick=${onClose} /><${Button} variant="secondary" icon="book" class="set-guide" onClick=${() => openGuide(0)}>${t('玩法说明')}<//>
-      <${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
+    actions=${html`<${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <div class="set-list">
       <div class="set-row">
         <span class="set-row__label">${t('界面语言')}<${MicroLabel}>LANGUAGE<//></span>
