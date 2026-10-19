@@ -1856,6 +1856,8 @@
   "正在展示": "Live",
   "当前无有效通知": "No active notification",
   "发布后实时显示给所有在线玩家，包括对局中与后来连接的玩家；有效期结束或手动撤下后恢复原公告排期。": "Publish to all online players, including those in matches and players connecting later. The previous announcement schedule resumes when the notification expires or is withdrawn.",
+  "暂无有效通知": "No active notifications",
+  "关闭通知条只隐藏当前版本，仍可在此查看；通知到期或撤下后自动移除。": "Closing the banner hides this version only. You can still read it here until it expires or is withdrawn.",
   "当前通知": "Current notification",
   "尚未发布通知": "No notification published",
   "有效至": "Expires at",

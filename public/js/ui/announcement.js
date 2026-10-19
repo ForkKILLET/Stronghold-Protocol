@@ -142,16 +142,27 @@ function ChangelogContent() {
   </div>`;
 }
 
-// Mount afresh when opened, or when an automatic notice replaces another version.
-function AnnouncementSections({ notice }) {
-  const [section, setSection] = useState(() => notice ? 'notice' : 'changelog');
+function CurrentNotification({ notice }) {
+  if (!notice) return html`<p class="modal__text" role="status">${t('暂无有效通知')}</p>`;
+  const level = notice.level === 'urgent' ? t('紧急通知') : notice.level === 'warning' ? t('提醒') : t('普通');
+  const expires = Number.isFinite(notice.endAt) ? new Date(notice.endAt) : null;
+  return html`<div class="announcement-notification">
+    <div class="announcement-notification__meta"><span class=${`announcement-notification__level is-${notice.level}`}>${level}</span>
+      ${expires ? html`<span>${t('有效至')} <time dateTime=${expires.toISOString()}>${expires.toLocaleString()}</time></span>` : null}</div>
+    <${AnnouncementContent} notice=${notice} />
+    <p class="announcement-notification__hint">${t('关闭通知条只隐藏当前版本，仍可在此查看；通知到期或撤下后自动移除。')}</p>
+  </div>`;
+}
+
+// Manual viewing prefers a live notification; automatic popups keep opening their long-form announcement.
+function AnnouncementSections({ notice, notification, automatic }) {
+  const [section, setSection] = useState(() => automatic && notice ? 'notice' : notification ? 'notification' : notice ? 'notice' : 'changelog');
+  const items = [{ id: 'notice', label: t('服务器公告') }, { id: 'notification', label: t('当前通知') }, { id: 'changelog', label: t('更新日志') }];
   return html`<div class="announcement-sections">
-    <${Tabs} class="announcement-sections__tabs" value=${section} onChange=${setSection} items=${[
-      { id: 'notice', label: t('服务器公告') }, { id: 'changelog', label: t('更新日志') },
-    ]} />
+    <${Tabs} class="announcement-sections__tabs" value=${section} onChange=${setSection} items=${items} />
     <section key=${section} class="announcement-sections__panel" role="tabpanel" tabIndex="0"
-      aria-label=${section === 'notice' ? t('服务器公告') : t('更新日志')}>
-      ${section === 'notice' ? html`<div class="announcement-content">
+      aria-label=${items.find(item => item.id === section).label}>
+      ${section === 'notification' ? html`<${CurrentNotification} notice=${notification} />` : section === 'notice' ? html`<div class="announcement-content">
         ${notice?.title ? html`<h3 class="announcement-content__title">${notice.title}</h3>` : null}
         <${AnnouncementContent} notice=${notice} />
       </div>` : html`<${ChangelogContent} />`}
@@ -160,19 +171,21 @@ function AnnouncementSections({ notice }) {
 }
 
 export function AnnouncementHost() {
+  const notification = useStore((s) => s.announcement);
   const notice = useStore((s) => s.popupAnnouncement);
   const inMatch = useStore(popupBlocked);
   useStore((s) => s.clock.offset);
   const { open, automatic } = useStore((s) => s, Object.is, announcementUi);
   const now = net.serverNow();
-  useTicker(notice && Number.isFinite(notice.endAt) && now < notice.endAt ? 250 : 0);
+  useTicker((notice && Number.isFinite(notice.endAt) && now < notice.endAt) || (open && notification && Number.isFinite(notification.endAt) && now < notification.endAt) ? 250 : 0);
   const live = announcementLive(notice, now);
   const key = announcementDismissKey(notice);
   useEffect(() => { syncAnnouncementPopup(notice, net.serverNow(), inMatch); }, [key, live, inMatch]);
   return html`<${Modal} open=${open && (!automatic || !inMatch)} title=${t('公告')} micro="ANNOUNCEMENT"
     class="announcement-modal" width="min(8.8rem, 94vw)" onClose=${closeAnnouncement} utility=${true}
     actions=${html`<${Button} variant="primary" icon="close" data-autofocus onClick=${closeAnnouncement}>${t('关闭')}<//>`}>
-    ${open && (!automatic || !inMatch) ? html`<${AnnouncementSections} key=${automatic ? key : 'manual'} notice=${live ? notice : null} />` : null}
+    ${open && (!automatic || !inMatch) ? html`<${AnnouncementSections} key=${automatic ? key : 'manual'} notice=${live ? notice : null}
+      notification=${announcementLive(notification, now) ? notification : null} automatic=${automatic} />` : null}
   <//>`;
 }
 

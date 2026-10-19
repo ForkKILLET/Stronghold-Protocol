@@ -436,3 +436,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 开始页使用 PageHeader 的 title 变体，复用公告／工具／博士档案入口，语言为档案旁插槽；中央 h1 与开始流程保留。连接状态标签和状态点保持整组不折行，首次 hello 之前不展示延迟／人数；窄屏按组换行。全屏在共享工具栏使用标准方形按钮，正式对局保留原 HUD。回归 test/ui/title-navigation.e2e.test.js（Chrome／Firefox，源码及生产构建）。
 
 - 2026-10-19 管理面板增加观战深链与服务器通知。`?spectate=CODE` 只使用普通 room.spectate 权限，在独立标签页初始化会话，不切换原标签页；单人／无房间公共匹配不新增观战权限。通知的唯一写入口为独立管理员会话加同源校验后的 `/admin/api/server-message`，再经服务 Bearer 密钥转发固定内部 `/v1/server-message`；公开游戏端口不提供管理写入。保留正文／频率限制与修订号冲突保护，不提供任意广播命令。通知用现有全局滚动条，覆盖后续连接且保持关闭版本语义；只覆盖滚动公告，撤下／到期恢复排期，不影响 popup／更新日志。当前状态保存在用户卷旁独立 JSON（可通过 SP_SERVER_MESSAGE_FILE 指定），不改 SQLite schema，不提交运行文件。首次发布使用 --target all；回归 admin-message.test.js、admin-communication.e2e.test.js，禁止向生产玩家发送测试消息。
+
+- 2026-10-19 公告弹窗“当前通知”读取既有 announcement 状态，独立于滚动条关闭偏好；手动打开优先显示有效通知，自动 popup 保持原公告页签。通知在已打开弹窗中更新／到期／撤下时同步，不恢复已关闭通知条，不新增历史。保持三个页签、正文独立滚动与窄屏／大字布局；回归 notification-recall.e2e.test.js。
