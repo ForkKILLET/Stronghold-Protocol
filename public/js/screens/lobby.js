@@ -3,6 +3,7 @@ import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 import { Emblem } from './title.js';
 import { useMyCard } from '../ui/playerCard.js';
 import { HubBackdrop, HubRadar } from '../ui/hubBackdrop.js';
+import { setResourceCheckBlocker } from '../resources/index.js';
 import { useHubBackdrop, backdropTheme } from '../ui/hubAppearance.js';
 import { ProtocolScene } from '../ui/protocolScene.js';
 // Lobby screen: pick 独立模拟 / 同盟模拟 / 同盟匹配 and a difficulty (标准/险境/绝境/终极), create a room,
@@ -345,6 +346,10 @@ export function LobbyScreen() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [battleSpeed, setBattleSpeed] = useState(2);
   const [panel, setPanel] = useState(null); // protocol | join | achievements | sweep; existing server actions only
+  useLayoutEffect(() => {
+    setResourceCheckBlocker('lobby-panel', !!panel);
+    return () => setResourceCheckBlocker('lobby-panel', false);
+  }, [panel]);
   const bg = useHubBackdrop();
   const sweepEntry = useRef(null);
   const modeEntries = useRef({});

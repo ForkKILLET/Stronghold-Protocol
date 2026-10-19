@@ -9,6 +9,7 @@
 
 import { CACHE_PREFIX, MANIFEST_URL, SW_URL, TIER_ESSENTIAL, TIER_REST, checkAbort, formatBytes, isQuotaError, resourceGroup, normalizePreloadVoiceLang, resourceSelection, selectedResourceGroup, validateManifest, validateResourcePacks } from './common.js';
 import { ResourceStore } from './store.js';
+import { idleResourceCheck } from './idle.js';
 import { t } from '../../../shared/i18n.js';
 
 /** @type {any} */
@@ -46,6 +47,7 @@ const state = {
   skins: false,
   selectionComplete: false,
   combatPaused: false,
+  checkBlocked: false,
   manualPaused: false,
   groups: [],
 };
@@ -69,10 +71,28 @@ let combatRevision = 0;
 let resumeAfterCombat = false;
 let cancelOtherTabWatch = null;
 let runRevision = 0;
+const checkBlockers = new Set();
+let activeCheck = null;
+let backgroundCheckNeeded = true;
 
 const combatMessage = () => t('战斗中已暂停批量预载，战斗结束后自动继续。');
 const manualMessage = () => t('已暂停，可继续下载或清理缓存。');
 const downloadBlocked = () => !current || combatPaused || manualPaused;
+
+/** Session navigation and local lobby panels have independent lifetimes. */
+export function setResourceCheckBlocker(owner, blocked) {
+  if (blocked) checkBlockers.add(owner); else checkBlockers.delete(owner);
+  set({ checkBlocked: checkBlockers.size > 0 });
+  if (checkBlockers.size) {
+    cancelBackgroundCheck?.();
+    if (activeCheck) controller?.abort();
+  } else scheduleBackgroundCheck();
+}
+
+/** Closing the panel stops an explicit check without disabling saved resources. */
+export function cancelResourceCheck() {
+  if (activeCheck) controller?.abort();
+}
 
 /** Subscribe to preload state changes (returns the unsubscribe function). */
 export function subscribeResources(fn) {
@@ -263,10 +283,29 @@ export async function startResources() {
     set({ phase: 'paused' });
     return;
   }
+  if (checkBlockers.size && state.selectionComplete) {
+    set({ message: t('完整检查请返回大厅后进行。') });
+    return;
+  }
+  if (activeCheck === 'background') controller?.abort();
   if (transferPromise) await transferPromise.catch(() => {});
   if (activeRun && (controller?.signal.aborted || ['ready', 'error', 'paused'].includes(state.phase))) await activeRun;
   if (downloadBlocked()) return;
-  return start({ verifyCache: true });
+  return start({ verifyCache: !checkBlockers.size });
+}
+
+/** An explicit inspection never enables bulk downloads as a side effect. */
+export async function checkResources() {
+  if (combatPaused || checkBlockers.size) {
+    set({ message: t('完整检查请返回大厅后进行。') });
+    return;
+  }
+  if (activeCheck === 'background') controller?.abort();
+  if (activeRun) {
+    if (!controller?.signal.aborted) return activeRun;
+    await activeRun;
+  }
+  return start({ verifyCache: true, checkOnly: true });
 }
 
 /**
@@ -291,12 +330,12 @@ function watchOtherTab(store) {
     const recheck = () => {
       if (document.visibilityState !== 'visible' || downloadBlocked()) return;
       cancelOtherTabWatch?.();
-      void start({ verifyCache: true });
+      void start();
     };
     cancelOtherTabWatch = () => { document.removeEventListener('visibilitychange', recheck); cancelOtherTabWatch = null; };
     document.addEventListener('visibilitychange', recheck);
   }
-  return store.status().then((st) => set({
+  return store.status({ verifyCache: false }).then((st) => set({
     ...counters(st), phase: 'foreign', error: false,
     message: selectionComplete(st) ? t('所选资源已齐全。') : t('另一个标签页正在预载⋯回到这个标签页时会自动继续。'),
   }));
@@ -304,23 +343,21 @@ function watchOtherTab(store) {
 
 function scheduleBackgroundCheck() {
   cancelBackgroundCheck?.();
-  // Browser only: no lingering timers in tools/tests. Recheck every page entry,
-  // but do not keep the initial "checking resources" UI waiting for cache.keys.
-  const win = globalThis.window;
-  if (!win?.setTimeout) return;
-  const revision = syncRevision;
-  const run = () => {
-    cancelBackgroundCheck = null;
-    if (downloadBlocked() || revision !== syncRevision || activeRun || transferPromise) return;
-    void start({ verifyCache: true, background: true }).catch((err) =>
-      console.warn('[resources] background check failed', err));
-  };
-  const timer = win.setTimeout(run, 5000);
-  cancelBackgroundCheck = () => { win.clearTimeout(timer); cancelBackgroundCheck = null; };
+  cancelBackgroundCheck = null;
+  if (!backgroundCheckNeeded || state.error || downloadBlocked() || checkBlockers.size) return;
+  cancelBackgroundCheck = idleResourceCheck({
+    allowed: () => !downloadBlocked() && !checkBlockers.size && !activeRun && !transferPromise,
+    interrupt: () => { if (activeCheck === 'background') controller?.abort(); },
+    run: async () => {
+      try { await start({ verifyCache: true, background: true }); }
+      catch (err) { console.warn('[resources] background check failed', err); return true; }
+      return !backgroundCheckNeeded;
+    },
+  });
 }
 
 function start(options = {}) {
-  if (downloadBlocked()) {
+  if (combatPaused || downloadBlocked() && !options.checkOnly) {
     if (current && manualPaused) set({ phase: 'paused', message: manualMessage() });
     else if (current && combatPaused) set({ phase: 'paused', message: combatMessage() });
     return Promise.resolve();
@@ -328,23 +365,26 @@ function start(options = {}) {
   if (transferPromise) return transferPromise.catch(() => {});
   if (activeRun) return activeRun;
   runRevision++;
-  cancelBackgroundCheck?.();
+  if (!options.background) cancelBackgroundCheck?.();
   controller = new AbortController();
   const signal = controller.signal;
   activeRun = startDownload(signal, options).catch(err => {
     // A pause can arrive during initial manifest/cache verification, before the inner download catch.
     if (err?.name === 'AbortError') { set({ phase: 'paused', message: current ? manualMessage() : t('已停止预载。') }); return; }
     throw err;
-  }).finally(() => { activeRun = null; controller = null; });
+  }).finally(() => {
+    activeRun = null; controller = null; activeCheck = null;
+    scheduleBackgroundCheck();
+  });
   return activeRun;
 }
 
-async function startDownload(signal, { verifyCache = false, background = false } = {}) {
+async function startDownload(signal, { verifyCache = false, background = false, checkOnly = false } = {}) {
   if (!background) set({ phase: 'checking', message: t('正在检查已保存的资源…'), error: false, packProgress: null });
   const checkStart = performance.now();
   const ctx = await resourceContext();
   const manifestReady = performance.now();
-  if (downloadBlocked() || signal.aborted) { set({ phase: 'paused' }); return; }
+  if (downloadBlocked() && !checkOnly || signal.aborted) { set({ phase: 'paused' }); return; }
   if (ctx.error || ctx.unsupported || ctx.empty) {
     const message = ctx.error || ctx.unsupported || t('服务器没有可预载的资源');
     set({ phase: 'error', message, error: true, supported: !ctx.unsupported });
@@ -361,23 +401,27 @@ async function startDownload(signal, { verifyCache = false, background = false }
   // Full verification/repair must hold the same lock as SW writes and clear.
   let before;
   if (verifyCache) {
-    const result = await withDownloadLock(async () => {
+    if (checkBlockers.size) { set({ phase: 'paused' }); return; }
+    activeCheck = background ? 'background' : 'manual';
+    let result;
+    try { result = await withDownloadLock(async () => {
       checkAbort(signal);
-      const status = await store.status();
+      const status = await store.status({ signal, headers: background ? 'unindexed' : 'all', background });
       checkAbort(signal);
-      await store.reconcileRuntimeIndex(status);
+      await store.reconcileRuntimeIndex(status, { signal });
       checkAbort(signal);
-      if (status.complete) await store.prune();
+      if (status.complete) await store.prune(true, { signal });
       return { status };
-    });
+    }); } finally { activeCheck = null; }
     if (result.busy) { await watchOtherTab(store); return; }
     before = result.status;
+    backgroundCheckNeeded = false;
   } else {
     before = await store.status({ verifyCache: false });
   }
   console.info('[resources] preload check timings', { manifestMs: manifestReady - checkStart,
     ...before.checkTimings, background, durationMs: performance.now() - checkStart, cached: before.count, files: before.total });
-  if (downloadBlocked() || signal.aborted) { set({ phase: 'paused' }); return; }
+  if (downloadBlocked() && !checkOnly || signal.aborted) { set({ phase: 'paused' }); return; }
   const ready = selectionComplete(before);
   set({ ...counters(before), phase: ready ? 'ready' : 'download',
     message: ready ? !verifyCache ? t('已读取本机缓存索引，稍后在后台核对缓存。')
@@ -386,6 +430,7 @@ async function startDownload(signal, { verifyCache = false, background = false }
     if (!verifyCache) scheduleBackgroundCheck();
     return;
   }
+  if (checkOnly) { set({ phase: 'paused', message: manualMessage() }); return; }
   // Downloads already obtain an authoritative missing set; don't add a second
   // full scan here on top of ResourceStore.download().
   const onProgress = (p) => {
@@ -413,16 +458,16 @@ async function startDownload(signal, { verifyCache = false, background = false }
       // prevents a slow essential-file lane from delaying the skin packs.
       const packTiers = optional || skins ? [TIER_ESSENTIAL, TIER_REST] : [TIER_ESSENTIAL];
       await preloadTransportPacks(store, ctx.packs, packTiers, signal, onProgress, include);
-      failed += (await store.download({ tiers: [TIER_ESSENTIAL], signal, onProgress })).failed;
+      failed += (await store.download({ tiers: [TIER_ESSENTIAL], signal, onProgress, verifyCache: !checkBlockers.size })).failed;
       checkAbort(signal);
       if (optional || skins) {
-        failed += (await store.download({ tiers: [TIER_REST], signal, onProgress, includeFile: include })).failed;
+        failed += (await store.download({ tiers: [TIER_REST], signal, onProgress, includeFile: include, verifyCache: !checkBlockers.size })).failed;
       }
       return { busy: false };
     });
     if (outcome.busy) { await watchOtherTab(store); return; }
     checkAbort(signal);
-    const after = await store.status({ verifyCache: true });
+    const after = await store.status({ verifyCache: false, signal });
     checkAbort(signal);
     set({
       ...counters(after),
@@ -433,17 +478,19 @@ async function startDownload(signal, { verifyCache = false, background = false }
         ? t('资源已全部预载完成（{0}）。', { 0: formatBytes(after.bytes) })
         : selectionComplete(after) ? t('所选资源已齐全。') : t('已保存 {count}/{total} 个文件；未完成的会在下次开启时重试。', { count: after.count, total: after.total }),
     });
+    backgroundCheckNeeded = true;
+    scheduleBackgroundCheck();
   } catch (err) {
     if (err?.name === 'AbortError') {
       // Do not begin a cache-key scan while the battle is taking over the page.
-      const now = combatPaused ? null : await store.status().catch(() => null);
+      const now = combatPaused || checkBlockers.size ? null : await store.status({ verifyCache: false }).catch(() => null);
       set({ ...(now ? counters(now) : {}), phase: 'paused', message: current ? t('已暂停，可继续下载或清理缓存。') : t('已停止预载。') });
       return;
     }
     const message = err?.name === 'QuotaExceededError' || /quota|空间不足/i.test(String(err?.message || ''))
       ? t('浏览器存储空间不足：已保存的文件保留，可清理缓存后重试。')
       : t('预载失败：{0}', { 0: err?.message || err });
-    const now = await store.status().catch(() => null);
+    const now = await store.status({ verifyCache: false }).catch(() => null);
     set({ ...(now ? counters(now) : {}), phase: 'error', message, error: true });
   }
 }
@@ -638,7 +685,11 @@ export async function importResources(file, { onImported } = {}) {
   const outcome = await transferArchive('import', file);
   // Persist the UI setting after a successful import, then enable/resume the selected incremental downloads.
   onImported?.();
-  const run = current ? startResources() : syncResources(true);
+  backgroundCheckNeeded = true;
+  manualPaused = false;
+  set({ manualPaused });
+  if (current && combatPaused) resumeAfterCombat = true;
+  const run = current ? start() : syncResources(true);
   void run.catch((err) => console.warn('[resources] enable after import failed', err));
   return outcome;
 }
@@ -662,7 +713,7 @@ function transferArchive(kind, file) {
     if (!ctx.store) throw new Error(ctx.error || ctx.unsupported || '服务器没有可预载的资源');
     checkAbort(signal);
     const outcome = await withDownloadLock(async () => {
-      if (kind === 'export') set(counters(await ctx.store.status()));
+      if (kind === 'export') set(counters(await ctx.store.status({ verifyCache: false, signal })));
       const archive = await import('./archive.js');
       checkAbort(signal);
       let lastTime = -Infinity;
@@ -687,7 +738,7 @@ function transferArchive(kind, file) {
     });
     if (outcome.busy) throw new Error('另一个标签页正在处理资源，请暂停后重试');
     checkAbort(signal);
-    const status = kind === 'import' ? outcome : await ctx.store.status();
+    const status = kind === 'import' ? outcome : await ctx.store.status({ verifyCache: false, signal });
     const missing = resourceSelection(status, optional, voiceLang, skins).selectedMissing;
     set({ ...counters(status), failed: 0, phase: selectionComplete(status) ? 'ready' : 'paused',
       message: kind === 'export'
@@ -702,7 +753,7 @@ function transferArchive(kind, file) {
     const ctx = await resourceContext();
     // Cancellation/errors must also release the manager without waiting for a
     // full response scan. Successful writes have already flushed their index.
-    const status = await ctx.store?.status({ verifyCache: kind !== 'import' }).catch(() => null);
+    const status = await ctx.store?.status({ verifyCache: false }).catch(() => null);
     const aborted = err?.name === 'AbortError';
     set({ ...(status ? counters(status) : {}), phase: aborted ? 'paused' : 'error', error: !aborted,
       message: aborted ? t('资源包处理已取消，已保存的资源保留。')
@@ -754,40 +805,25 @@ export async function clearResources() {
   });
 }
 
-/** Opening the manager checks the cache without starting network asset downloads. */
+/** Opening the manager is an index-only read, including when preload is off. */
 export async function inspectResources() {
   if (combatPaused) { if (current && !state.archive) set({ phase: 'paused' }); return; }
-  // An active run already publishes authoritative counters; opening the panel must not enqueue another cache scan.
   if (activeRun || transferPromise) return;
   const revision = runRevision;
-  cancelBackgroundCheck?.();
-  if (!activeRun && !transferPromise) set({ phase: 'checking', error: false, message: t('正在检查已保存的资源…') });
   const ctx = await resourceContext();
   if (!ctx.store) {
     set({ phase: 'error', supported: !ctx.unsupported, error: true, message: ctx.error || ctx.unsupported || t('服务器没有可预载的资源') });
-    // A later open can retry a temporarily unavailable manifest.
     contextPromise = null;
     return;
   }
   try {
-    if (activeRun || transferPromise) return;
-    if (combatPaused) { if (current) set({ phase: 'paused' }); return; }
-    const outcome = await withDownloadLock(async () => {
-      if (combatPaused) return { deferred: true };
-      const status = await ctx.store.status();
-      if (combatPaused) return { deferred: true };
-      await ctx.store.reconcileRuntimeIndex(status);
-      if (combatPaused) return { deferred: true };
-      if (status.complete) await ctx.store.prune();
-      return { status };
-    });
-    if (outcome.deferred) { if (current) set({ phase: 'paused' }); return; }
-    const status = outcome.busy ? await ctx.store.status() : outcome.status;
-    // An inspection begun before a download must never overwrite the newer
-    // completed/failed run with its older "paused" snapshot.
-    if (revision !== runRevision) return;
+    const status = await ctx.store.status({ verifyCache: false });
+    if (revision !== runRevision || activeRun || transferPromise) return;
     set({ ...counters(status), version: ctx.manifest.version, supported: true,
-      ...(!activeRun && !transferPromise ? { phase: selectionComplete(status) ? 'ready' : 'paused', message: '', error: false } : {}) });
+      phase: current && (combatPaused || manualPaused) ? 'paused' : selectionComplete(status) ? 'ready' : 'paused',
+      message: current && !manualPaused && !checkBlockers.size
+        ? t('已读取本机缓存索引，稍后在后台核对缓存。') : t('已读取本机缓存索引。'), error: false });
+    scheduleBackgroundCheck();
   } catch (err) {
     if (revision !== runRevision) return;
     set({ phase: 'error', error: true, message: t('无法读取本机资源缓存：{0}', { 0: err?.message || err }) });

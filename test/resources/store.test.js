@@ -84,6 +84,70 @@ function fetcherFor({ bodies = {}, fail = [], opaque = [], gzip = [], onCall } =
 const store = (m, extra = {}) => new ResourceStore(m, { caches: extra.caches ?? new MemoryCaches(), fetcher: extra.fetch, origin: ORIGIN, smallLanes: extra.smallLanes ?? 4, bigLanes: extra.bigLanes ?? 1, now: extra.now });
 
 describe('ResourceStore', () => {
+  test('idle verification probes only unindexed headers, detects eviction and keeps revision checks', async () => {
+    const files = Array.from({ length: 64 }, (_, i) => ({ url: `/assets/idle/${i}.png`, tier: 1, size: 1, hash: '0123456789ab' }));
+    const caches = new MemoryCaches();
+    for (const file of files) await seed(caches, ORIGIN + file.url, 'x', file.hash);
+    const cache = await caches.open(CACHE_NAME);
+    await cache.delete(ORIGIN + files[0].url);
+    const runtime = { url: '/assets/runtime.png', tier: 1, size: 1, hash: '0123456789ab' };
+    await cache.put(ORIGIN + runtime.url, new Response('x', { headers: { 'Content-Length': '1' } }));
+    const stale = { url: '/assets/stale.png', tier: 1, size: 1, hash: '123456789abc' };
+    await seed(caches, ORIGIN + stale.url, 'x', '000000000000');
+    const reads = [], match = cache.match.bind(cache);
+    cache.match = async key => { if (key.includes('/assets/')) reads.push(key); return match(key); };
+    const s = store(manifest([...files, runtime, stale]), { caches });
+    const status = await s.status({ headers: 'unindexed', background: true, signal: new AbortController().signal });
+    assert.deepEqual(reads, [ORIGIN + runtime.url], 'trusted fingerprints need no individual cache reads');
+    assert.equal(status.count, 64);
+    assert.equal(status.present.has(ORIGIN + files[0].url), false);
+    assert.equal(status.present.has(ORIGIN + stale.url), false);
+    await s.reconcileRuntimeIndex(status);
+    assert.equal((await s.status({ verifyCache: false })).count, 64);
+  });
+
+  test('cancelling a header check drains only its one in-flight read and a new owner can inspect again', async () => {
+    const files = Array.from({ length: 16 }, (_, i) => ({ url: `/assets/abort/${i}.png`, tier: 1, size: 1 }));
+    const caches = new MemoryCaches(), cache = await caches.open(CACHE_NAME);
+    for (const f of files) await cache.put(ORIGIN + f.url, new Response('x', { headers: { 'Content-Length': '1' } }));
+    const started = Promise.withResolvers(), release = Promise.withResolvers(), controller = new AbortController();
+    let reads = 0; const match = cache.match.bind(cache);
+    cache.match = async key => { if (key.includes('/assets/')) { if (++reads === 1) { started.resolve(); await release.promise; } } return match(key); };
+    const s = store(manifest(files), { caches });
+    const checking = s.status({ signal: controller.signal });
+    const rejected = assert.rejects(checking, { name: 'AbortError' });
+    await started.promise; controller.abort(); release.resolve(); await rejected;
+    assert.equal(reads, 1);
+    assert.equal((await s.status({ signal: new AbortController().signal })).count, files.length);
+    assert.equal(reads, files.length + 1);
+  });
+
+  test('oversized cache enumeration fallback stops after the in-flight per-URL probe', async () => {
+    const files = Array.from({ length: 16 }, (_, i) => ({ url: `/assets/large/${i}.png`, tier: 1, size: 1 }));
+    const caches = new MemoryCaches(), cache = await caches.open(CACHE_NAME), signal = new AbortController();
+    const started = Promise.withResolvers(), release = Promise.withResolvers(); let probes = 0;
+    cache.keys = async key => { if (!key) throw Error('Operation too large'); probes++; started.resolve(); await release.promise; return []; };
+    const s = store(manifest(files), { caches });
+    const rejected = assert.rejects(s.status({ signal: signal.signal }), { name: 'AbortError' });
+    await started.promise; signal.abort(); release.resolve(); await rejected;
+    assert.equal(probes, 1);
+  });
+
+  test('incremental download never restores evicted optional fingerprints from an earlier index snapshot', async () => {
+    const files = [{ url: '/assets/essential.png', tier: 1, size: 1, hash: '11f6ad8ec52a' },
+      { url: '/assets/optional.png', tier: 2, size: 1, hash: '11f6ad8ec52a' }];
+    for (const allEvicted of [false, true]) {
+      const caches = new MemoryCaches();
+      for (const f of files) await seed(caches, ORIGIN + f.url, 'x', f.hash);
+      const cache = await caches.open(CACHE_NAME); await cache.delete(ORIGIN + files[1].url);
+      if (allEvicted) await cache.delete(ORIGIN + files[0].url);
+      const s = store(manifest(files), { caches, fetch: async () => new Response('x', { headers: { 'Content-Length': '1' } }) });
+      const status = await s.download({ tiers: [1] });
+      assert.equal(status.count, 1); assert.equal(status.complete, false);
+      assert.equal((await s.status({ verifyCache: false })).tier2Present, 0);
+    }
+  });
+
   test('saved-resource inspection trusts existence and length headers without reading or hashing any asset body', async (t) => {
     const files = Array.from({ length: 20 }, (_, i) => ({ url: `/assets/headers/${i}.png`, tier: 1,
       size: 100, hash: '0123456789ab' }));
@@ -111,7 +175,7 @@ describe('ResourceStore', () => {
     assert.equal(status.count, files.length, 'a short or corrupted body is deliberately accepted');
     assert.equal(status.complete, true, 'length header need not match manifest size');
     assert.equal(reads, files.length);
-    assert.ok(maximum > 1 && maximum <= 8, `header reads use bounded concurrency (${maximum})`);
+    assert.equal(maximum, 1, 'header checks reserve only one storage request at a time');
     assert.ok(status.checkTimings.headerCheckMs >= 0);
     await s.download();
   });

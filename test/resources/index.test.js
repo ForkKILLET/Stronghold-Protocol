@@ -270,7 +270,7 @@ test('complete indexed startup skips scans; deferred verification detects evicti
   let deferred;
   Object.defineProperty(globalThis, 'window', {
     configurable: true, value: {
-      setTimeout: (fn, ms) => { assert.equal(ms, 5000); deferred = fn; return 1; },
+      setTimeout: (fn, ms) => { assert.equal(ms, 15000); deferred = fn; return 1; },
       clearTimeout: () => { deferred = null; },
     },
   });
@@ -293,12 +293,39 @@ test('complete indexed startup skips scans; deferred verification detects evicti
   assert.equal(mod.resourceState().phase, 'ready');
   assert.deepEqual(env.calls.fetch, [MANIFEST_URL]);
   await cache.delete(ORIGIN + FILES[1].url);
-  deferred();
-  await mod.startResources(); // joins the active background verification
-  assert.equal(mod.resourceState().cacheVerified, true);
+  await deferred(); // idle presence check detects eviction and refills
   assert.equal(mod.resourceState().selectionComplete, true);
   assert.deepEqual(env.calls.fetch.slice(1), [ORIGIN + FILES[1].url], 'only evicted resource is fetched');
   assert.ok(scans > 0);
+  await mod.syncResources(false);
+});
+
+test('input interrupts an already running idle verification and room navigation prevents its restart', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const saved = ['window', 'document'].map(key => [key, Object.getOwnPropertyDescriptor(globalThis, key)]);
+  t.after(() => { for (const [key, value] of saved) { if (value) Object.defineProperty(globalThis, key, value); else delete globalThis[key]; } });
+  const tasks = new Map(), listeners = new Map(); let next = 0;
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: {
+    setTimeout(fn) { tasks.set(++next, fn); return next; }, clearTimeout: id => tasks.delete(id),
+  } });
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: {
+    visibilityState: 'visible', addEventListener: (e, f) => listeners.set(e, f), removeEventListener: e => listeners.delete(e),
+  } });
+  const cache = await env.caches.open(CACHE_NAME), index = {};
+  for (const f of FILES) { await cache.put(cacheKey(f), new Response('b'.repeat(f.size), { headers: { 'Content-Length': String(f.size) } })); index[cacheKey(f)] = null; }
+  await cache.put(indexUrl(ORIGIN), new Response(JSON.stringify({ version: 1, manifest: MANIFEST.version, files: index })));
+  const started = Promise.withResolvers(), release = Promise.withResolvers(); let reads = 0;
+  const match = cache.match.bind(cache);
+  cache.match = async key => { if (key.includes('/assets/')) { if (++reads === 1) { started.resolve(); await release.promise; } } return match(key); };
+  const mod = await import('../../public/js/resources/index.js?idle-input-interrupt');
+  await mod.syncResources(true, false);
+  const [id, fn] = [...tasks][0]; tasks.delete(id); const checking = fn();
+  await started.promise; listeners.get('keydown')(); release.resolve(); await checking;
+  assert.equal(reads, 1);
+  assert.equal(tasks.size, 1, 'an interrupted check waits for a new idle interval');
+  const stale = [...tasks.values()][0]; mod.setResourceCheckBlocker('session', true);
+  await stale(); assert.equal(reads, 1); assert.equal(tasks.size, 0);
+  mod.setResourceCheckBlocker('session', false); assert.equal(tasks.size, 1);
   await mod.syncResources(false);
 });
 
@@ -487,6 +514,52 @@ function stubEnv({ manifest = MANIFEST, fail = false, secure = true } = {}) {
   });
   return { calls, caches, restore };
 }
+
+test('opening/closing the manager reads only indexes; navigating or closing cancels a running manual inspection', async t => {
+  const env = stubEnv(); t.after(env.restore);
+  const source = new ResourceStore(MANIFEST, { caches: env.caches, origin: ORIGIN, fetcher: globalThis.fetch });
+  await source.download();
+  const cache = await env.caches.open(CACHE_NAME), match = cache.match.bind(cache), keys = cache.keys.bind(cache);
+  let assetReads = 0, scans = 0;
+  cache.keys = async () => { scans++; return keys(); };
+  cache.match = async key => { if (key.includes('/assets/')) assetReads++; return match(key); };
+  const mod = await import('../../public/js/resources/index.js?manager-idle-cancel');
+  await mod.inspectResources(); await mod.inspectResources();
+  assert.equal(scans, 0); assert.equal(assetReads, 0);
+  await mod.syncResources(true, true);
+  assert.equal(scans, 0); assert.equal(assetReads, 0);
+  let gate, started, hold;
+  cache.match = async key => {
+    if (key.includes('/assets/')) {
+      assetReads++;
+      if (hold) { hold = false; started.resolve(); await gate.promise; }
+    }
+    return match(key);
+  };
+  for (const cancel of [() => mod.setResourceCheckBlocker('session', true), () => mod.cancelResourceCheck()]) {
+    gate = Promise.withResolvers(); started = Promise.withResolvers(); hold = true;
+    const before = assetReads, checking = mod.startResources();
+    await started.promise; cancel(); gate.resolve(); await checking;
+    assert.equal(assetReads, before + 1, 'no new header reads after cancellation');
+    assert.equal(mod.resourceState().enabled, true, 'cancelling never disables cached resource use');
+    mod.setResourceCheckBlocker('session', false);
+  }
+  mod.setResourceCheckBlocker('lobby-panel', true);
+  mod.setResourceCheckBlocker('session', true);
+  mod.setResourceCheckBlocker('lobby-panel', false);
+  assert.equal(mod.resourceState().checkBlocked, true, 'one owner cannot clear another navigation gate');
+  const before = assetReads; await mod.startResources();
+  assert.equal(assetReads, before);
+  assert.match(mod.resourceState().message, /返回大厅/);
+  mod.setResourceCheckBlocker('session', false);
+  await mod.startResources();
+  assert.equal(mod.resourceState().cacheVerified, true);
+  assert.equal(assetReads, before + FILES.length);
+  await mod.syncResources(false);
+  await mod.checkResources();
+  assert.equal(mod.resourceState().cacheVerified, true);
+  assert.equal(mod.resourceState().enabled, false, 'manual verification does not enable bulk downloads');
+});
 
 test('the preload controller: off by default, downloads in two passes, serves offline state', async (t) => {
   // `import` after the stubs: the module reads globals lazily, but the manifest fetch is kicked off on the first call
@@ -931,7 +1004,8 @@ test('automatic pause waits pending Cache.put/index flush before resume obtains 
     return put(key, response);
   };
   Object.defineProperty(globalThis.navigator, 'locks', { configurable: true, value: {
-    request: async (_name, _options, job) => {
+    request: async (name, _options, job) => {
+      if (name !== DOWNLOAD_LOCK) return job({});
       active++; maxActive = Math.max(maxActive, active);
       try { return await job({}); } finally { active--; }
     },
@@ -980,7 +1054,7 @@ test('combat cancels deferred background verification; even a dispatched old cal
   const saved = Object.getOwnPropertyDescriptor(globalThis, 'window'), tasks = new Map();
   let id = 0;
   Object.defineProperty(globalThis, 'window', { configurable: true, value: {
-    setTimeout(fn, ms) { assert.equal(ms, 5000); tasks.set(++id, fn); return id; },
+    setTimeout(fn, ms) { assert.equal(ms, 15000); tasks.set(++id, fn); return id; },
     clearTimeout(key) { tasks.delete(key); },
   } });
   t.after(() => { if (saved) Object.defineProperty(globalThis, 'window', saved); else delete globalThis.window; });

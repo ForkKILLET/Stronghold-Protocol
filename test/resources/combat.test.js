@@ -1,10 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PHASE } from '../../shared/constants.js';
-import { bindResourceCombat, resourceCombatActive } from '../../public/js/resources/combat.js';
+import { bindResourceCombat, resourceCombatActive, resourceCheckBlocked } from '../../public/js/resources/combat.js';
 import { createStore } from '../../public/js/store.js';
 
 const state = (phase, battle = null, entered = true) => ({ session: { entered }, match: { public: phase ? { phase } : null, battle } });
+
+test('inspection gate reserves storage throughout room, queue, all preparation, combat and result phases', () => {
+  assert.equal(resourceCheckBlocked({}), false);
+  assert.equal(resourceCheckBlocked({ room: { code: 'ROOM' } }), true);
+  assert.equal(resourceCheckBlocked({ ui: { matchQueue: { queuedAt: 1 } } }), true);
+  assert.equal(resourceCheckBlocked({ ui: { pendingJoin: 'ROOM' } }), true);
+  assert.equal(resourceCheckBlocked({ ui: { restoring: true } }), true);
+  for (const phase of Object.values(PHASE)) assert.equal(resourceCheckBlocked(state(phase)), true, phase);
+});
 
 test('combat resource gate covers fighting phases, spectators, paused fights and pending b.start, not prep/result', () => {
   for (const phase of [PHASE.COMBAT, PHASE.UNITE, PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE]) {

@@ -139,20 +139,26 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   With preload enabled, each page load revalidates the server resource manifest (ETag/304 unchanged), then reads
   the preload fingerprint index and the separate runtime URL index. A complete indexed selection avoids cache key
   enumeration and pruning during startup. This is a provisional snapshot (`cacheVerified: false`), not proof that
-  the browser retained every file. Five seconds later a background full check repairs evicted metadata, discovers
-  older unindexed runtime entries, performs normal complete-set cleanup and downloads only selected missing files.
-  Saved-resource inspection is **header-only**, not an integrity check: at most eight concurrent `Cache.match` reads
-  require the entry to exist and carry a valid `Content-Length`. No asset body is read, cloned or hashed, and header
-  lengths are not compared with body or manifest sizes. Missing/invalid length headers are treated as missing files;
-  a valid zero is accepted. This deliberately cannot detect corrupted/truncated saved bodies. The startup index-only
-  path stays unchanged; `cacheVerified: true` means presence/headers were checked, not content integrity.
+  the browser retained every file. Opening resource management also reads only indexes, even with preload disabled.
+  After **15 seconds without input**, a visible title/home page may perform low-priority maintenance. Creation/join
+  panels, queues, rooms, every preparation/game/result phase and spectating block full checks. Returning to the lobby
+  starts a new idle interval. Pointer, keyboard, wheel or input activity interrupts automatic checking; closing the
+  resource panel cancels its manual check. Normal on-demand resource requests and their SW cache remain available.
+  Idle maintenance enumerates actual cache keys and trusts unchanged recorded content fingerprints for present files.
+  Only unindexed/runtime entries require individual header reads. The manual 检查资源 action checks all saved headers
+  and is available outside the game flow. Both paths use **one cancellable storage lane**; background loops yield in
+  small batches. Abort signals reach header reads, oversized-enumeration fallback probes and cleanup: a Cache API
+  call already in flight finishes, but no following item is queued after cancellation.
+  Saved-resource inspection is not an integrity check: queried entries must carry a valid non-negative integer
+  `Content-Length`, including zero. No saved body is read, cloned or hashed, and header lengths are not compared
+  with body or manifest sizes. `cacheVerified: true` means actual presence and the appropriate indexed/header checks
+  completed, not a fresh byte-integrity check. Missing or stale fingerprints still cause incremental replacement.
   Fresh downloads without a length header, or with content encoding, record their actual decoded byte length before
-  storing; compressed wire lengths must never be reused. This reads only new downloads, not saved resources. Normal
-  fresh-download fingerprint verification and ZIP import/export body/CRC/digest checks remain intact.
-  Opening resource management or clicking 检查资源 performs an authoritative check too. Missing indexes fall back
-  to the download's real-cache inspection rather than assuming completeness. No startup/check path hashes or reads
-  asset bodies. Full scans read cache keys and both metadata indexes in parallel; only in-flight checks of the same
-  mode are coalesced, with independent status snapshots. Active runs publish their counters to the manager.
+  storing; compressed wire lengths must never be reused. New-download fingerprint and ZIP body/CRC/digest checks
+  remain intact. Downloads reuse indexed presence checks; ZIP completion and cancellation never trigger a redundant
+  full header scan. Active jobs publish counters to the resource panel instead of launching another inspection.
+  Full checks read cache keys and both metadata indexes in parallel. Ordinary in-flight snapshots of the same mode
+  may be coalesced; cancelled signal-owned checks cannot be reused by a subsequent owner. No cache format changes.
 - Deployment-generated transport packs (`data/resource-packs.json` plus `public/resource-packs/`) are an optional first-fill
   optimization. At most two ZIP requests run concurrently. The browser parses stored entries from each response stream as
   bytes arrive, shows aggregate download progress/speed plus cache-import progress, and lets the next package download

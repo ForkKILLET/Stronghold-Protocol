@@ -346,26 +346,44 @@ export class ResourceStore {
 
   /**
    * Default: check real cache entries and Content-Length headers, never their bodies.
+   * headers:'unindexed' trusts previously recorded fingerprints after checking
+   * presence; only unknown/runtime entries need an individual header lookup.
    * Recorded fingerprints still determine the revision; no body integrity is checked.
    * verifyCache:false: return a provisional metadata-only snapshot for startup;
    * callers must schedule a full check to detect eviction and repair the indexes.
-   * @param {{ verifyCache?: boolean }} [opts]
+   * @param {{ verifyCache?: boolean, headers?: 'all'|'unindexed', signal?: AbortSignal, background?: boolean }} [opts]
    */
-  async status({ verifyCache = true } = {}) {
-    const field = verifyCache ? 'statusPromise' : 'fastStatusPromise';
-    if (!this[field]) {
-      const pending = this.#status({ verifyCache }).finally(() => { if (this[field] === pending) this[field] = null; });
-      this[field] = pending;
+  async status({ verifyCache = true, headers = 'all', signal, background = false } = {}) {
+    checkAbort(signal);
+    // A cancelled owner's promise must never be adopted by a new run. The page
+    // controller serializes signal-owned checks; independent ordinary callers
+    // may still share an in-flight snapshot of the same mode.
+    const field = !verifyCache ? 'fastStatusPromise' : headers === 'all' ? 'statusPromise' : 'presenceStatusPromise';
+    const read = () => this.#status({ verifyCache, headers, signal, background });
+    let status;
+    if (signal) status = await read();
+    else {
+      if (!this[field]) {
+        const pending = read().finally(() => { if (this[field] === pending) this[field] = null; });
+        this[field] = pending;
+      }
+      status = await this[field];
     }
-    const status = await this[field];
+    checkAbort(signal);
     // Coalesce only in-flight reads. Each caller gets its own counters/set; later calls check real cache eviction.
     return { ...status, groups: status.groups.map((group) => ({ ...group })), present: new Set(status.present),
       ...(status.cachedKeys ? { cachedKeys: new Set(status.cachedKeys) } : {}) };
   }
 
-  async #status({ verifyCache }) {
+  async #status({ verifyCache, headers, signal, background }) {
     const started = performance.now();
     const cache = await this.caches.open(this.cacheName);
+    checkAbort(signal);
+    const checkpoint = async (i) => {
+      checkAbort(signal);
+      if (background && i % 4 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+      checkAbort(signal);
+    };
     let keysMs = 0;
     let indexMs = 0;
     let headerMs = 0;
@@ -377,45 +395,46 @@ export class ResourceStore {
       } finally { indexMs = performance.now() - start; }
     };
     const metadata = readIndex();
+    // Cache.keys() can reject before the parallel metadata read settles.
+    void metadata.catch(() => {});
     let enumerationLimited = false;
     const readKeys = async () => {
       const start = performance.now();
-      try { return await cache.keys(); }
+      try { const keys = await cache.keys(); checkAbort(signal); return keys; }
       catch (error) {
         if (!isCacheReadTooLarge(error)) throw error;
         enumerationLimited = true;
         // Cache API has no pagination. Probe known manifest/index identities
-        // in bounded lanes without loading bodies or returning one huge list.
+        // in one cancellable lane without loading bodies or one huge result.
         const index = await metadata;
         const urls = [...new Set([...this.entries.map((entry) => entry.key), ...Object.keys(index.files)])];
         const found = [];
-        let next = 0;
-        await Promise.all(Array.from({ length: Math.min(8, urls.length) }, async () => {
-          for (let i = next++; i < urls.length; i = next++) {
-            const matches = await cache.keys(urls[i]);
-            if (matches.some((request) => request.url === urls[i])) found.push({ url: urls[i] });
-          }
-        }));
+        for (let i = 0; i < urls.length; i++) {
+          await checkpoint(i);
+          const matches = await cache.keys(urls[i]);
+          checkAbort(signal);
+          if (matches.some((request) => request.url === urls[i])) found.push({ url: urls[i] });
+        }
         return found;
       } finally { keysMs = performance.now() - start; }
     };
     const [index, keys] = await Promise.all([metadata, verifyCache ? readKeys() : null]);
+    checkAbort(signal);
     const cached = new Set(keys ? keys.map((k) => k.url) : Object.keys(index.files));
     const fresh = this.#fresh(cached, index);
     if (verifyCache) {
       const headerStart = performance.now();
       // Bounded metadata reads: never clone/read/hash a resource body. A valid
       // length header is sufficient, even if it differs from the manifest size.
-      const candidates = [...fresh];
-      let next = 0;
-      await Promise.all(Array.from({ length: Math.min(8, candidates.length) }, async () => {
-        for (let i = next++; i < candidates.length; i = next++) {
-          if (!hasContentLength(await cache.match(candidates[i]))) {
-            fresh.delete(candidates[i]);
-            cached.delete(candidates[i]);
-          }
+      const candidates = [...fresh].filter(key => headers === 'all' || !CONTENT_HASH_RE.test(index.files[key] || ''));
+      for (let i = 0; i < candidates.length; i++) {
+        await checkpoint(i);
+        if (!hasContentLength(await cache.match(candidates[i]))) {
+          fresh.delete(candidates[i]);
+          cached.delete(candidates[i]);
         }
-      }));
+        checkAbort(signal);
+      }
       headerMs = performance.now() - headerStart;
     }
     return { ...this.#tally(fresh), present: fresh, ...(verifyCache ? { cachedKeys: cached } : {}),
@@ -442,10 +461,12 @@ export class ResourceStore {
   /** Called under the shared download lock after a full scan. Repairs legacy
    * runtime entries and removes evicted metadata without reading asset bodies.
    */
-  async reconcileRuntimeIndex(status) {
+  async reconcileRuntimeIndex(status, { signal } = {}) {
+    checkAbort(signal);
     if (!status.cacheVerified || !status.cachedKeys) throw new Error('完整缓存检查后才能修复索引');
     const cache = await this.caches.open(this.cacheName);
     const index = await this.#readIndex(cache);
+    checkAbort(signal);
     let changed = false;
     for (const key of Object.keys(index.files)) {
       // Retain known stale fingerprints until the bytes themselves are replaced
@@ -453,6 +474,7 @@ export class ResourceStore {
       if (!status.cachedKeys.has(key)) { delete index.files[key]; changed = true; }
     }
     if (changed) await this.#writeIndex(cache, index.files, index.manifest);
+    checkAbort(signal);
     await updateRuntimeIndex(cache, this.origin, {
       add: [...status.present].filter((key) => !Object.hasOwn(index.files, key)), present: status.cachedKeys,
     });
@@ -565,20 +587,21 @@ export class ResourceStore {
   /**
    * Download every missing file (essential tier first). Aborting the signal stops within one file; single file failures
    * are collected instead, so one broken file cannot waste a whole run.
-   * @param {{ signal?: AbortSignal, onProgress?: (p: any) => void, tiers?: number[], includeFile?: (file: any) => boolean }} [opts]
+   * @param {{ signal?: AbortSignal, onProgress?: (p: any) => void, tiers?: number[], includeFile?: (file: any) => boolean, verifyCache?: boolean }} [opts]
    */
-  download({ signal, onProgress, tiers = [TIER_ESSENTIAL, TIER_REST], includeFile = () => true } = {}) {
+  download({ signal, onProgress, tiers = [TIER_ESSENTIAL, TIER_REST], includeFile = () => true, verifyCache = true } = {}) {
     if (this.running) return this.running;
-    const run = this.#download({ signal, onProgress, tiers, includeFile }).finally(() => { this.running = null; });
+    const run = this.#download({ signal, onProgress, tiers, includeFile, verifyCache }).finally(() => { this.running = null; });
     this.running = run;
     return run;
   }
 
-  async #download({ signal, onProgress, tiers, includeFile }) {
+  async #download({ signal, onProgress, tiers, includeFile, verifyCache }) {
     const wanted = new Set(tiers);
     const cache = await this.caches.open(this.cacheName);
+    const start = await this.status({ verifyCache, headers: 'unindexed', signal });
+    if (start.cacheVerified) await this.reconcileRuntimeIndex(start, { signal });
     const index = await this.#readIndex(cache);
-    const start = await this.status();
     checkAbort(signal);
     const work = this.files.filter((f) => wanted.has(f.tier) && includeFile(f) && this.eligible(f) && !start.present.has(this.keyOf(f.url)));
     const groups = start.groups.map((group) => ({ ...group }));
@@ -697,17 +720,18 @@ export class ResourceStore {
     } else {
       checkAbort(signal);
     }
-    const after = await this.status();
-    await this.reconcileRuntimeIndex(after);
+    const after = await this.status({ verifyCache: false, signal });
     const result = { ...after, phase: 'ready', failed, failures: failures.slice(), adopted, downloaded };
     onProgress?.(result);
     // Only a complete set may drop anything: a partial run never deletes files it did not replace.
-    if (result.complete) await this.prune();
+    if (result.complete) await this.prune(true, { signal });
     return result;
   }
   /** Delete every cache this app owns, of every version — 「清理缓存」 in the settings panel. Never re-creates one. */
   async clear() {
     this.statusPromise = null;
+    this.fastStatusPromise = null;
+    this.presenceStatusPromise = null;
     if (this.caches?.keys) {
       const names = await this.caches.keys();
       await Promise.all(names.filter((n) => n.startsWith(CACHE_PREFIX)).map((n) => this.caches.delete(n)));
@@ -717,10 +741,11 @@ export class ResourceStore {
   }
 
   /** Drop the caches of other versions (a new asset manifest frees the files of the previous one). */
-  async pruneOld() {
+  async pruneOld({ signal } = {}) {
+    checkAbort(signal);
     const names = (await this.caches.keys()) || [];
     const stale = names.filter((n) => n.startsWith(CACHE_PREFIX) && n !== this.cacheName);
-    await Promise.all(stale.map((n) => this.caches.delete(n)));
+    for (const name of stale) { checkAbort(signal); await this.caches.delete(name); }
     return stale;
   }
 
@@ -729,7 +754,8 @@ export class ResourceStore {
    * the cache forever, and its index record with it). Older caches are only cleaned up once they held no serviceable
    * entry at all — i.e. after the migration of this run moved or dropped what it could.
    */
-  async pruneStale() {
+  async pruneStale({ signal } = {}) {
+    checkAbort(signal);
     const cache = await this.caches.open(this.cacheName);
     const wanted = new Map(this.files.map((f) => [this.keyOf(f.url), f]));
     const indexKey = indexUrl(this.origin);
@@ -743,13 +769,15 @@ export class ResourceStore {
       return 0;
     }
     const index = await this.#readIndex(cache);
+    checkAbort(signal);
     const doomed = keys.filter((k) => {
       if (k.url === indexKey || k.url === runtimeKey) return false;
       const file = wanted.get(k.url);
       return !file || (file.hash && index.files[k.url] && index.files[k.url] !== file.hash);
     });
     if (!doomed.length) return 0;
-    await Promise.all(doomed.map((k) => cache.delete(k)));
+    for (const key of doomed) { checkAbort(signal); await cache.delete(key); }
+    checkAbort(signal);
     for (const k of doomed) delete index.files[k.url];
     await this.#writeIndex(cache, index.files, this.manifest.version);
     const removed = new Set(doomed.map((k) => k.url));
@@ -761,9 +789,9 @@ export class ResourceStore {
    * Housekeeping after a complete run: other caches (the version-named layout of earlier builds) and the entries this
    * manifest dropped. `includeStale: false` is used from a download, where the cache was just brought up to date.
    */
-  async prune(includeStale = true) {
-    const caches = await this.pruneOld();
-    const files = includeStale ? await this.pruneStale() : 0;
+  async prune(includeStale = true, { signal } = {}) {
+    const caches = await this.pruneOld({ signal });
+    const files = includeStale ? await this.pruneStale({ signal }) : 0;
     return { caches, files };
   }
 }

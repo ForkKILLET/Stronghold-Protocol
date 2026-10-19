@@ -233,7 +233,7 @@ async function extract(entry, limit, signal, source, timings) {
 
 export async function exportResourceZip(store, { signal, onProgress } = {}) {
   checkAbort(signal);
-  const status = await store.status();
+  const status = await store.status({ headers: 'unindexed', signal });
   const files = store.files.filter((f) => store.eligible(f) && status.present.has(store.keyOf(f.url)));
   if (!files.length) throw new Error('没有已缓存的资源，请先预载或导入资源');
   const cache = await store.caches.open(store.cacheName);

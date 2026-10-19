@@ -4,7 +4,7 @@ import { html, Button, MicroLabel, Modal, ProgressBar } from './components.js';
 import { createStore, useStore } from '../store.js';
 import { formatBytes, normalizePreloadVoiceLang, PRELOAD_VOICE_LANGS, resourcePackPercent } from '../resources/common.js';
 import { clearResources, exportResources, importResources, inspectResources, pauseResources,
-  resourceState, startResources, subscribeResources } from '../resources/index.js';
+  resourceState, startResources, checkResources, subscribeResources, cancelResourceCheck } from '../resources/index.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
 const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), en: N_('英语语音'), kr: N_('韩语语音') };
@@ -44,7 +44,7 @@ export function percent(st) {
 
 const resourceUi = createStore({ open: false });
 export const openResources = () => resourceUi.set({ open: true });
-const closeResources = () => resourceUi.set({ open: false });
+const closeResources = () => { cancelResourceCheck(); resourceUi.set({ open: false }); };
 const busy = (st) => !!st.archive || st.phase === 'download' || st.phase === 'checking';
 
 function useResources() {
@@ -166,9 +166,9 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
   };
   return html`<${Modal} open=${open} onClose=${closeResources} title=${t('预载资源管理')} micro="RESOURCE MANAGER" class="resource-modal" utility=${true}
     actions=${html`
-      ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy ? t('取消处理') : t('暂停下载')}<//>`
-        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused}
-          onClick=${() => enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
+      ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy || st.phase === 'checking' ? t('取消处理') : t('暂停下载')}<//>`
+        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused || st.checkBlocked && st.selectionComplete}
+          onClick=${() => st.selectionComplete ? checkResources() : enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
       ${enabled && st.combatPaused && !st.manualPaused && !archiveBusy ? html`<${Button} variant="secondary" icon="hourglass"
         onClick=${pauseResources}>${t('暂停下载')}<//>` : null}
       <${Button} variant="secondary" onClick=${closeResources}>${t('关闭')}<//>`}>
@@ -181,6 +181,7 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
       </div>
       <p class=${`resource-manager__status${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
         ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
+      ${st.checkBlocked ? html`<p class="resource-manager__warn">${t('完整检查请返回大厅后进行。')}</p>` : null}
       ${st.packProgress ? html`<div class="resource-manager__pack-progress">
         <${ProgressBar}
           value=${resourcePackPercent(st.packProgress)} max=${100} size="sm" tone="mint"
