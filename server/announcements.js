@@ -1,5 +1,6 @@
 import { open, realpath } from 'node:fs/promises';
 import path from 'node:path';
+import { ServerMessage } from './serverMessage.js';
 import { parseAnnouncements, activeAnnouncement, ANNOUNCEMENT_MAX_COUNT } from '../shared/announcements.js';
 
 export const ANNOUNCEMENT_POLL_MS = 2000;
@@ -58,8 +59,9 @@ async function popupTextFiles(doc, file) {
 
 /** Read-only config service: content polling also catches atomic replacements inside Docker bind mounts. */
 export class Announcements {
-  constructor({ file, broadcast = () => {}, now = Date.now, log = quiet, pollMs = ANNOUNCEMENT_POLL_MS } = {}) {
+  constructor({ file, messageFile = null, broadcast = () => {}, now = Date.now, log = quiet, pollMs = ANNOUNCEMENT_POLL_MS } = {}) {
     this.file = file;
+    this.serverMessage = new ServerMessage({file:messageFile,now,log,onChange:()=>this.refresh()});
     this.broadcast = broadcast;
     this.now = now;
     this.log = log;
@@ -81,6 +83,7 @@ export class Announcements {
   async start() {
     if (this.started || this.stopped) return;
     this.started = true;
+    await this.serverMessage.start();
     await this.reload();
     if (!this.stopped && this.file) {
       this.pollTimer = setInterval(() => { this.reload(); }, this.pollMs);
@@ -127,7 +130,8 @@ export class Announcements {
   refresh() {
     if (this.stopped) return;
     const now = this.now();
-    const current = activeAnnouncement(this.rows, now);
+    const override = this.serverMessage.state();
+    const current = override.active ? override.message : activeAnnouncement(this.rows, now);
     const popupCurrent = activeAnnouncement(this.rows, now, 'popup');
     const key = JSON.stringify([current, popupCurrent]);
     this.current = current;
@@ -139,7 +143,7 @@ export class Announcements {
     clearTimeout(this.boundaryTimer);
     this.boundaryTimer = null;
     let next = Infinity;
-    for (const row of this.rows) if (row.enabled) {
+    for (const row of [...this.rows, ...(override.message ? [{...override.message,enabled:true}] : [])]) if (row.enabled) {
       if (row.startAt > now) next = Math.min(next, row.startAt);
       if (Number.isFinite(row.endAt) && row.endAt > now) next = Math.min(next, row.endAt);
     }
@@ -160,5 +164,6 @@ export class Announcements {
     clearTimeout(this.boundaryTimer);
     this.pollTimer = this.boundaryTimer = null;
     await this.pending;
+    await this.serverMessage.stop();
   }
 }

@@ -91,7 +91,7 @@ export {
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
  *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
- *   announcementsFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
+ *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: import('ws').WebSocketServer,
  *                     lobby: import('./lobby.js').Lobby, network: import('./net.js').Network,
@@ -207,7 +207,9 @@ export async function startServer(opts = {}) {
   const wsCompression = opts.wsCompression != null ? !!opts.wsCompression : parseWsCompression(process.env.SP_WS_COMPRESSION);
   const announcementFile = opts.announcementsFile !== undefined ? opts.announcementsFile
     : (process.env.SP_ANNOUNCEMENTS_FILE || path.join(ROOT, 'config', 'announcements.json'));
-  const announcements = new Announcements({ file: announcementFile ? path.resolve(announcementFile) : null,
+  const messageFile=opts.serverMessageFile !== undefined ? opts.serverMessageFile
+    : process.env.SP_SERVER_MESSAGE_FILE || (userFile && userFile!==':memory:' ? userFile+'.server-message.json' : null);
+  const announcements = new Announcements({ messageFile:messageFile ? path.resolve(messageFile) : null, file: announcementFile ? path.resolve(announcementFile) : null,
     broadcast: (msg) => network.broadcast(msg), log, pollMs: opts.announcementPollMs });
   await announcements.start();
   const servePublicApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });

@@ -2,6 +2,7 @@
 import {render} from '../../vendor/preact.module.js';
 import {useEffect,useRef,useState} from '../../vendor/hooks.module.js';
 import {html,Button,Icon,Tabs} from '../ui/components.js';
+import {ServerMessageEditor} from './serverMessage.js';
 import {Select} from '../ui/select.js';
 import {initLang,useLang} from './lang.js';
 import {t} from '../../../shared/i18n.js';
@@ -20,7 +21,7 @@ function stateLabel(value) {
   return ({online:t('在线'),disconnected:t('已断线'),lobby:t('大厅'),waiting:t('等待室'),queue:t('匹配中'),
     match:t('对局中'),spectating:t('观战中')})[value] || value || '—';
 }
-const errorText = status => status===429?t('请求过于频繁，请稍后重试'):status===401?t('管理员口令不正确或登录已过期'):t('无法读取服务器，请重试');
+const errorText = status => status===400?t('通知内容或有效期无效'):status===409?t('通知已变更，请载入最新版本'):status===429?t('请求过于频繁，请稍后重试'):status===401?t('管理员口令不正确或登录已过期'):t('无法读取服务器，请重试');
 async function api(route,{signal,body}={}) {
   const response=await fetch(`/admin/api/${route}`,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',
     signal:AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(8000)]),
@@ -102,7 +103,7 @@ function Dashboard() {
   const password=useRef(null);
   const [tab,setTab]=useState('overview'),[matching,setMatching]=useState('queue'),[query,setQuery]=useState(''),[search,setSearch]=useState(''),[status,setStatus]=useState('all'),[page,setPage]=useState(1);
   const [overview,setOverview]=useState(null),[list,setList]=useState(null),[error,setError]=useState(''),[refresh,setRefresh]=useState(0),[hidden,setHidden]=useState(document.hidden),[updating,setUpdating]=useState(false);
-  const kind=tab==='matching'?matching:tab;
+  const kind=tab==='messages'?'overview':tab==='matching'?matching:tab;
   useEffect(()=>{document.title=`${t('服务器管理')} · Stronghold Protocol`;});
   useEffect(()=>{const c=new AbortController();api('session',{signal:c.signal}).then(()=>setAuth('ready')).catch(e=>{if(!c.signal.aborted){setAuth('login');if(e.status!==401)setLoginError(e.message);}});return()=>c.abort();},[]);
   useEffect(()=>{const timer=setTimeout(()=>{setSearch(query.trim());setPage(1);},300);return()=>clearTimeout(timer);},[query]);
@@ -133,14 +134,15 @@ function Dashboard() {
   }
   return html`<div class="ad-shell"><header class="ad-header"><a href="/" class="ad-brand"><span class="ad-brand__mark" aria-hidden="true">◈</span><span>STRONGHOLD<span class="ad-micro">PROTOCOL / OPERATIONS</span></span></a>
     <div class="ad-heading"><span class="ad-micro">SERVER ADMINISTRATION</span><h1>${t('服务器管理')}</h1></div>
-    <div class="ad-header__right"><span class="ad-tag">${t('只读面板')}</span>${auth==='ready'?html`<${Button} size="sm" icon="exit" disabled=${busy} onClick=${logout}>${t('退出登录')}</${Button}>`:null}</div></header>
-    ${auth!=='ready'?html`<main class="ad-login"><div class="ad-login__mark" aria-hidden="true"><${Icon} name="key"/></div><span class="ad-micro">RESTRICTED ACCESS</span><h2>${t('管理员验证')}</h2><p class="ad-muted">${t('使用独立管理员口令查看服务器运行状态')}</p>
+    <div class="ad-header__right"><span class="ad-tag">${t('运行管理')}</span>${auth==='ready'?html`<${Button} size="sm" icon="exit" disabled=${busy} onClick=${logout}>${t('退出登录')}</${Button}>`:null}</div></header>
+    ${auth!=='ready'?html`<main class="ad-login"><div class="ad-login__mark" aria-hidden="true"><${Icon} name="key"/></div><span class="ad-micro">RESTRICTED ACCESS</span><h2>${t('管理员验证')}</h2><p class="ad-muted">${t('使用独立管理员口令管理服务器')}</p>
       ${auth==='checking'?html`<p role="status">${t('正在验证登录状态')}</p>`:html`<form onSubmit=${login}><label for="admin-password">${t('管理员口令')}</label><input id="admin-password" ref=${password} type="password" name="password" autocomplete="current-password" maxlength="512" required disabled=${busy}/>
       ${loginError?html`<p class="ad-error" role="alert">${loginError}</p>`:null}<${Button} type="submit" variant="primary" loading=${busy} icon="check">${t('进入面板')}</${Button}></form>`}
-      <a class="ad-back" href="/">← ${t('返回游戏')}</a></main>`:html`<main class="ad-content"><div class="ad-toolbar"><${Tabs} items=${[{id:'overview',label:t('总览')},{id:'matches',label:t('进行中对局')},{id:'matching',label:t('匹配与房间')},{id:'players',label:t('玩家')}]} value=${tab} onChange=${next=>changeTab(next)}/>
+      <a class="ad-back" href="/">← ${t('返回游戏')}</a></main>`:html`<main class="ad-content"><div class="ad-toolbar"><${Tabs} items=${[{id:'overview',label:t('总览')},{id:'matches',label:t('进行中对局')},{id:'matching',label:t('匹配与房间')},{id:'players',label:t('玩家')},{id:'messages',label:t('服务器通知')}]} value=${tab} onChange=${next=>changeTab(next)}/>
         <div class="ad-live" role="status"><span class=${`ad-live__dot ${error||hidden?'is-stale':''}`}></span><span>${hidden?t('页面隐藏，刷新已暂停'):error?t('数据未更新'):t('每 3 秒刷新')}</span><${Button} size="sm" icon="refresh" title=${t('立即刷新')} aria-label=${t('立即刷新')} disabled=${updating||hidden} onClick=${()=>setRefresh(v=>v+1)} square/></div></div>
       ${error?html`<div class="ad-error ad-error--bar" role="alert">${error} · ${t('保留最近一次数据，将自动重试')}</div>`:null}
-      ${!overview?html`<p class="ad-empty" role="status">${error?t('等待重新连接服务器'):t('正在读取服务器状态')}</p>`:tab==='overview'?html`<${Overview} data=${overview} onTab=${changeTab}/>`:html`
+      ${!overview?html`<p class="ad-empty" role="status">${error?t('等待重新连接服务器'):t('正在读取服务器状态')}</p>`:tab==='messages'?html`<${ServerMessageEditor} state=${overview.serverMessage} supported=${overview.capabilities?.serverMessage} connected=${!error && overview.connection?.ok!==false} api=${api}
+        onChanged=${next=>{setOverview(v=>({...v,serverMessage:next}));setRefresh(v=>v+1);}} onExpired=${()=>{setAuth('login');setOverview(null);setList(null);setLoginError(t('登录已过期，请重新输入管理员口令'));}}/>`:tab==='overview'?html`<${Overview} data=${overview} onTab=${changeTab}/>`:html`
         <section class="ad-section ad-list"><div class="ad-list-tools">${tab==='matching'?html`<${Tabs} size="sm" items=${[{id:'queue',label:t('匹配队列')},{id:'rooms',label:t('全部房间')}]} value=${matching} onChange=${next=>{setMatching(next);setList(null);setPage(1);}}/>`:html`<h2>${tab==='matches'?t('进行中对局'):t('玩家会话')}</h2>`}
           <div class="ad-filters">${tab==='players'?html`<${Select} label=${t('玩家状态')} value=${status} options=${['all','online','disconnected','match','queue','waiting','lobby','spectating'].map(value=>({value,label:value==='all'?t('全部状态'):stateLabel(value)}))} onChange=${next=>{setStatus(next);setPage(1);setList(null);}}/>`:null}
             <label class="ad-search"><${Icon} name="search"/><input type="search" aria-label=${t('搜索昵称或同盟密钥')} placeholder=${t('搜索昵称或同盟密钥')} value=${query} maxLength="80" onInput=${e=>setQuery(e.currentTarget.value)}/></label></div></div>

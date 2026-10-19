@@ -384,7 +384,7 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 实时管理面板
 
-- 2026-10-18 `/admin` 由独立 `server/admin/service.js` 服务提供，页面以 `tools/build-admin.mjs` 构建为 `/admin/assets/` 自有资源，复用主题／Button／Tabs／Select，不导入游戏 boot／net／profile 或建立玩家身份。管理员口令／Cookie 仅在面板使用；游戏只通过独立内部端口的 `/v1/snapshot`、`SP_ADMIN_TOKEN_FILE` 服务密钥输出 schema 1 轻量白名单。游戏公开端口的 `/admin` 始终 404。采集只读 registry／room／queue 和 ctx.lastPublic，禁止 snapshot／diag、账户内部 ID／令牌／地址／存档。面板按账户去重，独立保存最多 5 分钟趋势；上游不可用保留数据并标记过期，不能当作零人或退出管理员登录。游戏与面板可分别构建／发布／回滚，首次迁移遵守无对局冷更新。回归 test/admin.test.js、test/admin-service.test.js、test/ui/admin.e2e.test.js（SP_E2E=1，Chrome／Firefox），部署见 docs/ADMIN.md。
+- 2026-10-18 `/admin` 由独立 `server/admin/service.js` 服务提供，页面以 `tools/build-admin.mjs` 构建为 `/admin/assets/` 自有资源，复用主题／Button／Tabs／Select，不导入游戏 boot／net／profile 或建立玩家身份。管理员口令／Cookie 仅在面板使用；游戏通过独立内部端口的 `/v1/snapshot`、`SP_ADMIN_TOKEN_FILE` 服务密钥输出 schema 1 轻量白名单。游戏公开端口的 `/admin` 始终 404。采集只读 registry／room／queue 和 ctx.lastPublic，禁止 snapshot／diag、账户内部 ID／令牌／地址／存档。面板按账户去重，独立保存最多 5 分钟趋势；上游不可用保留数据并标记过期，不能当作零人或退出管理员登录。游戏与面板可分别构建／发布／回滚，首次迁移遵守无对局冷更新。回归 test/admin.test.js、test/admin-service.test.js、test/ui/admin.e2e.test.js（SP_E2E=1，Chrome／Firefox），部署见 docs/ADMIN.md。
 
 ## 统一选择控件
 
@@ -434,3 +434,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-18 房间席位主区与底栏分别建立层叠上下文，踢人／移除 AI、气泡和交流浮层的层级仅在房间内容内生效；共享顶栏的设置及其嵌套面板、公告和玩法说明必须完整覆盖这些控件。验证 test/ui/room-overlays.e2e.test.js（SP_E2E=1，Chrome／Firefox）。
 
 - 2026-10-19 开始页使用 PageHeader 的 title 变体，复用公告／工具／博士档案入口，语言为档案旁插槽；中央 h1 与开始流程保留。连接状态标签和状态点保持整组不折行，首次 hello 之前不展示延迟／人数；窄屏按组换行。全屏在共享工具栏使用标准方形按钮，正式对局保留原 HUD。回归 test/ui/title-navigation.e2e.test.js（Chrome／Firefox，源码及生产构建）。
+
+- 2026-10-19 管理面板增加观战深链与服务器通知。`?spectate=CODE` 只使用普通 room.spectate 权限，在独立标签页初始化会话，不切换原标签页；单人／无房间公共匹配不新增观战权限。通知的唯一写入口为独立管理员会话加同源校验后的 `/admin/api/server-message`，再经服务 Bearer 密钥转发固定内部 `/v1/server-message`；公开游戏端口不提供管理写入。保留正文／频率限制与修订号冲突保护，不提供任意广播命令。通知用现有全局滚动条，覆盖后续连接且保持关闭版本语义；只覆盖滚动公告，撤下／到期恢复排期，不影响 popup／更新日志。当前状态保存在用户卷旁独立 JSON（可通过 SP_SERVER_MESSAGE_FILE 指定），不改 SQLite schema，不提交运行文件。首次发布使用 --target all；回归 admin-message.test.js、admin-communication.e2e.test.js，禁止向生产玩家发送测试消息。

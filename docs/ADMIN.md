@@ -1,11 +1,11 @@
 # 实时管理面板（本分支）
 
-管理面板使用游戏同一 HTTPS 地址下的 `/admin`，通过独立管理员口令登录。面板是单独的 Node HTTP 服务和容器，不创建游戏身份或游戏 WebSocket；第一版仍为只读。
+管理面板使用游戏同一 HTTPS 地址下的 `/admin`，通过独立管理员口令登录。面板是单独的 Node HTTP 服务和容器，不创建游戏身份或游戏 WebSocket；提供运行状态查询、一键观战与服务器通知编辑。
 
 ## 服务边界
 
 - 游戏 `server/admin/telemetry.js` 只在显式配置服务密钥后开启内部监听器，`GET /v1/snapshot` 返回 schema 1 的白名单投影。默认仅监听回环地址；容器部署显式监听内部端口 8001，不发布宿主机端口，不在游戏的公开 HTTP 路由提供采集接口或管理页。
-- 面板 `server/admin/service.js` 持有管理员认证、查询、分页和最多五分钟资源趋势，通过固定内部目标采集。请求合并、4 秒超时、不跟随重定向、8 MiB 响应上限；浏览器不能指定采集地址。
+- 面板 `server/admin/service.js` 持有管理员认证、查询、分页和最多五分钟资源趋势，通过固定内部目标采集；通知编辑只代理到固定 `/v1/server-message`，不允许浏览器指定目标或执行任意管理命令。请求合并、4 秒超时、不跟随重定向、8 MiB 响应上限；浏览器不能指定采集地址。
 - `tools/build-admin.mjs` 将共享主题、Button／Tabs／Select、字体及语言包打包为面板自有 `/admin/assets/` 文件，不依赖运行中的游戏前端或其版本。`deploy/admin/Dockerfile` 最终只复制这些产物和打包后的服务；字体复用现有游戏素材镜像，不下载游戏资源。
 - 面板不读取 Redis 检查点、SQLite 或 Docker socket。内部用户 ID 仅用于游戏端账户去重，不输出；不请求 Match snapshot／diag／完整棋盘或背包，不暴露地址、令牌、恢复码、Cookie 或存档。
 
@@ -67,14 +67,24 @@ secrets:
 
 ## 接口与验证
 
-面板 `/admin/api/` 提供 `POST login`、`POST logout`、`GET session`、`GET overview`、`GET list?kind=matches|rooms|queue|players`。列表支持昵称／密钥搜索、每页五十条与玩家状态筛选。除登录外需管理员 Cookie；保留同源校验、输入大小限制、来源／全局并发及读取限流、不缓存私有响应。登录每来源每分钟八次、全局六十次，单会话每分钟一百二十次。
+面板 `/admin/api/` 提供 `POST login`、`POST logout`、`GET session`、`GET overview`、`GET list?kind=matches|rooms|queue|players`，以及 `GET/POST server-message`。列表支持昵称／密钥搜索、每页五十条与玩家状态筛选。除登录外需管理员 Cookie；保留同源校验、输入大小限制、来源／全局并发及读取限流、不缓存私有响应。登录每来源每分钟八次、全局六十次，单会话每分钟一百二十次；通知额外限制每会话每分钟十次写入。
 
-游戏内部 `/v1/snapshot` 仅接受服务 Bearer 密钥的 GET，不接受浏览器 Origin，也不使用管理员 Cookie；响应不缓存。公开 `/healthz`／`/metrics` 的格式和口径不变。
+游戏内部 `/v1/snapshot` 仅接受服务 Bearer 密钥的 GET；`/v1/server-message` 使用同一密钥，提供 GET 当前状态与 POST 发布／撤下，额外限制每分钟二十次写入。内部接口拒绝浏览器 Origin，不使用管理员 Cookie，不在游戏公开端口开放。公开 `/healthz`／`/metrics` 的格式和口径不变。
+
+## 服务器通知与交流渠道
+
+- **公告**用于规则、玩法说明和长期消息，保留原配置文件、Markdown、排期与自动弹窗机制；更新日志仍来自 CHANGELOG。
+- **通知**用于维护、故障、临时安排。编辑只是草稿，点击发布后才广播；使用现有全局通知条，以纯文本展示给开始页、大厅、对局及观战玩家。有效期内后来连接的玩家会收到相同版本；关闭只隐藏该版本，重新发布会重新显示。
+- 通知最多 500 个 Unicode 码点，可选普通／提醒／紧急；面板提供 5／15 分钟、1／6／24 小时，接口接受 1–86400 秒。到期或手动撤下时恢复原滚动公告排期，长文公告不受影响；没有强制暂停或影响游戏逻辑。
+- 通知有修订号；过时写入返回 409，面板保留草稿并要求载入最新版本。网络失败不会自动重发发布请求。无登录、跨源请求及非法输入不能更改通知。
+- 当前通知与修订号由游戏原子写入独立 JSON 文件。配置 `SP_USER_DB` 时默认使用 `<SQLite 路径>.server-message.json`，复用用户数据卷；也可显式设置 `SP_SERVER_MESSAGE_FILE`。未配置持久路径时仅本次进程有效，面板明确标注。文件不可读或格式损坏时禁止编辑，避免静默覆盖。只保存最新状态，不新增 SQLite 表或通知历史。
+- 此功能首次发布需同时更新游戏与面板（`deploy.sh --target all`）；旧游戏没有能力标记时，新面板显示不支持编辑。此后仍可独立部署面板。
+- 房间内交流继续使用现有聊天与表情；服主联络、问题追踪继续使用本服邮箱和 GitHub。暂不增加全服聊天或站内信，避免混淆运营通知与玩家聊天。
 
 ```sh
-node --test test/admin.test.js test/admin-service.test.js test/metrics.test.js
+node --test test/admin.test.js test/admin-service.test.js test/admin-message.test.js test/announcements.test.js
 npm run build:admin
-SP_E2E=1 node --test test/ui/admin.e2e.test.js
+SP_E2E=1 node --test test/ui/admin.e2e.test.js test/ui/admin-communication.e2e.test.js
 ```
 
 浏览器回归覆盖 Chrome／Firefox、登录／退出、真实 Worker 对局、搜索／下拉框、桌面／窄屏、过期数据和游戏离线；截图输出可设 `SP_E2E_OUT`。服务测试另验证独立重启不影响对局、游戏重启不清除管理员会话、请求合并、版本／体积限制及敏感字段隔离。长期监控、整机指标和告警继续使用 [Prometheus／Grafana 方案](../deploy/monitoring/README.md)。

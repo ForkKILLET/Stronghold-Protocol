@@ -12,7 +12,7 @@ const publicDir=path.resolve(import.meta.dirname,'../public');
 const pause=()=>new Promise(r=>setTimeout(r,2600));
 const login=async url=>{const r=await fetch(url+'/admin/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password})});assert.equal(r.status,200);return r.headers.get('set-cookie').split(';')[0];};
 
-test('collector is opt-in, separately authenticated, read-only and absent from the public game port',async t=>{
+test('collector snapshot is opt-in, separately authenticated, read-only and absent from the public game port',async t=>{
  assert.throws(()=>telemetryToken('short'),/32/);assert.throws(()=>telemetryToken('a'.repeat(513)),/512/);
  const game=await startServer(opts);t.after(()=>game.close());
  for(const route of ['/admin','/admin/api/overview','/v1/snapshot'])assert.equal((await fetch(game.url+route)).status,404);

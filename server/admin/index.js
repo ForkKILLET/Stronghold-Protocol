@@ -1,8 +1,9 @@
-// Independent administrator authentication and a read-only operational API. Disabled without an explicit secret.
+// Independent administrator authentication and bounded operational controls. Disabled without an explicit secret.
 import fs from 'node:fs';
 import path from 'node:path';
 import {randomBytes,scrypt,scryptSync,timingSafeEqual,createHash} from 'node:crypto';
 import {promisify} from 'node:util';
+import {adminBody as body} from './body.js';
 import {sendJson,sendError} from '../http/common.js';
 import {clientAddress,limitKeyOf,isLocalIp} from '../net.js';
 import {sameOrigin} from '../users/http.js';
@@ -21,13 +22,6 @@ export function adminPassword(value) {
 function tokenOf(req) {
   const cookies = String(req.headers.cookie || '').split(';').map(v=>v.trim()).filter(v=>v.startsWith(ADMIN_COOKIE+'='));
   return cookies.length===1 && /^sp_admin=[0-9a-f]{64}$/.test(cookies[0]) ? cookies[0].slice(ADMIN_COOKIE.length+1) : null;
-}
-async function body(req) {
-  if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers['content-type'] || ''))) throw Object.assign(new Error(),{status:415});
-  const chunks=[];let size=0;
-  for await (const chunk of req) { size+=chunk.length; if (size>2048) throw Object.assign(new Error(),{status:413}); chunks.push(chunk); }
-  try { const value=JSON.parse(Buffer.concat(chunks).toString('utf8')); if (!value || Array.isArray(value) || typeof value!=='object') throw new Error(); return value; }
-  catch { throw Object.assign(new Error(),{status:400}); }
 }
 
 export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now}) {
@@ -94,6 +88,14 @@ export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now
         if (pathname==='/admin/api/logout' && req.method==='POST') {
           sessions.delete(hash(tokenOf(req)));cookie(req,res,'');json(req,res,200,{ok:true});return;
         }
+        if (pathname==='/admin/api/server-message') {
+          if(!['GET','POST'].includes(req.method)){json(req,res,405,{error:'METHOD'});return;}
+          if(!readAllowed(current)){json(req,res,429,{error:'RATE'});return;}
+          if(req.method==='GET'){json(req,res,200,await snapshot.serverMessage());return;}
+          if(!current.writeUntil || current.writeUntil<=now()){current.writeUntil=now()+60000;current.writes=0;}
+          if(++current.writes>10){res.setHeader('Retry-After','60');json(req,res,429,{error:'RATE'});return;}
+          json(req,res,200,await snapshot.updateServerMessage(await body(req,4096)));return;
+        }
         if (req.method!=='GET') {json(req,res,405,{error:'METHOD'});return;}
         if (!readAllowed(current)) {json(req,res,429,{error:'RATE'});return;}
         if (pathname==='/admin/api/session') {json(req,res,200,{ok:true,expires:current.expires});return;}
@@ -108,7 +110,7 @@ export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now
           json(req,res,200,await snapshot.list(kind,{page,query,status}));return;
         }
         json(req,res,404,{error:'NOT_FOUND'});
-      } catch(error) {json(req,res,error.status || 503,{error:error.status?'INPUT':'UNAVAILABLE'});}
+      } catch(error) {json(req,res,error.status || 503,{error:error.status===409?'CONFLICT':error.status?'INPUT':'UNAVAILABLE'});}
     },
     close() {closed=true;sessions.clear();attempts.clear();snapshot.close?.();},
   };
