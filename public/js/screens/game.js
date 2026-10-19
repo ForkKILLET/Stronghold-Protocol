@@ -92,6 +92,7 @@ import { EmoteWheel } from '../ui/emotes.js';
 import { EffectsList } from '../ui/effectsList.js';
 import { watchingTeammate } from '../ui/gameLogic/watch.js';
 import { CombatHud } from '../ui/combatHud.js';
+import { WatchHint } from '../ui/watchHint.js';
 import { CombatMetricsPanel } from '../ui/combatMetrics.js';
 import { SettingsModal, shortcutsStore, useSettings } from '../ui/settings.js';
 import { ConsoleModal } from '../ui/console.js';
@@ -226,6 +227,7 @@ function MatchScreen() {
 
   const [watching, setWatching] = useState(null);        // fieldId the player chose to watch (null = home)
   const [watchWho, setWatchWho] = useState(null);        // { fieldId, playerId }: the teammate picked with 前往查看
+  const [watchHintDismissed, setWatchHintDismissed] = useState(false); // local to this match, across rounds and phases
   const [drawer, setDrawer] = useState(null);            // 'enemies' | 'info' | null
   const [bondOpen, setBondOpen] = useState(null);        // { id, ownerId, from }: the bond popup and whose bond it shows
   const [bondsCollapsed, setBondsCollapsed] = useState(false);
@@ -1659,10 +1661,11 @@ function MatchScreen() {
 
       <div class="gm__effects"><${EffectsList} effects=${watchingOther && field ? (field.effects ?? null) : priv?.effects} /></div>
 
-      ${watchingOther && !combat && mode !== 'settle' ? html`<div class="gm__watching" role="status">
+      ${watchingOther && !combat && mode !== 'settle' ? html`<${WatchHint} class="gm__watching"
+        dismissed=${watchHintDismissed} onDismiss=${() => setWatchHintDismissed(true)}
+        actions=${!spectator ? html`<${Button} size="sm" variant="primary" icon="back" onClick=${() => watchPlayer({ playerId: myId })}>${t('返回自己')}<//>` : null}>
         <${GIcon} name="eye" /><span>${tParts('正在查看 {name} 的阵地（只读）', { name: html`<b>${watchedName}</b>` })}</span>
-        ${spectator ? null : html`<${Button} size="sm" variant="primary" icon="back" onClick=${() => watchPlayer({ playerId: myId })}>${t('返回自己')}<//>`}
-      </div>` : null}
+      <//>` : null}
 
       ${showShop ? html`<${ShopBar} priv=${priv} editable=${editable} collapsed=${barCollapsed} refreshBusy=${refreshBusy} onCollapse=${setCollapsed}
         barRef=${barRef} offBonds=${offBonds}
@@ -1678,12 +1681,15 @@ function MatchScreen() {
 
       ${combat || mode === 'settle' ? html`<${CombatHud} pub=${pub} myId=${myId} watching=${watchingNow} hud=${hud} myDone=${!!myDone && alive}
         spectating=${!alive} spectator=${spectator} onWatch=${watchField}
+        hintDismissed=${watchHintDismissed} onDismissHint=${() => setWatchHintDismissed(true)}
         client=${cc ? { ownField: phase === PHASE.UNITE && alive ? { showing: field?.fieldId === ownFieldId(myId),
           onToggle: () => requestWatch(field?.fieldId === ownFieldId(myId) ? 'u' : ownFieldId(myId)) } : null, progress, observing: observingName ? { name: observingName } : null, onBack: alive ? backHome : null, layers, layer, onLayer: setLayer } : null} />` : null}
 
-      ${showDeadPill(alive, phase) ? (spectator
-        ? html`<div class="gm__dead gm__dead--spectator" role="status"><${GIcon} name="eye" />${t('观战中 · 点击左侧成员头像切换查看')}</div>`
-        : html`<div class="gm__dead" role="status"><${Icon} name="close" />${t('你已被淘汰 · 可继续观战队友')}</div>`) : null}
+      ${showDeadPill(alive, phase) && !watchingOther ? html`<${WatchHint} class=${spectator ? 'gm__dead gm__dead--spectator' : 'gm__dead'}
+        dismissed=${watchHintDismissed} onDismiss=${() => setWatchHintDismissed(true)}>
+        ${spectator ? html`<${GIcon} name="eye" />${t('观战中 · 点击左侧成员头像切换查看')}`
+          : html`<${Icon} name="close" />${t('你已被淘汰 · 可继续观战队友')}`}
+      <//>` : null}
 
       <${Ticker} />
 

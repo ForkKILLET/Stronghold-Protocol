@@ -42,8 +42,8 @@ await data.loadAll('bonds', 'chess', 'assets');
 function* walk(v) {
   if (Array.isArray(v)) { for (const x of v) yield* walk(x); return; }
   if (!v || typeof v !== 'object') return;
+  if (typeof v.type === 'function' && ['OwnerTag', 'WatchHint'].includes(v.type.name)) { yield* walk(v.type(v.props)); return; }
   yield v;
-  if (typeof v.type === 'function' && /^[A-Z]/.test(v.type.name) && ['OwnerTag'].includes(v.type.name)) yield* walk(v.type(v.props));
   yield* walk(v.props?.children);
 }
 const hasClass = (v, c) => typeof v?.props?.class === 'string' && v.props.class.split(/\s+/).includes(c);
@@ -51,7 +51,7 @@ const textOf = (v) => {
   if (v == null || typeof v === 'boolean') return '';
   if (typeof v === 'string' || typeof v === 'number') return String(v);
   if (Array.isArray(v)) return v.map(textOf).join('');
-  if (typeof v.type === 'function' && v.type.name === 'OwnerTag') return textOf(v.type(v.props));
+  if (typeof v.type === 'function' && ['OwnerTag', 'WatchHint'].includes(v.type.name)) return textOf(v.type(v.props));
   return textOf(v.props?.children);
 };
 
@@ -249,6 +249,19 @@ describe('§20.15 the ‹ › pill of a shared field watched with 前往查看 (
     const own = CombatHud({ pub: {}, myId: ME, watching: null, hud: null, myDone: false, client: { observing: null, onBack() {}, layers, layer: 'ALL', onLayer() {} } });
     const p2 = [...walk(own)].find((x) => hasClass(x, 'chud__layers'));
     assert.ok(p2 && !hasClass(p2, 'is-observing') && !/返回战场/.test(textOf(p2)));
+  });
+  test('dismissing explanations keeps the return and shared-field camera controls', () => {
+    const normal = CombatHud({ hintDismissed: true, client: { observing: { name: '阿米娅' }, onBack() {}, layers: [] } });
+    assert.match(textOf(normal), /返回战场/);
+    assert.doesNotMatch(textOf(normal), /阿米娅/);
+    const spectator = CombatHud({ hintDismissed: true, spectating: true, spectator: true, client: { observing: { name: '阿米娅' }, layers: [] } });
+    assert.ok(![...walk(spectator)].some(v => hasClass(v, 'chud__observe') || hasClass(v, 'chud__msg')));
+    const shared = CombatHud({ hintDismissed: true, spectating: true, spectator: true, client: { layers, layer: 'R', onLayer() {} } });
+    assert.ok([...walk(shared)].some(v => hasClass(v, 'chud__layers')));
+    assert.ok(![...walk(shared)].some(v => hasClass(v, 'chud__msg')));
+    const legacy = CombatHud({ hintDismissed: true, spectating: true, spectator: true, pub: { fields: [{ fieldId: 'n:p2', players: ['p2'] }] }, watching: 'n:p2' });
+    assert.ok([...walk(legacy)].some(v => hasClass(v, 'vswitch')));
+    assert.ok(![...walk(legacy)].some(v => hasClass(v, 'chud__msg')));
   });
 });
 

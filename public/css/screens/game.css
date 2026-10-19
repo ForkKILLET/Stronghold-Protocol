@@ -749,11 +749,12 @@
   position: absolute; left: 50%; bottom: .4rem; transform: translateX(-50%);
   display: flex; align-items: center; gap: .14rem; padding: .06rem .08rem .06rem .18rem;
   background: rgba(24, 16, 4, .92); border: 1px solid rgba(246, 163, 41, .6); color: var(--text-hi); font-size: .17rem;
+  max-width: calc(100% - .5rem);
 }
 .gm__watching > .icon { width: .24rem; height: .24rem; color: var(--amber); }
 .gm__watching b { color: var(--amber); }
 .gm__dead {
-  position: absolute; left: 50%; bottom: 3.1rem; transform: translateX(-50%); display: flex; align-items: center; gap: .1rem;
+  position: absolute; left: 50%; bottom: .4rem; transform: translateX(-50%); display: flex; align-items: center; gap: .1rem;
   padding: .1rem .26rem; background: rgba(40, 8, 6, .9); border: 1px solid rgba(255, 84, 84, .5); color: var(--red-premium); font-size: .18rem; font-weight: 700;
 }
 .gm__dead .icon { width: .22rem; height: .22rem; }
@@ -780,6 +781,10 @@
 .chud__msg .icon { width: .22rem; height: .22rem; color: var(--gold); }
 .chud__msg--dead { border-color: rgba(255, 84, 84, .5); color: var(--red-premium); }
 .chud__msg--dead .icon { color: var(--red-premium); }
+.watch-hint__close { flex: none; display: grid; place-items: center; width: max(24px, .32rem); height: max(24px, .32rem); padding: 0; background: transparent; border: 1px solid transparent; color: var(--text-lo); cursor: pointer; }
+.watch-hint__close .icon { width: .18rem; height: .18rem; color: inherit; }
+.watch-hint__close:hover { background: var(--mint-a10); border-color: var(--mint-500); color: var(--mint-400); }
+.watch-hint__close:focus-visible { outline: 2px solid var(--mint-400); outline-offset: 2px; }
 .vswitch { display: flex; align-items: center; gap: .1rem; height: .5rem; padding: 0 .06rem; background: rgba(8, 11, 10, .9); border: 1px solid var(--line-2); }
 .vswitch__arrow { width: .4rem; height: .4rem; display: grid; place-items: center; background: none; border: 0; color: var(--mint-500); }
 .vswitch__arrow .icon { width: .3rem; height: .3rem; }

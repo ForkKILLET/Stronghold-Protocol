@@ -1,7 +1,7 @@
 // Real-server browser E2E — spectator seats (community report #26, a remake feature: the official room has none). The
 // lobby's 观战 takes a spectator seat; the room lists it under 观战席 (the host's ✕ frees one — that spectator is told
 // room.closed {kicked}); the spectator's room view has 观战中 instead of the ready button; in the match it has no shop,
-// no ready toggle, no emote wheel and reads 观战中 (never "你已被淘汰"), is shown the first player's board in 休整期 by
+// no ready toggle, no emote wheel and its viewing hints never say "你已被淘汰"; it is shown the first player's board in 休整期 by
 // itself and the first field in battle, never holds an m.private, sends nothing but g.watch (plus its own room.spectate /
 // room.loadout), gets its seat back after a reload, and 离开观战 returns it to the lobby.
 // Server side: test/lobby.test.js, test/match/spectator.test.js, test/match/lobby-integration.test.js.
@@ -96,19 +96,20 @@ describe('spectator seats (community report #26, real server)', { skip: !ENABLED
       // 休整期: the first player's board by itself, read-only; no shop / ready / 交流
       await spec.waitFor((s) => s.phase === 'PREP', 'spectator in prep', 30000);
       await spec.page.waitForSelector('.gm__watching', { timeout: 10000 });
-      await spec.page.waitForSelector('.gm__dead--spectator', { timeout: 10000 });
       const prep = await spec.page.evaluate(() => ({
         watching: document.querySelector('.gm__watching')?.textContent || '',
-        back: [...document.querySelectorAll('.gm__watching button')].length,
-        pill: document.querySelector('.gm__dead')?.textContent || '',
+        back: [...document.querySelectorAll('.gm__watching .btn')].length,
+        pill: !!document.querySelector('.gm__dead'),
+        close: !!document.querySelector('.gm__watching .watch-hint__close'),
         shop: !!document.querySelector('.shopbar, .shopbar-tab'),
         ready: !!document.querySelector('.readybtn'),
         emote: !!document.querySelector('.ewheel'),
       }));
       assert.match(prep.watching, /凯尔希/, 'the host\'s board is shown');
       assert.equal(prep.back, 0, 'no 返回自己 — a spectator has no board');
-      assert.match(prep.pill, /观战中/);
-      assert.doesNotMatch(prep.pill, /淘汰/);
+      assert.equal(prep.pill, false, 'one viewing hint, no duplicate spectator banner');
+      assert.equal(prep.close, true, 'the viewing explanation can be dismissed');
+      assert.doesNotMatch(prep.watching, /淘汰/);
       assert.deepEqual([prep.shop, prep.ready, prep.emote], [false, false, false]);
       const sp1 = await specState(spec);
       assert.deepEqual([sp1.spectating, sp1.priv], [true, false]);
