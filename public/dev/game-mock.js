@@ -7,6 +7,7 @@ import '/js/ui/compat.js';
 import { render } from '/vendor/preact.module.js';
 import { installDeviceSupport } from '/js/ui/device.js';
 import { html, UiHosts } from '/js/ui/components.js';
+import { TermHelpHost } from '/js/ui/termHelp.js';
 import { ToastHost, toast } from '/js/ui/toasts.js';
 import { ConnectionBanner } from '/js/ui/connBanner.js';
 import { GuideHost } from '/js/ui/guide.js';
@@ -841,7 +842,7 @@ async function boot() {
   installAudio({ getManifest: () => data.get('assets'), subscribe: store.subscribe, getState: store.get, selectRoute, settings: settingsStore.get() });
   const phase = params.get('phase') || 'PREP';
   setPhase(PHASE[phase] || PHASE.PREP, params.get('variant') || '');
-  render(html`<div class="app-root"><div class="app-bg" aria-hidden="true"></div><${GameScreen} /><${ConnectionBanner} /><${ToastHost} /><${UiHosts} /><${GuideHost} /></div>`, document.getElementById('app'));
+  render(html`<div class="app-root"><div class="app-bg" aria-hidden="true"></div><${GameScreen} /><${ConnectionBanner} /><${ToastHost} /><${UiHosts} /><${TermHelpHost} /><${GuideHost} /></div>`, document.getElementById('app'));
   renderBar();
   store.subscribe(() => renderBar());
   globalThis.__MOCK__ = { store, S: () => S, setPhase, mutate: (fn) => { fn(S); refreshPrivate(); }, pushPublic: () => pushPublic(),

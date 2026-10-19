@@ -22,7 +22,7 @@ describe('parseRichText', () => {
       { text: '<在场', cls: [], term: false },
       { text: '3', cls: ['autochess.dgreen'], term: false },
       { text: '名>改为', cls: [], term: false },
-      { text: '晕眩', cls: ['ba.stun'], term: true },
+      { text: '晕眩', cls: ['ba.stun'], term: true, termId: 'ba.stun' },
     ]);
   });
   test('nesting, escaped newlines, stray closers, unterminated tags', () => {
@@ -31,6 +31,9 @@ describe('parseRichText', () => {
       ['a', 'ba.vup', false], ['b', 'ba.vup+ba.cold', true], ['c', 'ba.vup', false], ['d', '', false], ['e</>f', '', false], ['g', 'ba.kw', false],
     ]);
     assert.equal(segs.filter((s) => s.br).length, 1);
+    assert.equal(parseRichText('<$ba.cold><@ba.vup>寒冷</></>')[0].termId, 'ba.cold', 'nested styles never replace the term id');
+    assert.deepEqual(parseRichText('<$ba.cold><@ba.frozen>a</></><@ba.cold><$ba.frozen>b</></>').map(s => s.termId),
+      ['ba.cold', 'ba.frozen'], 'identical style lists cannot merge different term targets');
   });
   test('non-strings and empty', () => {
     assert.deepEqual(parseRichText(null), []);

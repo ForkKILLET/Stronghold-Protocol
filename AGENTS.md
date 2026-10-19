@@ -440,3 +440,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-19 公告弹窗“当前通知”读取既有 announcement 状态，独立于滚动条关闭偏好；手动打开优先显示有效通知，自动 popup 保持原公告页签。通知在已打开弹窗中更新／到期／撤下时同步，不恢复已关闭通知条，不新增历史。保持三个页签、正文独立滚动与窄屏／大字布局；回归 notification-recall.e2e.test.js。
 
 - 2026-10-19 观战／淘汰说明使用 WatchHint，本局在 MatchScreen 内共享关闭状态，不随回合、阶段或查看对象重置；新局重新显示。休整期已有阵地查看说明时不叠加 gm__dead，提示仅在底部展示。关闭只影响说明，不退出观战、不发游戏指令，保留返回及联防／领袖镜头切换控件；回归 spectator-hint.e2e.test.js、watch-bonds.test.js 与 spectator.e2e.test.js。
+
+- 2026-10-19 关键词说明复用 RichText／TermMarkup 与全局 TermHelpHost。按 `$` 标记的原始 termId 查询，不按显示名称猜测；未知词无链接样式。悬停／聚焦预览、点击／轻点固定，关联词复用同一浮层及返回栈；固定时进入既有焦点栈，Esc 先关闭词条，不穿透选卡／购买。百科及调配的 capture 键盘处理须让术语层优先。数据由 tools/build-terms.mjs 及固定 URL／SHA-256 提取，译文复用现有 overlay；不手改生成 JSON、不运行时访问外站。维护见 docs/TERMS.md，回归 terms.test.js、richText.test.js、term-help*.e2e.test.js。

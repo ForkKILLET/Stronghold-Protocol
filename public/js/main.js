@@ -38,6 +38,7 @@ import {initProfile} from './ui/profile.js';
 import { render } from '../vendor/preact.module.js';
 import { useErrorBoundary } from '../vendor/hooks.module.js';
 import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/components.js';
+import { TermHelpHost } from './ui/termHelp.js';
 import { ConnectionBanner } from './ui/connBanner.js';
 import { AnnouncementBanner, AnnouncementHost } from './ui/announcement.js';
 import { announcementFromMessage } from '../../shared/announcements.js';
@@ -380,6 +381,7 @@ function App() {
     <${AnnouncementHost} />
     <${ToastHost} />
     <${UiHosts} />
+    <${TermHelpHost} />
     <${GuideHost} />
     <${LoadoutHost} />
     <${ResourceManagerHost} />

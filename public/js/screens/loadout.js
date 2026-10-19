@@ -840,6 +840,7 @@ function LoadoutScreen({ st, leaving = false }) {
     const onKey = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (document.querySelector('.modal')) return; // a confirm dialog handles its own keys
+      if (document.querySelector('.term-help')) return; // the terminology card owns its keys above the loadout
       if (e.key === 'Escape' && document.querySelector('.diy-pick')) return; // the 自选 picker's Esc closes only the picker (diy.js)
       if (document.querySelector('.lo-idetail')) return; // the item detail's Esc / ←→ (ItemsTab)
       const typing = e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);

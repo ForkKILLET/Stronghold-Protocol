@@ -4,7 +4,8 @@
 import { useState, useMemo } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
-import { parseRichText, rtClassName } from './richText.js';
+import { parseRichText } from './richText.js';
+import { TermMarkup } from './termHelp.js';
 import { t as tr } from '../../../shared/i18n.js';
 import {
   uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, profileAvatarUrl, bandIconUrl,
@@ -89,11 +90,7 @@ export function LocalSprite({ group = 'ui/battle', name, class: cls, fallback = 
 export function RichText({ text, class: cls, as = 'span' }) {
   const segs = useMemo(() => parseRichText(text), [text]);
   const Tag = as;
-  return html`<${Tag} class=${cx('rt', cls)}>${segs.map((s, i) => (s.br
-    ? html`<br key=${i} />`
-    : s.cls.length || s.term
-      ? html`<span key=${i} class=${cx(s.cls.map((c) => rtClassName(c)), s.term && 'rt-term')}>${s.text}</span>`
-      : s.text))}<//>`;
+  return html`<${Tag} class=${cx('rt', cls)}><${TermMarkup} segments=${segs} /><//>`;
 }
 
 /** Golden (elite) chess? */

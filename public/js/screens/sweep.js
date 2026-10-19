@@ -425,7 +425,7 @@ export function SweepReport({ onClose }) {
     const onKey = (ev) => {
       const action = sweepEscapeAction(ev, {
         ...navigation.current, loadoutOpen: loadoutStore.get().open, guideOpen: guideStore.get().open,
-        dialogOpen: !!document.querySelector('.modal, .guide, [aria-modal="true"]'),
+        dialogOpen: !!document.querySelector('.modal, .guide, [aria-modal="true"], .term-help'),
       });
       if (!action) return;
       ev.preventDefault();

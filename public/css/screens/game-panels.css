@@ -12,7 +12,9 @@
 .rt-kw { color: #2fd0ff; }
 .rt-mint { color: var(--mint-400); }
 .rt-hl { color: var(--gold-2); }
-.rt-term { color: #9fd4ff; border-bottom: 1px dotted rgba(159, 212, 255, .6); }
+.rt-term { color: #9fd4ff; border-bottom: 1px dotted rgba(159, 212, 255, .6); cursor: help; }
+.rt-term:hover { color: var(--mint-400); border-bottom-color: var(--mint-400); }
+.rt-term:focus-visible { outline: 1px solid var(--mint-400); outline-offset: 2px; }
 
 /* ---- unit thumbnail ---- */
 .uthumb {

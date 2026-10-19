@@ -9,7 +9,7 @@
 // is a line break.
 //
 // API:
-//   parseRichText(src)            → Seg[]  where Seg = { text, cls: string[], term: boolean } | { br: true }
+//   parseRichText(src)            → Seg[]  where Seg = { text, cls: string[], term: boolean, termId?: string } | { br: true }
 //   richTextPlain(src)            → string (markup stripped, newlines kept)
 //   rtClassName(cls)              → CSS class for an official style id ('ba.vup' → 'rt-vup')
 //   formatBondEffect(bond, layers)→ bond `effectDescRaw` with its `{i:fmt}` placeholders resolved
@@ -50,7 +50,7 @@ const TAG_CLOSE = '</>';
 /**
  * Parse official rich text into flat styled segments.
  * @param {any} src
- * @returns {Array<{ text: string, cls: string[], term: boolean } | { br: true }>}
+ * @returns {Array<{ text: string, cls: string[], term: boolean, termId?: string } | { br: true }>}
  */
 export function parseRichText(src) {
   if (src == null) return [];
@@ -62,13 +62,15 @@ export function parseRichText(src) {
   const flush = () => {
     if (!buf) return;
     const cls = stack.map((t) => t.cls);
-    const term = stack.some((t) => t.term);
+    const termTag = stack.slice().reverse().find(t => t.term);
+    const term = !!termTag;
+    const termId = termTag?.cls;
     const prev = out[out.length - 1];
     // merge with the previous segment when styles are identical
-    if (prev && !prev.br && prev.term === term && prev.cls.length === cls.length && prev.cls.every((c, i) => c === cls[i])) {
+    if (prev && !prev.br && prev.term === term && prev.termId === termId && prev.cls.length === cls.length && prev.cls.every((c, i) => c === cls[i])) {
       prev.text += buf;
     } else {
-      out.push({ text: buf, cls, term });
+      out.push({ text: buf, cls, term, ...(term ? { termId } : {}) });
     }
     buf = '';
   };

@@ -57,6 +57,7 @@ export const DATA_FILES = Object.freeze({
   tokens: 'tokens.json',
   choices: 'choices.json',
   config: 'config.json',
+  terms: 'terms.json',
   assets: 'assets.json',
   skins: 'skins.json',
   // 补位 stand-ins (DATA.md §18): the bodies the 干员持有 screen, the cards and the detail card compose (shared/standIn.js)

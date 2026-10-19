@@ -399,7 +399,7 @@ export function Countdown({ deadline, seconds, total, warnAt = 10, label = 'COUN
 const modalStack = []; // open modals, topmost last: only the topmost handles keyboard focus / Escape
 
 // Shared focus/stack lifecycle also serves custom-designed dialogs without imposing Modal's visual wrappers.
-export function useModalFocus(open, onClose, boxRef) {
+export function useModalFocus(open, onClose, boxRef, { restoreFocus = true } = {}) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useLayoutEffect(() => {
@@ -444,7 +444,7 @@ export function useModalFocus(open, onClose, boxRef) {
       window.removeEventListener('focusin', onFocus);
       const i = modalStack.indexOf(token);
       if (i >= 0) modalStack.splice(i, 1);
-      prevFocus?.focus?.();
+      if (restoreFocus) prevFocus?.focus?.();
     };
   }, [open]);
 }
@@ -552,6 +552,7 @@ let tipState = null; // { id, content, aside, rect, placement }
 let tipSeq = 0;
 const tipListeners = new Set();
 const setTip = (s) => { tipState = s; for (const fn of [...tipListeners]) fn(); };
+export const closeTooltip = () => tipState?.hide?.();
 
 /**
  * Hover/focus tooltip around its children. Content renders in <TooltipLayer/> (fixed, viewport-clamped).
@@ -576,7 +577,7 @@ export function Tooltip({ text, aside = null, placement = 'top', delay = 120, bl
     timer.current = setTimeout(() => {
       const el = ref.current;
       const content = textRef.current; // the text of the render current when the delay ends (a click may change it)
-      if (!el || !el.isConnected || content == null || content === '') return;
+      if (!el || !el.isConnected || content == null || content === '' || document.getElementById('term-help')) return;
       setTip({ id: idRef.current, content, aside: asideRef.current, rect: el.getBoundingClientRect(), placement,
         hold: () => clearTimeout(timer.current), hide });
     }, delay);

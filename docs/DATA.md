@@ -751,3 +751,9 @@ burn hammers 2 each; limited accelerator 1; shield drone and laser emitter 4 eac
 Ashlock 10, Fartooth 3. Rebuild `choices.json` offline; these weights do not exempt draws from shared availability.
 The runtime derives unlimited fixed-gift families from `SERVER_GAIN_EQUIP`; this is a grant-source exemption,
 not a zero-occupancy flag or a manually maintained second list in generated data.
+
+## Display terminology
+
+`terms.json` maps official term IDs to `{ id, name, descRaw }`, independently of simulation data. The pinned extractor
+`tools/build-terms.mjs` writes this file and existing language overlays. RichText uses the original `$` tag ID to show
+definitions across the encyclopedia and game panels. See [TERMS.md](TERMS.md) for sources, regeneration and interaction rules.
