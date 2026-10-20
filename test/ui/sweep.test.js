@@ -1,3 +1,4 @@
+import {designCss} from '../helpers/designCss.js';
 // Node/vnode + CSS-contract regressions; not a browser/real-device layout test.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +15,7 @@ import { PageHeader } from '../../public/js/ui/pageHeader.js';
 import { AchievementView } from '../../public/js/ui/achievements.js';
 import { achievementStats } from '../../public/js/ui/achievementModel.js';
 
-const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+const read = (file) => designCss(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
 before(async () => {
   const saved = globalThis.fetch;
   globalThis.fetch = async (url) => ({ ok: true, json: async () => JSON.parse(read(`data/${String(url).split('/').pop()}`)) });

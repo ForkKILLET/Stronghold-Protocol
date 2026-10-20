@@ -3,6 +3,15 @@
    Compact controls have real, non-overlapping hit boxes (no oversized ::before).
    Text size settings still apply; density comes from columns and spacing, not scale()/zoom or hiding content. */
 
+/* Local design units follow upstream. Readable text/touch floors remain independent. */
+:is(.title-screen, .lobby-screen, .room-screen, .protocol-screen, .room-options-screen, .sweep-host, .lo, .st, .ach, .brief, .draft, .result-page, .modal--utility, .guide, .studio) {
+  --ui-unit: var(--sp-ui-unit, 1rem);
+  --management-text: calc(var(--t) * clamp(.9, var(--sp-ui-scale, 1), 1));
+}
+.modal--utility { --utility-text:var(--management-text); }
+.modal--utility .utility-modal { width:var(--utility-width,min(calc(6.4 * var(--ui-unit)),94vw)); }
+.communication-dock, .communication-bubble { --ui-unit:1rem; --utility-text:var(--t); }
+
 @media (max-width: 1000px), (max-height: 600px) {
   .lo-skins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 6px; }
   .lo-skin { min-width: 0; max-width: none; min-height: 44px; padding: 4px; gap: 6px; }
@@ -569,11 +578,11 @@
 @media (max-width:560px) {
  .room-screen--coop .seats { grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:auto; align-content:center; flex:1 0 280px; min-height:280px; }
 }
-@media (max-height:560px) and (min-width:761px) {
+@media (max-height:560px) and (orientation:landscape) {
  .room-screen--coop .seats { grid-template-columns:repeat(4,minmax(0,1fr)); }
  .room-screen .seats--solo { grid-template-columns:minmax(0,240px) minmax(0,480px); }
 }
-@media (max-width:560px), (max-height:560px) and (min-width:761px) {
+@media (max-width:560px), (max-height:560px) and (orientation:landscape) {
   .room-screen .rseat { display:grid; grid-template-columns:min(54px,var(--room-seat-width,48px)) minmax(0,1fr); grid-template-rows:28px auto; }
   .room-screen .rseat__strip { grid-column:1/-1; grid-row:1; }
   .room-screen .rseat__art { grid-column:1; grid-row:2; }
@@ -589,13 +598,95 @@
   .room-screen .rseat .rseat__state { bottom:4px; gap:2px; font-size:10px; }
   .room-screen .rseat__box { width:12px; height:12px; border-width:1px; }
 }
-@media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-height:560px) and (min-width:761px) {
+@media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-height:560px) and (orientation:landscape) {
  .room-screen .rseat { grid-template-rows:36px auto; }
 }
 
-@media (max-height:560px) and (min-width:761px) {
- .room-screen--coop .seats { flex:1 0 100px; min-height:100px; padding-block:4px; }
+@media (max-height:560px) and (orientation:landscape) {
+ .room-screen--coop .seats { flex:1 1 0; min-height:0; grid-template-rows:minmax(96px,1fr); padding-block:4px; }
  .room-screen .rseat__plate:not(.rseat__plate--empty) { flex-direction:row; }
 }
 
 @media (max-width:400px) { .title-screen .title-cn:not(.title-cn--latin) { font-size:min(calc(.72 * var(--t)),48px); } }
+
+/* Management surfaces own safe areas exactly once, including overlays and keyboard panning.
+   Do not constrain app-root or .gm: combat retains its existing projection and rem. */
+:is(.screen:not(.gm), .lo, .st:not(.st--replay), .guide) {
+  box-sizing:border-box; width:auto; padding:0;
+  top:calc(var(--sp-vtop,0px) + var(--sa-t,0px));
+  left:calc(var(--sp-vleft,0px) + var(--sa-l,0px));
+  right:var(--sa-r,0px); bottom:auto;
+  height:calc(min(100dvh, var(--sp-vh,1dvh) * 100) - var(--sa-t,0px) - var(--sa-b,0px));
+}
+.modal--utility { top:var(--sp-vtop,0px); left:var(--sp-vleft,0px); }
+.protocol-screen .proto { padding:0; }
+.proto-controls { display:contents; }
+.room-options__actions { flex:none; display:flex; justify-content:flex-end; padding:0 calc(.3 * var(--ui-unit)) calc(.3 * var(--ui-unit)); }
+.room-options__actions:empty { display:none; }
+.room-options__actions .btn { min-height:44px; }
+
+@media (max-height:560px) and (orientation:landscape) {
+  .lobby-hub .hub-stage { min-height:0; grid-template-rows:minmax(48px,1fr) auto; padding:8px 16px; gap:8px 20px; }
+  .lobby-hub .hub-center { min-height:48px; }
+  .lobby-hub .hub-entries { padding:0; }
+  .lobby-hub .hub-entry { height:clamp(72px,21vh,96px); padding:6px 12px; }
+  .lobby-hub .hub-entry__name { margin-top:2px; }
+  .lobby-hub .hub-entry__hint { margin-top:4px; }
+  .lobby-hub .hub-side { gap:8px; }
+  .lobby-hub .hub-ach__scene { height:72px; }
+  .lobby-hub .hub-plate { height:48px !important; min-height:48px; padding:8px 12px !important; }
+
+  .screen.protocol-screen { overflow:hidden; }
+  .protocol-screen .proto { flex:1 1 0; min-height:0; }
+  .protocol-screen .proto-body { flex:1 1 0; min-height:0; grid-template-columns:minmax(0,1fr); padding:6px 12px 8px; gap:0; }
+  /* The decorative preview cannot consume a second screen on a phone. Difficulty
+     names, descriptions and effects remain together in the actual controls. */
+  .protocol-screen .proto-stage { display:none; }
+  .protocol-screen .proto-side { min-height:0; padding:6px; gap:6px; }
+  .protocol-screen .proto-controls { min-height:0; flex:1 1 auto; display:grid; grid-template-columns:minmax(0,1.2fr) repeat(2,minmax(0,1fr)); align-items:start; align-content:start; gap:6px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
+  .protocol-screen .proto-settings { display:contents; }
+  .protocol-screen .proto-plugin-note { grid-column:1/-1; }
+  .protocol-screen .prep-setting__choices--speed { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .protocol-screen .prep-setting { padding:6px; }
+  .protocol-screen .prep-setting__title { margin-bottom:6px; gap:6px; font-size:max(12px,calc(.17 * var(--t))); }
+  .protocol-screen .prep-setting__title .micro { font-size:9px; }
+  .protocol-screen .proto-list { grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
+  .protocol-screen .proto-list .pcard { min-height:44px; height:auto; padding:6px 4px; flex-direction:column; align-items:stretch; gap:2px; }
+  .protocol-screen .pcard__head { justify-content:center; flex-direction:column; gap:3px; text-align:center; }
+  .protocol-screen .pcard__glyph { width:16px; height:16px; }
+  .protocol-screen .pcard__code { display:none; }
+  .protocol-screen .pcard__name { white-space:normal; overflow-wrap:anywhere; }
+  html:not(:lang(zh)) .protocol-screen .proto-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  html:not(:lang(zh)) .protocol-screen .pcard__name { overflow-wrap:normal; hyphens:auto; }
+  .protocol-screen .proto-details { margin-top:6px; }
+  .protocol-screen .proto-details strong { font-size:12px; }
+  .protocol-screen .proto-facts, .protocol-screen .proto-details ul { gap:4px 14px; margin-top:6px; font-size:11px; }
+  :is(.protocol-screen,.room-options-screen) .prep-setting__input input { box-sizing:border-box; width:72px; min-height:30px; font-size:16px; }
+  .protocol-screen .prep-setting__choices { gap:4px; }
+  .protocol-screen .prep-setting__choices button { min-height:36px; padding:4px; font-size:max(12px,calc(.16 * var(--t))); }
+  .protocol-screen .prep-setting__hint, .protocol-screen .prep-setting__note, .protocol-screen .proto-plugin-note { margin-top:4px; font-size:max(11px,calc(.13 * var(--t))); line-height:1.4; }
+  .protocol-screen .proto-foot { margin-top:0; flex-direction:row; gap:8px; padding-top:6px; }
+  .protocol-screen .proto-start.btn { width:180px; min-height:40px; padding:6px 12px; font-size:max(16px,calc(.2 * var(--t))); }
+
+  .room-options__frame { flex:1 1 0; width:calc(100% - 24px); margin:6px auto; }
+  .room-options__body { flex:1 1 auto; padding:4px 6px; }
+  .room-options__body--basic { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; align-content:start; }
+  .room-options__body--basic .prep-setting__choices--speed { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .room-options__body .prep-setting { min-width:0; margin:0; padding:6px; }
+  .room-options__body .prep-setting__title { margin-bottom:6px; font-size:max(12px,calc(.17 * var(--t))); }
+  .room-options__body .prep-setting__choices button { min-height:36px; font-size:max(12px,calc(.16 * var(--t))); padding:4px; }
+  .room-options__body .prep-setting__hint, .room-options__body .prep-setting__note { margin-top:4px; font-size:max(11px,calc(.13 * var(--t))); line-height:1.4; }
+  .room-options__tabs { padding-top:4px; }
+  .room-options__tabs button { min-height:32px; padding:6px 16px; }
+  .room-options__actions { padding:4px 6px 6px; }
+  .room-options__actions .btn { min-height:36px; padding:6px 12px; font-size:max(12px,calc(.17 * var(--t))); }
+  .draft-order { min-width:0; overflow-y:auto; overscroll-behavior:contain; }
+  .draft-order > * { flex-shrink:0; }
+  .draft-order > .brief-h { flex-wrap:wrap; gap:4px; }
+  .draft-order > .brief-h > span:first-of-type { white-space:nowrap; }
+  .draft-order > .brief-h .micro { flex-basis:100%; }
+  .draft-grid { min-width:0; grid-template-columns:repeat(auto-fill,minmax(min(100%,76px),1fr)); }
+  .draft-grid .dband { min-width:0; }
+  .draft-grid .dband__name { max-width:100%; white-space:normal; overflow-wrap:anywhere; text-align:center; }
+  .draft-detail, .draft-detail__eff { min-width:0; }
+}

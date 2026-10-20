@@ -69,7 +69,7 @@ export function PageHeader({ onBack, backTitle, backBusy = false, title = null, 
 export function PageHeading({ title, micro, subtitle, children = null }) {
   return html`<div class="app-header__heading">
     ${micro ? html`<${MicroLabel} tone="mint">${micro}<//>` : null}
-    <h1>${title}${children}</h1>
+    <h1><span class="app-header__title" title=${title}>${title}</span>${children}</h1>
     ${subtitle ? html`<span class="app-header__subtitle">${subtitle}</span>` : null}
   </div>`;
 }

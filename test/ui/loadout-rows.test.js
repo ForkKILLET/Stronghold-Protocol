@@ -1,3 +1,4 @@
+import {designCss} from '../helpers/designCss.js';
 // test/ui/loadout-rows.test.js — the 干员调配 roster as one list (0.2.2): the quick choices of PR #301 (by @farridge) laid
 // out as one row per operator with aligned columns instead of three columns of cards (the owner's decision of 2026-10-08:
 // 「三个竖排有点乱影响观感」), and the per-operator 潜能 / 练度 controls (「调配干员里自己设置吧，默认满潜满加成」): the row's skill
@@ -175,7 +176,7 @@ test('the module card reads its talent changes at the operator\'s 潜能, as 局
 test('css: the selected skill\'s frame is square around its icon (GitHub #398 / PR #399): no img max-width clamp, fill beats `.lo-sicon img`', () => {
   // theme.css `img { max-width: 100% }` held the frame's width to the icon's while its height grew by .1rem (36 × 40 px
   // on a phone, 70 × 80 at 1920 px), and the more specific `.lo-sicon img { object-fit: cover }` cropped its side lines
-  const css = readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8');
+  const css = designCss(readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8'));
   const rule = css.match(/^([^{}\n]*\.lo-sicon__outline) \{([^}]*)\}/m);
   assert.ok(rule, 'the frame rule');
   assert.equal(rule[1], '.lo-sicon .lo-sicon__outline', 'more specific than `.lo-sicon img`');
@@ -187,7 +188,7 @@ test('css: the selected skill\'s frame is square around its icon (GitHub #398 / 
 });
 
 test('css: the head and the rows share one grid (columns aligned), quick targets grow on a coarse pointer, the detail slides over below 1000 px', () => {
-  const css = readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8');
+  const css = designCss(readFileSync(path.join(ROOT, 'public/css/screens/loadout.css'), 'utf8'));
   assert.match(css, /\.lo-list__head, \.lo \.lo-card \{ display: grid; grid-template-columns: var\(--cols\);/);
   assert.match(css, /\.sp-coarse \.lo-list \{ --q: max\(\.44rem, 40px\); \}/);
   const block = css.slice(css.indexOf('@media (max-width: 1000px) {\n  .lo-body'));

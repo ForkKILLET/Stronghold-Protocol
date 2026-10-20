@@ -1,3 +1,4 @@
+import {designCss} from '../helpers/designCss.js';
 // Node/vnode and stylesheet checks, not browser/phone layout validation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +12,7 @@ import {
 } from '../../public/js/ui/stats.js';
 import { Modal } from '../../public/js/ui/components.js';
 
-const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+const read = (file) => designCss(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
 const row = (over = {}) => ({
   playerId: 'me', name: '<img onerror=bad>', seat: 0, victory: true, alive: true,
   roundsPassed: 14, bandId: 'band-a', trophies: 5, title: { id: 'comment_1' },

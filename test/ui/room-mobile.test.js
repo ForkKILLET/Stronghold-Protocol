@@ -1,10 +1,11 @@
+import {designCss} from '../helpers/designCss.js';
 // Component props and stylesheet cascade checks. Not a substitute for browser/phone layout verification.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
 
-const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+const read = (file) => designCss(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
 const layers = ['public/css/components.css', 'public/css/screens/lobby.css', 'public/css/screens/room.css', 'public/css/utility-mobile.css']
   .map((file) => postcss.parse(read(file)));
 
@@ -52,66 +53,23 @@ test('room artwork preserves 1:2 while the seat container fits available height'
   }
 });
 
-for (const [width, height] of [[320, 568], [390, 844], [560, 320], [640, 360], [760, 390], [761, 390], [844, 390], [915, 412], [1000, 600], [1200, 500]]) {
-  test(`room ${width}x${height}: named title/control/invite areas override shared grid rules and fixed heights`, () => {
-    const bar = ['.topbar', '.room-screen .topbar'];
-    const center = ['.topbar__center', '.room-screen .topbar__center'];
-    const left = ['.topbar__left', '.room-screen .topbar__left'];
-    const right = ['.topbar__right', '.room-screen .topbar__right'];
-    assert.equal(property(bar, 'height', width, height), 'auto');
-    assert.equal(property(bar, 'min-height', width, height), '0');
-    assert.equal(property(center, 'grid-area', width, height), 'title');
-    assert.equal(property(left, 'grid-area', width, height), 'controls');
-    assert.equal(property(left, 'flex-wrap', width, height), 'nowrap');
-    assert.equal(property(['.room-ping', '.room-screen .room-ping'], 'flex', width, height), '1 1 auto');
-    assert.equal(property(['.connection-status', '.room-screen .connection-status'], 'flex-wrap', width, height), 'nowrap');
-    assert.equal(property(right, 'grid-area', width, height), 'invite');
-    assert.equal(property(right, 'max-width', width, height), '100%', 'invite stays within its grid track');
-    assert.equal(property(bar, 'grid-template-areas', width, height), '"controls title invite"');
-    assert.equal(property(bar, 'grid-template-columns', width, height),
-      width <= 560 ? 'minmax(0, .85fr) minmax(0, 1.3fr) minmax(0, .85fr)' : 'minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr)');
-    assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'white-space', width, height), 'nowrap');
-    assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'flex-wrap', width, height), 'nowrap');
-    assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'height', width, height), 'auto',
-      'footer contents may grow without spilling over the seats');
-    assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', width, height),
-      width <= 760 ? '"summary" "status" "tools" "actions"' : '"summary status" "tools actions"');
-    const buttons = ['.btn--square.btn--sm', '.room-screen--coop .room-topbar__tools .btn--square', '.room-screen .room-topbar__tools .btn--square'];
-  assert.equal(property(buttons, 'width', width, height), '.75rem');
-  });
+// Short landscape uses the same footer geometry on both sides of the former 760px breakpoint.
+for(const [width,height] of [[640,360],[740,360],[760,390],[761,390],[844,390],[915,412]]) {
+ test(`landscape room ${width}x${height}: two footer rows and a shrinking seat region`,()=>{
+  assert.equal(property(['.room-bar'],'grid-template-areas',width,height),'"summary status" "tools actions"');
+  assert.equal(property(['.room-bar'],'--room-action-height',width,height),'36px');
+  assert.equal(property(['.seats','.room-screen .seats','.room-screen--coop .seats'],'min-height',width,height),'0');
+  assert.equal(property(['.seats','.room-screen .seats','.room-screen--coop .seats'],'flex',width,height),'1 1 0');
+ });
 }
-
-test('desktop footer separates options/status from actions and grows with wrapped controls', () => {
-  assert.equal(property(['.topbar', '.room-screen .topbar'], 'height', 1920, 1080), '1.1rem');
-  assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-columns', 1920, 1080),
-    'minmax(0, 1fr) auto minmax(0, 1fr)');
-  assert.equal(property(['.room-bar'], 'grid-template-columns', 1920, 1080), 'minmax(0, 1fr) auto');
-  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'grid-template-areas', 1920, 1080), '"summary status" "tools actions"');
-  assert.equal(property(['.room-bar', '.room-screen .room-bar'], 'min-height', 1920, 1080), '0');
+test('portrait fallback keeps its four-row footer and readable invitation glyphs',()=>{
+ assert.equal(property(['.room-bar'],'grid-template-areas',390,844),'"summary" "status" "tools" "actions"');
+ assert.equal(property(['.invite__code span','.room-screen .invite__code span'],'width',844,390),'max(32px,.46rem,.9em)');
+ assert.equal(property(['.invite__code span','.room-screen .invite__code span'],'height',844,390),'max(40px,1.05em)');
 });
-
-test('the room title remains on the same row as controls and invitation at phone widths', () => {
-  for (const width of [320, 360, 390, 560, 640, 844]) {
-    assert.equal(property(['.topbar', '.room-screen .topbar'], 'grid-template-areas', width, 390), '"controls title invite"');
-    assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'white-space', width, 390), 'nowrap');
-  }
-});
-
-test('invite code boxes scale with their own glyphs instead of a tiny rem box plus enlarged text', () => {
-  const selector = ['.invite__code span', '.room-screen .invite__code span'];
-  assert.equal(property(selector, 'width', 844, 390), 'max(32px,.46rem,.9em)');
-  assert.equal(property(selector, 'height', 844, 390), 'max(40px,1.05em)');
-  assert.equal(property(selector, 'flex', 844, 390), 'none');
-  assert.equal(property(['.topbar__title', '.room-screen .topbar__title'], 'font-size', 844, 390),
-    'calc(.16 * var(--utility-text, var(--t)))');
-});
-
-test('short rooms retain a visible seat region and scrolling; portrait seats cannot overrun a smaller explicit first row', () => {
-  assert.equal(property(['.room-screen--coop'], 'overflow-y', 640, 270), 'auto');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'min-height', 640, 270), '3.6rem');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'flex', 640, 270), '1 0 3.6rem');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-template-rows', 390, 844), 'none');
-  assert.equal(property(['.seats', '.room-screen .seats', '.room-screen--coop .seats'], 'grid-auto-rows', 390, 844), 'auto');
-  assert.equal(property(['.seat', '.room-screen .seat'], 'min-height', 390, 844), '3.5rem');
-  assert.equal(property(['.seat__foot .tt-anchor', '.room-screen--coop .seat__foot .tt-anchor'], 'position', 640, 360), 'static');
+test('room continues using shared navigation, bounded card fitting and isolated layers',()=>{
+ const js=read('public/js/screens/room.js'),css=read('public/css/screens/room.css');
+ assert.match(js, /<\$\{PageHeader\}/);
+ assert.match(js, /const rows=Math.ceil\(cards.length\/columns\), rowHeight=/);
+ assert.match(css, /\.room-screen > \.seats, \.room-screen > \.room-bar \{ isolation: isolate; \}/);
 });

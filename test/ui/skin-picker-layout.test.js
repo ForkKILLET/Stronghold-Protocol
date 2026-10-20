@@ -1,10 +1,11 @@
+import {designCss} from '../helpers/designCss.js';
 // CSS cascade/height budgets only; not a browser or real-device layout test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import postcss from 'postcss';
 
-const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+const read = (file) => designCss(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
 const desktop = postcss.parse(read('public/css/screens/loadout.css'));
 const mobile = postcss.parse(read('public/css/utility-mobile.css'));
 const mobileQuery = '(max-width: 1000px), (max-height: 600px)';

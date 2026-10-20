@@ -18,9 +18,11 @@ test('lobby and room share the header that places announcements after online cou
   assert.equal((header.match(/<\$\{AnnouncementButton\}/g) || []).length, 1, 'shared header has one announcement action');
 });
 
-test('narrow shared headers keep connection controls visible and give headings their own row', async () => {
+test('portrait headers retain their fallback while landscape uses a compact shared toolbar', async () => {
   const css = await readFile(new URL('../../public/css/navigation.css', import.meta.url), 'utf8');
   assert.match(css, /\.app-header \.app-header__status\s*\{[^}]*overflow:visible/);
   assert.match(css, /grid-template-areas:"links identity" "tools tools" "heading heading"/);
+  assert.match(css, /max-width:760px\) and \(orientation:portrait/);
+  assert.match(css, /grid-template-areas:"links heading account"/);
   assert.match(css, /\.app-header__status \.topbar-announcement\s*\{[^}]*width:32px/);
 });

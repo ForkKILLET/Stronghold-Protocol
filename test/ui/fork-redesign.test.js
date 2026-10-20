@@ -1,3 +1,4 @@
+import {designCss} from '../helpers/designCss.js';
 // Node/vnode and CSS-contract tests only; these do not perform browser or real-device layout validation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,7 +18,7 @@ import { data } from '../../public/js/data.js';
 import { OpCard } from '../../public/js/screens/loadout.js';
 import { loadoutStore } from '../../public/js/ui/loadoutSync.js';
 
-const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+const read = (file) => designCss(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'));
 function* walk(v) {
   if (Array.isArray(v)) { for (const child of v) yield* walk(child); return; }
   if (!v || typeof v !== 'object') return;

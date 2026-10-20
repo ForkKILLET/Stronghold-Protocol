@@ -1,5 +1,5 @@
 /* One navigation skeleton for every out-of-match and preparation page. */
-.app-header { --utility-text:var(--t); position:relative; z-index:3; flex:none; color:var(--text-hi); background:linear-gradient(180deg,#080f0d,#0b1311); border-bottom:1px solid var(--mint-a35); }
+.app-header { --ui-unit:1rem; --utility-text:var(--t); position:relative; z-index:3; flex:none; color:var(--text-hi); background:linear-gradient(180deg,#080f0d,#0b1311); border-bottom:1px solid var(--mint-a35); }
 .app-header__row {
   box-sizing:border-box; display:grid;
   grid-template-columns:minmax(0,1fr) clamp(260px,26vw,460px) minmax(0,1fr);
@@ -47,7 +47,7 @@
 
 /* Dedicated rows below the shared header hold filters, profile data and game controls. */
 .protocol-screen > .app-header { position:sticky; top:0; }
-.protocol-screen .proto { min-height:0; flex:1 0 auto; }
+.protocol-screen .proto { min-height:0; flex:1 1 auto; }
 .protocol-screen .proto-body { padding-top:12px; }
 .sweep-host .sw-report-page { flex:1; min-height:0; height:auto; }
 .sweep-host .sw-top { justify-content:center; min-height:50px; }
@@ -73,7 +73,7 @@
 /* Older engines ignore container-type/units; keep a bounded viewport-size fallback. */
 .lobby-hub .hub-radar { width:min(28vw,30vh,420px); height:min(28vw,30vh,420px); width:min(72cqh,90cqw,420px); height:min(72cqh,90cqw,420px); }
 .utility-modal.hub-dialog { width:min(760px,calc(100vw - 32px)); box-sizing:border-box; }
-.st:not(.st--replay) { inset:0; width:auto; height:calc(var(--sp-vh,1vh) * 100); transform:none; }
+.st:not(.st--replay) { transform:none; }
 .app-back.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; min-height:36px; padding:6px 10px; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); }
 .app-back.btn > .icon { width:16px; height:16px; }
 
@@ -92,7 +92,7 @@
  .app-header__status .topbar-announcement .icon { width:16px; height:16px; }
  .app-header__heading h1 { font-size:max(25px,calc(.34 * var(--utility-text,var(--t)))); }
 }
-@media (max-width:760px) {
+@media (max-width:760px) and (orientation:portrait) {
  .app-header__row { grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:44px 36px 56px; grid-template-areas:"links identity" "tools tools" "heading heading"; height:168px; gap:8px 12px; padding:8px 12px; }
  .app-header__account { display:contents; }
  .app-header__language { grid-area:tools; justify-self:end; width:112px; }
@@ -117,6 +117,46 @@
  .app-header__identity { height:40px; min-height:40px; }
  .app-header__heading { gap:4px; }
  .lobby-hub .hub-center { min-height:65px; }
+}
+/* Short landscape pages merge navigation and the centered title into one row.
+   Explicit touch/readability floors prevent the local canvas unit shrinking navigation. */
+@media (max-height:560px) and (orientation:landscape) {
+ .app-header__row {
+  grid-template-columns:minmax(0,1fr) minmax(0,30vw) minmax(0,1fr);
+  grid-template-rows:44px; grid-template-areas:"links heading account";
+  height:52px; min-height:52px; gap:0 8px; padding:4px 8px;
+ }
+ .app-header__links { height:44px; gap:6px; }
+ .app-header .app-back { width:28px; min-width:28px; padding:6px; font-size:0; gap:0; }
+ .app-header .app-header__status { gap:6px; }
+ .app-header .ping { padding-inline:5px; gap:3px; }
+ .app-header .online-count .ping__unit { display:none; }
+ .app-header__status .topbar-announcement { width:28px; min-width:28px; }
+ .app-header__tools { grid-area:account; align-self:center; justify-self:end; margin-inline-end:44px; gap:4px; }
+ .app-header__account { display:contents; }
+ .app-header__identity { grid-area:account; align-self:center; width:36px; min-width:36px; max-width:36px; height:36px; min-height:36px; padding:2px; }
+ .app-header__identity .avatar { --av:28px; }
+ .app-header__identity .me-chip__text, .app-header__identity .me-chip__stats { display:none; }
+ .app-header__heading { gap:0; }
+ .app-header__heading > .micro, .app-header__subtitle { display:none; }
+ .app-header__heading h1 { width:100%; font-size:max(20px,calc(.26 * var(--utility-text,var(--t)))); line-height:1.1; flex-wrap:nowrap; gap:6px; }
+ .app-header__title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .app-header__heading .dtag { min-width:0; flex:0 1 auto; font-size:12px; gap:3px; }
+ .app-header__heading .dtag__name { overflow:hidden; text-overflow:ellipsis; }
+ .app-header__heading .dtag__icon { flex:none; }
+ .app-header__separator { flex:none; height:20px; }
+ .app-header__heading .room-mode { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; }
+ .app-header--title .app-header__row { grid-template-columns:minmax(0,1fr) 104px auto 36px; grid-template-areas:"links language tools identity"; }
+ .app-header--title .app-header__tools { grid-area:tools; margin:0; }
+ .app-header--title .app-header__identity { grid-area:identity; }
+ .app-header__language { grid-area:language; justify-self:end; width:104px; }
+ .app-header__language .game-select { height:32px; min-height:32px; }
+ .app-header--title .app-header__heading { display:none; }
+ .stephead.stephead--context { min-height:30px; padding:3px 12px; }
+ .stephead__progress { font-size:14px; }
+ .stephead__progress b { font-size:20px; }
+ .stephead--context .stephead__right { gap:10px; }
+ .stephead--context .pausebtn { height:28px; width:28px; }
 }
 @media (max-width:600px) { .utility-modal.hub-dialog { width:calc(100vw - 16px); } }
 @media (prefers-reduced-motion:reduce) { .app-header__heading, .room-options__frame, .st-body { animation:none; } }

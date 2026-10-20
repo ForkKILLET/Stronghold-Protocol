@@ -302,6 +302,7 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
           <div class="proto-brief"><span class="proto-brief__code num">${info.code}</span><b class="proto-brief__name">${t(DIFFICULTY_NAMES[difficulty])}</b><p>${t(card.desc, card.params)}</p></div>
         </section>
         <section class="proto-side">
+          <div class="proto-controls">
           <section class="prep-setting proto-difficulty" aria-label=${t('模拟难度')}><div class="prep-setting__title"><${Icon} name="rook" /><span>${t('模拟难度')}</span><${MicroLabel}>DIFFICULTY<//></div>
           <div class="proto-list" aria-label=${t('模拟难度')}>
             ${DIFFICULTIES.map((d) => html`<${ProtoCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} disabled=${!!queue || !!busy} onSelect=${onDifficulty} />`)}
@@ -312,6 +313,7 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
           </section></section>
           <div class="proto-settings"><${RoomPacingControls} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${!!queue || !!busy} />
             ${roomMode!=='match'?html`<p class="proto-plugin-note">${t('玩法：原版规则。创建后，房主可在模拟配置中选择插件。')}</p>`:null}
+          </div>
           </div>
           <div class="proto-foot">
             ${queue ? html`<${MatchQueuePanel} queue=${queue} onCancel=${onCancel} />` : html`

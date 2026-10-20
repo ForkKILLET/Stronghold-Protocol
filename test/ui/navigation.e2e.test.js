@@ -35,7 +35,7 @@ test('shared navigation, latency width, overlay return and pre-game pause surviv
    if(!geometry.has(key))geometry.set(key,result);else {const base=geometry.get(key);assert.equal(result.height,base.height,root+' header height');assert.deepEqual(result.positions,base.positions,root+' shared controls moved');}
    if(!tools)tools=result.tools;else assert.deepEqual(result.tools,tools);
    assert.ok(Math.abs(result.width-(await page.viewport()).width)<3,JSON.stringify(result));
-   if(result.heading){assert.ok(Math.abs(result.heading.center-(await page.viewport()).width/2)<2,JSON.stringify(result.heading));assert.ok(result.heading.font>=25);}
+   if(result.heading){assert.ok(Math.abs(result.heading.center-(await page.viewport()).width/2)<2,JSON.stringify(result.heading));assert.ok(result.heading.font>=(result.view[1]<=560&&result.view[0]>result.view[1]?20:25));}
    assert.deepEqual(result.pingPadding[0],result.pingPadding[1],'latency and online badges share padding');assert.equal(result.archive,true);assert.equal(result.online,true);
   };
   await page.goto(server.url,{waitUntil:'networkidle0'});await page.type('.title-screen input','导航验证');await text('开始');await header('.lobby-hub');

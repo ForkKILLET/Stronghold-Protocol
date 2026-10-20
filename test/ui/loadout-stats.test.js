@@ -1,3 +1,4 @@
+import {designCss} from '../helpers/designCss.js';
 // GitHub issue #64 — 干员调配 showed only the skill and module sections: no stats, no 攻击范围 (the in-match detail card has
 // them). The screen's 局内数值 section now draws the detail card's own stats block (ui/detailPanel.js chessStatsBlock),
 // plus 特性 and 天赋, for the selected chess under its chosen skill and module — the 精锐 record by default (the module only
@@ -13,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const read = (p) => readFileSync(path.join(ROOT, p), 'utf8');
+const read = (p) => designCss(readFileSync(path.join(ROOT, p), 'utf8'));
 
 // the browser data store reads the real data files from disk (the card renders below)
 globalThis.fetch = async (url) => {
@@ -272,7 +273,7 @@ test('css: the section reuses the card\'s .dstats / .drange / .rgrid, sized for 
   const mine = rules.filter((r) => /\.lo-sec--stats|\.lo-stats__cap|\.lo-minfo--kit/.test(r.sel));
   assert.ok(mine.length >= 8, 'the stats rules exist');
   for (const r of mine) for (const m of r.body.matchAll(/font-size:\s*([^;]+);/g)) {
-    assert.match(m[1], /^max\([^)]*\d+px\)$/, `${r.sel}: font-size ${m[1]} keeps a px floor`);
+    assert.match(m[1], /^max\(.+,\s*\d+px\)$/, `${r.sel}: font-size ${m[1]} keeps a px floor`);
   }
   const rule = (sel) => rules.find((r) => r.sel === sel)?.body || '';
   assert.match(rule('.lo-sec--stats .dstats-wrap'), /flex-wrap:\s*wrap/);

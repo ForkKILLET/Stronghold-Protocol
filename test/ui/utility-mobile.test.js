@@ -28,7 +28,7 @@ const MOBILE = '(max-width: 1000px), (max-height: 600px)';
 test('the opt-in utility modal preserves ordinary widths and keeps a keyboard-accessible close button in its header', () => {
   const component = read('public/js/ui/components.js');
   assert.match(component, /utility = false/);
-  assert.match(component, /utility \? `--utility-width:\$\{width\}` : `width:\$\{width\}`/);
+  assert.match(component, /utility \? `--utility-width:\$\{managementLength\(width\)\}` : `width:\$\{width\}`/);
   assert.match(component, /utility && onClose[\s\S]*?utility-modal__close[\s\S]*?aria-label=\$\{t\('关闭'\)\}/);
   assert.match(component, /topmost\(\)/, 'existing focus trap/stack remains');
   assert.match(declaration('.utility-modal .modal__body', 'overflow-y'), /auto/);

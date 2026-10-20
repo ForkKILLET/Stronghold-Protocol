@@ -14,7 +14,7 @@ export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disable
     <button type="button" class=${tab==='basic'?'is-on':''} aria-pressed=${tab==='basic'} disabled=${disabled} onClick=${()=>onTabChange('basic')}>${t('基础配置')}</button>
     <button type="button" class=${tab==='plugins'?'is-on':''} aria-pressed=${tab==='plugins'} disabled=${disabled || (!readOnly && !valid(prepChoice))} onClick=${()=>onTabChange('plugins')}>${t('玩法插件')}</button>
   </nav>`:null}
-  <main class="room-options__frame brackets"><div class="room-options__body">
+  <main class="room-options__frame brackets"><div class=${`room-options__body${tab==='basic'?' room-options__body--basic':''}`}>
    ${tab==='plugins'?pluginContent:html`<${Fragment}>
    <section class="prep-setting" aria-label=${t('模拟难度')}><div class="prep-setting__title"><${Icon} name="rook" /><span>${t('模拟难度')}</span><${MicroLabel}>DIFFICULTY<//></div>
     <div class="prep-setting__choices prep-setting__choices--speed">${DIFFICULTIES.map(d => html`<button type="button" key=${d} disabled=${disabled || readOnly} class=${d===difficulty?'is-active':''} aria-pressed=${d===difficulty} style=${`--d-color:${DIFFICULTY_COLORS[d]}`} onClick=${()=>onDifficultyChange(d)}><${DifficultyIcon} difficulty=${d} />${t(DIFFICULTY_NAMES[d])}</button>`)}</div>
@@ -22,8 +22,9 @@ export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disable
    <${RoomPacingControls} mode=${mode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${disabled || readOnly} />
    <//>`}
    ${children}
+  </div><footer class="room-options__actions">
    ${tab==='plugins'?html`<${Button} variant="primary" icon="check" onClick=${onBack}>${t('返回房间')}<//>`:readOnly ? null : html`<${Button} variant="primary" icon="check" disabled=${disabled || (mode==='coop' && !valid(prepChoice))} onClick=${onSave}>${t('保存并返回')}<//>`}
-  </div></main>
+  </footer></main>
  </div>`;
 }
 import { validPrepChoice as valid } from './prepTime.js';
