@@ -8,16 +8,11 @@ import { dataUrl } from '../../../shared/cdn.js';
 import { langChain, t } from '../../../shared/i18n.js';
 import { useSettings } from './settings.js';
 import { useLang } from './lang.js';
-import { CAPTION_LANGS, captionLocale, voiceCaptionIdentity, selectVoiceCaptions, voiceCaptionPosition, voiceCaptionHudPosition } from '../voiceCaptions.js';
+import { createVoiceCaptionTables } from '../voiceCaptionTables.js';
+import { captionLocale, voiceCaptionIdentity, selectVoiceCaptions, voiceCaptionPosition, voiceCaptionHudPosition } from '../voiceCaptions.js';
 
-const tables = new Map();
-async function loadTable(lang) {
-  if (!CAPTION_LANGS.includes(lang)) return null;
-  if (!tables.has(lang)) tables.set(lang, fetch(dataUrl(`/data/voice-captions/${lang}.json`, DATA_CDN), { signal: AbortSignal.timeout(10000) })
-    .then(r => { if (!r.ok) throw Error('Caption HTTP ' + r.status); return r.json(); })
-    .catch(() => { tables.delete(lang); return null; })); // a future line can retry after a temporary failure
-  return tables.get(lang);
-}
+const tables = createVoiceCaptionTables({ urlFor: lang => dataUrl(`/data/voice-captions/${lang}.json`, DATA_CDN) });
+const loadTable = lang => tables.load(lang);
 const OBSTACLES = '.shopbar,.shopbar-tab,.gm__corner,.gm__watching,.gm__dead,.gm__bonds .bslot,.gm__bonds .bonds-toggle,.gm__bonds .bstrip__more,.gm__bonds .bstrip--empty,.gm__effects,.team,.gtop > *, .chud > *, .dpanel,.bpop,.edrawer,.ewheel__dialog,.combat-metrics,.gm__ui-slot,.site-notice,.lo button,.lo input,.lo .game-select,.result__actions';
 const BLOCKED = '.modal,.guide,.st,.gm.has-sp,.gm.has-spdraft,.game-select-popover';
 
@@ -27,7 +22,8 @@ export function VoiceSubtitleHost({ manager = audio }) {
   const enabled = settings.voiceSubtitles;
   const uiLocale = langChain(lang).map(captionLocale).find(Boolean) || 'zh';
   const [line, setLine] = useState(null), [caption, setCaption] = useState(null), [position, setPosition] = useState(null);
-  const [held, setHeld] = useState(null);
+  const [held, setHeld] = useState(null), [tableRevision, setTableRevision] = useState(0);
+  useEffect(() => enabled ? tables.subscribe(() => setTableRevision(n => n + 1)) : undefined, [enabled]);
   const ref = useRef(null), pointer = useRef(null);
   useLayoutEffect(() => { setHeld(null); }, [enabled, manager, route, settings.voiceSubtitleMode, lang]);
   useEffect(() => {
@@ -66,7 +62,7 @@ export function VoiceSubtitleHost({ manager = audio }) {
       setCaption({ token: line.token, lines, name: operator?.name || t('干员') });
     });
     return () => { live = false; };
-  }, [line, enabled, settings.voiceSubtitleMode, uiLocale, lang, manager]);
+  }, [line, enabled, settings.voiceSubtitleMode, uiLocale, lang, manager, tableRevision]);
   const playing = line && caption?.token === line.token && caption.lines.length ? caption : null;
   const current = enabled ? held || playing : null;
   useLayoutEffect(() => {

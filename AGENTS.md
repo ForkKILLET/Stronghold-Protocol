@@ -460,3 +460,5 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 - 2026-10-20 鼠标悬停字幕时保留当前句，新语音仍正常播放但不替换保留文本；离开立即跟随当前语音，无在播句则收起，不建立队列。保持 pointer-events:none，只被动观察鼠标位置，不阻断战场点击或触摸，触摸不固定。面板遮挡、空间不足、静音、后台／失焦、音频暂停、关闭字幕及切换页面／语言／字幕模式均解除保留，不恢复过期句；沿用现有 HUD 避让和音频生命周期，回归 voice-subtitles.e2e.test.js。
 
 - 2026-10-20 延迟徽标用 4ch 数值槽保持宽度稳定，沿用在线人数徽标的 padding，不恢复挤压内容的固定 78px；窄屏两种徽标同步缩减 padding。局内顶栏查看按钮与中间条通过同一 gap 分隔，不添加加号。局内交流／工具按钮共用 --corner-button-size（默认至少 36px、触屏通常至少 44px；≤767×380 的极矮横屏使用 34px 紧凑外观，触屏保留原 44px 命中范围），窄屏两列换行与详情卡避让同步计算，不能覆盖商店或玩家列表。设置底栏仅保留完成；博士档案／玩法说明／公告使用原共享入口。匹配页配置摘要复用 DifficultyTag，不单独写难度图标／颜色。
+
+- 2026-10-21 字幕表通过 voiceCaptionTables.js 缓存优先读取，已存在的 HTTP 缓存不等待 no-cache 联网验证；后台条件校验更新文本并通知仅当前语音，保留既有 token／悬停／语种和 HUD 规则。每语种去重加载与校验，请求 30 秒超时、一次重试，校验失败保留旧表并设冷却，不每句重试轰炸服务器；坏缓存可联网恢复。保持默认关闭、按需语言和原 HTTP 缓存，不新增素材 ZIP 或账户格式。回归 voice-caption-tables、voice-caption-loading.e2e 及原 voice-subtitles.e2e；测试不得操作用户正在使用的 Firefox 窗口。

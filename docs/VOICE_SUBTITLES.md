@@ -15,6 +15,10 @@
 
 `data/voice-captions/{zh,en,ja,ko,zh-TW}.json` 按需从本站／DATA_CDN 读取，按完整 `wordKey/voiceId` 保存纯文本。不能只用 charId 或技能编号匹配，也不能从 `cn_025` 文件名判断语言（所有配音共享编号）。实际目录 `voice/cn|jp|en|kr` 决定配音语言，本土目录结合 `voiceNativeLangType`。
 
+字幕表优先使用浏览器现有 HTTP 缓存，`force-cache` 避免 `no-cache` 响应在弱网下阻塞当前字幕；首次读取后以 `no-cache` 在后台保留 ETag 等条件校验并更新内存和浏览器缓存。共享每种语言的加载与校验，不逐句重复发请求；暂时失败保留已有文本，单次请求上限 30 秒、失败后最多重试一次，后台校验仍失败则隔至少 30 秒、后续需要字幕时再试。坏缓存或无效响应也会通过联网重试恢复。关闭字幕不会主动预载新语种，不建立独立 CacheStorage／存档格式。
+
+后台表更新仅重新解析当前仍在播放的语音，沿用 token 与 effect 生命周期检查；不能补放已经结束的句子或覆盖被替换的语音，悬停保留的旧句也不被后台更新替换。冷缓存首次联网可能仍需等待，语音和模拟不等字幕加载。
+
 双语先显示语音原文、再显示 UI 译文；相同语言（含简繁中文）或相同文本只显示一次。部分本土配音仅有翻译文本，不能冒充意大利语等原文：仅 UI 模式可显示译文，双语缺原文时只显示译文，仅语音语言模式缺原文时不显示。未知插件音频或缺失台词不猜测，不阻塞播放。
 
 生成源固定在 `tools/voice-caption-sources.json`，包含 URL、Git revision 和 SHA-256。只生成当前干员／自选干员／语音清单涉及的台词，不修改玩法数据或素材清单。更新源后运行：
@@ -26,4 +30,4 @@ node tools/build-voice-captions.mjs --offline
 
 原表缓存在 `.cache/voice-captions/`，不提交。生成字幕文本随 Git／镜像发布，不进入素材预载 ZIP；开启字幕后按所需语言读取，不额外下载语音。
 
-验证：`test/ui/voice-subtitles.test.js`、原音频／设置／i18n 回归，及 `SP_E2E=1 node --test test/ui/voice-subtitles.e2e.test.js`（Chrome／Firefox，真实 HUD 截图和 Web Audio 播放生命周期）。
+验证：`test/ui/voice-subtitles.test.js`、原音频／设置／i18n 回归，及 `SP_E2E=1 node --test test/ui/voice-subtitles.e2e.test.js`（Chrome／Firefox，真实 HUD 截图和 Web Audio 播放生命周期）。缓存及失败恢复见 `voice-caption-tables.test.js`；`SP_E2E=1 node test/ui/voice-caption-loading.e2e.test.js` 使用真实 HTTP no-cache 响应、挂起的条件校验和 12 秒冷加载，验证两种浏览器的缓存命中、后台更新和过时台词保护。
