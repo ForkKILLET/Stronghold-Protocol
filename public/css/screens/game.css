@@ -497,6 +497,10 @@
 .effect--band { border-color: var(--mint-800); }
 .effect--team { border-color: rgba(78, 216, 175, .6); }
 .effect__n { position: absolute; right: -.05rem; bottom: -.05rem; min-width: .2rem; font-size: .12rem; line-height: 1.4; text-align: center; background: var(--gold); color: #1d1400; padding: 0 .03rem; }
+.effect__progress { position: absolute; right: calc(100% + .08rem); top: 50%; transform: translateY(-50%); padding: .04rem .08rem; border: 1px solid var(--mint-800); background: rgba(8, 11, 10, .85); color: var(--mint-400); font-size: .16rem; line-height: 1.2; white-space: nowrap; pointer-events: none; }
+.strategy-progress { display: flex; flex-direction: column; gap: .03rem; margin-top: .06rem; }
+.strategy-progress p { display: flex; align-items: baseline; gap: .08rem; margin: 0; color: var(--text-lo); font-size: .14rem; line-height: 1.5; }
+.strategy-progress strong { color: var(--mint-400); white-space: nowrap; }
 .efftip { display: flex; flex-direction: column; gap: .04rem; max-width: 3.6rem; }
 .efftip b { font-size: .17rem; color: var(--mint-400); }
 .efftip__kind { font-size: .12rem; color: var(--text-dim); }

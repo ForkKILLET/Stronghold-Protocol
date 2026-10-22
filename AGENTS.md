@@ -70,6 +70,10 @@
 
 ## 本分支界面与素材取舍
 
+- 2026-10-22 经营策略计数统一在 `server/match/bandProgress.js` 从原 counters／round 派生；阈值按具体 buff 黑板读取，杜遥夜固定前两次（bb.count 是每次干员数，不能作为次数）、休露丝固定首次。新增潘格尼尼／绮良消费、杜遥夜刷新、玛恩纳资金、巫恋交换、休露丝优惠、佩佩待用刷新；潘格尼尼仅实际授予成功才完成，佩佩使用剩余次数且不标免费。右侧、悬浮、本局信息由 `ui/strategyProgress.js` 共用 progressType 文案；回合计数读取不得惰性清零，观战不得用自己的状态。沿用原 bandProgress 展示字段，不新增持久化计数。本轮用户明确仅经营阶段，埃芒加德等战斗计数未改。详见 docs/STRATEGY_COUNTERS.md，验证 band-progress、strategy-progress、spectate-effects 及相应浏览器回归。
+
+- 2026-10-22 贾维策略显示直接读取 `band:chiave:refreshes`，按具体策略 `params.refresh_count` 取余（现为 6）；`band:chiave` 的回合奖励仅当 `band:chiave:r` 与当前回合一致时展示（上限读 `max_count`，现为 2）。视图读取不得触发惰性归零。effectsView 可带 progress／roundProgress，BattleInput 的可选 bandProgress 仅供战斗观战展示；不新增持久化计数或改变奖励规则。右侧图标左边在回合奖励满时显示「本回合已满」，下回合恢复余数；悬浮说明、本局信息策略块始终显示实际进度；侦察不得套用自己的进度。回归 band-progress、chiave-progress.e2e、spectate-effects 及原策略测试。
+
 - 2026-10-22 商业包装方案的显示读取已有 `ps.counters[pack:<item uid>]`，阈值沿用具体装备 `params.count`（普通 8／进阶 7），不得新增客户端计数或改变奖励规则。装备视图可带 `progress: {current,total}`；携带者的侦察／BattleInput／UnitInfo 可带 `itemProgress: [{uid,id,current,total}]`，仅为展示元数据，不进入 b.snap 逻辑帧或新增持久化格式。干员脚下及装备说明保持实时一致，零值仍显示；未持有的图鉴／商店记录不编造实时计数。验证 item-progress 和原装备／详情回归。
 
 - 2026-10-20 局外页面由 utility-mobile.css 统一拥有可见视口偏移与安全区，Protocol／档案不得再单独 inset:0 或重复 padding 安全区。短横屏创建页优先配置三栏、装饰预览不占高度，配置正文单独滚动且创建／保存操作固定；等待室仅席位区在极矮视口滚动，策略顺序／卡片列表各自滚动。回归 mobile-management.e2e.test.js 覆盖 Chrome 触屏与 Firefox、640/740/760/761px、安全区、大字及生产构建；不把桌面模拟等同于真机全屏验证。

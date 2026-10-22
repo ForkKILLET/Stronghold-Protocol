@@ -1715,6 +1715,7 @@ function MatchScreen() {
       </div>
 
       ${drawer ? html`<${EnemyDrawer} tab=${drawer} onTab=${setDrawer} pub=${pub} priv=${priv} onClose=${() => setDrawer(null)}
+        effects=${scoutPid ? (field?.effects ?? null) : priv?.effects}
         bandId=${scoutBandId} bandOwner=${scoutBandOwner}
         onEnemy=${(k, n) => setDetail({ kind: 'enemy', id: k, count: n })} onChess=${(id) => setDetail({ kind: 'chess', id, foreign: true })} />` : null}
 

@@ -9,6 +9,7 @@ import { boardOrder, pieceDir } from '../board.js';
 import { bondList, offBondCounts } from '../bondsMeta.js';
 import { bountyText, bountyCard } from '../choices.js';
 import { itemProgress } from '../itemProgress.js';
+import { bandProgressView } from '../bandProgress.js';
 
 export class PlayerViews {
   pieceView(p, rc = null) {
@@ -38,10 +39,14 @@ export class PlayerViews {
     return progress ? { progress } : {};
   }
 
+  bandProgressView() {
+    return bandProgressView(this);
+  }
+
   effectsView() {
     const out = [];
     const band = this.bandId ? this.gd.band(this.bandId) : null;
-    if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId });
+    if (band) out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId, ...this.bandProgressView() });
     for (const e of this.effects) {
       if (e.hidden) continue;
       const v = { id: e.id, name: e.name || e.id, desc: e.desc || '', iconKind: e.iconKind || 'choice', iconId: e.iconId || e.id };

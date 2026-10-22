@@ -189,5 +189,12 @@ export function spectateEffects(spec, members) {
     const rec = data.lookup('effects', pe.id);
     out.push({ id: pe.id, name: rec?.name || pe.id, desc: rec?.desc || rec?.descRaw || '', iconKind: pe.source || 'choice', iconId: pe.id, ...counter });
   }
+  // Prep-side counters captured by the server; refreshes cannot advance during combat.
+  const band = p.bandProgress && typeof p.bandId === 'string' ? data.lookup('bands', p.bandId) : null;
+  if (band) {
+    const existing = out.find(e => e.iconKind === 'band' && e.id === band.effectId);
+    if (existing) Object.assign(existing, p.bandProgress);
+    else out.unshift({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId, ...p.bandProgress });
+  }
   return out;
 }

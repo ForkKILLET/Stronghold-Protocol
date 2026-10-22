@@ -53,6 +53,28 @@ describe('spectateEffects — the watched battle\'s effects column from the spec
     assert.deepEqual(spectateEffects(spec, ['p2']), [], 'an empty list stays a list (empty column)');
   });
 
+  test('Chiave keeps the captured refresh and reward counters while spectating combat', () => {
+    const bandProgress = { progress: { current: 4, total: 6 }, roundProgress: { current: 1, total: 2 } };
+    const player = { playerId: 'p1', bandId: 'band_chiave', bandProgress, playerEffects: [] };
+    const out = spectateEffects({ players: [player] }, ['p1']);
+    assert.equal(out[0].id, 'aceffect_band_59');
+    assert.deepEqual(out[0].progress, bandProgress.progress);
+    assert.deepEqual(out[0].roundProgress, bandProgress.roundProgress);
+    player.playerEffects.push({ id: 'aceffect_band_59', source: 'band' });
+    assert.equal(spectateEffects({ players: [player] }, ['p1']).length, 1, 'one strategy entry even if already in playerEffects');
+  });
+
+  test('other strategies preserve spending completion and queued refreshes in spectator metadata', () => {
+    for (const [bandId, bandProgress] of [
+      ['band_paganini', { progressType: 'spend-once', progress: { current: 55, total: 55 }, completed: true }],
+      ['band_pepe', { progressType: 'special-refresh', remaining: 2 }],
+      ['band_mlynar', { progressType: 'income', progress: { current: 3, total: 3 } }],
+    ]) {
+      const effects = spectateEffects({ players: [{ playerId: 'p1', bandId, bandProgress, playerEffects: [] }] }, ['p1']);
+      for (const [key, value] of Object.entries(bandProgress)) assert.deepEqual(effects[0][key], value);
+    }
+  });
+
   test('wiring: the runner derives it for replica fields, the game screen prefers the field\'s list (source)', () => {
     assert.match(read('public/js/battle/runner.js'), /effects: spectateEffects\(e\.spec, e\.members\)/);
     assert.match(read('public/js/battle/runner.js'), /import \{ spectateEffects \} from '\.\/observe\.js'/);

@@ -74,6 +74,10 @@ Operators may carry optional `itemProgress: [{ uid, id, current, total }]` throu
 `pack:<item uid>`, normal 8 / golden 7 sales). They neither change simulation rules nor enter `b.snap` tuples or
 results. Prep item views expose the same counter as `progress: { current, total }`; catalog records have no live count.
 
+`PlayerBattleInput.bandProgress` optionally carries the strategy's display-only `progress` and `roundProgress`
+with the same `{ current, total }` shape. Chiave uses the existing match-total manual refresh counter modulo 6 and
+the current round's successful reward count (cap 2); replicas show these prep-end values without changing simulation.
+
 Construction creates every ally unit (not yet deployed) and installs content (kits, then domain modules). The first
 `step()` (or `b.start()`) spawns stage crates, deploys all board units for free — per player the **operators by column, the
 left column first, top to bottom within a column** (right boss side: from its own left, the highest field column),
