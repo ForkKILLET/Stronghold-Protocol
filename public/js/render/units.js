@@ -85,6 +85,7 @@ import { UF, ANIM } from '../../../shared/constants.js';
 import { visibleSkin } from '../../../shared/skins.js';
 import { SpineActor } from './spine.js';
 import { diamondTexture, shadowTexture, fxAtlas, tierChip, statusTexture, itemTexture, hudRings, ringArc, downLabel, HUD_DISC, ELEMENT_RING } from './textures.js';
+import { progressLabel } from '../itemProgress.js';
 import { COLORS, TIER_COLORS, ENEMY_FRAME, UNIT, PROJ, statusIconKey, statusIconSuppressed } from './style.js';
 import { drawCrate, rowDepthKey, ROW_KEY, deviceBoxOf, DEVICE_BOX } from './tiles.js';
 
@@ -1064,6 +1065,24 @@ export class UnitView {
     this.countText = null;
     this.ammoText = null;          // 设置「弹药数量」: the magazine's count under the ammo bar (_updateAmmoCount)
     this.itemPips = [];
+    this.itemProgressText = null;
+    this.setItemProgress(this.info.itemProgress);
+  }
+
+  /** Equipment's prep-side progress, below the carrier's feet in prep and combat. */
+  setItemProgress(rows) {
+    const label = (rows || []).map(progressLabel).filter(Boolean).join('\n');
+    if (!label) {
+      if (this.itemProgressText) { this.itemProgressText.text = ''; this.itemProgressText.visible = false; }
+      return;
+    }
+    if (!this.itemProgressText) {
+      this.itemProgressText = new this.P.Text('', { fontFamily: 'Bender, Oxanium, sans-serif', fontSize: 16, fontWeight: '700', fill: '#4ed8af', stroke: '#0b0f0e', strokeThickness: 4, align: 'center' });
+      this.itemProgressText.anchor.set(0.5, 0);
+      this.hud.addChild(this.itemProgressText);
+    }
+    if (this.itemProgressText.text !== label) this.itemProgressText.text = label;
+    this.itemProgressText.visible = true;
   }
 
   /** Show a stack count (token stacks in the hand) — BitmapText-free: a tiny canvas-less chip via Text. */
@@ -1837,6 +1856,11 @@ export class UnitView {
       pip.width = pip.height = ps;
       pip.position.set(this.screen.x - s * 0.36 + i * (ps + 1), this.screen.y - s * 0.05);
       pip.visible = this.alive;
+    }
+    if (this.itemProgressText) {
+      this.itemProgressText.visible = this.alive && !!this.itemProgressText.text;
+      this.itemProgressText.scale.set(clamp(s * 0.2, 10, 16) / 16);
+      this.itemProgressText.position.set(this.screen.x, this.screen.y + s * 0.14);
     }
   }
 

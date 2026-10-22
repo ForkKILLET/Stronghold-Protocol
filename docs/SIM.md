@@ -69,6 +69,11 @@ b.forceEnd('forced' | 'timeout'); // 'timeout' converts remaining enemies to lea
 b.fieldMeta();                     // { fieldId, kind, rect, stageId, units: UnitInfo[] } for m.field
 ```
 
+Operators may carry optional `itemProgress: [{ uid, id, current, total }]` through `PlayerBattleInput` and
+`UnitInfo`. These are display-only equipment counters captured from the match's existing per-item state (商业包装方案:
+`pack:<item uid>`, normal 8 / golden 7 sales). They neither change simulation rules nor enter `b.snap` tuples or
+results. Prep item views expose the same counter as `progress: { current, total }`; catalog records have no live count.
+
 Construction creates every ally unit (not yet deployed) and installs content (kits, then domain modules). The first
 `step()` (or `b.start()`) spawns stage crates, deploys all board units for free — per player the **operators by column, the
 left column first, top to bottom within a column** (right boss side: from its own left, the highest field column),

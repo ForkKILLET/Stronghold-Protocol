@@ -971,6 +971,7 @@
 .ff-piece__items { position: absolute; right: 8%; bottom: 8%; display: flex; gap: 2px; }
 .ff-piece__items i { width: calc(var(--tile) * .12); height: calc(var(--tile) * .12); background: var(--gold); transform: rotate(45deg); box-shadow: 0 0 3px #000; }
 .ff-piece__count { position: absolute; right: 6%; bottom: 4%; font-family: var(--font-num); font-size: calc(var(--tile) * .2); color: #fff; text-shadow: 0 1px 2px #000; }
+.ff-progress { position: absolute; display: grid; top: 100%; left: 50%; transform: translateX(-50%); width: max-content; pointer-events: none; color: var(--mint-500); font: 700 max(10px, calc(var(--tile) * .2)) var(--font-num); text-shadow: 0 1px 2px #000, 0 0 3px #000; white-space: nowrap; }
 /* facing wedge (research 09 §1.2): an orange › on the piece's edge along its direction */
 .ff-piece__dir {
   position: absolute; left: 50%; top: 50%; width: calc(var(--tile) * .2); height: calc(var(--tile) * .26); pointer-events: none;

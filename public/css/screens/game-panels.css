@@ -212,6 +212,8 @@
 .ditem__text { display: flex; flex-direction: column; gap: .02rem; min-width: 0; }
 .ditem__text b { font-size: calc(.15 * var(--t)); }
 .ditem__desc { font-size: calc(.13 * var(--t)); line-height: 1.55; color: var(--text-lo); }
+.ditem__progress { display: flex; gap: .08rem; align-items: baseline; margin: .04rem 0 0; font-size: calc(.13 * var(--t)); color: var(--text-lo); }
+.ditem__progress strong { color: var(--mint-500); font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dempty { font-size: calc(.14 * var(--t)); }
 .dhint { display: flex; align-items: flex-start; gap: .06rem; font-size: calc(.14 * var(--t)); color: var(--text-lo); line-height: 1.6; }
 .dhint .icon { width: .16rem; height: .16rem; margin-top: .03rem; flex: none; }

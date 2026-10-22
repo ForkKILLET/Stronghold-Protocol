@@ -8,6 +8,7 @@ import { PHASE } from '../../../shared/constants.js';
 import { boardOrder, pieceDir } from '../board.js';
 import { bondList, offBondCounts } from '../bondsMeta.js';
 import { bountyText, bountyCard } from '../choices.js';
+import { itemProgress } from '../itemProgress.js';
 
 export class PlayerViews {
   pieceView(p, rc = null) {
@@ -22,13 +23,19 @@ export class PlayerViews {
       id: p.id,
       golden: !!(rec && rec.isGolden),
       tier: rec && Number.isInteger(rec.tier) ? rec.tier : null,
-      items: p.kind === 'chess' ? (p.items || []).map((it) => ({ uid: it.uid, id: it.id })) : [],
+      items: p.kind === 'chess' ? (p.items || []).map((it) => ({ uid: it.uid, id: it.id, ...this._itemProgressView(it) })) : [],
+      ...(p.kind === 'item' ? this._itemProgressView(p) : {}),
       count: p.kind === 'token' ? (p.count || 1) : 1,
       ownerUid: p.kind === 'token' ? p.ownerUid ?? null : null,
       ...(skin ? { skin } : {}),
     };
     if (rc) { v.row = rc[0]; v.col = rc[1]; v.dir = pieceDir(p); }
     return v;
+  }
+
+  _itemProgressView(item) {
+    const progress = itemProgress(this, item);
+    return progress ? { progress } : {};
   }
 
   effectsView() {

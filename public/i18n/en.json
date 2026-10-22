@@ -1,4 +1,5 @@
 {
+  "出售干员": "Operators sold",
   "已读取本机缓存索引。": "Local cache index loaded.",
   "完整检查请返回大厅后进行。": "Return to the lobby to run a full check.",
   "可前往本服资源补给站下载分类 ZIP，也可将已缓存的资源导出并分享。导入时只复用当前版本仍有效的资源，缺少的部分会增量下载。": "Download category ZIPs from this server’s Resource Depot, or export and share cached resources. Import reuses files still valid for this version and downloads only what is missing.",

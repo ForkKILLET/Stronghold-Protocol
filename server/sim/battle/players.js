@@ -161,6 +161,8 @@ export class BattlePlayers {
     // 皮肤 (docs/SKINS.md): carried through like the loadout above — without this, u.skin never reaches the sim
     // unit and snapshot's `skin: u.skin` reads a field the sim always left undefined (the skin simply never drew)
     u.items = [...(inp.items ?? [])];
+    // Display-only prep counters: no battle hook reads or changes these.
+    if (inp.itemProgress) u.itemProgress = inp.itemProgress.map(p => ({ ...p }));
     u.carry = inp.carryState ?? null;
     // 练度 (自持有, 0.2.2): the owned operator's ×ATK / ×DEF / ×max HP (units.js Πmul) — never a 补位 stand-in's nor a
     // prototype 自选 pick's (another character than the one the player owns)

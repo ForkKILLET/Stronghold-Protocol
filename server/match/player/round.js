@@ -7,6 +7,7 @@
 // the player state).
 
 import { boardOrder, pieceDir } from '../board.js';
+import { equippedItemProgress } from '../itemProgress.js';
 import { computeBonds, bondSnapshot, activatedLayers, bondsWithGains } from '../bondsMeta.js';
 
 export class PlayerRound {
@@ -136,6 +137,8 @@ export class PlayerRound {
     for (const { r, c, piece } of boardOrder(this.board)) {
       if (piece.kind === 'chess') {
         const u = { uid: piece.uid, kind: 'chess', chessId: piece.id, row: r, col: c, dir: pieceDir(piece), items: (piece.items || []).map((i) => i.id) };
+        const progress = equippedItemProgress(this, piece);
+        if (progress) u.itemProgress = progress;
         const pick = this.diyPickOf(piece.id);
         if (pick) {
           // 0.2.0 自选编队: a slotted DIY slot fights as its pick (sim getChess(id, { diy }): the operator's body, the pick's

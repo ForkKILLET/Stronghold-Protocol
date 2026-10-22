@@ -12,6 +12,7 @@ import { bountySpawns, previewOf } from '../waves.js';
 import { timelineAt } from '../fields.js';
 import { bossFieldPlacement } from '../finalAssault.js';
 import { battleProgress } from '../../sim/spec.js';
+import { equippedItemProgress, itemProgress } from '../itemProgress.js';
 
 /** A reported capsule numerator clamped to its denominator, else null (unknown — never a fabricated 0). */
 const finiteOrNull = (v, cap = Infinity) => {
@@ -307,6 +308,7 @@ export class MatchViews {
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
         // the equipped items (like the sim's UnitInfo): a 变形同构体 wearer shows as a member of the bond it grants
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
+        itemProgress: equippedItemProgress(ps, piece),
         standInFor: rec && rec.standInFor ? rec.standInFor : undefined,
         diy: this._diyInfo(ps, piece),
         ...cultivationInfo(lo),
@@ -371,6 +373,8 @@ export class MatchViews {
         skillIndex: lo && Number.isInteger(lo.skillIndex) ? lo.skillIndex : undefined,
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
+        itemProgress: equippedItemProgress(ps, piece),
+        progress: piece.kind === 'item' ? itemProgress(ps, piece) : undefined,
         standInFor: standIn && standIn.standInFor ? standIn.standInFor : undefined,
         diy: this._diyInfo(ps, piece),
         ...cultivationInfo(lo),
