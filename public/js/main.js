@@ -125,6 +125,12 @@ function retryPendingJoin() {
   else net.reconnectNow();
 }
 
+function spectatePendingJoin() {
+  if (joinInFlight || !store.get().ui.pendingJoin) return;
+  store.patch('ui', { pendingSpectate: true, pendingJoinError: null });
+  retryPendingJoin();
+}
+
 /** Auto-join the deep-linked room once entered + online (idempotent). */
 function schedulePendingJoin() {
   clearTimeout(joinTimer);
@@ -401,7 +407,7 @@ function App() {
     ${error ? html`<${ScreenCrashed} error=${error} reset=${resetError} />` : html`<${Screen} key=${route} />`}
     <${TrustedNotice} />
     <${ConnectionBanner} covered=${invitation} />
-    <${RoomInviteHost} onCancel=${clearPendingJoin} onRetry=${retryPendingJoin} />
+    <${RoomInviteHost} onCancel=${clearPendingJoin} onRetry=${retryPendingJoin} onSpectate=${spectatePendingJoin} />
     <${AnnouncementBanner} />
     <${AnnouncementHost} />
     <${ToastHost} />

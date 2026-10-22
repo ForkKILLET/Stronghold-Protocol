@@ -1089,6 +1089,7 @@ export class Lobby {
     const active = this.activeMatchOf(session);
     if (active) return fail(ERR.ROOM_STARTED, 'match already running');
     if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
+    if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
     if (mode === 'solo') {
       if (room) return fail(ERR.MATCHING, 'leave the room before solo matchmaking');
       // Compatibility for clients from the first queue rollout. The current UI keeps independent simulation on its
@@ -1108,6 +1109,7 @@ export class Lobby {
       if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
       if (room.seats.some((s) => s?.isBot)) return fail(ERR.BAD_MSG, t('请先移除 AI 队友，再匹配真人队友'));
       const humans = room.activeHumans();
+      if (this.accountSeatConflict(humans)) return fail(ERR.ACCOUNT_ACTIVE);
       if (!humans.length || humans.some((s) => !s.connected)) return fail(ERR.NOT_READY, 'all party members must be connected');
       if (humans.some((s) => this.queueByPlayer.has(s.playerId))) return fail(ERR.MATCHING);
       const players = humans.map((s) => ({ seat: s.seat, playerId: s.playerId, name: s.name,
@@ -1307,8 +1309,9 @@ export class Lobby {
   create(session, { mode, difficulty, prepSeconds = null, prepMultiplier = null, battleSpeed = 2 }) {
     if (!isBattleSpeed(battleSpeed) || !isPrepSeconds(prepSeconds) || !isPrepMultiplier(prepMultiplier) || (prepSeconds != null && prepMultiplier != null)) return fail(ERR.BAD_MSG, 'invalid preparation time');
     if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
+    if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
     const cur = this.roomOf(session);
-    if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
+    if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (this.rooms.size >= this.opts.maxRooms) {
       // the global cap used to fail silently: a full server and a crash looked the same to the player (docs/DEPLOY.md §3.4)
       this.limitWarn(`room limit (${this.opts.maxRooms}) reached (global)`);
@@ -1358,7 +1361,8 @@ export class Lobby {
     const cur = this.roomOf(session);
     // idempotent for members; a spectator of this room goes on below: it may take a free player seat (header)
     if (cur === room && !room.spectatorOf(session.playerId)) { this.sendState(room, session); return OK; }
-    if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
+    if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
+    if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo room');
     const idx = room.freeSeat();
@@ -1799,6 +1803,7 @@ export class Lobby {
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.matching) return fail(ERR.MATCHING);
     const humans = room.activeHumans();
+    if (this.accountSeatConflict(humans)) return fail(ERR.ACCOUNT_ACTIVE);
     if (room.content?.trusted && humans.some(s => s.consentCs !== room.content.cs)) return fail(ERR.PLUGIN_CONSENT);
     for (const s of humans) {
       if (s.playerId !== room.hostId && (!s.connected || !s.ready)) return fail(ERR.NOT_READY);
@@ -2791,6 +2796,30 @@ export class Lobby {
   // ---------------------------------------------------------------------------------------------------
   // Membership helpers
   // ---------------------------------------------------------------------------------------------------
+
+  /** One profile may browse/watch in many sessions, but own only one player participation.
+   * Main-thread seats, queue tickets and match members reserve ownership even while disconnected or a Worker starts.
+   * Profiles stay private: this check never adds account identifiers to room/queue snapshots.
+   */
+  accountSeatConflict(players) {
+    const accounts = new Set();
+    for (const player of players) {
+      const session = this.registry.byId(player.playerId);
+      const userId = session?.userId;
+      if (!userId || player.isBot) continue;
+      if (accounts.has(userId)) return true;
+      accounts.add(userId);
+      for (const other of this.registry.all()) {
+        if (other.playerId === player.playerId || other.userId !== userId) continue;
+        const seat = this.roomOf(other)?.seatOf(other.playerId);
+        if (seat && !seat.left && !seat.isBot) return true;
+        if (this.queueByPlayer.has(other.playerId)) return true;
+        const ctx = other.activeMatchCtx;
+        if (ctx && !ctx.ended && !ctx.disposed && ctx.members?.some(p => p.playerId === other.playerId && !p.left && !p.isBot)) return true;
+      }
+    }
+    return false;
+  }
 
   /** The session's current room (self-heals stale `roomCode`). @returns {Room | null} */
   roomOf(session) {

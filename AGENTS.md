@@ -392,6 +392,8 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 匿名用户档案
 
+- 同一 userId 只能同时占用一个玩家席位／匹配名额，覆盖普通房间、公共匹配、独立队列对局与 Worker 初始化；断线恢复期间仍保留原席位。其他连接可浏览／观战，不能将 userId 暴露在公开消息中。入座失败的邀请提供改为观战，保留原标签页连接与匿名即玩流程。
+
 - `SP_USER_DB` 启用独立 SQLite 用户存储（`server/users/`），不替代 Redis 对局恢复。用户 ID 独立于会话／重连令牌；Cookie 只存随机凭证，数据库存哈希。头像／昵称／结算为长期数据，设备设置仍在本机。Cookie 关联不允许跨档案复用游戏令牌。
 - 同源 HTTP 写操作须限制 JSON 大小、校验昵称和预设头像、保留恢复码限流和一次性事务语义；不得记录 Cookie／恢复码原文。自动重连不能覆盖服务器昵称。恢复到另一档案不合并数据，当前用户有对局时不能切换。
 - SQLite 只在独立 Worker 中读写，schema 有版本，WAL／备份目录随数据卷保留。每局 UUID、玩家内部 userId 随检查点和完整 Match Worker 保存，公开视图不得暴露 userId；结算按对局／用户唯一键去重，正常关停等待写入。
