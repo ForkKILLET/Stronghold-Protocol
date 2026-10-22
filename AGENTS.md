@@ -392,6 +392,8 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 匿名用户档案
 
+- 等待室玩家可用 room.spectate 原子转入观战席；开局／匹配中、观战席已满、最后一名真人均禁止。创建者按原规则移交，观战不保活房间、无操作／交流权限；room.join 可重新入座且沿用会话干员配置。
+
 - 同一 userId 只能同时占用一个玩家席位／匹配名额，覆盖普通房间、公共匹配、独立队列对局与 Worker 初始化；断线恢复期间仍保留原席位。其他连接可浏览／观战，不能将 userId 暴露在公开消息中。入座失败的邀请提供改为观战，保留原标签页连接与匿名即玩流程。
 
 - `SP_USER_DB` 启用独立 SQLite 用户存储（`server/users/`），不替代 Redis 对局恢复。用户 ID 独立于会话／重连令牌；Cookie 只存随机凭证，数据库存哈希。头像／昵称／结算为长期数据，设备设置仍在本机。Cookie 关联不允许跨档案复用游戏令牌。

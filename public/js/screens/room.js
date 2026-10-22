@@ -204,8 +204,11 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
 }
 
 /** 观战席: the room's spectators (host: ✕ frees a seat), and 入座 for a spectator while a player seat is free. */
-function SpectatorBar({ facts, myId, busy, onRemove, onSit }) {
-  if (!facts.spectators.length) return null;
+function SpectatorBar({ facts, room, myId, busy, onRemove, onSit, onSpectate }) {
+  if (room.mode === 'solo') return null;
+  const reason = room.inMatch ? t('模拟已开始') : room.matching ? t('请先取消匹配')
+    : facts.spectators.length >= MAX_SPECTATORS ? t('观战席已满')
+      : facts.humans.length < 2 ? t('至少保留一名参赛博士') : '';
   return html`<section class="specbar" aria-label=${t('观战席')}>
     <span class="specbar__label"><${Icon} name="eye" />${t('观战席')}<b class="num">${facts.spectators.length}</b><span class="num t-dim">/${MAX_SPECTATORS}</span></span>
     ${facts.spectators.map((s) => html`<span key=${s.playerId} class=${`specbar__who${s.playerId === myId ? ' is-me' : ''}${s.connected === false ? ' is-offline' : ''}`}>
@@ -213,7 +216,9 @@ function SpectatorBar({ facts, myId, busy, onRemove, onSit }) {
       ${facts.isHost ? html`<${Button} variant="ghost" size="sm" square=${true} icon="close" loading=${busy === `rs${s.playerId}`}
         onClick=${() => onRemove(s.playerId)} aria-label=${t('移出观战者 {name}', { name: s.name || '' })} title=${t('移出该观战者')} />` : null}
     </span>`)}
-    ${facts.spectating && facts.emptySeats > 0 ? html`<${Button} size="sm" icon="user" loading=${busy === 'sit'} onClick=${onSit}>${t('入座')}<//>` : null}
+    ${facts.spectating && facts.emptySeats > 0 ? html`<${Button} size="sm" icon="user" disabled=${!!room.matching || room.inMatch} loading=${busy === 'sit'} onClick=${onSit} data-testid="room-sit">${t('入座')}<//>` : null}
+    ${facts.mine ? html`<${Button} variant="secondary" size="sm" icon="eye" disabled=${!!reason || !!busy} loading=${busy === 'spectate'}
+      title=${reason || t('转为观战')} data-testid="room-spectate" onClick=${onSpectate}>${t('转为观战')}<//>` : null}
   </section>`;
 }
 
@@ -375,6 +380,13 @@ export function RoomScreen() {
   // spectator seats: the host frees one; a spectator takes a free player seat with room.join of this room
   const removeSpectator = (playerId) => run(`rs${playerId}`, () => net.request('room.removeSpectator', { playerId }));
   const sit = () => run('sit', () => net.request('room.join', { code: room.code }));
+  const spectate = async () => {
+    if (inFlight.current) return;
+    const ok = await confirmDialog({ utility: true, title: t('转为观战'),
+      text: facts.isHost ? t('转入观战席后，创建者身份将移交给其他博士。有空位时可以重新入座。')
+        : t('转入观战席后仅观看模拟，有空位时可以重新入座。'), okText: t('转为观战') });
+    if (ok) run('spectate', () => net.request('room.spectate', { code: room.code }));
+  };
   const leave = async () => {
     if (inFlight.current) return;
     const othersHere = facts.humans.some((s) => s.playerId !== me.playerId);
@@ -454,7 +466,7 @@ export function RoomScreen() {
         </ul>
       </aside>`}
     </main>
-    <${SpectatorBar} facts=${facts} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} />
+    <${SpectatorBar} facts=${facts} room=${room} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} onSpectate=${spectate} />
 
     <footer class="room-bar">
       <div class="room-bar__left">

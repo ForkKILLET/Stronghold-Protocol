@@ -1,4 +1,10 @@
 {
+  "请先取消匹配": "Cancel matchmaking first",
+  "观战席已满": "Spectator seats are full",
+  "至少保留一名参赛博士": "At least one Doctor must remain seated",
+  "转为观战": "Switch to spectator",
+  "转入观战席后，创建者身份将移交给其他博士。有空位时可以重新入座。": "Switching to spectator transfers the host role to another Doctor. You can sit again when a seat is free.",
+  "转入观战席后仅观看模拟，有空位时可以重新入座。": "As a spectator, you only watch the simulation. You can sit again when a seat is free.",
   "此博士档案已在其他页面入座或参赛，请返回原页面或选择观战": "This Doctor profile already has a seat or match in another tab. Return there or spectate instead.",
   "改为观战": "Spectate instead",
   "请返回原页面继续游玩，或在此页面观战。": "Return to your original tab to keep playing, or spectate in this tab.",

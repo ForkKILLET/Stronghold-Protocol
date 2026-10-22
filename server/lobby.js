@@ -1364,6 +1364,7 @@ export class Lobby {
     if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
     if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.matching) return fail(ERR.MATCHING);
     if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo room');
     const idx = room.freeSeat();
     if (idx < 0) return fail(ERR.ROOM_FULL);
@@ -1400,11 +1401,12 @@ export class Lobby {
     if (!room) return fail(ERR.ROOM_NOT_FOUND);
     const cur = this.roomOf(session);
     if (cur === room) {
-      if (!room.spectatorOf(session.playerId)) return fail(ERR.ALREADY, 'seated as a player');
+      if (!room.spectatorOf(session.playerId)) return this.becomeSpectator(room, session);
       this.sendState(room, session);
       return OK;
     }
-    if (cur && cur.match) return fail(ERR.ROOM_STARTED, 'leave your running match first');
+    if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
+    if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo room');
     if (room.spectators.length >= MAX_SPECTATORS) return fail(ERR.ROOM_FULL, 'no free spectator seat');
     if (cur) this.removeMember(cur, session.playerId);
@@ -1414,6 +1416,26 @@ export class Lobby {
     session.pendingResult = null;
     this.broadcastState(room);
     if (room.match) this.callMatch(room, 'addSpectator', session.playerId);
+    return OK;
+  }
+
+  /** Change roles atomically before a match; spectators never keep a room alive or own its host role. */
+  becomeSpectator(room, session) {
+    if (room.match) return fail(ERR.ROOM_STARTED);
+    if (room.matching || this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
+    if (room.mode === 'solo') return fail(ERR.ROOM_FULL, 'solo room');
+    if (room.spectators.length >= MAX_SPECTATORS) return fail(ERR.ROOM_FULL, 'no free spectator seat');
+    const seat = room.seatOf(session.playerId);
+    if (!seat || seat.left || seat.isBot) return fail(ERR.NOT_IN_ROOM);
+    if (!room.activeHumans().some(p => p.playerId !== session.playerId)) return fail(ERR.NOT_READY, 'at least one player must remain seated');
+    this.clearGrace(session.playerId);
+    this.dropReplay(room, session.playerId);
+    room.seats[seat.seat] = null;
+    room.spectators.push({ playerId: session.playerId, name: session.name, connected: session.connected });
+    session.notice = null;
+    session.pendingResult = null;
+    if (room.hostId === session.playerId) this.migrateHost(room);
+    this.broadcastState(room);
     return OK;
   }
 
