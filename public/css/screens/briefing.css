@@ -36,9 +36,23 @@
 .brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-columns: calc(6.2 * var(--ui-unit, 1rem)) 1fr; gap: calc(.36 * var(--ui-unit, 1rem)); padding: calc(.3 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.1 * var(--ui-unit, 1rem)); }
 /* a match with gameplay plugins (DESIGN §32.6): the unofficial mark under the step header */
 .brief__modmark { position: relative; z-index: 2; align-self: flex-start; margin: calc(.06 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) 0; }
-.brief__left { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-height: 0; overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
-.brief__left > * { flex-shrink: 0; }
-.brief__right { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-height: 0; overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
+.brief__left { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-height: 0; min-width: 0; overflow: hidden; }
+/* Incoming messages belong to the visible column, not the end of its scrollable information. */
+.brief__intel { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
+.brief__intel > * { flex-shrink: 0; }
+.brief__left > .communication-activity { flex: none; flex-direction: row; align-items: center; gap: 8px; padding: 6px 8px; }
+.brief__left > .communication-activity > b { flex: none; max-width: 35%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brief__left > .communication-activity .communication-bubble { min-width: 0; }
+.brief__left > .communication-activity .ebubble--chat { flex: 1; }
+.brief__left > .communication-activity .ebubble:not(.ebubble--chat) { flex: none; width: 44px; height: 36px; }
+.brief__right { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-width: 0; min-height: 0; overflow: hidden; }
+.brief__bonds { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
+.brief__bonds > * { flex-shrink: 0; }
+.brief__right > .brief-reroll { margin: 0; min-height: 0; flex: 0 1 auto; overflow-y: auto; }
+.brief__right .brief-reroll__text { font-size: max(11px, calc(.16 * var(--utility-text, var(--t)))); }
+.brief__right .brief-reroll__text strong { font-size: max(12px, calc(.2 * var(--utility-text, var(--t)))); }
+.brief__right .brief-reroll__actions { flex-wrap: nowrap; }
+.brief__right .brief-reroll__actions .btn { box-sizing: border-box; height: 44px; min-height: 44px; padding: 6px 10px; font-size: max(12px, calc(.16 * var(--utility-text, var(--t)))); }
 
 .brief-boss {
   --bk-c: var(--orange-hi);
@@ -66,6 +80,13 @@
 .brief-stage__pool { font-size: calc(.14 * var(--utility-text, var(--t))); color: var(--text-lo); white-space: nowrap; }
 .brief-stage__name { display: flex; align-items: center; gap: calc(.08 * var(--ui-unit, 1rem)); font-size: calc(.19 * var(--utility-text, var(--t))); font-weight: 700; }
 .brief-stage__name .icon { width: calc(.2 * var(--ui-unit, 1rem)); height: calc(.2 * var(--ui-unit, 1rem)); color: var(--mint-500); }
+@media (max-width: 900px) and (max-height: 560px) {
+  .brief__left > .communication-activity { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .brief__left > .communication-activity > b { max-width: 100%; }
+  .brief__left > .communication-activity .ebubble--chat { flex: none; width: 100%; }
+  .brief-stage { flex-direction: column; align-items: stretch; gap: 4px; }
+  .brief-stage__k { justify-content: space-between; flex-wrap: wrap; }
+}
 
 .brief-factions { display: flex; flex-direction: column; gap: calc(.1 * var(--ui-unit, 1rem)); min-height: 0; }
 .brief-faction { display: flex; gap: calc(.14 * var(--ui-unit, 1rem)); align-items: center; padding: calc(.12 * var(--ui-unit, 1rem)) calc(.16 * var(--ui-unit, 1rem)); background: rgba(12, 15, 14, .8); border: 1px solid var(--line); border-left: 3px solid var(--amber); }
@@ -108,6 +129,7 @@
 
 .brief__foot { position: relative; z-index: 2; flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: calc(.18 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)); padding: calc(.18 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)); }
 .brief__tools { display: flex; flex-wrap: wrap; align-items: center; gap: calc(.18 * var(--ui-unit, 1rem)); margin-right: auto; min-width: 0; }
+.brief__tools .btn, .brief__tools .communication-dock .ewheel__btn { box-sizing: border-box; height: max(44px, calc(.64 * var(--ui-unit, 1rem))); min-height: max(44px, calc(.64 * var(--ui-unit, 1rem))); padding: 6px 12px; font-size: max(12px, calc(.16 * var(--utility-text, var(--t)))); }
 .brief-ready { display: flex; align-items: center; gap: calc(.16 * var(--ui-unit, 1rem)); }
 .brief-ready__txt { font-size: calc(.2 * var(--utility-text, var(--t))); color: var(--text-lo); }
 .brief-ready__txt b { font-size: calc(.4 * var(--utility-text, var(--t))); color: var(--mint-400); margin: 0 calc(.02 * var(--ui-unit, 1rem)); }
@@ -117,6 +139,19 @@
 .brief-ready__pips i .icon { width: 100%; height: 100%; }
 .brief-ready__pips i.on { color: var(--mint-400); filter: drop-shadow(0 0 calc(.06 * var(--ui-unit, 1rem)) rgba(23, 249, 183, .6)); }
 .brief-ready__pips i.me { border-bottom: 2px solid var(--mint-700); }
+
+/* Extremely short landscape: a narrow column cannot fit a whole incoming message. */
+@media (max-height: 300px) and (orientation: landscape) {
+  .brief__main { grid-template-rows: minmax(46px, 1fr) auto; row-gap: 4px; padding-block: 0; }
+  .brief__left { display: contents; }
+  .brief__intel { grid-column: 1; grid-row: 1; min-width: 0; }
+  .brief__right { grid-column: 2; grid-row: 1; gap: 0; }
+  .brief__right > .brief-reroll { padding-block: 0; }
+  .brief-stage__k { flex-wrap: wrap; gap: 4px; }
+  .brief__left > .communication-activity { grid-column: 1 / -1; grid-row: 2; flex-direction: row; align-items: center; gap: 8px; }
+  .brief__left > .communication-activity > b { max-width: 30%; }
+  .brief__left > .communication-activity .ebubble--chat { flex: 1; width: auto; }
+}
 
 /* Full setup reroll: consent stays visible alongside the information being confirmed. */
 .brief-reroll {
@@ -135,4 +170,6 @@
   .brief-reroll { margin-inline: calc(.3 * var(--ui-unit, 1rem)); gap: calc(.1 * var(--ui-unit, 1rem)); padding: calc(.1 * var(--ui-unit, 1rem)) calc(.14 * var(--ui-unit, 1rem)); }
   .brief-reroll__actions { flex-shrink: 1; }
   .brief-reroll__actions .btn { min-height: calc(.44 * var(--ui-unit, 1rem)); padding-inline: calc(.12 * var(--ui-unit, 1rem)); }
+  .brief__right > .brief-reroll--vote { flex-direction: column; align-items: stretch; }
+  .brief__right > .brief-reroll--vote > * { flex-shrink: 0; }
 }

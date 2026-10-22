@@ -66,6 +66,7 @@ export function BriefingScreen() {
     <${UnofficialMark} room=${room} class="brief__modmark" />
     <main class="brief__main">
       <section class="brief__left">
+        <div class="brief__intel">
         <div class="brief-boss brackets">
           <${MicroLabel} tone="gold">${t('ENEMY LEADER // 敌方领袖')}</${MicroLabel}>
           <div class="brief-boss__art">
@@ -92,13 +93,14 @@ export function BriefingScreen() {
             <span class="brief-faction__text"><b>${factions[t]?.name || t}</b><span>${factions[t]?.desc || ''}</span></span>
           </div>`) : html`<p class="t-dim">${t('本局没有特训敌人')}</p>`}
         </div>
+        </div>
         <${CommunicationActivity} players=${players} />
       </section>
       <section class="brief__right">
-        <${MatchInfo} model=${info} />
+        <div class="brief__bonds"><${MatchInfo} model=${info} /></div>
+        <${SetupReroll} pub=${pub} />
       </section>
     </main>
-    <${SetupReroll} pub=${pub} />
     <footer class="brief__foot">
       <div class="brief__tools">
         <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />

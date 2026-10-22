@@ -25,7 +25,7 @@ export function SetupReroll({ pub }) {
     try { await fn(); } finally { pending.current = false; setBusy(false); }
   };
   if (!vote && (!host || !me)) return null;
-  return html`<section class="brief-reroll" aria-label=${t('重刷本局')} aria-live="polite">
+  return html`<section class=${vote ? 'brief-reroll brief-reroll--vote' : 'brief-reroll'} aria-label=${t('重刷本局')} aria-live="polite">
     <div class="brief-reroll__text">
       <strong>${vote ? t('重刷本局投票：{agreed}/{total}', { agreed: vote.agreed.length, total: vote.voters.length }) : t('重刷本局')}</strong>
       <span>${vote ? t('全员同意后重新随机战场、领袖、特训敌人和禁用；确认倒计时已暂停。') : t('保留房间和个人配置，重新随机全部开局信息。')}</span>
