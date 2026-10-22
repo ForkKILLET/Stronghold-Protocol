@@ -385,6 +385,7 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 - INFO_CHECK 确认页同样复用交流组件：底栏调配旁显示入口，左侧信息栏显示最新消息；使用对局 `g.chat`／`g.emote`，已就绪不禁用交流，观战不可发送。底栏窄屏可换行，不挤压就绪按钮。左侧长信息在 brief__intel 内独立滚动，最新消息位于滚动区外；不能重新放回信息列表末尾。极矮横屏把最新消息移到信息区下方的通栏行。调配／交流入口等高，保持手机触控区域与面板可达；局外 CommunicationDock 按 visualViewport 定位浮层，避开顶栏并在软键盘收缩后保留输入框，层级仍低于设置等菜单，不改变局内交流布局。回归 briefing-communication.e2e.test.js 覆盖 Chrome／Firefox、窄横屏、安全区、大字号、软键盘可见范围及菜单遮挡。
 - 确认页「重刷本局」位于右侧盟约下方，不再占据全宽底行；盟约在 brief__bonds 内独立滚动，左侧信息／交流保留完整列高。窄屏投票文字与操作分行，按钮实际高度至少 44px，不能以重叠的触控伪元素代替；极矮屏重刷区可独立滚动，仍应显示完整操作按钮。不改变全员同意、拒绝／取消、就绪与计时规则。
+- 2026-10-23 `?room`／`?spectate` 邀请在档案初始化期间即显示密钥；已进入但尚未加入房间时，由 RoomInviteHost 复用管理 Modal 显示首次连接、身份确认、加入、重连及持久错误，隐藏重复的 ConnectionBanner。pendingJoinBusy／pendingJoinError 仅为本页临时 UI 状态；错误不自动循环加入，显式重试或取消。请求发出前可取消并清除计时器，发出后禁止关闭直到确认；成功、取消或重连确认同房间成员身份后移除邀请参数，保留其他参数与 hash。保留原恢复房间优先、观战权限及新访客代号流程；room-invite.e2e.test.js 用本地延迟代理验证 Chrome／Firefox、慢初始化／握手、取消、重试、丢失确认和手机布局。
 
 - 等待室和 BAND_DRAFT 复用 `ui/communication.js` 与战斗 `EmoteWheel`／`EmoteBubble`，保留 20 字、1 秒冷却、输入法、纯文本和本地历史语义。等待室 `room.chat`／`room.emote` 只发给本房间，观战只读；审核结果绑定原会话、连接及房间，开局／离开／换房后不转发。换房／新局清空客户端历史。
 - `g.bandFocus` 实际变化时发布 `draft.focus`；未确认的队友显示预选名称／半透明图标，不提前占用策略。非计时多人也报告预选，确认／清除后移除；不修改既有超时兜底规则。策略页交流放在左栏，最新气泡不能遮盖预选和选卡，桌面／窄屏截图验证。回归 `test/room-communication.test.js` 与聊天／策略用例。

@@ -93,7 +93,7 @@ export const initialState = Object.freeze({
   popupAnnouncement: null,
   clock: { offset: 0, rtt: null, synced: false },
   presence: { online: null, serverNow: null },
-  ui: { pendingJoin: null, pendingSpectate: false, restoring: false, matchQueue: null, buildStale: false },
+  ui: { pendingJoin: null, pendingSpectate: false, pendingJoinBusy: false, pendingJoinError: null, restoring: false, matchQueue: null, buildStale: false },
 });
 
 /** The app-wide store singleton. */

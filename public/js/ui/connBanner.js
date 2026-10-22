@@ -19,14 +19,14 @@ export function bannerVisible(conn, entered, restoring, buildStale = false) {
   return true;
 }
 
-export function ConnectionBanner() {
+export function ConnectionBanner({covered=false}={}) {
   const conn = useStore((s) => s.connection, shallowEqual);
   const entered = useStore((s) => s.session.entered);
   const restoring = useStore((s) => s.ui.restoring);
   const buildStale = useStore((s) => !!s.ui.buildStale);
   useTicker(conn.status === 'reconnecting' ? 500 : 0);
-  useDocClass('sp-conn', bannerVisible(conn, entered, restoring, buildStale));
-  if (!entered) return null;
+  useDocClass('sp-conn', !covered && bannerVisible(conn, entered, restoring, buildStale));
+  if (!entered || covered) return null;
   if (conn.status === 'online' && !restoring && !buildStale) return null;
   if (conn.status === 'online' && restoring) {
     return html`<div class="conn-banner" role="status"><${Icon} name="refresh" /><span>${t('正在同步同盟状态…')}</span></div>`;

@@ -114,6 +114,18 @@
 .mode-card.is-selected .mode-card__check { opacity: 1; transform: none; }
 @keyframes card-in { from { opacity: 0; transform: translateY(calc(.14 * var(--ui-unit, 1rem))); } }
 
+/* Deep-linked invitation: visible throughout initial connection and the server join request. */
+.room-invite__key { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px; padding: 12px 16px; border: 1px solid var(--line-2); background: var(--bg-0); }
+.room-invite__key > span { display: inline-flex; align-items: center; gap: 8px; color: var(--text-lo); font-size: max(12px, calc(.18 * var(--utility-text, var(--t)))); }
+.room-invite__key .icon { width: 18px; height: 18px; }
+.room-invite__key b { color: var(--mint-400); font-size: max(22px, calc(.32 * var(--utility-text, var(--t)))); letter-spacing: .18em; }
+.room-invite__status { display: flex; align-items: center; gap: 12px; margin-top: 20px; font-size: max(14px, calc(.22 * var(--utility-text, var(--t)))); line-height: 1.5; }
+.room-invite__status > .icon { width: 22px; height: 22px; flex: none; }
+.room-invite__status .spinner { flex: none; --sp: 22px; }
+.room-invite__error { color: var(--amber); }
+.room-invite__hint { margin-top: 8px; color: var(--text-lo); font-size: max(12px, calc(.16 * var(--utility-text, var(--t)))); line-height: 1.6; }
+.modal--utility .room-invite .modal__actions .btn { height: 44px; min-height: 44px; }
+
 /* ---- join panel ------------------------------------------------------------------------------------ */
 .join-panel .panel__body { display: flex; flex-direction: column; gap: calc(.14 * var(--ui-unit, 1rem)); padding: calc(.22 * var(--ui-unit, 1rem)) calc(.26 * var(--ui-unit, 1rem)) calc(.18 * var(--ui-unit, 1rem)); }
 

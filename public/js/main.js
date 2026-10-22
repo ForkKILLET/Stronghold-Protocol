@@ -41,6 +41,7 @@ import { html, UiHosts, Button, MicroLabel, closeAllDialogs } from './ui/compone
 import { TermHelpHost } from './ui/termHelp.js';
 import { VoiceSubtitleHost } from './ui/voiceSubtitles.js';
 import { ConnectionBanner } from './ui/connBanner.js';
+import { RoomInviteHost, inviteActive } from './ui/roomInvite.js';
 import { AnnouncementBanner, AnnouncementHost } from './ui/announcement.js';
 import { announcementFromMessage } from '../../shared/announcements.js';
 import { ToastHost, toast, toastError, describeError } from './ui/toasts.js';
@@ -110,8 +111,18 @@ let joinInFlight = false;
 let rehearsal = null;
 
 function clearPendingJoin() {
-  store.patch('ui', { pendingJoin: null, pendingSpectate: false });
+  if (joinInFlight) return;
+  clearTimeout(joinTimer);
+  store.patch('ui', { pendingJoin: null, pendingSpectate: false, pendingJoinBusy: false, pendingJoinError: null });
   clearRoomParam();
+}
+
+function retryPendingJoin() {
+  if (joinInFlight || !store.get().ui.pendingJoin) return;
+  store.patch('ui', { pendingJoinError: null });
+  if (net.status === 'online') schedulePendingJoin();
+  else if (net.status === 'closed') net.connect();
+  else net.reconnectNow();
 }
 
 /** Auto-join the deep-linked room once entered + online (idempotent). */
@@ -126,14 +137,24 @@ function schedulePendingJoin() {
       clearPendingJoin();
       return;
     }
+    if (s.ui.pendingJoinError) return;
     joinInFlight = true;
+    store.patch('ui', { pendingJoinBusy: true, pendingJoinError: null });
+    let joined = false;
     try {
       await net.request(s.ui.pendingSpectate ? 'room.spectate' : 'room.join', { code });
+      joined = true;
     } catch (err) {
-      toastError(err);
+      // A room.state may confirm membership before a delayed/lost request acknowledgement.
+      if (store.get().room?.code === code) joined = true;
+      else {
+        recordError('request', err);
+        store.patch('ui', { pendingJoinError: { code: err?.code, text: describeError(err) } });
+      }
     } finally {
       joinInFlight = false;
-      clearPendingJoin();
+      if (joined) clearPendingJoin();
+      else store.patch('ui', { pendingJoinBusy: false });
     }
   }, JOIN_DELAY_MS);
 }
@@ -225,6 +246,7 @@ function onRoomState(msg) {
   identity.rememberMatch(room.inMatch && seats.some((seat) => seat?.playerId === myId)
     ? { name: store.get().me.name, code: room.code || '' } : null);
   if (room.mode === 'coop' && typeof room.code === 'string') rememberRoom(room.code);
+  if (room.code === store.get().ui.pendingJoin && !joinInFlight) clearPendingJoin();
   maybeFinishRestore();
 }
 
@@ -370,6 +392,7 @@ function ResourceManagerHost() {
 
 function App() {
   const route = useStore(selectRoute);
+  const invitation = useStore(inviteActive);
   useLang(); // a language switch re-renders the whole tree in place
   const [error, resetError] = useErrorBoundary((err) => console.error('[ui] screen crashed', err));
   const Screen = SCREENS[route] || LobbyScreen;
@@ -377,7 +400,8 @@ function App() {
     <div class="app-bg" aria-hidden="true"></div>
     ${error ? html`<${ScreenCrashed} error=${error} reset=${resetError} />` : html`<${Screen} key=${route} />`}
     <${TrustedNotice} />
-    <${ConnectionBanner} />
+    <${ConnectionBanner} covered=${invitation} />
+    <${RoomInviteHost} onCancel=${clearPendingJoin} onRetry=${retryPendingJoin} />
     <${AnnouncementBanner} />
     <${AnnouncementHost} />
     <${ToastHost} />
@@ -432,12 +456,23 @@ async function boot() {
   // Hashed art a player imported. HTTPS or localhost only; a failure here must not stop boot.
   // A page restored from the back/forward cache has a dead socket and a stale token choice: start over.
   window.addEventListener('pageshow', (ev) => { if (ev.persisted) location.reload(); });
+  const langReady = initLang().catch((err) => console.warn('[app] language setup failed', err));
   // Pick this tab's reconnect token (asks other live tabs; ≤150 ms) while fonts load.
+  const spectateCode = parseRoomParam(location.search, 'spectate');
+  const pendingJoin = spectateCode || parseRoomParam(location.search);
+  if (pendingJoin) {
+    const status = document.getElementById('boot-status');
+    if (status) {
+      status.textContent = `ALLIANCE INVITATION · ${pendingJoin}`;
+      langReady.then(() => {
+        status.textContent = spectateCode ? t('已识别观战邀请 {code}，正在初始化…', { code: pendingJoin }) : t('已识别同盟邀请 {code}，正在初始化…', { code: pendingJoin });
+      });
+    }
+    document.getElementById('boot')?.removeAttribute('aria-hidden');
+  }
   const identityReady = identity.init();
   await initProfile();
 
-  const spectateCode = parseRoomParam(location.search, 'spectate');
-  const pendingJoin = spectateCode || parseRoomParam(location.search);
   const savedName = sanitizeName(identity.loadName());
   const entered = (identity.wasEntered() || !!spectateCode) && !!savedName;
   store.set((s) => ({
@@ -481,7 +516,6 @@ async function boot() {
     else net.connect();
   });
   // the language (and its UI translations) before the first render: no Chinese flash for an English player
-  const langReady = initLang().catch((err) => console.warn('[app] language setup failed', err));
   await Promise.all([waitForFonts(1200), connectWhenReady, langReady]);
   const root = document.getElementById('app');
   render(html`<${App} />`, root);
