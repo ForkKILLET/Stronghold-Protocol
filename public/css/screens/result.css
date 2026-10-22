@@ -3,14 +3,17 @@
    huge "通过回合" numerals, boss medallions, per-player cards with lineup, bonds, stats and 评语.
    ========================================================================================== */
 
+/* A report fills its containing page below the shared header, never the entire viewport. */
+.result-view { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .result__bg { position: absolute; inset: 0; z-index: 0; background: var(--result-bg, none) center / cover no-repeat; opacity: .55; filter: saturate(.9); }
 .result__bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 11, 10, .72), rgba(8, 11, 10, .5) 40%, rgba(8, 11, 10, .88) 62%); }
 .result__grid { position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background: linear-gradient(rgba(78, 216, 175, .04) 1px, transparent 1px) 0 0 / calc(.6 * var(--ui-unit, 1rem)) calc(.6 * var(--ui-unit, 1rem)), linear-gradient(90deg, rgba(78, 216, 175, .04) 1px, transparent 1px) 0 0 / calc(.6 * var(--ui-unit, 1rem)) calc(.6 * var(--ui-unit, 1rem));
   -webkit-mask-image: radial-gradient(70% 70% at 25% 50%, #000, transparent); mask-image: radial-gradient(70% 70% at 25% 50%, #000, transparent); }
-.result__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-columns: calc(5.6 * var(--ui-unit, 1rem)) 1fr; gap: calc(.5 * var(--ui-unit, 1rem)); padding: calc(.36 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)) calc(.6 * var(--ui-unit, 1rem)); }
-.result__hero { display: flex; flex-direction: column; align-items: flex-start; gap: calc(.16 * var(--ui-unit, 1rem)); padding-top: calc(.3 * var(--ui-unit, 1rem)); min-height: 0; }
+.result__main { position: relative; z-index: 1; flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, calc(5.6 * var(--ui-unit, 1rem))) minmax(0, 1fr); gap: calc(.5 * var(--ui-unit, 1rem)); padding: calc(.36 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)) calc(.6 * var(--ui-unit, 1rem)); }
+.result__hero { display: flex; flex-direction: column; align-items: flex-start; gap: calc(.16 * var(--ui-unit, 1rem)); min-width: 0; min-height: 0; }
 .result__summary { display: flex; flex-direction: column; align-items: flex-start; gap: calc(.16 * var(--ui-unit, 1rem)); min-height: 0; width: 100%; overflow: auto; overscroll-behavior: contain; }
+.result__summary > *, .result__players > * { flex-shrink: 0; }
 .result__logoimg { height: calc(1.1 * var(--ui-unit, 1rem)); width: auto; opacity: .92; }
 .result__headline { font-size: calc(.96 * var(--utility-text, var(--t))); font-weight: 900; letter-spacing: .12em; line-height: 1.05; color: var(--mint-400); text-shadow: 0 0 calc(.4 * var(--ui-unit, 1rem)) rgba(23, 249, 183, .45); animation: head-in 600ms var(--ease-out); }
 .result.is-lose .result__headline { color: var(--red-premium); text-shadow: 0 0 calc(.4 * var(--ui-unit, 1rem)) rgba(255, 60, 60, .4); }
@@ -32,9 +35,7 @@
 .result__time { font-size: calc(.16 * var(--utility-text, var(--t))); }
 .result__time b { color: var(--text-hi); }
 
-.result__players { display: flex; flex-direction: column; gap: calc(.1 * var(--ui-unit, 1rem)); min-height: 0; overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
-.result__players > :first-child { margin-top: auto; }
-.result__players > :last-child { margin-bottom: auto; }
+.result__players { display: flex; flex-direction: column; gap: calc(.1 * var(--ui-unit, 1rem)); min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
 .rcard {
   display: flex; flex-direction: column; gap: calc(.09 * var(--ui-unit, 1rem)); padding: calc(.12 * var(--ui-unit, 1rem)) calc(.18 * var(--ui-unit, 1rem)) calc(.14 * var(--ui-unit, 1rem)); background: rgba(11, 15, 13, .9); border: 1px solid var(--line);
   border-left: 3px solid var(--line-3); animation: card-in var(--t-slow) var(--ease-out) backwards;
@@ -88,7 +89,7 @@
 .settle { background: #040606; color: #eef3f1; }
 .settle__stage { position: absolute; left: 50%; top: 50%; width: calc(19.2 * var(--ui-unit, 1rem)); height: calc(10.8 * var(--ui-unit, 1rem)); transform: translate(-50%, -50%) scale(var(--k, 1)); }
 .settle__barbg { position: absolute; left: calc(-10 * var(--ui-unit, 1rem)); right: calc(-10 * var(--ui-unit, 1rem)); top: calc(9 * var(--ui-unit, 1rem)); bottom: calc(-6 * var(--ui-unit, 1rem)); background: linear-gradient(180deg, #0d1010, #070909 40%); border-top: 1px solid rgba(200, 214, 210, .1); }
-.settle__detail { position: absolute; inset: 0; z-index: 5; background: #070909; }
+.settle__detail { position: absolute; inset: 0; z-index: 5; display: flex; overflow: hidden; background: #070909; }
 .sico { width: 1em; height: 1em; fill: currentColor; flex: none; }
 
 /* logo (top left) */

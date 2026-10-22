@@ -147,7 +147,7 @@ export function ResultView({ res, pub = null, myId = null, quiet = false, conten
   const bg = uiUrl(gd.m, r.victory ? 'settle/settlemen_teamshow_success' : 'settle/settlemen_teamshow_fail');
   const mins = r.durationMs ? Math.round(r.durationMs / 60000) : null;
 
-  return html`<div class=${cx('screen', 'result', r.victory ? 'is-win' : 'is-lose')}>
+  return html`<div class=${cx('result-view', 'result', r.victory ? 'is-win' : 'is-lose')}>
     <div class="result__bg" aria-hidden="true" style=${bg ? `--result-bg:url("${bg}")` : undefined}></div>
     <div class="result__grid" aria-hidden="true"></div>
     <main class="result__main">
