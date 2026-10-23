@@ -148,7 +148,7 @@ export function ProtocolBoot({ players, myId, leaving = false }) {
             style=${`left:${pct(s.left, 1600)};top:${pct(s.top, 900)};width:${pct(s.w, 1600)};height:${pct(s.h, 900)};--i:${i}`}>
           <span class="pcardx__mark"><svg viewBox="0 0 32 32"><path d="M3 4h4v2H5v20h2v2H3zM29 4h-4v2h2v20h-2v2h4z" /><path d="M10 8h3v2h2V8h2v2h2V8h3v5l-2 2v6l2 2v2H10v-2l2-2v-6l-2-2z" /></svg></span>
           <span class="pcardx__txt"><b class="num">${String(i + 1).padStart(2, '0')}</b><span>COMPLETE</span><i><${Icon} name="check" /></i></span>
-          <span class="pcardx__face"><${PlayerAvatar} player=${p} self=${p.playerId === myId} /></span>
+          <span class="pcardx__face"><${PlayerAvatar} player=${p} self=${p.playerId === myId} profileLink=${true} /></span>
         </div>`;
       })}
       <h2 class="pboot__title">${t('协议启动！')}</h2>

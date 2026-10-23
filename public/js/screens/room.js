@@ -42,6 +42,7 @@ import { useMyCard, setCardOperator } from '../ui/playerCard.js';
 import { PortraitPicker } from '../ui/opPicker.js';
 import { useRise } from '../ui/transitions.js';
 import { t, tc } from '../../../shared/i18n.js';
+import {DoctorName} from '../ui/doctorLinks.js';
 
 /**
  * Seats padded to the room's capacity (co-op 4, solo 1), each null or a seat record.
@@ -189,7 +190,7 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
         <${AvatarFrame} src=${avatar} size="sm" name=${seat.name} seat=${index} self=${true} />
       </button>` : html`<${AvatarFrame} src=${avatar} size="sm" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} />`}
       <div class="rseat__identity"><span class="rseat__who">
-        <b class="rseat__name" title=${seat.name || t('博士')}>${seat.name || t('博士')}</b>
+        <${DoctorName} player=${seat} class="rseat__name" />
         ${isHostSeat || isMe ? html`<span class="rseat__roles">
           ${isHostSeat ? html`<span class="rseat__role rseat__host">${t('创建者')}</span>` : null}
           ${isMe ? html`<span class="rseat__role rseat__me">${t('我')}</span>` : null}

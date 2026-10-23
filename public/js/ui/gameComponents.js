@@ -6,6 +6,7 @@ import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
 import { parseRichText } from './richText.js';
 import { TermMarkup } from './termHelp.js';
+import {openPublicDoctor} from './doctorLinks.js';
 import { t as tr } from '../../../shared/i18n.js';
 import {
   uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, profileAvatarUrl, bandIconUrl,
@@ -252,20 +253,22 @@ export function RichTip({ text, children, placement = 'top' }) {
 
 /**
  * Seat-coloured player avatar: optional cosmetic image, else band icon when picked, else glyph/robot.
- * @param {{ player: any, size?: 'sm'|'md', self?: boolean, class?: string, avatar?: string|null }} props
+ * @param {{ player: any, size?: 'sm'|'md', self?: boolean, class?: string, avatar?: string|null, profileLink?: boolean }} props
  */
-export function PlayerAvatar({ player, size = 'md', self = false, class: cls, avatar = null }) {
+export function PlayerAvatar({ player, size = 'md', self = false, class: cls, avatar = null, profileLink = false }) {
   const src = player?.avatarId ? profileAvatarUrl(data.get('assets'), player.avatarId) : avatar || (player?.bandId ? bandIconUrl(data.get('assets'), player.bandId) : null);
   const glyph = [...(player?.name || '').trim()][0] || '?';
   const dead = player?.alive === false || player?.status === 'dead';
   const left = player?.status === 'left';
   const hue = [162, 196, 38, 280][((player?.seat | 0) % 4 + 4) % 4];
-  return html`<span class=${cx('pavatar', `pavatar--${size}`, self && 'is-self', dead && 'is-dead', left && 'is-left', player?.isBot && 'is-bot',
+  const link=profileLink&&!player?.isBot&&player?.publicId,Tag=link?'button':'span';
+  return html`<${Tag} type=${link?'button':undefined} title=${link?tr('查看 {name} 的博士档案',{name:player.name}):undefined}
+    onClick=${link?e=>{e.stopPropagation();openPublicDoctor(player.publicId);}:undefined} class=${cx('pavatar', `pavatar--${size}`, link&&'doctor-avatar-link', self && 'is-self', dead && 'is-dead', left && 'is-left', player?.isBot && 'is-bot',
       player?.connected === false && !player?.isBot && 'is-offline', cls)} style=${`--seat-hue:${hue}`}>
     <span class="pavatar__img">
       <${Img} src=${src} fallback=${player?.isBot ? html`<${Icon} name="robot" class="pavatar__bot" />` : html`<span class="pavatar__glyph">${glyph}</span>`} />
     </span>
     ${dead ? html`<span class="pavatar__x" aria-label=${tr('已淘汰')}><${Icon} name="close" /></span>` : null}
     ${left ? html`<span class="pavatar__door" aria-label=${tr('已离开')}><${Icon} name="exit" /></span>` : null}
-  </span>`;
+  <//>`;
 }

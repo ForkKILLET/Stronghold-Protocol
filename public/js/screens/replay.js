@@ -27,11 +27,12 @@ function Piece({piece}){
  ${piece.items?.length?html`<small>${piece.items.map(it=>data.lookup('items',it.id)?.name || it.id).join('、')}</small>`:null}</span>${piece.price!=null?html`<b class="num">${piece.price}</b>`:null}</span>`;
 }
 
-export function ReplayScreen({replay,selfId,onBack}){
+export function ReplayScreen({replay,selfId,onBack,visitor=false}){
  const ready=useData(...GAME_FILES);
  const timeline=useMemo(()=>new ReplayTimeline(replay),[replay]);
  const [cursor,setCursor]=useState(Math.min(1,replay.duration)),[playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1);
- const [playerId,setPlayerId]=useState(replay.players.some(p=>p.playerId===selfId)?selfId:replay.players[0]?.playerId);
+ const perspectives=replay.players.filter(p=>!replay.perspectives || replay.perspectives.includes(p.playerId));
+ const [playerId,setPlayerId]=useState(perspectives.some(p=>p.playerId===selfId)?selfId:perspectives[0]?.playerId);
  const [fieldId,setFieldId]=useState('auto'),[buffering,setBuffering]=useState(false);
  const live=useRef(null);live.current={playing,speed,buffering};
  const buffer=value=>{live.current.buffering=value;setBuffering(value);};
@@ -50,9 +51,9 @@ export function ReplayScreen({replay,selfId,onBack}){
  const previous=relevant.findLast(a=>a.at<cursor-1e-6),next=relevant.find(a=>a.at>cursor+1e-6);
  const slots=priv?.shop?.rewardOffer?.slots || priv?.shop?.slots || [];
  return html`<div class="st st--playback" role="dialog" aria-modal="true" aria-label=${t('对局回放')}>
-  <${PageHeader} onBack=${onBack} title=${t('对局回放')} micro="MATCH REPLAY" />
+  <${PageHeader} onBack=${onBack} title=${t('对局回放')} micro="MATCH REPLAY" visitor=${visitor} />
   <div class="replay-toolbar">
-   <label>${t('观看玩家')}<${Select} value=${playerId} options=${replay.players.map(p=>({value:p.playerId,label:p.name || p.playerId}))} onChange=${id=>{setPlayerId(id);setFieldId('auto');}} /></label>
+   <label>${t('观看玩家')}<${Select} value=${playerId} options=${perspectives.map(p=>({value:p.playerId,label:p.name || p.playerId}))} onChange=${id=>{setPlayerId(id);setFieldId('auto');}} /></label>
    <label>${t('回合')}<${Select} value=${String(pub.round??0)} options=${timeline.rounds.map(r=>({value:String(r.round),label:t('第 {n} 回合',{n:r.round})}))} onChange=${round=>seek(timeline.rounds.find(r=>String(r.round)===round)?.at || 0)} /></label>
    <label>${t('战场')}<${Select} value=${fieldId} options=${[{value:'auto',label:t('跟随玩家')},...candidates.map(f=>({value:f.fieldId,label:t(PHASES[f.kind==='unite'?'UNITE':f.kind==='boss'?'FINAL_ASSAULT':f.kind==='hidden'?'HIDDEN_CORE':'COMBAT'])+' · '+f.spec.players.map(p=>replay.players.find(x=>x.playerId===p.playerId)?.name || p.playerId).join(' / ')}))]} onChange=${setFieldId} /></label>
    <span class="replay-phase">${t(PHASES[pub.phase] || '正在读取…')}</span>

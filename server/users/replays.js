@@ -36,7 +36,7 @@ export function installReplays(db,{perUser=REPLAY_DEFAULTS.perUser,maxBytes=REPL
    gc();
   },
   status(id){const row=q('SELECT count(*) AS saved,coalesce(sum(pinned),0) AS pinned FROM user_replays WHERE user_id=?').get(id);return {...row,limit:perUser,pinLimit:Math.max(0,perUser-1)};},
-  entry(id,gameId){const row=q('SELECT pinned FROM user_replays WHERE user_id=? AND game_id=?').get(id,gameId);return row?{available:true,pinned:!!row.pinned}:null;},
+  entry(id,gameId){const row=q('SELECT pinned,EXISTS(SELECT 1 FROM public_replays p WHERE p.user_id=u.user_id AND p.game_id=u.game_id) AS shared FROM user_replays u WHERE user_id=? AND game_id=?').get(id,gameId);return row?{available:true,pinned:!!row.pinned,shared:!!row.shared}:null;},
   get({id,matchId}){
    const row=q('SELECT r.body FROM replays r JOIN user_replays u ON u.game_id=r.game_id WHERE u.user_id=? AND r.game_id=?').get(id,matchId);
    if(!row)return {error:'REPLAY_NOT_FOUND'};
@@ -56,6 +56,7 @@ export function installReplays(db,{perUser=REPLAY_DEFAULTS.perUser,maxBytes=REPL
     if(!entry)result={error:'REPLAY_NOT_FOUND'};
     else if(pinned&&!entry.pinned&&this.status(id).pinned>=Math.max(0,perUser-1))result={error:'REPLAY_PIN_LIMIT'};
     else{q('UPDATE user_replays SET pinned=? WHERE user_id=? AND game_id=?').run(pinned?1:0,id,matchId);result={replay:{available:true,pinned},replays:this.status(id)};}
+    if(!result.error)result.replay=this.entry(id,matchId);
     db.exec('COMMIT');return result;
    }catch(e){db.exec('ROLLBACK');throw e;}
   },

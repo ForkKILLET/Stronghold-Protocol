@@ -149,6 +149,7 @@ export class PlayerState {
     this.name = seat.name;
     this.userId = seat.userId || null;
     this.avatarId = seat.avatarId || null;
+    this.publicId = seat.publicId || null;
     this.isBot = !!seat.isBot;
     this.connected = this.isBot ? true : !!seat.connected;
     this.left = false;

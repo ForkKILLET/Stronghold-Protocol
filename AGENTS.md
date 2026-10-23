@@ -394,6 +394,12 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 匿名用户档案
 
+- 2026-10-24 共享头像不叠加自己的六边形人物徽标；保留自身边框与房间身份文字。统一顶栏昵称下显示账户公开编号，不恢复 DOCTOR ARCHIVE 装饰字样；此处不使用会话短哈希。
+
+- 2026-10-24 公开博士编号为账户独立生成的稳定 4 位 Base32，不能拿会话四位哈希／内部 UUID 当公开标识或凭证。public_profile_schema 2 将旧长编号一次性重发为四位，迁移前自动一致备份；不保留旧长编号别名，保留原账户／回放 schema、公开设置与逐条回放授权。五项公开设置默认全关；匿名公开接口只返回允许栏目，不创建账户、不返回内部 UUID／本机记录／私有汇总。回放公开须总开关与本人逐条授权同时成立，授权随个人保存关系淘汰；服务器仅投影分享者经营视角，不能把队友私有状态发给浏览器再隐藏。私有完整录制不改。验证 test/users/public-profiles.test.js 与原账户／回放回归，说明见 docs/USERS.md、docs/REPLAYS.md。
+
+- 公开档案由 PublicDoctorHost 独立只读覆盖层呈现，不替换 profileStore 中的本人身份、不复用本人统计缓存；公开预览返回保持原档案与焦点。`?doctor`／`?doctor&replay` 直接访问不初始化账户或 WebSocket；进入游戏才使用正常开始流程。沿用 PageHeader，独立访客只显示阅读状态及开始入口；手机入口缩为带完整可访问名称的图标，不溢出原身份槽。PlayerAvatar 仅在无嵌套按钮的调用处显式启用链接；局内查看战场按钮保留，姓名提供档案入口。验证 public-doctor.e2e.test.js（Chrome／Firefox、源码／生产、手机、匿名及回放）和 public-identity.test.js（本机／Worker／检查点）。
+
 - 2026-10-23 账户回放按服务器确认视图差量及原 BattleSpec 录制，独立于公开消息和本机统计；聊天／凭据／userId 不录入。与结算 outbox 一起提交，缓冲进入同版本检查点。单局正文只存一份，保留／固定按账户隔离；达到限额只淘汰最旧未固定，固定上限 N−1，降低配置不能自动取消固定。新增回放表独立 schema 1，不改变账户 schema 1，原结算永久保留；回滚不能删库。规则身份不一致不错误重模拟，经营记录仍可看。入口、配置和验证见 docs/REPLAYS.md；前端独立 renderer／sim 不碰实时 store／net／runner，插件保持 Worker 与原同意规则。
 
 - 等待室玩家可用 room.spectate 原子转入观战席；开局／匹配中、观战席已满、最后一名真人均禁止。创建者按原规则移交，观战不保活房间、无操作／交流权限；room.join 可重新入座且沿用会话干员配置。

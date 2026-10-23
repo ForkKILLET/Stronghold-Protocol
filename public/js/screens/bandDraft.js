@@ -267,7 +267,7 @@ export function BandDraftScreen() {
           const pband = picked ? gd.band(picked) : null;
           return html`<div key=${p.playerId} class=${cx('dorder', cur && 'is-cur', picked && 'is-done', p.playerId === myId && 'is-self')}>
             ${!solo ? html`<span class="dorder__idx num">${i + 1}</span>` : null}
-            <${PlayerAvatar} player=${p} self=${p.playerId === myId} />
+            <${PlayerAvatar} player=${p} self=${p.playerId === myId} profileLink=${true} />
             <div class="dorder__text">
               <b class="dorder__name">${p.name || t('博士')}${p.isBot ? html`<span class="dorder__ai">AI</span>` : null}</b>
               <span class="dorder__state">${picked ? html`<span class="t-mint">${pband?.name || t('已选择')}</span>`

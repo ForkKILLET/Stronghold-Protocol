@@ -50,7 +50,7 @@ export function sessionDoc(s, now, activeMatchKey = null) {
   return {
     playerId: s.playerId,
     token: s.token,
-    userId:s.userId || null, avatarId:s.avatarId || null,
+    userId:s.userId || null, avatarId:s.avatarId || null, publicId:s.publicId || null,
     name: s.name,
     roomCode: s.roomCode || null,
     card: s.card || null, skins: s.skins || null, loadout: s.loadout || null, ops: s.ops || null, notOwned: s.notOwned || null, diy: s.diy || null, lang: s.lang || 'zh-CN',
@@ -67,7 +67,7 @@ export function sessionDoc(s, now, activeMatchKey = null) {
 /** One seat of a room. */
 function seatDoc(seat) {
   return {
-    seat: seat.seat, playerId: seat.playerId, name: seat.name, avatarId:seat.avatarId || null, isBot: !!seat.isBot,
+    seat: seat.seat, playerId: seat.playerId, name: seat.name, avatarId:seat.avatarId || null, publicId:seat.publicId || null, isBot: !!seat.isBot,
     loadoutCs: seat.loadoutCs || null, notOwnedCs: seat.notOwnedCs || null, diyCs: seat.diyCs || null,
     ready: !!seat.ready, left: !!seat.left, connected: !!seat.connected && !seat.left,
     card: seat.isBot ? null : seat.card || null, skins: seat.skins || null, loadout: seat.loadout || null, ops: seat.ops || null, notOwned: seat.notOwned || null, diy: seat.diy || null,
@@ -187,7 +187,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
       const session = registry.adopt({
         playerId: s.playerId,
         token: s.token,
-        userId:s.userId, avatarId:s.avatarId,
+        userId:s.userId, avatarId:s.avatarId, publicId:s.publicId,
         name: typeof s.name === 'string' ? s.name : t('博士'),
         disconnectedAt: since,
         resumeWindowMs: windowMs,

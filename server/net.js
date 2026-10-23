@@ -107,6 +107,8 @@ export class Session {
     this.userId = null;
     /** @type {string|null} */
     this.avatarId = null;
+    /** Stable public doctor number; not a credential or the internal user UUID. */
+    this.publicId = null;
     /** @type {import('ws').WebSocket | null} currently bound socket */
     this.ws = null;
     /** @type {boolean} */
@@ -220,6 +222,7 @@ export class SessionRegistry {
     const s = new Session({ playerId: doc.playerId, token: doc.token, name: doc.name, now });
     s.userId = typeof doc.userId==='string'?doc.userId:null;
     s.avatarId = typeof doc.avatarId==='string'?doc.avatarId:null;
+    s.publicId = typeof doc.publicId==='string'?doc.publicId:null;
     s.connected = false;
     s.ws = null;
     const since = Number(doc.disconnectedAt);
@@ -937,7 +940,7 @@ export class Network {
       session.claimAt = Number.isFinite(msg.claimAt) ? msg.claimAt : null;
       session.disconnectedAt = null;
     }
-    if(conn.userProfile){session.userId=conn.userProfile.id;session.avatarId=conn.userProfile.avatarId;if(!conn.userProfile.name){conn.userProfile.name=name;this.onProfileName?.(session.userId,name);}}
+    if(conn.userProfile){session.userId=conn.userProfile.id;session.avatarId=conn.userProfile.avatarId;session.publicId=conn.userProfile.publicId;if(!conn.userProfile.name){conn.userProfile.name=name;this.onProfileName?.(session.userId,name);}}
     session.name = name;
     session.lastSeen = now;
     session.addr = conn.ip;

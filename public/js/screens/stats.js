@@ -1,5 +1,8 @@
 import { PageHeader } from '../ui/pageHeader.js';
-import {profileStore,ProfileEditor,ProfileRecovery,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
+import {profileStore,ProfileEditor,ProfileRecovery,ProfileVisibility,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
+import {publicDoctorStore,doctorLink,ensureDoctorStyles} from '../ui/doctorLinks.js';
+import {formatDoctorId} from '../../../shared/publicProfiles.js';
+import {copyText} from '../ui/clipboard.js';
 import {AchievementContent} from '../ui/achievements.js';
 import {achievementStats} from '../../../shared/achievementStats.js';
 import {mergeAccountHistory} from '../../../shared/userStats.js';
@@ -12,7 +15,7 @@ import {mergeAccountHistory} from '../../../shared/userStats.js';
 
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
-import { html, Icon, MicroLabel, Spinner, Button, confirmDialog } from '../ui/components.js';
+import { html, Icon, MicroLabel, Spinner, Button, Modal, confirmDialog } from '../ui/components.js';
 import { useGameData, makeLookups, BandIcon, Img } from '../ui/gameComponents.js';
 import { data, useData } from '../data.js';
 import { fmtNum } from '../ui/gameLogic.js';
@@ -37,6 +40,7 @@ const statsStore = profileStore;
 
 /** Open the stats viewer (title screen / lobby / room entry points). */
 export function openStats(tab = 'overview') {
+  publicDoctorStore.set({open:false});
   data.load('config');
   data.load('bands');
   data.load('assets');
@@ -51,11 +55,12 @@ const TABS = [
   { id: 'totals', name: N_('战斗累计'), micro: 'COMBAT TOTALS' },
   { id: 'history', name: N_('对局记录'), micro: 'HISTORY' },
   { id: 'profile', name: N_('个人资料'), micro: 'IDENTITY' },
+  { id: 'privacy', name: N_('公开设置'), micro: 'VISIBILITY' },
   { id: 'manage', name: N_('档案管理'), micro: 'ARCHIVE' },
 ];
 
 const pct = (n, d) => (d > 0 ? `${Math.round((n / d) * 100)}%` : '—');
-const dateTime = (ms) => {
+export const dateTime = (ms) => {
   if (!ms) return '—';
   const d = new Date(ms);
   const p = (n) => String(n).padStart(2, '0');
@@ -100,7 +105,7 @@ function exportFilename(now = new Date()) {
 }
 
 /** One labelled number card. */
-function StatCard({ label, micro, value, tone }) {
+export function StatCard({ label, micro, value, tone }) {
   return html`<div class=${cx('st-card', tone && `st-card--${tone}`)}>
     <${MicroLabel} tone=${tone === 'gold' ? 'gold' : 'mint'}>${micro}<//>
     <b class="st-card__num num">${value}</b>
@@ -116,7 +121,7 @@ function Section({ title, micro, children, class: cls }) {
 }
 
 /** 总览: cards, the per-difficulty table, the six titles, and the line about what counts. */
-function Overview({ agg, gd, account }) {
+export function Overview({ agg, gd, account }) {
   const rows = DIFFICULTIES.filter((d) => agg.byDifficulty[d]).concat(Object.keys(agg.byDifficulty).filter((d) => !DIFFICULTIES.includes(d)));
   const titles = (Array.isArray(gd.config?.titles) ? gd.config.titles : []).map((x) => ({ ...x, count: agg.titles[x.id]?.count || 0 }));
   return html`<${Section} title=${t('总览')} micro="OVERVIEW">
@@ -158,7 +163,7 @@ function Overview({ agg, gd, account }) {
 }
 
 /** 策略: per-band used / passed / pass rate, most used first (the user's headline ask). */
-function Bands({ agg, gd }) {
+export function Bands({ agg, gd }) {
   const rows = Object.entries(agg.bands).sort((a, b) => (b[1].games - a[1].games) || (b[1].wins - a[1].wins));
   return html`<${Section} title=${t('策略')} micro="STRATEGIES">
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table">
@@ -186,7 +191,7 @@ const SUM_ROWS = [
 ];
 
 /** 战斗累计: the self player's sums over the settled matches. */
-function CombatSums({ agg }) {
+export function CombatSums({ agg }) {
   const rows = SUM_ROWS.filter(([k]) => Number.isFinite(agg.sums[k]));
   return html`<${Section} title=${t('战斗累计')} micro="COMBAT TOTALS">
     ${rows.length ? html`<div class="st-sums">
@@ -196,7 +201,18 @@ function CombatSums({ agg }) {
 }
 
 /** One 对局记录 row: what it was, who won, whether it counted and whether the settlement can be re-viewed. */
-function HistoryRow({ rec, gd, onOpen, onPlay, onPin, busy, locked, quota }) {
+function ReplaySharing({rec,busy,onShare,publicId,allowSharing}){
+  const [open,setOpen]=useState(false);
+  return html`<${Button} size="sm" variant="ghost" icon="dots" aria-label=${t('回放操作')} onClick=${()=>setOpen(true)} />
+    <${Modal} open=${open} title=${t('回放操作')} micro="REPLAY MANAGEMENT" utility=${true} onClose=${()=>setOpen(false)}>
+      <p class="profile-note">${!allowSharing?t('回放公开总开关已关闭，此回放不会对外提供。'):rec.replay.shared?t('此回放已公开，可通过链接观看。'):t('此回放仅本人可见。')}</p>
+      <div class="doctor-replay-menu"><${Button} variant="secondary" icon="eye" disabled=${busy} onClick=${async()=>{await onShare(rec);setOpen(false);}}>${rec.replay.shared?t('设为私密'):t('设为公开')}<//>
+        <${Button} variant="secondary" icon="copy" disabled=${!allowSharing||!rec.replay.shared} onClick=${async()=>{const ok=await copyText(doctorLink(publicId,rec.matchId));toast(ok?t('已复制回放链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制回放链接')}<//>
+        ${!allowSharing?html`<${Button} variant="ghost" icon="settings" onClick=${()=>{setOpen(false);profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}</div>
+      <p class="profile-note">${t('公开不会自动固定回放；若需长期分享，请先固定。')}</p>
+    <//>`;
+}
+function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSharing, busy, locked, quota }) {
   const self = selfRowOf(rec);
   const quit = rec.end === 'quit';
   const counted = countsTowardStats(rec);
@@ -218,13 +234,14 @@ function HistoryRow({ rec, gd, onOpen, onPlay, onPin, busy, locked, quota }) {
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}
       ${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
     <td class="num st-round">${known ? fmtNum(rounds) : '—'}</td>
-    <td class="st-replay-actions" onClick=${e=>e.stopPropagation()}>${rec.replay?.available?html`<${Button} size="sm" variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>onPlay(rec)}>${t('播放')}<//><${Button} size="sm" variant=${rec.replay.pinned?'primary':'ghost'} icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${()=>onPin(rec)}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>`:html`<span class="st-no-replay">${t('无回放')}</span>`}</td>
+    <td class="st-replay-actions" onClick=${e=>e.stopPropagation()}>${rec.replay?.available?html`<${Button} size="sm" variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>onPlay(rec)}>${t('播放')}<//><${Button} size="sm" variant=${rec.replay.pinned?'primary':'ghost'} icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${()=>onPin(rec)}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>
+     ${publicId?html`<${ReplaySharing} rec=${rec} busy=${busy} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} />`:null}<span class="st-replay-visibility">${allowSharing&&rec.replay.shared?t('公开'):t('私密')}</span>`:html`<span class="st-no-replay">${t('无回放')}</span>`}</td>
     <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
   </tr>`;
 }
 
 /** 对局记录: every stored match, newest first, HISTORY_PAGE rows at a time. */
-function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, busy, locked, quota }) {
+function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, onShare, publicId, allowSharing, busy, locked, quota }) {
   const [shown, setShown] = useState(HISTORY_PAGE);
   const [deviceOnly,setDeviceOnly]=useState(false);
   const filtered=deviceOnly?records.filter(r=>r.deviceOnly):records;
@@ -234,7 +251,7 @@ function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, bu
     ${quota?html`<p class="st-hint">${locked?t('请先结束当前对局，再播放回放。'):t('新回放会替换最旧的未固定回放；对局记录始终保留。')}</p>`:null}
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history">
       <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th>${t('回放')}</th><th aria-hidden="true"></th></tr></thead>
-      <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} onPlay=${onPlay} onPin=${onPin} busy=${busy} locked=${locked} quota=${quota} />`)}</tbody>
+      <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} onPlay=${onPlay} onPin=${onPin} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} busy=${busy} locked=${locked} quota=${quota} />`)}</tbody>
     </table></div>
     ${filtered.length > shown ? html`<div class="st-more"><${Button} size="sm" variant="secondary" onClick=${() => setShown(shown + HISTORY_PAGE)}>${t('显示更多（还有 {n} 局）', { n: filtered.length - shown })}<//></div>` : null}
     ${more&&!deviceOnly?html`<div class="st-more"><${Button} size="sm" variant="secondary" disabled=${loading} onClick=${onMore}>${t('加载更早的对局')}<//></div>`:null}
@@ -293,6 +310,7 @@ function StatsScreen({ tab }) {
   useEffect(() => { if (!matchAtOpen.current && inMatch) closeStats();matchAtOpen.current=inMatch; }, [inMatch]);
   useEffect(() => {
     const onKey = (e) => {
+      if(publicDoctorStore.get().open)return;
       if (e.key !== 'Escape' || document.querySelector('.modal,.game-select-popover')) return; // a confirm dialog on top takes the Esc
       e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       if(playbackRef.current)setPlayback(null);else if (replayRef.current) setReplay(null); else closeStats();
@@ -365,6 +383,18 @@ function StatsScreen({ tab }) {
     }catch(e){toast(e.userCode==='REPLAY_PIN_LIMIT'?t('固定名额已满，请先取消固定其他回放。'):t('操作失败，请刷新后重试。'),'error');}
     finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
   };
+  const shareReplay=async rec=>{
+    if(replayFlight.current||offline)return;
+    replayFlight.current=true;setReplayBusy(true);
+    try{
+      const result=await userRequest('/api/user/replay/share',{matchId:rec.matchId,shared:!rec.replay.shared});
+      if(mounted.current&&profileStore.get().user?.id===profile.user?.id){
+        const next={...accountRef.current,replays:result.replays,records:accountRef.current.records.map(r=>r.id===rec.matchId?{...r,replay:result.replay}:r)};
+        setAccount(next);savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200)}});
+      }
+    }catch{toast(t('操作失败，请刷新后重试。'),'error');}
+    finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
+  };
   if(playback)return html`<${playback.Screen} replay=${playback.body} selfId=${playback.selfId} onBack=${()=>setPlayback(null)} />`;
 
   if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
@@ -374,13 +404,13 @@ function StatsScreen({ tab }) {
   </div>`;
 
   const empty = !records.length;
-  const tabs=profile.enabled?TABS:TABS.filter(x=>x.id!=='profile');
+  const tabs=profile.enabled?TABS:TABS.filter(x=>!['profile','privacy'].includes(x.id));
   return html`<div class="st" role="dialog" aria-modal="true" aria-label=${t('博士档案')} tabindex="-1" ref=${boxRef}>
     <div class="st__bg" aria-hidden="true"></div>
     <${PageHeader} onBack=${closeStats} title=${t('博士档案')} micro="DOCTOR ARCHIVE" />
     <header class="st-top doctor-top">
 
-      <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><h2>${profile.user?.name || identityName() || t('博士')}</h2><span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
+      <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><h2>${profile.user?.name || identityName() || t('博士')}</h2>${profile.user?.publicId?html`<span class="doctor-number num">${formatDoctorId(profile.user.publicId)}</span>`:null}<span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
       ${profile.enabled?html`<${Button} variant="ghost" size="sm" icon="edit" onClick=${()=>statsStore.set({tab:'profile'})}>${t('编辑资料')}<//>`:null}</div>
       <div class="st-top__right">${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>fetchAccount()}>${t('刷新')}<//>`:null}</div>
       <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${tabs.map(x=>html`<button key=${x.id} type="button" role="tab" aria-selected=${x.id===tab} data-tab=${x.id} class=${cx('st-tab',x.id===tab&&'is-on')} onClick=${()=>statsStore.set({tab:x.id})}>${t(x.name)}</button>`)}</nav>
@@ -391,14 +421,15 @@ function StatsScreen({ tab }) {
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}
     ${stats.dropped ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('有 {n} 条记录已损坏，已忽略。', { n: stats.dropped })}</p>` : null}
     <main class="st-body" data-tab=${tab}>
-      ${!['profile','manage'].includes(tab)?html`<label class=${cx('doctor-modded',withModded&&'is-on',loading&&'is-disabled')}><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>`:null}
+      ${!['profile','privacy','manage'].includes(tab)?html`<label class=${cx('doctor-modded',withModded&&'is-on',loading&&'is-disabled')}><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>`:null}
       ${!ready ? html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : tab==='profile'&&profile.user ? html`<${ProfileEditor} user=${profile.user} />`
+        : tab==='privacy'&&profile.user ? html`<${ProfileVisibility} user=${profile.user} />`
         : tab==='manage' ? html`<div class="doctor-management">${profile.enabled?html`<${ProfileRecovery} />`:null}
           <section><h3 class="st-sec__h">${t('此设备的记录')}</h3><p class="profile-note">${t('导入、导出和清空只影响此设备，不修改已保存的档案战绩。')}</p>
           <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="ghost" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
           <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
-        : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
+        : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
         : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
         : tab==='achievements' ? achievement?html`<${AchievementContent} s=${achievement} gd=${gd} />`:html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : !agg.count ? html`<div class="st-empty"><p>${loading?t('正在读取…'):offline&&!account?t('此设备尚无档案缓存，请稍后刷新；已有本机记录仍可查看。'):t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>${!empty?html`<${Button} variant="secondary" onClick=${()=>statsStore.set({tab:'history'})}>${t('查看此设备的旧记录')}<//>`:null}</div>`
@@ -411,7 +442,7 @@ function StatsScreen({ tab }) {
 
 /** Global stats viewer host — mounted once by main.js; renders nothing (and loads nothing) until opened. */
 export function StatsHost() {
-  useEffect(()=>{if(document.querySelector('link[data-profile-css]'))return;const link=document.createElement('link');link.rel='stylesheet';link.href='/css/profile.css';link.dataset.profileCss='';document.head.append(link);},[]);
+  useEffect(ensureDoctorStyles,[]);
   const { open, tab } = useStore((s) => s, Object.is, statsStore);
   if (!open) return null;
   return html`<${StatsScreen} key=${profileStore.get().user?.id||'device'} tab=${tab} />`;

@@ -7,9 +7,11 @@ import {data,useData} from '../data.js';
 import {identity,net} from '../net.js';
 import {toast} from './toasts.js';
 import {copyText} from './clipboard.js';
-import {t} from '../../../shared/i18n.js';
+import {t,tc} from '../../../shared/i18n.js';
 import {NAME_MAX_LEN} from '../../../shared/constants.js';
 import {profileAvatarUrl} from './assetUrls.js';
+import {doctorLink,openPublicDoctor} from './doctorLinks.js';
+import {formatDoctorId,PRIVATE_PROFILE} from '../../../shared/publicProfiles.js';
 
 export const profileStore=createStore({enabled:false,user:null,open:false,tab:'overview',status:'idle'});
 export async function userRequest(path,body,{timeoutMs=5000,signal}={}){
@@ -17,6 +19,25 @@ export async function userRequest(path,body,{timeoutMs=5000,signal}={}){
  const result=await response.json();if(result.replay&&response.headers.has('x-sp-replay-content'))result.replay.currentCs=response.headers.get('x-sp-replay-content');if(!response.ok)throw Object.assign(new Error(result.error),{userCode:result.error});return result;
 }
 function remember(user){profileStore.set({user,status:'saved'});savePref('doctorProfile',user);if(user.name)identity.saveName(user.name);}
+export function ProfileShare({user}){
+ return user?.publicId?html`<div class="doctor-share"><span class="doctor-number num">${t('博士编号 {id}',{id:formatDoctorId(user.publicId)})}</span>
+  <div class="doctor-actions"><${Button} variant="secondary" size="sm" icon="copy" onClick=${async()=>{const ok=await copyText(doctorLink(user.publicId));toast(ok?t('已复制档案链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制档案链接')}<//>
+   <${Button} variant="ghost" size="sm" icon="eye" onClick=${()=>openPublicDoctor(user.publicId,{preview:true})}>${t('预览公开档案')}<//></div></div>`:null;
+}
+export function ProfileVisibility({user}){
+ const {busy,error,run}=useOperation();const visibility=user.visibility || PRIVATE_PROFILE;
+ const fields=[['trophies',t('公开杯数'),t('展示累计杯数；成就需另行开启公开。')],['achievements',t('公开成就'),t('展示成就条目；杯数未公开时不展示奖杯类成就。')],
+  ['statistics',t('公开概览统计'),t('展示总览、策略与战斗累计统计。')],['history',t('公开对局记录'),t('展示服务器保存的本人对局摘要，不包含此设备记录。')],
+  ['replays',t('允许公开回放'),t('仅展示逐条设为公开的回放；关闭后所有回放链接停止提供内容。')]];
+ return html`<section class="doctor-privacy"><h3 class="st-sec__h">${t('公开设置')}</h3><${ProfileShare} user=${user} />
+  <p class="profile-note">${t('昵称、头像和博士编号始终可见。编号用于分享，不是恢复码。')}</p>
+  ${error?html`<p class="profile-error" role="alert">${error}</p>`:null}
+  <div class="doctor-privacy-list">${fields.map(([key,label,note])=>html`<div key=${key} class="doctor-privacy-row"><div><b>${label}</b><p class="profile-note">${note}</p></div>
+   <button type="button" role="switch" aria-label=${label} aria-checked=${!!visibility[key]} disabled=${busy} data-visibility=${key} class=${`set-toggle${visibility[key]?' is-on':''}`}
+    onClick=${()=>run(async()=>{const {user:next}=await userRequest('/api/user/visibility',{visibility:{[key]:!visibility[key]}});remember(next);})}><i aria-hidden="true"></i><span>${visibility[key]?tc('toggle','开启'):tc('toggle','关闭')}</span></button></div>`)}</div>
+  <p class="profile-note">${t('公开回放展示自己的经营过程与各战场，仍可看到队友当局昵称和阵容；不包含队友私有经营状态。')}</p>
+ </section>`;
+}
 export async function initProfile(){
  try{const {user}=await userRequest('/api/user');profileStore.set({enabled:true});remember(user);return user;}
  catch(e){

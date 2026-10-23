@@ -1,4 +1,7 @@
 import {installReplays} from './replays.js';
+import {installPublicProfiles,PUBLIC_PROFILE_SCHEMA_VERSION} from './publicProfiles.js';
+import {publicReplay} from '../replays/public.js';
+import {gzipSync} from 'node:zlib';
 import {achievementStats} from '../../shared/achievementStats.js';
 import {aggregateStats,accountRecord} from '../../shared/userStats.js';
 // The SQLite connection lives off the game/network event loop. Only newly issued credentials are returned; existing credentials are stored as hashes.
@@ -23,9 +26,17 @@ if(version===0)db.exec(`BEGIN;
  CREATE TABLE results(game_id TEXT NOT NULL REFERENCES games(id),user_id TEXT NOT NULL REFERENCES users(id),player_id TEXT NOT NULL,victory INTEGER NOT NULL,rounds INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(game_id,user_id));
  CREATE INDEX results_user ON results(user_id,game_id);
  PRAGMA user_version=1; COMMIT;`);
+// Keep the account/replay schemas; make a consistent backup before each public-profile migration.
+const publicVersion=db.prepare("SELECT 1 FROM sqlite_master WHERE name='public_profile_schema'").get()
+ ? db.prepare('SELECT version FROM public_profile_schema WHERE id=1').get()?.version ?? 0 : 0;
+if(version===1 && workerData.file!==':memory:' && publicVersion<PUBLIC_PROFILE_SCHEMA_VERSION){
+ const directory=path.join(path.dirname(workerData.file),'backups');fs.mkdirSync(directory,{recursive:true,mode:0o700});
+ const target=path.join(directory,'users-before-public-v'+PUBLIC_PROFILE_SCHEMA_VERSION+'-'+Date.now()+'.sqlite');db.prepare('VACUUM INTO ?').run(target);fs.chmodSync(target,0o600);
+}
 const replays=installReplays(db,workerData.replays);
+const publicProfiles=installPublicProfiles(db);
 const q=sql=>db.prepare(sql);
-const profile=id=>q('SELECT id,name,avatar_id AS avatarId,created_at AS createdAt FROM users WHERE id=?').get(id)||null;
+const profile=id=>{const user=q('SELECT id,name,avatar_id AS avatarId,created_at AS createdAt FROM users WHERE id=?').get(id);return user?{...user,...publicProfiles.ensure(id)}:null;};
 function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
 function credential(userId){const token=secret();q('INSERT INTO credentials(hash,user_id) VALUES(?,?)').run(hash(token),userId);return token;}
 const methods={
@@ -60,6 +71,37 @@ const methods={
  replay(args){return replays.get(args);},
  replayBody(args){return replays.body(args);},
  pinReplay(args){return replays.pin(args);},
+ visibility({id,visibility}){const result=publicProfiles.update(id,visibility);return result.error?result:{user:profile(id)};},
+ shareReplay({id,matchId,shared}){const result=publicProfiles.share(id,matchId,shared);return result.error?result:{replay:replays.entry(id,matchId),replays:replays.status(id)};},
+ publicDoctor({publicId,before=null,modded=false,section='history'}){
+  const user=publicProfiles.find(publicId);if(!user)return {error:'DOCTOR_NOT_FOUND'};
+  const {id,name,avatarId,visibility}=user,result={doctor:{publicId,name,avatarId},visibility};
+  if(visibility.trophies||visibility.achievements||visibility.statistics){
+   const stats=methods.stats({id,modded});
+   if(visibility.trophies)result.trophies=stats.aggregate.trophies;
+   if(visibility.statistics)result.aggregate=Object.fromEntries(['total','count','excluded','modded','wins','rounds','duration','hidden','byDifficulty','byMode','titles','bands','sums','bonds','maxima','missingFrame'].map(key=>[key,stats.aggregate[key]]));
+   if(visibility.achievements)result.achievements=stats.achievements.achievements.filter(a=>visibility.trophies||a.group!=='trophy');
+  }
+  const replayList=section==='replays';
+  if(replayList?visibility.replays:visibility.history){
+   const rows=q(`SELECT g.id,g.rowid AS cursor,g.ended_at AS endedAt,g.mode,g.difficulty,r.victory,r.rounds,r.payload FROM results r JOIN games g ON g.id=r.game_id
+    WHERE r.user_id=? AND (? IS NULL OR g.rowid<?) ${replayList?'AND EXISTS(SELECT 1 FROM public_replays p WHERE p.user_id=r.user_id AND p.game_id=g.id)':''}
+    ORDER BY g.rowid DESC LIMIT 51`).all(id,before,before);
+   result.next=rows.length>50?rows[49].cursor:null;
+   result.records=rows.slice(0,50).map(row=>{const payload=JSON.parse(row.payload);return {matchId:row.id,t:row.endedAt,roomMode:payload.frame?.roomMode || row.mode,difficulty:row.difficulty,
+    victory:!!row.victory,rounds:row.rounds,bandId:payload.bandId || null,modded:!!payload.frame?.content,
+    replay:visibility.replays&&publicProfiles.shared(id,row.id)};});
+  }
+  return result;
+ },
+ publicReplay({publicId,matchId}){
+  const user=publicProfiles.find(publicId);
+  if(!user?.visibility.replays||!publicProfiles.shared(user.id,matchId))return {error:'REPLAY_NOT_FOUND'};
+  const result=replays.get({id:user.id,matchId});if(result.error)return result;
+  const owner=q('SELECT player_id FROM results WHERE user_id=? AND game_id=?').get(user.id,matchId);
+  return {replay:publicReplay(result.replay,owner.player_id)};
+ },
+ publicReplayBody(args){const result=methods.publicReplay(args);if(result.error)return result;const text=JSON.stringify(result);return {body:args.gzip?gzipSync(text):Buffer.from(text)};},
  backup({directory}){
   fs.mkdirSync(directory,{recursive:true,mode:0o700});const target=path.join(directory,'users-'+Date.now()+'.sqlite');
   db.prepare('VACUUM INTO ?').run(target);fs.chmodSync(target,0o600);

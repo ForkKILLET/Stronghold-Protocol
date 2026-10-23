@@ -344,7 +344,7 @@ export class Room {
       prepMultiplier: this.prepMultiplier,
       battleSpeed: this.battleSpeed,
       seats: this.seats.map((s) => (s
-        ? { seat: s.seat, playerId: s.playerId, name: s.name, ...(s.avatarId?{avatarId:s.avatarId}:{}), isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
+        ? { seat: s.seat, playerId: s.playerId, name: s.name, ...(s.avatarId?{avatarId:s.avatarId}:{}), ...(s.publicId?{publicId:s.publicId}:{}), isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
           ...(!s.isBot && s.card ? { card: s.card } : {}),
           ...(this.modded && !s.isBot ? { content: s.content || 'loading' } : {}) }
         : null)),
@@ -597,6 +597,7 @@ export class Lobby {
     // live socket) answers the requester alone, so hello spam cannot amplify into room-wide traffic.
     let changed = !seat.connected;
     if(seat.avatarId !== session.avatarId){seat.avatarId=session.avatarId;changed=true;}
+    if(seat.publicId !== session.publicId){seat.publicId=session.publicId;changed=true;}
     seat.connected = true;
     if (!room.match && seat.name !== session.name) { seat.name = session.name; changed = true; }
     if (!room.hostId) { this.migrateHost(room); changed = true; }
@@ -845,6 +846,8 @@ export class Lobby {
           seat: s.seat,
           playerId: s.playerId,
           name: session?.name || (typeof s.name === 'string' && s.name ? s.name : t('博士')),
+          avatarId: session?.avatarId || s.avatarId || null,
+          publicId: session?.publicId || s.publicId || null,
           isBot,
           ready: !!s.ready,
           connected: false,
@@ -2078,11 +2081,11 @@ export class Lobby {
     if (host && !checkpoint) host.ready = true;
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
-        seat: p.seat, playerId: p.playerId, name: p.name, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || null, isBot: !!p.isBot, connected: false,
+        seat: p.seat, playerId: p.playerId, name: p.name, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || null, publicId:p.publicId || null, isBot: !!p.isBot, connected: false,
         skins: p.isBot ? null : p.skins || null, loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
-        seat: s.seat, playerId: s.playerId, name: s.name, userId:this.registry.byId(s.playerId)?.userId || null, avatarId:s.avatarId || null, isBot: s.isBot, connected: s.connected,
+        seat: s.seat, playerId: s.playerId, name: s.name, userId:this.registry.byId(s.playerId)?.userId || null, avatarId:s.avatarId || null, publicId:s.publicId || this.registry.byId(s.playerId)?.publicId || null, isBot: s.isBot, connected: s.connected,
         skins: s.isBot ? null : s.skins || null, loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
     const ctx = { live: false, ended: false, disposed: false, match: null, workerKey: room.code,
@@ -2145,11 +2148,11 @@ export class Lobby {
     if (host && !checkpoint) host.ready = true;
     const seats = checkpoint
       ? checkpoint.players.map((p) => ({
-        seat: p.seat, playerId: p.playerId, name: p.name, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || null, isBot: !!p.isBot, connected: false,
+        seat: p.seat, playerId: p.playerId, name: p.name, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || null, publicId:p.publicId || null, isBot: !!p.isBot, connected: false,
         skins: p.isBot ? null : p.skins || null, loadout: p.isBot ? null : (p.loadout || null), ops: p.isBot ? null : p.ops || null, notOwned: p.isBot ? null : p.standIns || null, diy: p.isBot ? null : p.diy || null,
       }))
       : room.seats.filter(Boolean).map((s) => ({
-        seat: s.seat, playerId: s.playerId, name: s.name, userId:this.registry.byId(s.playerId)?.userId || null, avatarId:s.avatarId || null, isBot: s.isBot, connected: s.connected,
+        seat: s.seat, playerId: s.playerId, name: s.name, userId:this.registry.byId(s.playerId)?.userId || null, avatarId:s.avatarId || null, publicId:s.publicId || this.registry.byId(s.playerId)?.publicId || null, isBot: s.isBot, connected: s.connected,
         // DESIGN §16: the human's checked operator loadout (bots fight with the defaults)
         skins: s.isBot ? null : s.skins || null, loadout: s.isBot ? null : s.loadout || null, ops: s.isBot ? null : s.ops || null, notOwned: s.isBot ? null : s.notOwned || null, diy: s.isBot ? null : s.diy || null,
       }));
@@ -2278,7 +2281,7 @@ export class Lobby {
       let seat = Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS && !used.has(p.seat) ? p.seat : -1;
       if (seat < 0) { for (let j = 0; j < MAX_SEATS; j++) if (!used.has(j)) { seat = j; break; } }
       used.add(seat);
-      return { ...p, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || this.registry.byId(p.playerId)?.avatarId || null, seat, connected: p.isBot ? true : p.connected !== false };
+      return { ...p, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || this.registry.byId(p.playerId)?.avatarId || null, publicId:p.publicId || this.registry.byId(p.playerId)?.publicId || null, seat, connected: p.isBot ? true : p.connected !== false };
     }).sort((a, b) => a.seat - b.seat);
     const allHumanIds = seats.filter((p) => !p.isBot).map((p) => p.playerId);
     const matchCode = room?.code || `M${randomBytes(3).toString('hex').toUpperCase()}`;
@@ -2338,7 +2341,7 @@ export class Lobby {
       let seat = Number.isInteger(p.seat) && p.seat >= 0 && p.seat < MAX_SEATS && !used.has(p.seat) ? p.seat : -1;
       if (seat < 0) { for (let j = 0; j < MAX_SEATS; j++) if (!used.has(j)) { seat = j; break; } }
       used.add(seat);
-      return { ...p, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || this.registry.byId(p.playerId)?.avatarId || null, seat, connected: p.isBot ? true : p.connected !== false };
+      return { ...p, userId:p.userId || this.registry.byId(p.playerId)?.userId || null, avatarId:p.avatarId || this.registry.byId(p.playerId)?.avatarId || null, publicId:p.publicId || this.registry.byId(p.playerId)?.publicId || null, seat, connected: p.isBot ? true : p.connected !== false };
     }).sort((a, b) => a.seat - b.seat);
     const allHumanIds = seats.filter((p) => !p.isBot).map((p) => p.playerId);
     const ctx = { live: true, ended: false, disposed: false, queue: true, match: null, workerKey: null, room, members: seats,
@@ -2859,7 +2862,7 @@ export class Lobby {
   /** @returns {Seat} */
   humanSeat(idx, session) {
     return {
-      seat: idx, playerId: session.playerId, name: session.name, avatarId:session.avatarId || null, isBot: false, ready: false, connected: session.connected, left: false,
+      seat: idx, playerId: session.playerId, name: session.name, avatarId:session.avatarId || null, publicId:session.publicId || null, isBot: false, ready: false, connected: session.connected, left: false,
       skins: session.skins || null,
       card: session.card || null,
       loadout: session.loadout || null,

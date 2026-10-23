@@ -437,6 +437,11 @@
 .countdown--lg { --cd-h: calc(1.1 * var(--ui-unit, 1rem)); }
 
 /* ---- modal ---------------------------------------------------------------------------------------- */
+.doctor-name-link { padding:0; border:0; border-radius:0; background:none; color:inherit; font:inherit; text-align:inherit; cursor:pointer; }
+.doctor-name-link:hover { color:var(--mint-400); }
+.doctor-name-link:focus-visible,.doctor-avatar-link:focus-visible { outline:1px solid var(--mint-400); outline-offset:3px; }
+.doctor-avatar-link { padding:0; cursor:pointer; }
+
 .modal {
   position: fixed;
   inset: 0;
@@ -723,7 +728,6 @@
 }
 .avatar__badge .icon { width: 62%; height: 62%; }
 .avatar__badge--host { background: var(--gold); color: #1d1400; }
-.avatar__badge--self { left: auto; right: calc(var(--av) * -.1); background: var(--mint-500); color: var(--text-on-mint); }
 .avatar__tag {
   position: absolute;
   z-index: 2;

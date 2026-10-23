@@ -1,6 +1,7 @@
 import {acceptsGzip} from '../http/files.js';
 import {sendJson} from '../http/common.js';
 import {sanitizeName,clientAddress,limitKeyOf,isLocalIp} from '../net.js';
+import {normalizeDoctorId,validVisibility} from '../../shared/publicProfiles.js';
 export const USER_COOKIE='sp_user';
 export function userToken(req){const values=String(req.headers.cookie||'').split(';').map(v=>v.trim()).filter(v=>v.startsWith(USER_COOKIE+'='));return values.length===1?values[0].slice(USER_COOKIE.length+1):null;}
 export function sameOrigin(req){
@@ -28,11 +29,30 @@ export function createUserApi({users,registry,lobby,data,content,moderation,trus
  }
  function active(id){return [...registry.all()].some(s=>s.userId===id&&lobby.activeMatchOf(s)?.match&&!lobby.activeMatchOf(s)?.ended);}
  return async(req,res,pathname)=>{
-  if(!pathname.startsWith('/api/user'))return false;
+  if(!pathname.startsWith('/api/user')&&!pathname.startsWith('/api/doctors/'))return false;
   if(!users){json(req,res,503,{error:'USER_STORAGE_DISABLED'});return true;}
   if(!sameOrigin(req)){json(req,res,403,{error:'ORIGIN'});return true;}
   if(!allowed(req,pathname==='/api/user/recover'?'recover':'user')){json(req,res,429,{error:'RATE'});return true;}
   try{
+   if(pathname.startsWith('/api/doctors/')){
+    if(req.method!=='GET'){json(req,res,405,{error:'METHOD'});return true;}
+    const parts=pathname.split('/'),publicId=normalizeDoctorId(parts[3]);
+    if(!publicId||parts.length>5||(parts[4]&&parts[4]!=='replay')){json(req,res,404,{error:'DOCTOR_NOT_FOUND'});return true;}
+    const params=new URL(req.url,'http://local').searchParams;
+    if(parts[4]==='replay'){
+     const matchId=params.get('matchId');
+     if(!/^[A-Za-z0-9_-]{1,160}$/.test(matchId||'')){json(req,res,400,{error:'MATCH_ID'});return true;}
+     const gzip=acceptsGzip(req.headers['accept-encoding']);
+     const result=await users.call('publicReplayBody',{publicId,matchId,gzip});
+     if(result.error){json(req,res,404,result);return true;}
+     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':result.body.byteLength,'Vary':'Accept-Encoding',...(gzip?{'Content-Encoding':'gzip'}:{}),...(content?.cs?{'X-SP-Replay-Content':content.cs}:{})});
+     res.end(result.body);return true;
+    }
+    const cursor=params.get('before'),before=cursor===null?null:Number(cursor),section=params.get('section')||'history';
+    if((before!==null&&(!Number.isSafeInteger(before)||before<1))||!['history','replays'].includes(section)){json(req,res,400,{error:'CURSOR'});return true;}
+    const result=await users.call('publicDoctor',{publicId,before,section,modded:params.get('modded')==='1'});
+    json(req,res,result.error?404:200,result);return true;
+   }
    const token=userToken(req);let user=token?await users.call('authenticate',{token}):null;
    if(pathname==='/api/user'&&req.method==='GET'){
     if(!user){const created=await users.call('create');user=created.user;cookie(req,res,created.token);}else cookie(req,res,token);
@@ -55,6 +75,16 @@ export function createUserApi({users,registry,lobby,data,content,moderation,trus
    }
    if(req.method!=='POST'){json(req,res,405,{error:'METHOD'});return true;}
    const input=await body(req);
+   if(pathname==='/api/user/visibility'){
+    if(!validVisibility(input.visibility)){json(req,res,400,{error:'VISIBILITY'});return true;}
+    const result=await users.call('visibility',{id:user.id,visibility:input.visibility});
+    json(req,res,result.error?400:200,result);return true;
+   }
+   if(pathname==='/api/user/replay/share'){
+    if(typeof input.matchId!=='string'||!/^[A-Za-z0-9_-]{1,160}$/.test(input.matchId)||typeof input.shared!=='boolean'){json(req,res,400,{error:'REPLAY_INPUT'});return true;}
+    const result=await users.call('shareReplay',{id:user.id,matchId:input.matchId,shared:input.shared});
+    json(req,res,result.error?404:200,result);return true;
+   }
    if(pathname==='/api/user/replay/pin'){
     if(typeof input.matchId!=='string'||!/^[A-Za-z0-9_-]{1,160}$/.test(input.matchId)||typeof input.pinned!=='boolean'){json(req,res,400,{error:'REPLAY_INPUT'});return true;}
     const result=await users.call('pinReplay',{id:user.id,matchId:input.matchId,pinned:input.pinned});

@@ -763,7 +763,6 @@ export function AvatarFrame({ name = '', src, size = 'md', seat = 0, host, bot, 
         : html`<span class="avatar__glyph">${glyph}</span>`}
     </div>
     ${host ? html`<span class="avatar__badge avatar__badge--host" title=${t('创建者')}><${Icon} name="crown" /></span>` : null}
-    ${self ? html`<span class="avatar__badge avatar__badge--self" title=${t('你')}><${Icon} name="user" /></span>` : null}
     ${bot && !empty ? html`<span class="avatar__tag">AI</span>` : null}
   </div>`;
 }

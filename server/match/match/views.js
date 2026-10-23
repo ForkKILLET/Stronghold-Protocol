@@ -107,6 +107,7 @@ export class MatchViews {
         seat: ps.seat,
         name: ps.name,
         ...(ps.avatarId?{avatarId:ps.avatarId}:{}),
+        ...(ps.publicId?{publicId:ps.publicId}:{}),
         isBot: ps.isBot,
         connected: ps.isBot || (ps.connected && !ps.left),
         alive: ps.alive,

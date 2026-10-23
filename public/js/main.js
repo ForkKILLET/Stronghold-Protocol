@@ -62,6 +62,9 @@ import { GuideHost } from './ui/guide.js';
 import { installDeviceSupport } from './ui/device.js';
 import { LoadoutHost } from './screens/loadout.js';
 import { StatsHost } from './screens/stats.js';
+import {PublicDoctorHost} from './screens/publicDoctor.js';
+import {publicDoctorStore} from './ui/doctorLinks.js';
+import {normalizeDoctorId} from '../../shared/publicProfiles.js';
 import { installRehearsal } from './battle/rehearsal.js';
 import { recordResult, installStatsRecorder } from './ui/stats.js';
 import { installSkinsSync } from './ui/skins.js';
@@ -423,6 +426,7 @@ function App() {
     <${LoadoutHost} />
     <${ResourceManagerHost} />
     <${StatsHost} />
+    <${PublicDoctorHost} />
   </div>`;
 }
 
@@ -471,6 +475,14 @@ async function boot() {
   // Pick this tab's reconnect token (asks other live tabs; ≤150 ms) while fonts load.
   const spectateCode = parseRoomParam(location.search, 'spectate');
   const pendingJoin = spectateCode || parseRoomParam(location.search);
+  const sharedParams=new URLSearchParams(location.search);
+  // A shared archive is a read-only visit: no new account, game socket, reconnect token or room seat.
+  if(sharedParams.has('doctor')&&!pendingJoin){
+    publicDoctorStore.set({open:true,publicId:normalizeDoctorId(sharedParams.get('doctor'))||'invalid',replayId:sharedParams.get('replay'),standalone:true});
+    await langReady;
+    render(html`<div class="app-root"><${PublicDoctorHost} /><${ToastHost} /><${UiHosts} /><${TermHelpHost} /><${AnnouncementHost} /><${GuideHost} /></div>`,document.getElementById('app'));
+    document.getElementById('boot')?.remove();globalThis.__SP__={store,net,data,version:1};return;
+  }
   if (pendingJoin) {
     const status = document.getElementById('boot-status');
     if (status) {

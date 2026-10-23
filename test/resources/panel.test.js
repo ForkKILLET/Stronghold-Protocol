@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { byteText, detailText, percent } from '../../public/js/ui/resourcePanel.js';
+import { designCss } from '../helpers/designCss.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -61,7 +62,7 @@ describe('where the preload is reachable', () => {
     assert.match(title, /import \{ updateSettings, useSettings \} from '\.\.\/ui\/settings\.js';/);
     assert.match(title, /const settings = useSettings\(\);/);
     assert.match(title, /<div class="title-preload"><\$\{ResourceLauncher\} enabled=\$\{settings\.preload\} onChange=\$\{\(v\) => updateSettings\(\{ preload: v \}\)\} \/><\/div>/);
-    const css = read('public/css/screens/title.css');
+    const css = designCss(read('public/css/screens/title.css'));
     assert.match(css, /\.title-preload \{[^}]*position: absolute;[^}]*right: \.44rem;[^}]*bottom: \.86rem;/, 'bottom-right, above the footer');
     assert.match(css, /\.res-pill \{/, 'the pill has its own styling');
   });

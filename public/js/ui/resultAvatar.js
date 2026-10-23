@@ -16,7 +16,7 @@ function useResultCard(player, self) {
 
 export function ResultAvatar({ player, self = false, ...props }) {
   const card = useResultCard(player, self);
-  return html`<${PlayerAvatar} ...${props} player=${player} self=${self} avatar=${cardAvatarUrl(card?.avatar, data.get('assets'))} />`;
+  return html`<${PlayerAvatar} ...${props} player=${player} self=${self} profileLink=${true} avatar=${cardAvatarUrl(card?.avatar, data.get('assets'))} />`;
 }
 
 /** A chosen room portrait takes precedence; old results and unselected cards keep their lineup ace. */

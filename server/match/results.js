@@ -112,6 +112,7 @@ export function buildResult(m, outcome) {
       playerId: ps.playerId,
       seat: ps.seat,
       name: ps.name,
+      ...(ps.publicId?{publicId:ps.publicId}:{}),
       isBot: ps.isBot,
       left: ps.left,
       alive: ps.alive,
