@@ -147,6 +147,32 @@ test('room exposes edit actions only for the own human seat; teammates and spect
   assert.equal(art, 1); assert.equal(avatar, 1);
 });
 
+test('a readied guest promoted to host shows standby to every viewer while start stays available', () => {
+  const oldHost = { seat: 0, playerId: 'old', name: 'Old host', ready: false, connected: true };
+  const guest = { seat: 1, playerId: 'next', name: 'Next host', ready: true, connected: true };
+  const room = { mode: 'coop', hostId: oldHost.playerId, seats: [oldHost, guest], spectators: [{ playerId: 'watch' }] };
+  const text = (v) => Array.isArray(v) ? v.map(text).join('')
+    : typeof v === 'object' && v ? text(v.props?.children) : typeof v === 'string' ? v : '';
+  const state = (viewer) => {
+    const tree = SeatCardView({ seat: guest, index: 1, room, facts: roomFacts(room, viewer), myId: viewer,
+      portraits: { pool: list, m: manifest } });
+    return text([...walk(tree)].find((v) => v.props?.class === 'rseat__state'));
+  };
+  for (const viewer of ['old', 'next', 'watch']) assert.equal(state(viewer), '已就绪');
+  room.seats[0] = null;
+  room.spectators.push({ playerId: oldHost.playerId });
+  room.hostId = guest.playerId;
+  for (const ready of [true, false]) {
+    guest.ready = ready;
+    for (const viewer of ['old', 'next', 'watch']) assert.equal(state(viewer), '待命中');
+    assert.equal(roomFacts(room, guest.playerId).canStart, true, 'host starts without a separate ready action');
+    assert.equal(roomFacts(room, guest.playerId).readyHumans, 1);
+    assert.equal(guest.ready, ready, 'rendering never changes the published seat state');
+  }
+  room.hostId = oldHost.playerId;
+  assert.equal(state('next'), '准备中', 'ordinary unreadied players keep their state label');
+});
+
 test('reference operator picker searches localized names, filters rarity, clears to defaults and keeps modal focus', () => {
   assert.deepEqual(filterCardOperators(list, ' first '), [list[0]]);
   assert.deepEqual(filterCardOperators(list, '', 5), [list[1]]);

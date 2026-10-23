@@ -249,6 +249,11 @@ function onRoomState(msg) {
   // A (new) match starts: forget the previous match's state so stale results never show.
   if (room.inMatch && !(prevRoom && prevRoom.inMatch && prevRoom.code === room.code)) store.set({ match: emptyMatch(), emotes: [], chatHistory: [] });
   store.set({ room });
+  if (prevRoom?.code === room.code && !prevRoom.inMatch && !room.inMatch
+    && prevRoom.hostId && prevRoom.hostId !== room.hostId) {
+    const host = seats.find(s => s && !s.isBot && s.playerId === room.hostId);
+    if (host) toast(t('同盟创建者已变更为「{name}」', { name: host.name }), 'info', { ttl: 4500 });
+  }
   identity.rememberMatch(room.inMatch && seats.some((seat) => seat?.playerId === myId)
     ? { name: store.get().me.name, code: room.code || '' } : null);
   if (room.mode === 'coop' && typeof room.code === 'string') rememberRoom(room.code);

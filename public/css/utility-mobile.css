@@ -11,6 +11,10 @@
 .modal--utility { --utility-text:var(--management-text); }
 .modal--utility .utility-modal { width:var(--utility-width,min(calc(6.4 * var(--ui-unit)),94vw)); }
 .communication-dock, .communication-bubble { --ui-unit:1rem; --utility-text:var(--t); }
+/* Toasts live outside the page's local scale; keep management notices readable on phones. */
+html:not(.sp-in-match) .toast { font-size:max(13px,calc(.17 * var(--t))); }
+html:not(.sp-in-match) .toast__icon { width:max(14px,calc(.2 * var(--ui-unit,1rem))); height:max(14px,calc(.2 * var(--ui-unit,1rem))); }
+html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t))); }
 
 @media (max-width: 1000px), (max-height: 600px) {
   .lo-skins { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 6px; }
@@ -584,29 +588,31 @@
  .room-screen--coop .seats { grid-template-columns:repeat(4,minmax(0,1fr)); }
  .room-screen .seats--solo { grid-template-columns:minmax(0,240px) minmax(0,480px); }
 }
-@media (max-width:560px), (max-height:560px) and (orientation:landscape) {
-  .room-screen .rseat { display:grid; grid-template-columns:min(54px,var(--room-seat-width,48px)) minmax(0,1fr); grid-template-rows:28px auto; }
-  .room-screen .rseat__strip { grid-column:1/-1; grid-row:1; }
-  .room-screen .rseat__art { grid-column:1; grid-row:2; }
-  .room-screen .rseat__plate { grid-column:2; grid-row:2; height:auto; min-height:0; margin:0; padding:6px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
-  .room-screen .rseat__plate .avatar { --av:24px; width:24px; height:24px; flex:none; }
-  .room-screen .rseat__who { max-width:100%; font-size:12px; }
-  .room-screen .rseat__actions .btn { height:40px; min-height:40px; font-size:12px; padding:4px; gap:4px; }
-  .room-screen .rseat__actions .btn__label { white-space:normal; }
-  .room-screen .rseat__invite { padding:4px; gap:4px; }
-  .room-screen .rseat__invite small { display:none; }
-  .room-screen .rseat__invite b { font-size:12px; }
-  .room-screen .rseat__plus { width:28px; height:28px; }
-  .room-screen .rseat .rseat__state { bottom:4px; gap:2px; font-size:10px; }
-  .room-screen .rseat__box { width:12px; height:12px; border-width:1px; }
+/* The fitter also selects these cards when a medium-height window cannot keep the nameplate readable. */
+.room-screen--coop .seats.seats--compact { grid-template-columns:repeat(var(--room-compact-columns,4),minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:max-content; flex:1 1 0; min-height:0; overflow-y:auto; overscroll-behavior:contain; align-content:start; align-content:safe center; }
+.room-screen .seats--solo.seats--compact { grid-template-columns:minmax(0,240px) minmax(0,480px); }
+.room-screen .seats--compact .rseat { display:grid; grid-template-columns:min(54px,var(--room-seat-width,48px)) minmax(0,1fr); grid-template-rows:28px auto; }
+.room-screen .seats--compact .rseat__strip { grid-column:1/-1; grid-row:1; }
+.room-screen .seats--compact .rseat__art { grid-column:1; grid-row:2; }
+.room-screen .seats--compact .rseat__plate { grid-column:2; grid-row:2; height:auto; min-height:0; margin:0; padding:6px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
+.room-screen .seats--compact .rseat__plate .avatar { --av:24px; width:24px; height:24px; flex:none; }
+.room-screen .seats--compact .rseat__who { max-width:100%; font-size:12px; }
+.room-screen .seats--compact .rseat__actions .btn { height:40px; min-height:40px; font-size:12px; padding:4px; gap:4px; }
+.room-screen .seats--compact .rseat__actions .btn__label { white-space:normal; }
+.room-screen .seats--compact .rseat__invite { padding:4px; gap:4px; }
+.room-screen .seats--compact .rseat__invite small { display:none; }
+.room-screen .seats--compact .rseat__invite b { font-size:12px; }
+.room-screen .seats--compact .rseat__plus { width:28px; height:28px; }
+.room-screen .seats--compact .rseat .rseat__state { bottom:4px; gap:2px; font-size:10px; }
+.room-screen .seats--compact .rseat__box { width:12px; height:12px; border-width:1px; }
+@media (pointer:coarse) {
+ .room-screen .seats--compact .rseat { grid-template-rows:36px auto; }
 }
-@media (pointer:coarse) and (max-width:560px), (pointer:coarse) and (max-height:560px) and (orientation:landscape) {
- .room-screen .rseat { grid-template-rows:36px auto; }
+@media (orientation:landscape) {
+ .room-screen .seats--compact .rseat__plate:not(.rseat__plate--empty) { flex-direction:row; }
 }
-
 @media (max-height:560px) and (orientation:landscape) {
  .room-screen--coop .seats { flex:1 1 0; min-height:0; grid-template-rows:minmax(96px,1fr); padding-block:4px; }
- .room-screen .rseat__plate:not(.rseat__plate--empty) { flex-direction:row; }
 }
 
 @media (max-width:400px) { .title-screen .title-cn:not(.title-cn--latin) { font-size:min(calc(.72 * var(--t)),48px); } }

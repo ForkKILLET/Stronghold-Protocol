@@ -177,7 +177,7 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
       <${CommunicationBubble} playerId=${seat.playerId} />
       ${offline ? html`<span class="rseat__lost"><${Icon} name="wifiOff" />${t('失去信号')}</span>` : null}
       <span class="rseat__state">${ready
-        ? html`<span class="rseat__box"><${Icon} name="check" /></span>${isHostSeat && !seat.ready ? t('待命中') : t('已就绪')}`
+        ? html`<span class="rseat__box"><${Icon} name="check" /></span>${isHostSeat ? t('待命中') : t('已就绪')}`
         : html`<span class="rseat__box"></span>${t('准备中')}`}</span>
     </div>
     ${!seat.isBot && !isMe && facts.isHost ? html`<button type="button" class="rseat__kick" disabled=${busy === `kick${index}`}
@@ -291,18 +291,33 @@ export function RoomScreen() {
   useEffect(()=>{
     const el=seatsRef.current;if(!el)return undefined;
     const fit=()=>{
-      const cs=getComputedStyle(el), cards=[...el.querySelectorAll('.rseat')];if(!cards.length)return;
+      let cs=getComputedStyle(el);const cards=[...el.querySelectorAll('.rseat')];if(!cards.length)return;
       const px=v=>parseFloat(v)||0;
+      const width=el.clientWidth-px(cs.paddingLeft)-px(cs.paddingRight), height=el.clientHeight-px(cs.paddingTop)-px(cs.paddingBottom);
+      const narrow=innerWidth<=560, shortLandscape=innerHeight<=560&&innerWidth>innerHeight;
+      const normalColumns=room.mode==='solo'?1:narrow?2:cards.length, normalRows=Math.ceil(cards.length/normalColumns);
+      // Decide from the expanded plate's minimum budget, not its already-squeezed height: role wrapping otherwise
+      // shrinks the portrait again and again. The avatar, host/self badges and an ellipsized name need 128 px.
+      const normalOverhead=Math.max(...cards.map(card=>{
+        const plate=card.querySelector('.rseat__plate'),s=getComputedStyle(plate);
+        return card.querySelector('.rseat__strip').offsetHeight+(plate.querySelector('.seat__content')?80:56)+px(s.marginTop)+px(s.marginBottom);
+      }));
+      const normalWidth=Math.min((width-px(cs.columnGap)*(normalColumns-1))/normalColumns,
+        ((height-px(cs.rowGap)*(normalRows-1))/normalRows-normalOverhead-8)/2);
+      const compact=narrow||shortLandscape||normalWidth<128;
+      const compactColumns=room.mode==='solo'?1:shortLandscape?4:narrow?2:(width-3*px(cs.columnGap))/4>=134?4:2;
+      el.classList.toggle('seats--compact',compact);
+      el.style.setProperty('--room-compact-columns',String(compactColumns));
+      cs=getComputedStyle(el);
       const overhead=Math.max(...cards.map(card=>{
         const stacked=getComputedStyle(card).display!=='grid';
         return [...card.children].filter(n=>n.classList.contains('rseat__strip')||(stacked&&n.classList.contains('rseat__plate')))
           .reduce((sum,n)=>{const s=getComputedStyle(n);return sum+n.offsetHeight+px(s.marginTop)+px(s.marginBottom);},0);
       }));
-      const width=el.clientWidth-px(cs.paddingLeft)-px(cs.paddingRight), height=el.clientHeight-px(cs.paddingTop)-px(cs.paddingBottom);
       // Narrow screens use two rows: each card must fit its own row, not the full seats region.
       const columns=room.mode==='solo'?1:Math.min(cards.length,cs.gridTemplateColumns.split(/\s+/).length);
       const rows=Math.ceil(cards.length/columns), rowHeight=(height-px(cs.rowGap)*(rows-1))/rows;
-      const minimum=getComputedStyle(cards[0]).display==='grid'?24:48;
+      const minimum=compact?24:128;
       const w=Math.max(minimum,Math.floor(Math.min(240,(width-px(cs.columnGap)*(columns-1))/columns,(rowHeight-overhead-8)/2)));
       if(el.style.getPropertyValue('--room-seat-width')!==w+'px')el.style.setProperty('--room-seat-width',w+'px');
     };
