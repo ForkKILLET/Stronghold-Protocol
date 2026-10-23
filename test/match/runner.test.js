@@ -15,6 +15,7 @@ import { validateC2S } from '../../shared/protocol.js';
 import { validateClientResult, runHeadless } from '../../server/match/fields.js';
 import { PHASE } from '../../shared/constants.js';
 import { DATA, makeMatch } from './harness.js';
+import { archivedCombatReader } from '../../public/js/battle/combatHistory.js';
 
 const DS = new DataSource(DATA, null);
 
@@ -563,13 +564,14 @@ test('1× and 4× pacing produce the same battle state after the same number of 
  test('completed per-round statistics reload from browser cache without counting replays twice', async () => {
  const data = new Map(); const storage = {getItem:k=>data.get(k), setItem:(k,v)=>data.set(k,v)};
  const r = rig({storage}); const start = realStart(7355);
- r.store.patch('match', {public:{phase:PHASE.COMBAT, round:2, combatHistoryKey:'cache-match'}});
+ r.store.patch('match', {public:{phase:PHASE.COMBAT, round:2, combatHistoryKey:'cache-match',matchId:'account-match'}});
  await r.runner.onStart(start); await r.settle(); r.advance(240000); await r.settle();
  const ownerId = start.spec.players[0].playerId;
  const expected = r.runner.combatMetrics({scope:'round', round:2, ownerId});
  assert.ok(expected.damage > 0); assert.deepEqual(r.runner.combatRounds({ownerId}), [2]);
  r.store.patch('match', {public:{phase:PHASE.PREP, round:3, combatHistoryKey:'cache-match'}});
  r.runner.dispose();
+ assert.deepEqual(archivedCombatReader(storage,{matchId:'account-match'}).combatMetrics({scope:'round',round:2,ownerId}),expected,'the finished local fight is available without a running match');
  const reload = rig({storage});
  reload.store.patch('match', {public:{phase:PHASE.PREP, round:3, combatHistoryKey:'cache-match'}});
  assert.deepEqual(reload.runner.combatMetrics({scope:'round', round:2, ownerId}), expected);

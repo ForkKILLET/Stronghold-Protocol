@@ -394,6 +394,10 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 ## 匿名用户档案
 
+- 2026-10-24 历史详情的作战统计使用 archivedCombatReader 读取 UUID 匹配的本机缓存快照，不默认读取 battleRunner；旧缓存只能用本人回放里的 combatHistoryKey 确认归属。保留最新一局缓存和原 version 1，matchId 为可选附加字段，不上传干员统计。不存在时明确提示并以破折号显示未知总数；历史只提供本局／逐回合范围。统计方形按钮与播放共用左侧操作区，不能恢复独占全宽播放栏；验证 history-combat、runner、archive-details.e2e 与 result-layout.e2e。
+
+- 2026-10-24 策略通过率的进度条与表头左对齐；回放列表只保留播放和统一高度的操作菜单入口，固定／取消固定移入菜单，保留名额校验和固定状态提示。菜单使用独立 grid gap，不继承列表按钮相邻 margin。
+
 - 2026-10-24 共享头像不叠加自己的六边形人物徽标；保留自身边框与房间身份文字。统一顶栏昵称下显示账户公开编号，不恢复 DOCTOR ARCHIVE 装饰字样；此处不使用会话短哈希。
 
 - 2026-10-24 公开博士编号为账户独立生成的稳定 4 位 Base32，不能拿会话四位哈希／内部 UUID 当公开标识或凭证。public_profile_schema 2 将旧长编号一次性重发为四位，迁移前自动一致备份；不保留旧长编号别名，保留原账户／回放 schema、公开设置与逐条回放授权。五项公开设置默认全关；匿名公开接口只返回允许栏目，不创建账户、不返回内部 UUID／本机记录／私有汇总。回放公开须总开关与本人逐条授权同时成立，授权随个人保存关系淘汰；服务器仅投影分享者经营视角，不能把队友私有状态发给浏览器再隐藏。私有完整录制不改。验证 test/users/public-profiles.test.js 与原账户／回放回归，说明见 docs/USERS.md、docs/REPLAYS.md。

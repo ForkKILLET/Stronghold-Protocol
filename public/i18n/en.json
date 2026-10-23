@@ -2662,5 +2662,7 @@
   "仅展示逐条设为公开的回放；关闭后所有回放链接停止提供内容。": "Only individually shared replays are public. Disabling this revokes access through all replay links.",
   "昵称、头像和博士编号始终可见。编号用于分享，不是恢复码。": "Nickname, avatar and Doctor ID are always visible. Your ID is for sharing, not account recovery.",
   "公开回放展示自己的经营过程与各战场，仍可看到队友当局昵称和阵容；不包含队友私有经营状态。": "Public replays show your preparation and all battlefields, including teammates' match names and lineups, but not their private preparation state.",
-  "展示累计杯数；成就需另行开启公开。": "Show total trophies. Achievement visibility is controlled separately."
+  "展示累计杯数；成就需另行开启公开。": "Show total trophies. Achievement visibility is controlled separately.",
+  "此设备未保存该局的干员伤害明细。": "This device has no operator damage details saved for this match.",
+  "仅显示此设备保存的该局明细；其它设备或已被替换的本地记录不可用。": "Only this match’s details saved on this device are shown; records from other devices or replaced local records are unavailable."
 }

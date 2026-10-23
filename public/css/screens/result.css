@@ -77,7 +77,12 @@
 .rstat b { font-size: calc(.18 * var(--utility-text, var(--t))); color: #fff; }
 .rstat.is-best b { color: var(--gold); }
 
-.result__metrics { position: fixed; z-index: 55; }
+.result__actions { --result-action-size:40px; position:relative; z-index:3; display:flex; align-items:center; flex-wrap:wrap; gap:8px; flex:none; margin-top:auto; width:100%; }
+.result__actions > .btn { box-sizing:border-box; height:var(--result-action-size); min-height:var(--result-action-size); font-size:max(calc(.16 * var(--utility-text,var(--t))),12px); }
+.result__actions > .btn--square { width:var(--result-action-size); min-width:var(--result-action-size); padding:0; flex:none; }
+.result__actions > .btn--square .btn__icon { width:18px; height:18px; }
+.result__actions > .combat-metrics { z-index:55; }
+@media (max-width:760px),(pointer:coarse) { .result__actions { --result-action-size:44px; } }
 
 /* (stronghold-ui package: 对局动画与结算 — appended by tools/install.mjs) */
 

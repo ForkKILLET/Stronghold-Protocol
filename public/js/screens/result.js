@@ -17,7 +17,7 @@ import { PageHeader } from '../ui/pageHeader.js';
 //                          activatedLayers?, lpLost?, perfectRounds? } }] }
 
 import { useEffect, useState } from '../../vendor/hooks.module.js';
-import { html, Icon, MicroLabel, DifficultyTag } from '../ui/components.js';
+import { html, Icon, MicroLabel, DifficultyTag, Button } from '../ui/components.js';
 import { useGameData, Img, UnitThumb, BandIcon, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
 import { ResultAvatar } from '../ui/resultAvatar.js';
 import { normalizeResult, fmtNum, diyRecordFor, cardStandIn, standInForText } from '../ui/gameLogic.js';
@@ -127,9 +127,9 @@ export function ResultScreen() {
  * `content`: the room's content (room.state.content, or a stats record's) — gameplay plugins mark the result unofficial
  * (DESIGN §32.6).
  * The containing settlement/history page supplies the shared header and return action.
- * @param {{ res: any, pub?: any, myId?: string|null, quiet?: boolean, content?: any }} props
+ * @param {{ res: any, pub?: any, myId?: string|null, quiet?: boolean, content?: any, actions?: any, metricsRunner?: any, metricsLoading?: boolean, onMetricsOpen?: Function }} props
  */
-export function ResultView({ res, pub = null, myId = null, quiet = false, content = null }) {
+export function ResultView({ res, pub = null, myId = null, quiet = false, content = null, actions = null, metricsRunner, metricsLoading = false, onMetricsOpen }) {
   const gd = useGameData();
   const [metricsOpen, setMetricsOpen] = useState(false);
   const r = normalizeResult(res, pub);
@@ -173,6 +173,12 @@ export function ResultView({ res, pub = null, myId = null, quiet = false, conten
         </div>
         ${mins ? html`<p class="result__time t-lo">${tParts('本局耗时 {n} 分钟', { n: html`<b class="num">${mins}</b>`, mins })}</p>` : null}
         </div>
+        ${r.players.some(p=>p.playerId===myId&&!p.isBot)||actions?html`<div class="result__actions result__metrics">
+          ${r.players.some(p=>p.playerId===myId&&!p.isBot)?html`
+            ${metricsOpen?html`<${CombatMetricsPanel} myId=${myId} runner=${metricsRunner} historical=${quiet} loading=${metricsLoading} initialScope="round" onClose=${()=>setMetricsOpen(false)} />`:null}
+            <${Button} square=${true} variant="secondary" class="gm__metrics" icon="signal" title=${t('作战统计')} aria-label=${t('作战统计')} aria-expanded=${metricsOpen} aria-controls="combat-metrics-panel" onClick=${()=>{if(!metricsOpen)onMetricsOpen?.();setMetricsOpen(!metricsOpen);}} />`:null}
+          ${actions}
+        </div>`:null}
       </section>
       <section class="result__players">
         <h2 class="brief-h"><span>${t('同盟成员')}</span><${MicroLabel}>ALLIANCE REPORT</${MicroLabel}></h2>
@@ -181,10 +187,5 @@ export function ResultView({ res, pub = null, myId = null, quiet = false, conten
       </section>
       <div class="ui-slot" data-ui-slot="result.tab" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
     </main>
-    ${r.players.some(p => p.playerId === myId && !p.isBot) ? html`<div class="gm__corner result__metrics">
-      ${metricsOpen ? html`<${CombatMetricsPanel} myId=${myId} initialScope="round" onClose=${() => setMetricsOpen(false)} />` : null}
-      <button type="button" class="gm__gear gm__metrics" title=${t('作战统计')} aria-label=${t('作战统计')} aria-expanded=${metricsOpen}
-        aria-controls="combat-metrics-panel" onClick=${() => setMetricsOpen(!metricsOpen)}><${Icon} name="signal" /></button>
-    </div>` : null}
   </div>`;
 }

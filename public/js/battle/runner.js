@@ -193,6 +193,7 @@ export function createBattleRunner(deps) {
   /** @type {Map<string, any>} battleId → entry */
   const entries = new Map();
   let historyKey = null;
+  let historyMatchId = null;
   let storage = deps.storage;
   if (storage === undefined) { try { storage = typeof window !== 'undefined' ? window.localStorage : null; } catch { storage = null; } }
   const combatHistory = new Map(); // compact snapshots of locally simulated battles in this match
@@ -200,7 +201,7 @@ export function createBattleRunner(deps) {
     if (!e.combatMetrics) return;
     const record = { ...e.combatMetrics(), round: e.spec.round };
     if (!(combatHistory.get(e.battleId)?.seconds > record.seconds)) combatHistory.set(e.battleId, record);
-    saveCombatHistory(storage, historyKey, combatHistory);
+    saveCombatHistory(storage, historyKey, combatHistory, {matchId: historyMatchId});
   };
   /** @type {Map<string, any>} battleId → entry of a b.start still being prepared (prepare(); `battle` null until built) */
   const pending = new Map();
@@ -918,9 +919,10 @@ export function createBattleRunner(deps) {
       }
       if (changedHistory) {
         historyKey = pub.combatHistoryKey;
+        historyMatchId = pub.matchId || null;
         for (const [id, record] of loadCombatHistory(storage, historyKey)) combatHistory.set(id, record);
       }
-      if (!pub) historyKey = null;
+      if (!pub) { historyKey = null; historyMatchId = null; }
       lastRound = round;
       // solo pause (DESIGN §14): the local battle clocks follow m.public.paused
       setPaused(!!(pub && pub.paused));

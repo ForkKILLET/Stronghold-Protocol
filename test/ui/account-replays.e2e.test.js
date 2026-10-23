@@ -45,8 +45,13 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
    await page.click('.stats-entry');await page.waitForSelector('.st-tab[data-tab=history]');await page.click('.st-tab[data-tab=history]');
    await page.waitForSelector('.st-replay-actions .btn');
    await page.screenshot({path:new URL(`${engine}-history.png`,out).pathname});
-   await page.click('.st-replay-actions button[aria-pressed]');
-   await page.waitForSelector('.st-replay-actions button[aria-pressed=true]');
+   await page.click('.st-replay-actions button[aria-label="回放操作"]');await page.waitForSelector('.doctor-replay-menu');
+   await page.click('.doctor-replay-menu button[aria-pressed=false]');await page.waitForSelector('.doctor-replay-menu',{hidden:true});
+   await page.click('.st-replay-actions button[aria-label="回放操作"]');await page.waitForSelector('.doctor-replay-menu button[aria-pressed=true]');
+   await page.evaluate(async()=>{for(const a of document.getAnimations())if(Number.isFinite(a.effect?.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);});
+   const buttons=await page.$$eval('.doctor-replay-menu > .btn',els=>els.map(e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,height:r.height};}));
+   assert.ok(buttons.every(r=>Math.abs(r.left-buttons[0].left)<=1&&Math.abs(r.right-buttons[0].right)<=1&&r.height>=44),'menu buttons have matching edges and tappable height: '+JSON.stringify(buttons));
+   await page.screenshot({path:new URL(`${engine}-replay-menu.png`,out).pathname});await page.keyboard.press('Escape');await page.waitForSelector('.doctor-replay-menu',{hidden:true});
    assert.equal(await page.$('.st--replay'),null,'pinning does not open settlement');
    wire.length=0;
    await page.click('.st-replay-actions button:first-child');await page.waitForSelector('.st--playback');

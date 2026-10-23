@@ -112,7 +112,7 @@
 .st-band { display: inline-flex; align-items: center; gap: calc(.06 * var(--ui-unit, 1rem)); color: var(--text-hi); white-space: nowrap; vertical-align: middle; }
 .st-band .bandicon { flex: none; }
 .st-t { font-family: var(--font-num); font-size: max(calc(.15 * var(--utility-text, var(--t))), 10px); color: var(--text-lo); white-space: nowrap; }
-.st-rate { white-space: nowrap; }
+.st-rate { white-space: nowrap; text-align: left; }
 .st-rate b { color: var(--text-hi); font-weight: 700; }
 .st-bar { display: inline-block; width: max(calc(.8 * var(--ui-unit, 1rem)), 48px); height: max(calc(.07 * var(--ui-unit, 1rem)), 4px); margin-right: calc(.1 * var(--ui-unit, 1rem)); vertical-align: middle; background: var(--line); }
 .st-bar i { display: block; height: 100%; background: var(--mint-500); }

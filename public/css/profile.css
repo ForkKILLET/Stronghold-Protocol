@@ -20,6 +20,7 @@
 .doctor-privacy .set-toggle i::after { width:12px; height:12px; top:2px; left:2px; }
 .doctor-privacy .set-toggle.is-on i::after { transform:translateX(14px); }
 .doctor-replay-menu { display:grid; gap:10px; margin:16px 0; }
+.doctor-replay-menu > .btn { box-sizing:border-box; width:100%; min-height:44px; margin:0; justify-content:center; }
 .st-replay-visibility { color:var(--text-lo); font-size:12px; white-space:nowrap; }
 .public-doctor,.public-doctor-playback > .st { z-index:56; }
 .doctor-public-tag { flex:none; padding:4px 8px; border:1px solid var(--mint-800); color:var(--mint-400); font-size:12px; }
@@ -67,10 +68,14 @@
 
 /* Replay controls share the archive's quiet borders, square corners and mint active state. */
 .st-replay-actions { white-space:nowrap; }
-.st-replay-actions .btn + .btn { margin-left:6px; }
+.st-replay-controls { --replay-action-size:36px; display:inline-flex; align-items:center; gap:8px; }
+.st-replay-controls > .btn { box-sizing:border-box; height:var(--replay-action-size); min-height:var(--replay-action-size); font-size:max(calc(.15 * var(--utility-text,var(--t))),12px); }
+.st-replay-controls > .btn--square { width:var(--replay-action-size); min-width:var(--replay-action-size); padding:0; }
+.st-replay-visibility { display:inline-flex; align-items:center; gap:4px; }
+.st-replay-visibility > .icon { width:14px; height:14px; color:var(--mint-400); }
+@media (max-width:760px),(pointer:coarse) { .st-replay-controls { --replay-action-size:44px; } }
 .st-no-replay,.st-replay-quota { color:var(--text-lo); font-size:max(calc(.13 * var(--utility-text,var(--t))),12px); }
 .doctor-history-tools { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
-.st-detail-replay { padding:8px 20px; border-bottom:1px solid var(--line-2); }
 .st--playback { --replay-font:max(calc(.14 * var(--utility-text,var(--t))),12px); font-size:var(--replay-font); overflow:hidden; }
 .replay-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; padding:8px 16px; border-bottom:1px solid var(--line-2); }
 .replay-toolbar label { display:flex; align-items:center; gap:8px; min-width:0; color:var(--text-lo); }

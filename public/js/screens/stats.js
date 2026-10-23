@@ -3,6 +3,7 @@ import {profileStore,ProfileEditor,ProfileRecovery,ProfileVisibility,DoctorAvata
 import {publicDoctorStore,doctorLink,ensureDoctorStyles} from '../ui/doctorLinks.js';
 import {formatDoctorId} from '../../../shared/publicProfiles.js';
 import {copyText} from '../ui/clipboard.js';
+import {archivedCombatReader} from '../battle/combatHistory.js';
 import {AchievementContent} from '../ui/achievements.js';
 import {achievementStats} from '../../../shared/achievementStats.js';
 import {mergeAccountHistory} from '../../../shared/userStats.js';
@@ -167,7 +168,7 @@ export function Bands({ agg, gd }) {
   const rows = Object.entries(agg.bands).sort((a, b) => (b[1].games - a[1].games) || (b[1].wins - a[1].wins));
   return html`<${Section} title=${t('策略')} micro="STRATEGIES">
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table">
-      <thead><tr><th>${t('策略')}</th><th class="num">${t('使用局数')}</th><th class="num">${t('通过局数')}</th><th class="num">${t('通过率')}</th></tr></thead>
+      <thead><tr><th>${t('策略')}</th><th class="num">${t('使用局数')}</th><th class="num">${t('通过局数')}</th><th class="st-rate">${t('通过率')}</th></tr></thead>
       <tbody>
         ${rows.map(([bandId, v]) => {
           const band = gd.band(bandId);
@@ -176,7 +177,7 @@ export function Bands({ agg, gd }) {
             <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : bandId}</span></td>
             <td class="num">${fmtNum(v.games)}</td>
             <td class="num">${fmtNum(v.wins)}</td>
-            <td class="num st-rate"><span class="st-bar" aria-hidden="true"><i style=${`width:${rate}%`}></i></span><b>${pct(v.wins, v.games)}</b></td>
+            <td class="st-rate"><span class="st-bar" aria-hidden="true"><i style=${`width:${rate}%`}></i></span><b class="num">${pct(v.wins, v.games)}</b></td>
           </tr>`;
         })}
       </tbody>
@@ -201,14 +202,15 @@ export function CombatSums({ agg }) {
 }
 
 /** One 对局记录 row: what it was, who won, whether it counted and whether the settlement can be re-viewed. */
-function ReplaySharing({rec,busy,onShare,publicId,allowSharing}){
+function ReplayMenu({rec,busy,onPin,onShare,publicId,allowSharing,quota}){
   const [open,setOpen]=useState(false);
-  return html`<${Button} size="sm" variant="ghost" icon="dots" aria-label=${t('回放操作')} onClick=${()=>setOpen(true)} />
+  return html`<${Button} size="sm" square=${true} variant="ghost" icon="dots" aria-label=${t('回放操作')} onClick=${()=>setOpen(true)} />
     <${Modal} open=${open} title=${t('回放操作')} micro="REPLAY MANAGEMENT" utility=${true} onClose=${()=>setOpen(false)}>
       <p class="profile-note">${!allowSharing?t('回放公开总开关已关闭，此回放不会对外提供。'):rec.replay.shared?t('此回放已公开，可通过链接观看。'):t('此回放仅本人可见。')}</p>
-      <div class="doctor-replay-menu"><${Button} variant="secondary" icon="eye" disabled=${busy} onClick=${async()=>{await onShare(rec);setOpen(false);}}>${rec.replay.shared?t('设为私密'):t('设为公开')}<//>
+      <div class="doctor-replay-menu"><${Button} variant="secondary" icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${async()=>{await onPin(rec);setOpen(false);}}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>
+       ${publicId?html`<${Button} variant="secondary" icon="eye" disabled=${busy} onClick=${async()=>{await onShare(rec);setOpen(false);}}>${rec.replay.shared?t('设为私密'):t('设为公开')}<//>
         <${Button} variant="secondary" icon="copy" disabled=${!allowSharing||!rec.replay.shared} onClick=${async()=>{const ok=await copyText(doctorLink(publicId,rec.matchId));toast(ok?t('已复制回放链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制回放链接')}<//>
-        ${!allowSharing?html`<${Button} variant="ghost" icon="settings" onClick=${()=>{setOpen(false);profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}</div>
+        ${!allowSharing?html`<${Button} variant="ghost" icon="settings" onClick=${()=>{setOpen(false);profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}`:null}</div>
       <p class="profile-note">${t('公开不会自动固定回放；若需长期分享，请先固定。')}</p>
     <//>`;
 }
@@ -234,8 +236,8 @@ function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSh
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}
       ${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
     <td class="num st-round">${known ? fmtNum(rounds) : '—'}</td>
-    <td class="st-replay-actions" onClick=${e=>e.stopPropagation()}>${rec.replay?.available?html`<${Button} size="sm" variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>onPlay(rec)}>${t('播放')}<//><${Button} size="sm" variant=${rec.replay.pinned?'primary':'ghost'} icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${()=>onPin(rec)}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>
-     ${publicId?html`<${ReplaySharing} rec=${rec} busy=${busy} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} />`:null}<span class="st-replay-visibility">${allowSharing&&rec.replay.shared?t('公开'):t('私密')}</span>`:html`<span class="st-no-replay">${t('无回放')}</span>`}</td>
+    <td class="st-replay-actions" onClick=${e=>e.stopPropagation()}>${rec.replay?.available?html`<div class="st-replay-controls"><${Button} size="sm" variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>onPlay(rec)}>${t('播放')}<//>
+     <${ReplayMenu} rec=${rec} busy=${busy} onPin=${onPin} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} quota=${quota} /><span class="st-replay-visibility">${rec.replay.pinned?html`<${Icon} name="pin" aria-label=${t('固定')} />`:null}${allowSharing&&rec.replay.shared?t('公开'):t('私密')}</span></div>`:html`<span class="st-no-replay">${t('无回放')}</span>`}</td>
     <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
   </tr>`;
 }
@@ -261,11 +263,26 @@ function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, on
 }
 
 /** A stored match re-viewed as its settlement screen: the full game data is loaded now (the lobby alone never loads it). */
-function Replay({ rec }) {
+function Replay({ rec, actions, offline }) {
   const gd = useGameData();
   const res = useMemo(() => recordToResult(rec), [rec]);
+  const readMetrics=matchKey=>{let storage;try{storage=globalThis.localStorage;}catch{/* unavailable */}return archivedCombatReader(storage,{matchId:rec.matchId,matchKey});};
+  const [metrics,setMetrics]=useState(()=>readMetrics()),[metricsLoading,setMetricsLoading]=useState(false);
+  const flight=useRef(null);
+  useEffect(()=>()=>flight.current?.abort(),[]);
+  const loadMetrics=async()=>{
+    if(!metrics.legacy||flight.current||!rec.replay?.available||offline)return;
+    const controller=new AbortController();flight.current=controller;setMetricsLoading(true);
+    try{
+      // Older caches lack a match UUID. Resolve their exact cache key from the owned recording, never guess by player name.
+      const {replay}=await userRequest('/api/user/replay?matchId='+encodeURIComponent(rec.matchId),undefined,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])});
+      const matchKey=replay.events.find(e=>e.kind==='view'&&e.key==='public'&&e.full?.combatHistoryKey)?.full.combatHistoryKey;
+      if(!controller.signal.aborted)setMetrics({...readMetrics(matchKey),legacy:false});
+    }catch{if(!controller.signal.aborted)toast(t('回放读取失败，请稍后重试。'),'warn');}
+    finally{if(!controller.signal.aborted)setMetricsLoading(false);flight.current=null;}
+  };
   if (!gd.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;
-  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} quiet=${true} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
+  return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} quiet=${true} actions=${actions} metricsRunner=${metrics} metricsLoading=${metricsLoading} onMetricsOpen=${loadMetrics} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
 }
 
 /** The overlay, rendered while open (its data hooks run only then). */
@@ -310,7 +327,7 @@ function StatsScreen({ tab }) {
   useEffect(() => { if (!matchAtOpen.current && inMatch) closeStats();matchAtOpen.current=inMatch; }, [inMatch]);
   useEffect(() => {
     const onKey = (e) => {
-      if(publicDoctorStore.get().open)return;
+      if(publicDoctorStore.get().open||boxRef.current?.querySelector('.combat-metrics'))return;
       if (e.key !== 'Escape' || document.querySelector('.modal,.game-select-popover')) return; // a confirm dialog on top takes the Esc
       e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       if(playbackRef.current)setPlayback(null);else if (replayRef.current) setReplay(null); else closeStats();
@@ -399,8 +416,7 @@ function StatsScreen({ tab }) {
 
   if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
     <${PageHeader} onBack=${() => setReplay(null)} backTitle=${t('返回统计')} title=${t('对局记录')} micro="MATCH RECORD" />
-    ${replay.replay?.available?html`<div class="st-detail-replay"><${Button} variant="secondary" size="sm" icon="play" disabled=${replayBusy||inMatch||offline} onClick=${()=>playReplay(replay)}>${t('播放回放')}<//></div>`:null}
-    <${Replay} rec=${replay} />
+    <${Replay} rec=${replay} offline=${offline} actions=${replay.replay?.available?html`<${Button} variant="secondary" size="sm" icon="play" disabled=${replayBusy||inMatch||offline} onClick=${()=>playReplay(replay)}>${t('播放回放')}<//>`:null} />
   </div>`;
 
   const empty = !records.length;
