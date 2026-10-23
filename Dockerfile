@@ -74,6 +74,7 @@ COPY --from=build /app/CHANGELOG.md ./CHANGELOG.md
 # the Spine and atlas parsers the plugin packer and the plugin studio use (server/plugins/pack.js, server/studio/)
 COPY --from=build /app/tools/assets ./tools/assets
 COPY --from=build /app/tools/plugin.mjs ./tools/plugin.mjs
+COPY --from=build /app/tools/server-config.mjs ./tools/server-config.mjs
 COPY --from=build /app/test/helpers/battleHarness.js ./test/helpers/battleHarness.js
 COPY --from=build /app/schemas ./schemas
 COPY --from=build /app/docs/PLUGIN*.md /app/docs/plugin-catalog.example.json ./docs/

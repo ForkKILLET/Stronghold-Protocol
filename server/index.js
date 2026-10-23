@@ -34,6 +34,7 @@ import {openUserStore} from './users/store.js';
 import {createUserApi} from './users/http.js';
 import {telemetryToken,startTelemetry} from './admin/telemetry.js';
 import { nameModerationFromEnv } from './nameModeration.js';
+import {resolveServerConfig} from './runtimeConfig.js';
 import { createNameModerationRoute } from './http/nameModeration.js';
 import path from 'node:path';
 import { parseAssetCdn, parseEnvLimit, parseWsCompression } from './http/config.js';
@@ -80,6 +81,7 @@ export {
 /**
  * Build and start the HTTP + WebSocket server.
  * @param {{
+ *   serverConfigFile?: string | null | false, shutdownTimeoutMs?: number, maxSessions?: number,
  *   userFile?: string, adminToken?: string | null, adminPort?: number, adminHost?: string,
  *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
@@ -96,13 +98,17 @@ export {
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: import('ws').WebSocketServer,
  *                     lobby: import('./lobby.js').Lobby, network: import('./net.js').Network,
  *                     registry: import('./net.js').SessionRegistry, packs: ReturnType<typeof createPluginRegistry>,
- *                     traffic: ReturnType<typeof createTrafficCounter>, close: () => Promise<void> }>}
+ *                     traffic: ReturnType<typeof createTrafficCounter>, runtimeConfig: object, close: () => Promise<void> }>}
  */
 export async function startServer(opts = {}) {
+  const log = opts.log || makeLogger(!!opts.quiet);
+  const resolved = resolveServerConfig(opts, {log});
+  opts = resolved.options;
+  const runtimeConfig = resolved.config;
+  log.info(`[config] file: ${runtimeConfig.file || '(none)'}; restart required to reload`);
   const administratorToken = telemetryToken(opts.adminToken);
   const nameModeration = opts.nameModeration !== undefined ? opts.nameModeration : nameModerationFromEnv();
   const { port, host } = listenAddress(opts);
-  const log = opts.log || makeLogger(!!opts.quiet);
   const { publicDir, dataDir, sharedDir, packsDir, pluginsDir } = serveDirs(opts);
   const simDir = path.join(ROOT, 'server', 'sim');
 
@@ -342,7 +348,7 @@ export async function startServer(opts = {}) {
   }
 
   return { port: actualPort, host: boundHost, url, server, wss, lobby, network, registry, packs, store: store || null, persister,
-    workerPool, matchWorkerPool, announcements, users, content, visual, contents, hosts, studio, traffic, telemetry:admin, close };
+    workerPool, matchWorkerPool, announcements, users, content, visual, contents, hosts, studio, traffic, runtimeConfig, telemetry:admin, close };
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).
