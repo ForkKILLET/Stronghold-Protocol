@@ -396,7 +396,7 @@ docs/SIM.md (the test harness section) and the patterns in `test/content/op_sieg
 
 - 2026-10-24 本机生产档案调试由 `tools/profile-debug.mjs` 单独提供：SSH 中以只读 SQLite 事务筛选本人结算／保留回放，不导出任何生产凭据／恢复码或其他账户行。新副本放入忽略的 `.state/profile-debug/`，私有权限并生成独立本地凭据；刷新不得覆盖旧库。固定身份只在该工具启动的回环服务器生效，不能加入普通开发／生产登录逻辑；显式关闭生产 Redis／管理／通知／审核配置。浏览器伤害缓存不冒充服务器数据。说明见 docs/USERS.md，回归 test/users/profile-debug.test.js。
 
-- 2026-10-24 历史详情的作战统计使用 archivedCombatReader 读取 UUID 匹配的本机缓存快照，不默认读取 battleRunner；旧缓存只能用本人回放里的 combatHistoryKey 确认归属。保留最新一局缓存和原 version 1，matchId 为可选附加字段，不上传干员统计。不存在时明确提示并以破折号显示未知总数；历史只提供本局／逐回合范围。统计方形按钮与播放共用左侧操作区，不能恢复独占全宽播放栏；验证 history-combat、runner、archive-details.e2e 与 result-layout.e2e。
+- 2026-10-24 用户确认逐回合作战统计入库：combat_schema 1 附件独立于结算／回放格式及回放淘汰，服务端战场清单随检查点和结算 outbox 保存。只上传本人行，按账户／对局／战场去重，校验规则身份／回合／有限数值及预算；完整记录不得被部分记录覆盖。始终采集，不增加开关、不进入 b.progress／b.result，不作为可信排名。客户端有限持久重试队列按账户隔离；历史服务器优先、本机 UUID 匹配数据补充，旧缓存须本人回放确认 combatHistoryKey。缺失不当零，统计／播放共用原方形操作区。公开档案授权不扩张；本机调试快照复制本人附件。说明见 docs/COMBAT_STATS.md，回归 users/combat、ui/combat-sync、runner、account-combat.e2e 和原档案／回放测试。
 
 - 2026-10-24 策略通过率的进度条与表头左对齐；回放列表只保留播放和统一高度的操作菜单入口，固定／取消固定移入菜单，保留名额校验和固定状态提示。菜单使用独立 grid gap，不继承列表按钮相邻 margin。
 

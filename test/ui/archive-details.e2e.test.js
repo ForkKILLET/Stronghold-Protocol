@@ -65,7 +65,7 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   await open();await page.locator('.gm__metrics').click();await page.waitForSelector('.combat-metrics__row');assert.equal(replayReads.length,1,'UUID caches need no replay request');
   await page.keyboard.press('Escape');await back();await page.evaluate(cache=>localStorage.setItem('sp.combat-history.v1',JSON.stringify(cache)),{...cache,matchId:'different-match'});
   await open();await page.locator('.gm__metrics').click();await page.waitForSelector('.combat-metrics__empty');
-  assert.match(await page.$eval('.combat-metrics__empty',e=>e.textContent),/此设备未保存该局/);assert.equal(await page.$eval('.combat-metrics__totals b',e=>e.textContent),'—');await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>document.querySelector('.combat-metrics__empty')?.textContent.includes('尚未记录'));assert.equal(await page.$eval('.combat-metrics__totals b',e=>e.textContent),'—');await page.keyboard.press('Escape');
   for(const [width,height] of [[1366,768],[844,390],[640,360]]){
    await page.setViewport({width,height,hasTouch:engine==='chrome'});await settle();layout=await geometry();assert.ok(layout.pageOverflow<=1);
    assert.ok(Math.abs(layout.buttons[0].width-layout.buttons[0].height)<=1);

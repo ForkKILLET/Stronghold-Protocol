@@ -2398,7 +2398,7 @@ export class Lobby {
   }
 
   recordUserResult(ctx,summary,room=null){
-    const {replay,...settlement}=summary || {};summary=settlement;
+    const {replay,combat,...settlement}=summary || {};summary=settlement;
     if(!this.users || !summary?.matchId || !Array.isArray(summary.players))return;
     const frame={...summary,roomMode:room?.mode || (summary.modeId?.includes('_single_')?'solo':'coop'),
       content:room?.modded?{cs:room.content.cs,plugins:(room.content.plugins || []).map(p=>`${p.id}@${p.version}`)}:null};
@@ -2406,7 +2406,7 @@ export class Lobby {
       playerId:p.playerId,victory:!!p.victory,rounds:Number(p.roundsPassed)||0,payload:{...p,frame:Object.fromEntries(Object.entries(frame).filter(([key])=>key!=='players'))}})).filter(p=>p.userId);
     if(!rows.length)return;
     if(!this.userOutbox.has(summary.matchId)){
-      this.userOutbox.set(summary.matchId,{id:summary.matchId,endedAt:Date.now(),mode:summary.modeId || '',difficulty:summary.difficulty || '',source:'server',rows,replay});
+      this.userOutbox.set(summary.matchId,{id:summary.matchId,endedAt:Date.now(),mode:summary.modeId || '',difficulty:summary.difficulty || '',source:'server',rows,replay,combat});
       this.onUserResultStaged?.();
     }
     this.flushUserResults();

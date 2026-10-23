@@ -1,4 +1,5 @@
 import {installReplays} from './replays.js';
+import {installCombat} from './combat.js';
 import {installPublicProfiles,PUBLIC_PROFILE_SCHEMA_VERSION} from './publicProfiles.js';
 import {publicReplay} from '../replays/public.js';
 import {gzipSync} from 'node:zlib';
@@ -35,6 +36,7 @@ if(version===1 && workerData.file!==':memory:' && publicVersion<PUBLIC_PROFILE_S
 }
 const replays=installReplays(db,workerData.replays);
 const publicProfiles=installPublicProfiles(db);
+const combat=installCombat(db);
 const q=sql=>db.prepare(sql);
 const profile=id=>{const user=q('SELECT id,name,avatar_id AS avatarId,created_at AS createdAt FROM users WHERE id=?').get(id);return user?{...user,...publicProfiles.ensure(id)}:null;};
 function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
@@ -47,11 +49,12 @@ const methods={
  update({id,name,avatarId}){q('UPDATE users SET name=?,avatar_id=? WHERE id=?').run(name,avatarId,id);return profile(id);},
  recovery({id}){return transaction(()=>{const code='SP-'+secret();q('DELETE FROM recovery WHERE user_id=?').run(id);q('INSERT INTO recovery(hash,user_id) VALUES(?,?)').run(hash(code),id);return {code};});},
  recover({code}){return transaction(()=>{const row=q('SELECT user_id FROM recovery WHERE hash=?').get(hash(code));if(!row)return null;q('DELETE FROM recovery WHERE hash=?').run(hash(code));return {user:profile(row.user_id),token:credential(row.user_id)};});},
- record({id,endedAt,mode,difficulty,source,rows,replay}){return transaction(()=>{
+ record({id,endedAt,mode,difficulty,source,rows,replay,combat:manifest}){return transaction(()=>{
   const fresh=Number(q('INSERT OR IGNORE INTO games(id,ended_at,mode,difficulty,source) VALUES(?,?,?,?,?)').run(id,endedAt,mode,difficulty,source).changes);
   let inserted=0;
   for(const row of rows){if(!profile(row.userId))continue;inserted+=Number(q('INSERT OR IGNORE INTO results(game_id,user_id,player_id,victory,rounds,payload) VALUES(?,?,?,?,?,?)').run(id,row.userId,row.playerId,row.victory?1:0,row.rounds,JSON.stringify(row.payload)).changes);}
   if(fresh)replays.record(id,rows,replay);
+  combat.record(id,rows,manifest);
   return {inserted};
  });},
  stats({id,before=null,modded=false}){
@@ -69,6 +72,8 @@ const methods={
   return {userId:id,replays:replays.status(id),summary,aggregate,achievements,...(before===null?{matchIds:all.map(r=>r.id)}:{}),records:rows.map(r=>({...r,replay:replays.entry(id,r.id),victory:!!r.victory,payload:JSON.parse(r.payload)})),next};
  },
  replay(args){return replays.get(args);},
+ combat(args){return combat.get(args);},
+ putCombat(args){return transaction(()=>combat.put(args));},
  replayBody(args){return replays.body(args);},
  pinReplay(args){return replays.pin(args);},
  visibility({id,visibility}){const result=publicProfiles.update(id,visibility);return result.error?result:{user:profile(id)};},

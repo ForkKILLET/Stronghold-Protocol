@@ -23,6 +23,9 @@ async function fixture() {
   await store.call('record',game('g1',[owner,other]));
   await store.call('record',game('g2',[other]));
   await store.call('record',game('g3',[owner]));
+  await store.call('record',{...game('g3',[owner]),combat:{v:1,fields:[{battleId:'b1',round:1,fieldId:'f1',cs:null,seconds:10,players:['p0']}]}});
+  await store.call('putCombat',{id:owner.user.id,matchId:'g3',record:{v:1,battleId:'b1',round:1,fieldId:'f1',cs:null,seconds:10,complete:true,
+    rows:[{key:'one',ownerId:'p0',defId:'chess_amiya',name:'Owner operator',kind:'op',damage:100,healing:0,types:{phys:100,arts:0,true:0,elemental:0}}]}});
   await store.call('pinReplay',{id:owner.user.id,matchId:'g1',pinned:true});
   await store.call('visibility',{id:owner.user.id,visibility:{history:true,replays:true}});
   await store.call('shareReplay',{id:owner.user.id,matchId:'g1',shared:true});
@@ -72,6 +75,8 @@ test('import preserves profile, privacy, history ordering and replay bytes but u
       assert.equal(db.prepare('SELECT count(*) n FROM recovery').get().n,0);
       assert.equal(db.prepare('SELECT count(*) n FROM credentials').get().n,1);
       for (const r of f.snapshot.replays) assert.equal(Buffer.from(db.prepare('SELECT body FROM replays WHERE game_id=?').get(r.game_id).body).toString('base64'),r.body);
+      assert.equal(db.prepare('SELECT count(*) n FROM combat_records').get().n,1);
+      assert.equal(Buffer.from(db.prepare('SELECT body FROM combat_records').get().body).toString('base64'),f.snapshot.combatRecords[0].body);
     } finally {db.close();}
     store = await openUserStore(path.join(target,'users.sqlite'),{backups:null});
     assert.equal((await store.call('authenticate',{token})).publicId,f.owner.user.publicId);

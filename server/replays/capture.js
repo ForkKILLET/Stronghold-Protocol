@@ -1,6 +1,7 @@
 // Server-confirmed views + BattleSpecs. Never record chat, credentials, user IDs or arbitrary client input.
 import {diffState} from '../../shared/stateDelta.js';
 import {buildBattleSpec} from '../sim/spec.js';
+import {captureCombatSpec,captureCombatEnd} from '../users/combatCapture.js';
 const ACTIONS=new Set(['g.buy','g.refresh','g.freeze','g.levelUp','g.sell','g.move','g.equip','g.art','g.destroy','g.reward','g.choice','g.band','g.bandSkip','g.ready','g.infoReady','g.autoplay','g.pause']);
 const clone=value=>JSON.parse(JSON.stringify(value));
 function archive(m){
@@ -39,6 +40,7 @@ export function recordAction(m,ps,msg){
  const a=archive(m);if(a)add(m,a,{at:at(m,a),kind:'action',playerId:ps.playerId,action:msg.t});
 }
 export function recordSpec(m,opts){
+ captureCombatSpec(m,opts);
  try{
   const a=archive(m);if(!a)return;
   // Every actual field is recorded once, regardless of human connectivity or viewer changes.
@@ -51,6 +53,7 @@ export function recordSpec(m,opts){
  }catch{disable(m);}
 }
 export function recordEnd(m,f,result){
+ captureCombatEnd(m,f,result);
  try{
   const a=archive(m);if(!a)return;
   const entry=a.fields.findLast(x=>x.round===m.round&&x.fieldId===f.fieldId);if(!entry||entry.end)return;

@@ -1,4 +1,5 @@
 import {finishReplay} from '../../replays/capture.js';
+import {finishCombatCapture} from '../../users/combatCapture.js';
 // server/match/match/settle.js — Match methods: SETTLE (the LP loss — a leaker's 联防 survivors —, stats, bounty coins,
 // the IN_BATTLE layer gains clamped by layerGainRoom, CHAR_DAMAGE tickers, eliminations, the 联防 outcome the SETTLE
 // view carries) and RESULT (finish: m.result to every human still here, onEnd).
@@ -149,6 +150,7 @@ export class MatchSettle {
     const { t, ...summary } = result;
     void t;
     summary.errors = this.errorCount;
+    summary.combat=finishCombatCapture(this);
     const replay=finishReplay(this);
     if(replay)summary.replay=replay;
     try { this.onEndFn(summary); } catch (e) { this.reportError('onEnd', e); }

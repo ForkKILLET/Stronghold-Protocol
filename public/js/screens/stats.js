@@ -3,7 +3,8 @@ import {profileStore,ProfileEditor,ProfileRecovery,ProfileVisibility,DoctorAvata
 import {publicDoctorStore,doctorLink,ensureDoctorStyles} from '../ui/doctorLinks.js';
 import {formatDoctorId} from '../../../shared/publicProfiles.js';
 import {copyText} from '../ui/clipboard.js';
-import {archivedCombatReader} from '../battle/combatHistory.js';
+import {archivedCombatReader,mergeCombatReader} from '../battle/combatHistory.js';
+import {syncArchivedCombat} from '../battle/combatSync.js';
 import {AchievementContent} from '../ui/achievements.js';
 import {achievementStats} from '../../../shared/achievementStats.js';
 import {mergeAccountHistory} from '../../../shared/userStats.js';
@@ -269,16 +270,27 @@ function Replay({ rec, actions, offline }) {
   const readMetrics=matchKey=>{let storage;try{storage=globalThis.localStorage;}catch{/* unavailable */}return archivedCombatReader(storage,{matchId:rec.matchId,matchKey});};
   const [metrics,setMetrics]=useState(()=>readMetrics()),[metricsLoading,setMetricsLoading]=useState(false);
   const flight=useRef(null);
+  const metricsLoaded=useRef(false);
   useEffect(()=>()=>flight.current?.abort(),[]);
   const loadMetrics=async()=>{
-    if(!metrics.legacy||flight.current||!rec.replay?.available||offline)return;
+    if(metricsLoaded.current||flight.current||!rec.matchId||offline)return;
     const controller=new AbortController();flight.current=controller;setMetricsLoading(true);
     try{
-      // Older caches lack a match UUID. Resolve their exact cache key from the owned recording, never guess by player name.
-      const {replay}=await userRequest('/api/user/replay?matchId='+encodeURIComponent(rec.matchId),undefined,{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])});
-      const matchKey=replay.events.find(e=>e.kind==='view'&&e.key==='public'&&e.full?.combatHistoryKey)?.full.combatHistoryKey;
-      if(!controller.signal.aborted)setMetrics({...readMetrics(matchKey),legacy:false});
-    }catch{if(!controller.signal.aborted)toast(t('回放读取失败，请稍后重试。'),'warn');}
+      const options={signal:AbortSignal.any([controller.signal,AbortSignal.timeout(30000)])};
+      let local=metrics;
+      const {combat}=await userRequest('/api/user/combat?matchId='+encodeURIComponent(rec.matchId),undefined,options);
+      if(!controller.signal.aborted)setMetrics(mergeCombatReader(local,combat));
+      if(local.legacy && rec.replay?.available && combat.coverage.status!=='complete') {
+        const {replay}=await userRequest('/api/user/replay?matchId='+encodeURIComponent(rec.matchId),undefined,options);
+        const matchKey=replay.events.find(e=>e.kind==='view'&&e.key==='public'&&e.full?.combatHistoryKey)?.full.combatHistoryKey;
+        local={...readMetrics(matchKey),legacy:false};
+        if(!controller.signal.aborted)setMetrics(local);
+      }
+      if(!controller.signal.aborted) {
+        setMetrics(mergeCombatReader(local,combat));metricsLoaded.current=true;
+        syncArchivedCombat({matchId:rec.matchId,local,combat});
+      }
+    }catch{if(!controller.signal.aborted)setMetrics(current=>({...current,offline:true}));}
     finally{if(!controller.signal.aborted)setMetricsLoading(false);flight.current=null;}
   };
   if (!gd.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;

@@ -159,8 +159,7 @@ const SIM_LOGGER = Object.freeze({
  *   raf?: (fn: (t: number) => void) => any, caf?: (h: any) => void, setInterval?: Function, clearInterval?: Function,
  *   doc?: { hidden?: boolean, addEventListener?: Function } | null, logger?: object,
  *   combatMetrics?: boolean, createHost?: Function }} deps
- * `combatMetrics` true/false pins the 作战统计 meter for a test. Omit it and call setCombatMetrics (the settings
- * screen does; the default is off). A Worker host never attaches the meter.
+ * Both in-page and Worker hosts always collect accounting; opening the panel never changes simulation rules.
  */
 export function createBattleRunner(deps) {
   const net = deps.net;
@@ -199,9 +198,13 @@ export function createBattleRunner(deps) {
   const combatHistory = new Map(); // compact snapshots of locally simulated battles in this match
   const rememberCombat = (e) => {
     if (!e.combatMetrics) return;
-    const record = { ...e.combatMetrics(), round: e.spec.round };
+    const record = { ...e.combatMetrics(), v:1,battleId:e.battleId,round:e.spec.round,fieldId:e.fieldId,cs:e.spec.cs || null,
+      complete:!!(e.done && e.battle?.finished && !e.failed) };
     if (!(combatHistory.get(e.battleId)?.seconds > record.seconds)) combatHistory.set(e.battleId, record);
     saveCombatHistory(storage, historyKey, combatHistory, {matchId: historyMatchId});
+    const playerId=store?.get?.()?.me?.playerId;
+    if(historyMatchId && playerId && e.members.includes(playerId)) emit('combat',{matchId:historyMatchId,
+      record:{...record,owners:[playerId],rows:record.rows.filter(row=>row.ownerId===playerId)}});
   };
   /** @type {Map<string, any>} battleId → entry of a b.start still being prepared (prepare(); `battle` null until built) */
   const pending = new Map();
@@ -733,8 +736,7 @@ export function createBattleRunner(deps) {
       members: (msg.spec.players || []).map((p) => p && p.playerId).filter(Boolean),
       t0: null, lastProgressAt: -Infinity, done: false, resultSent: false,
       result: null, delivery: null,
-      // local-only combat accounting (battle/metrics.js), attached once the Battle exists; the 作战统计 panel reads
-      // it on demand — never sent to the server
+      // Read-only accounting; final own-player snapshots may be synced separately from battle result messages.
       combatMetrics: null,
       // counted leaks so far (normal fields; noteLeaks) and the Battle state they were counted at; 联防 fields: each
       // leaker's enemies still standing (noteUniteLeft)
@@ -950,7 +952,7 @@ export function createBattleRunner(deps) {
       return () => listeners.get(type)?.delete(fn);
     },
     state,
-    /** Local-only damage/healing; current battle or the match so far. Read on demand, never sent to the server. */
+    /** Damage/healing; current battle or the match so far. The live view reads without mutating the simulation. */
     combatRounds({ ownerId = null } = {}) {
       const records = [...combatHistory.values(), ...[...entries.values(), ...pending.values()].filter(e => e.combatMetrics).map(e => ({ ...e.combatMetrics(), round: e.spec.round }))];
       return [...new Set(records.filter(r => ownerId == null || r.owners.includes(ownerId)).map(r => r.round))].filter(Number.isInteger).sort((a, b) => a - b);

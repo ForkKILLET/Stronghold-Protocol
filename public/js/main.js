@@ -1,5 +1,7 @@
 import './ui/compat.js';
-import {initProfile} from './ui/profile.js';
+import {initProfile,profileStore,userRequest} from './ui/profile.js';
+import {battleRunner} from './battle/runner.js';
+import {installCombatSync} from './battle/combatSync.js';
 // Client entry: boot (fonts, identity, socket), net → store wiring, router, global overlays.
 //
 // Router (derived from the store, no URL routes):
@@ -495,6 +497,8 @@ async function boot() {
   }
   const identityReady = identity.init();
   await initProfile();
+  let combatStorage;try{combatStorage=globalThis.localStorage;}catch{/* private mode */}
+  installCombatSync({runner:battleRunner,store,profile:profileStore,request:userRequest,storage:combatStorage});
 
   const savedName = sanitizeName(identity.loadName());
   const entered = (identity.wasEntered() || !!spectateCode) && !!savedName;

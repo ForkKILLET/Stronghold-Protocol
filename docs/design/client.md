@@ -588,7 +588,8 @@ battle seconds, and dps / hps; the bar under the name is segmented by damage typ
 sort by damage. Same-name operators merge per player (`combineCombat`), summons count toward their owner, and the panel
 passes `myId` — it shows the own player only. 本局累计 keeps the last snapshot of every locally simulated battle
 (evicted replicas included; a replayed battle replaces its snapshot, never adds a second) until the match really
-restarts (a new match / a rewound round); a new round's prep clears only 当前战斗. Nothing here is sent to the server or
-enters b.progress / b.result, and a tracked battle's result and rendered events are byte-identical to an untracked one
+restarts (a new match / a rewound round); a new round's prep clears only 当前战斗. Final own-player snapshots can sync
+as private account attachments after settlement ([COMBAT_STATS.md](../COMBAT_STATS.md)); they never enter b.progress / b.result,
+and a tracked battle's result and rendered events are byte-identical to an untracked one
 (test/match/combat-metrics.test.js, test/match/runner.test.js). Ported from [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol)
 (其公开部署分支，作者 @临夏俨然) with thanks.

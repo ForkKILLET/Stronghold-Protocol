@@ -22,9 +22,9 @@ export function createUserApi({users,registry,lobby,data,content,moderation,trus
   let v=limits.get(key);if(!v||v.until<now){v={until:now+60000,count:0};limits.set(key,v);}
   return ++v.count<=(kind==='recover'?8:60);
  }
- async function body(req){
+ async function body(req,maxBytes=8192){
   if(!/^application\/json(?:\s*;|$)/i.test(String(req.headers['content-type']||'')))throw Object.assign(new Error(),{status:415});
-  let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>8192)throw Object.assign(new Error(),{status:413});chunks.push(chunk);}
+  let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>maxBytes)throw Object.assign(new Error(),{status:413});chunks.push(chunk);}
   try{const value=JSON.parse(Buffer.concat(chunks));if(!value||typeof value!=='object'||Array.isArray(value))throw new Error();return value;}catch{throw Object.assign(new Error(),{status:400});}
  }
  function active(id){return [...registry.all()].some(s=>s.userId===id&&lobby.activeMatchOf(s)?.match&&!lobby.activeMatchOf(s)?.ended);}
@@ -59,6 +59,20 @@ export function createUserApi({users,registry,lobby,data,content,moderation,trus
     json(req,res,200,{user});return true;
    }
    if(!user){json(req,res,401,{error:'AUTH'});return true;}
+   if(pathname==='/api/user/combat'){
+    if(req.method==='GET'){
+     const matchId=new URL(req.url,'http://local').searchParams.get('matchId');
+     if(!/^[A-Za-z0-9_-]{1,160}$/.test(matchId||'')){json(req,res,400,{error:'MATCH_ID'});return true;}
+     const result=await users.call('combat',{id:user.id,matchId});json(req,res,result.error?404:200,result);return true;
+    }
+    if(req.method==='POST'){
+     const input=await body(req,66000);
+     if(!/^[A-Za-z0-9_-]{1,160}$/.test(input.matchId||'')){json(req,res,400,{error:'MATCH_ID'});return true;}
+     const result=await users.call('putCombat',{id:user.id,matchId:input.matchId,record:input.record});
+     json(req,res,result.error==='COMBAT_NOT_FOUND'?404:result.error==='COMBAT_SIZE'?413:result.error?400:200,result);return true;
+    }
+    json(req,res,405,{error:'METHOD'});return true;
+   }
    if(pathname==='/api/user/stats'&&req.method==='GET'){
     const cursor=new URL(req.url,'http://local').searchParams.get('before');
     const before=cursor==null?null:Number(cursor);if(before!=null&&(!Number.isSafeInteger(before)||before<1)){json(req,res,400,{error:'CURSOR'});return true;}

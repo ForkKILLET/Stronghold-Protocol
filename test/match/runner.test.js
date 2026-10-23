@@ -592,3 +592,18 @@ test('switching matches while a battle is active never saves old battle records 
  assert.deepEqual(reload.runner.combatRounds(),[]);
  r.runner.dispose();reload.runner.dispose();
 });
+
+test('finished own battles emit compact account snapshots; a spectator never submits the watched field',async()=>{
+ const r=rig(),start=realStart(7357),ownerId=start.spec.players[0].playerId,snapshots=[];
+ try {
+  r.store.set({me:{playerId:ownerId}});
+  r.store.patch('match',{public:{phase:PHASE.COMBAT,round:2,combatHistoryKey:'sync',matchId:'account-sync'}});
+  r.runner.on('combat',snapshot=>snapshots.push(snapshot));
+  await r.runner.onStart(start);await r.settle();r.advance(240000);await r.settle();
+  assert.ok(snapshots.length>0);const last=snapshots.at(-1);
+  assert.equal(last.matchId,'account-sync');assert.equal(last.record.battleId,start.battleId);assert.equal(last.record.round,2);
+  assert.equal(last.record.complete,true);assert.ok(last.record.rows.length>0);assert.ok(last.record.rows.every(row=>row.ownerId===ownerId));
+  const count=snapshots.length;r.store.set({me:{playerId:'spectator'}});r.runner.clear({keepMetrics:true});
+  assert.equal(snapshots.length,count);
+ } finally {r.runner.dispose();}
+});

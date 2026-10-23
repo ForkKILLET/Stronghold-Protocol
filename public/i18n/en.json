@@ -2664,5 +2664,12 @@
   "公开回放展示自己的经营过程与各战场，仍可看到队友当局昵称和阵容；不包含队友私有经营状态。": "Public replays show your preparation and all battlefields, including teammates' match names and lineups, but not their private preparation state.",
   "展示累计杯数；成就需另行开启公开。": "Show total trophies. Achievement visibility is controlled separately.",
   "此设备未保存该局的干员伤害明细。": "This device has no operator damage details saved for this match.",
-  "仅显示此设备保存的该局明细；其它设备或已被替换的本地记录不可用。": "Only this match’s details saved on this device are shown; records from other devices or replaced local records are unavailable."
+  "仅显示此设备保存的该局明细；其它设备或已被替换的本地记录不可用。": "Only this match’s details saved on this device are shown; records from other devices or replaced local records are unavailable.",
+  "暂无战斗明细": "No combat details",
+  "暂时无法读取服务器战斗明细。": "Server combat details are temporarily unavailable.",
+  "服务器已保存完整明细 · 客户端采集": "Complete details saved on server · Client collected",
+  "服务器已保存部分明细 · 未记录的战斗不计为零": "Partial details saved on server · Missing battles are not counted as zero",
+  "当前显示本机明细；服务器未记录或暂时不可用。": "Showing local details; server details are unrecorded or temporarily unavailable.",
+  "该回合尚未记录干员伤害明细。": "No operator damage details have been recorded for this round.",
+  "该回合没有可统计的干员数据。": "This round has no operator data to count."
 }

@@ -81,7 +81,7 @@
 .result__actions > .btn { box-sizing:border-box; height:var(--result-action-size); min-height:var(--result-action-size); font-size:max(calc(.16 * var(--utility-text,var(--t))),12px); }
 .result__actions > .btn--square { width:var(--result-action-size); min-width:var(--result-action-size); padding:0; flex:none; }
 .result__actions > .btn--square .btn__icon { width:18px; height:18px; }
-.result__actions > .combat-metrics { z-index:55; }
+.result__actions > .combat-metrics { z-index:55; --utility-text:max(var(--t),100px); }
 @media (max-width:760px),(pointer:coarse) { .result__actions { --result-action-size:44px; } }
 
 /* (stronghold-ui package: 对局动画与结算 — appended by tools/install.mjs) */

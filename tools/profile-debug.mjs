@@ -21,8 +21,9 @@ export function readProfileSnapshot(db, publicId) {
       accounts:db.prepare('PRAGMA user_version').get().user_version,
       replays:db.prepare('SELECT version FROM replay_schema WHERE id=1').get().version,
       publicProfiles:db.prepare('SELECT version FROM public_profile_schema WHERE id=1').get().version,
+      combat:db.prepare("SELECT 1 FROM sqlite_master WHERE name='combat_schema'").get()?db.prepare('SELECT version FROM combat_schema WHERE id=1').get().version:0,
     };
-    if (schemas.accounts !== 1 || schemas.replays !== 1 || schemas.publicProfiles !== 2) throw new Error('Unsupported profile schemas');
+    if (schemas.accounts !== 1 || schemas.replays !== 1 || schemas.publicProfiles !== 2 || ![0,1].includes(schemas.combat)) throw new Error('Unsupported profile schemas');
     const profile = db.prepare('SELECT user_id,public_id,visibility FROM public_profiles WHERE public_id=?').get(publicId);
     if (!profile) throw new Error('Doctor not found');
     const id = profile.user_id;
@@ -35,6 +36,9 @@ export function readProfileSnapshot(db, publicId) {
         .map(row => ({game_id:row.game_id, body:Buffer.from(row.body).toString('base64')})),
       userReplays:db.prepare('SELECT user_id,game_id,pinned FROM user_replays WHERE user_id=?').all(id),
       publicReplays:db.prepare('SELECT user_id,game_id FROM public_replays WHERE user_id=?').all(id),
+      combatMatches:schemas.combat?db.prepare('SELECT game_id,user_id,manifest FROM combat_matches WHERE user_id=?').all(id):[],
+      combatRecords:schemas.combat?db.prepare('SELECT game_id,user_id,battle_id,seconds,complete,bytes,body FROM combat_records WHERE user_id=?').all(id)
+        .map(row=>({...row,body:Buffer.from(row.body).toString('base64')})):[],
     };
   } finally { db.exec('ROLLBACK'); }
 }
@@ -67,13 +71,14 @@ try{process.stdout.write(JSON.stringify((${readProfileSnapshot.toString()})(db,$
 
 export async function importProfileSnapshot(snapshot, directory) {
   if (snapshot?.format !== FORMAT || snapshot.version !== 1 || snapshot.schemas?.accounts !== 1 ||
-      snapshot.schemas.replays !== 1 || snapshot.schemas.publicProfiles !== 2) throw new Error('Unsupported profile snapshot');
+      snapshot.schemas.replays !== 1 || snapshot.schemas.publicProfiles !== 2 || ![undefined,0,1].includes(snapshot.schemas.combat)) throw new Error('Unsupported profile snapshot');
   const id = snapshot.user?.id, publicId = snapshot.profile?.public_id;
   if (!id || !normalizeDoctorId(publicId) || snapshot.profile.user_id !== id ||
       !['results','userReplays','publicReplays'].every(key => Array.isArray(snapshot[key]) && snapshot[key].every(row => row.user_id === id)) ||
       !Array.isArray(snapshot.games) || !Array.isArray(snapshot.replays)) throw new Error('Invalid snapshot ownership');
   const games = new Set(snapshot.games.map(row => row.id));
   if (games.size !== snapshot.results.length || snapshot.results.some(row => !games.has(row.game_id))) throw new Error('Invalid snapshot history');
+  for(const key of ['combatMatches','combatRecords']) if(snapshot[key] && (!Array.isArray(snapshot[key]) || snapshot[key].some(row=>row.user_id!==id))) throw new Error('Invalid snapshot ownership');
   const replayLimit = Math.max(10, snapshot.userReplays.length, snapshot.userReplays.filter(row=>row.pinned).length + 1);
   if (replayLimit > 100) throw new Error('Snapshot exceeds replay quota');
   fs.mkdirSync(path.dirname(directory), {recursive:true, mode:0o700});
@@ -96,6 +101,9 @@ export async function importProfileSnapshot(snapshot, directory) {
     for (const r of snapshot.replays) db.prepare('INSERT INTO replays(game_id,body) VALUES(?,?)').run(r.game_id,Buffer.from(r.body,'base64'));
     for (const r of snapshot.userReplays) db.prepare('INSERT INTO user_replays(user_id,game_id,pinned) VALUES(?,?,?)').run(id,r.game_id,r.pinned);
     for (const r of snapshot.publicReplays) db.prepare('INSERT INTO public_replays(user_id,game_id) VALUES(?,?)').run(id,r.game_id);
+    for (const r of snapshot.combatMatches || []) db.prepare('INSERT INTO combat_matches(game_id,user_id,manifest) VALUES(?,?,?)').run(r.game_id,id,r.manifest);
+    for (const r of snapshot.combatRecords || []) db.prepare('INSERT INTO combat_records(game_id,user_id,battle_id,seconds,complete,bytes,body) VALUES(?,?,?,?,?,?,?)')
+      .run(r.game_id,id,r.battle_id,r.seconds,r.complete,r.bytes,Buffer.from(r.body,'base64'));
     // Production credential/recovery tables are never exported. Only a new, local credential is created.
     const token = randomBytes(32).toString('base64url');
     db.prepare('INSERT INTO credentials(hash,user_id) VALUES(?,?)').run(createHash('sha256').update(token).digest('hex'),id);

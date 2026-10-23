@@ -36,6 +36,7 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
     const panel = panelRef.current;
     const corner = panel?.parentElement;
     const viewport = window.visualViewport;
+    const archiveHeader=historical?panel?.closest('.st--replay')?.querySelector('.app-header'):null;
     const measure = () => {
       if (!panel || !corner) return;
       const rect = corner.getBoundingClientRect();
@@ -45,7 +46,8 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
         viewportHeight: viewport?.height || window.innerHeight,
         viewportTop: viewport?.offsetTop || 0,
         rem: parseFloat(rootStyle.fontSize) || 40,
-        safeTop: parseFloat(rootStyle.getPropertyValue('--sa-t')) || 0,
+        safeTop: Math.max(parseFloat(rootStyle.getPropertyValue('--sa-t')) || 0,
+          archiveHeader?archiveHeader.getBoundingClientRect().bottom-(viewport?.offsetTop || 0):0),
         safeBottom: parseFloat(rootStyle.getPropertyValue('--sa-b')) || 0,
       });
       panel.style.setProperty('--combat-corner-height', `${rect.height || 44}px`);
@@ -57,6 +59,7 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
     measure();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (corner) observer?.observe(corner);
+    if (archiveHeader) observer?.observe(archiveHeader);
     window.addEventListener('resize', measure);
     viewport?.addEventListener('resize', measure);
     viewport?.addEventListener('scroll', measure);
@@ -81,14 +84,14 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
       </div>
     ${scope === 'round' && html`<div class="combat-metrics__scopes combat-metrics__pages" role="group" aria-label=${t('回合记录')}>
       <button type="button" disabled=${page.previous == null} onClick=${() => setSelectedRound(page.previous)} aria-label=${t('上一回合')}>‹</button>
-      <span>${page.round == null ? t('暂无本地战斗记录') : t('第 {round} 回合', { round: page.round })}</span>
+      <span>${page.round == null ? t('暂无战斗明细') : t('第 {round} 回合', { round: page.round })}</span>
       <button type="button" disabled=${page.next == null} onClick=${() => setSelectedRound(page.next)} aria-label=${t('下一回合')}>›</button>
     </div>`}
     </div>
     </header>
     <div class="combat-metrics__body" tabindex="0">
     <div class="combat-metrics__totals">
-      <span>${t('总伤害')} <b>${historical&&!result.rows.length?'—':number(result.damage)}</b></span><span>${t('总治疗')} <b>${historical&&!result.rows.length?'—':number(result.healing)}</b></span>
+      <span>${t('总伤害')} <b>${historical&&!result.rows.length&&runner?.coverage?.status!=='complete'?'—':number(result.damage)}</b></span><span>${t('总治疗')} <b>${historical&&!result.rows.length&&runner?.coverage?.status!=='complete'?'—':number(result.healing)}</b></span>
     </div>
     <div class="combat-metrics__legend" aria-label=${t('伤害类型图例')}>
       ${TYPES.map((type) => html`<span key=${type.id} class=${`combat-metrics__type combat-metrics__type--${type.id}`}>${t(type.label)}</span>`)}
@@ -114,9 +117,11 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
             </div>
           </div>
         </li>`;
-      }) : html`<li class="combat-metrics__empty">${loading?html`<${Spinner} />${t('正在读取…')}`:historical?t('此设备未保存该局的干员伤害明细。'):html`${t('暂无本地战斗记录')}<br /><small>${t('开始战斗后实时显示干员数据')}</small>`}</li>`}
+      }) : html`<li class="combat-metrics__empty">${loading?html`<${Spinner} />${t('正在读取…')}`:historical?(runner?.coverage?.status==='complete'?t('该回合没有可统计的干员数据。'):runner?.offline?t('暂时无法读取服务器战斗明细。'):t('该回合尚未记录干员伤害明细。')):html`${t('暂无本地战斗记录')}<br /><small>${t('开始战斗后实时显示干员数据')}</small>`}</li>`}
     </ol>
-    <p class="combat-metrics__note">${t('仅统计自己 · 同名干员合并 · 召唤物计入所属干员')}<br />${historical?t('仅显示此设备保存的该局明细；其它设备或已被替换的本地记录不可用。'):t('实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。已结束战斗按回合保存在当前浏览器。')}</p>
+    <p class="combat-metrics__note">${t('仅统计自己 · 同名干员合并 · 召唤物计入所属干员')}<br />${historical?
+      runner?.source==='server'?(runner.coverage?.status==='complete'?t('服务器已保存完整明细 · 客户端采集'):t('服务器已保存部分明细 · 未记录的战斗不计为零')):
+      t('当前显示本机明细；服务器未记录或暂时不可用。'):t('实际扣血 / 有效治疗，DPS / HPS 按自己的战斗秒数计算。已结束战斗按回合保存在当前浏览器。')}</p>
     </div>
   </section>`;
 }
