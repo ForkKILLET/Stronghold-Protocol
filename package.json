@@ -25,6 +25,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js --source-client",
+    "profile:pull": "node tools/profile-debug.mjs pull",
+    "dev:profile": "node --watch tools/profile-debug.mjs serve",
     "build": "npm run vendor && vite build",
     "test": "node --test --test-concurrency=2 \"test/**/*.test.js\"",
     "golden": "node tools/golden.mjs",
