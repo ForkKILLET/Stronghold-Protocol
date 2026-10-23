@@ -203,16 +203,28 @@ export function CombatSums({ agg }) {
 }
 
 /** One 对局记录 row: what it was, who won, whether it counted and whether the settlement can be re-viewed. */
-function ReplayMenu({rec,busy,onPin,onShare,publicId,allowSharing,quota}){
+export function ReplayStatus({available,pinned=false,shared=false,unavailableLabel,marksOnly=false}){
+  if(marksOnly&&(!available||(!pinned&&!shared)))return null;
+  return html`<span class=${cx('st-replay-status',!available&&'is-unavailable')} aria-label=${!available?(unavailableLabel || t('无回放')):undefined}>
+    ${marksOnly?null:available?html`<${Icon} name="play" title=${t('回放')} />`:html`<span>—</span>`}<span class="st-replay-marks">
+      ${available&&pinned?html`<${Icon} name="pin" title=${t('固定')} />`:null}
+      ${available&&shared?html`<${Icon} name="eye" title=${t('公开')} />`:null}
+    </span></span>`;
+}
+export function HistoryMenu({rec,busy,locked,onPlay,onOpen,view=false,readOnly=false,onPin,onShare,publicId,allowSharing,quota,showPlay=true,onPrivacy}){
   const [open,setOpen]=useState(false);
-  return html`<${Button} size="sm" square=${true} variant="ghost" icon="dots" aria-label=${t('回放操作')} onClick=${()=>setOpen(true)} />
-    <${Modal} open=${open} title=${t('回放操作')} micro="REPLAY MANAGEMENT" utility=${true} onClose=${()=>setOpen(false)}>
-      <p class="profile-note">${!allowSharing?t('回放公开总开关已关闭，此回放不会对外提供。'):rec.replay.shared?t('此回放已公开，可通过链接观看。'):t('此回放仅本人可见。')}</p>
-      <div class="doctor-replay-menu"><${Button} variant="secondary" icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${async()=>{await onPin(rec);setOpen(false);}}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>
-       ${publicId?html`<${Button} variant="secondary" icon="eye" disabled=${busy} onClick=${async()=>{await onShare(rec);setOpen(false);}}>${rec.replay.shared?t('设为私密'):t('设为公开')}<//>
+  const available=!!rec.replay?.available;
+  return html`<${Button} class="st-history-menu-trigger" size="sm" square=${true} variant="ghost" icon="dots" aria-label=${t('对局操作')} disabled=${!available&&!view} onClick=${()=>setOpen(true)} />
+    <${Modal} open=${open} title=${t('对局操作')} micro="MATCH ACTIONS" utility=${true} onClose=${()=>setOpen(false)}>
+      ${available&&!readOnly?html`<p class="profile-note">${!allowSharing?t('回放公开总开关已关闭，此回放不会对外提供。'):rec.replay.shared?t('此回放已公开，可通过链接观看。'):t('此回放仅本人可见。')}</p>`:null}
+      <div class="doctor-replay-menu">
+       ${available&&showPlay?html`<${Button} variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>{setOpen(false);onPlay(rec);}}>${t('播放回放')}<//>`:null}
+       ${view?html`<${Button} variant="secondary" icon="chart" onClick=${()=>{setOpen(false);onOpen(rec);}}>${t('查看结算')}<//>`:null}
+       ${available&&!readOnly?html`<${Button} variant="secondary" icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${()=>onPin(rec)}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>
+       ${publicId?html`<${Button} variant="secondary" icon="eye" disabled=${busy} onClick=${()=>onShare(rec)}>${rec.replay.shared?t('设为私密'):t('设为公开')}<//>
         <${Button} variant="secondary" icon="copy" disabled=${!allowSharing||!rec.replay.shared} onClick=${async()=>{const ok=await copyText(doctorLink(publicId,rec.matchId));toast(ok?t('已复制回放链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制回放链接')}<//>
-        ${!allowSharing?html`<${Button} variant="ghost" icon="settings" onClick=${()=>{setOpen(false);profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}`:null}</div>
-      <p class="profile-note">${t('公开不会自动固定回放；若需长期分享，请先固定。')}</p>
+        ${!allowSharing?html`<${Button} variant="ghost" icon="settings" onClick=${()=>{setOpen(false);if(onPrivacy)onPrivacy();else profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}`:null}`:null}</div>
+      ${available&&!readOnly?html`<p class="profile-note">${t('公开不会自动固定回放；若需长期分享，请先固定。')}</p>`:null}
     <//>`;
 }
 function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSharing, busy, locked, quota }) {
@@ -237,9 +249,9 @@ function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSh
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}
       ${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
     <td class="num st-round">${known ? fmtNum(rounds) : '—'}</td>
-    <td class="st-replay-actions" onClick=${e=>e.stopPropagation()}>${rec.replay?.available?html`<div class="st-replay-controls"><${Button} size="sm" variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>onPlay(rec)}>${t('播放')}<//>
-     <${ReplayMenu} rec=${rec} busy=${busy} onPin=${onPin} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} quota=${quota} /><span class="st-replay-visibility">${rec.replay.pinned?html`<${Icon} name="pin" aria-label=${t('固定')} />`:null}${allowSharing&&rec.replay.shared?t('公开'):t('私密')}</span></div>`:html`<span class="st-no-replay">${t('无回放')}</span>`}</td>
-    <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
+    <td><${ReplayStatus} available=${!!rec.replay?.available} pinned=${rec.replay?.pinned} shared=${allowSharing&&rec.replay?.shared} /></td>
+    <td class="st-history-actions" onClick=${e=>e.stopPropagation()}><${HistoryMenu} rec=${rec} view=${view} onOpen=${onOpen} onPlay=${onPlay} busy=${busy} locked=${locked}
+      onPin=${onPin} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} quota=${quota} /></td>
   </tr>`;
 }
 
@@ -252,8 +264,8 @@ function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, on
   return html`<${Section} title=${t('对局记录')} micro=${`HISTORY · ${filtered.length}`}>
     <div class="doctor-history-tools"><button type="button" class=${deviceOnly?'is-on':''} aria-pressed=${deviceOnly} onClick=${()=>{setDeviceOnly(!deviceOnly);setShown(HISTORY_PAGE);}}>${t('仅看此设备记录')}</button>${quota?html`<span class="st-replay-quota">${t('已保存 {n}/{limit} 个回放',{n:quota.saved,limit:quota.limit})} · ${t('已固定 {n}/{limit}',{n:quota.pinned,limit:quota.pinLimit})}</span>`:null}</div>
     ${quota?html`<p class="st-hint">${locked?t('请先结束当前对局，再播放回放。'):t('新回放会替换最旧的未固定回放；对局记录始终保留。')}</p>`:null}
-    ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history">
-      <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th>${t('回放')}</th><th aria-hidden="true"></th></tr></thead>
+    ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history st-table--actions">
+      <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th>${t('回放')}</th><th class="st-history-actions" aria-label=${t('对局操作')}></th></tr></thead>
       <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} onPlay=${onPlay} onPin=${onPin} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} busy=${busy} locked=${locked} quota=${quota} />`)}</tbody>
     </table></div>
     ${filtered.length > shown ? html`<div class="st-more"><${Button} size="sm" variant="secondary" onClick=${() => setShown(shown + HISTORY_PAGE)}>${t('显示更多（还有 {n} 局）', { n: filtered.length - shown })}<//></div>` : null}
@@ -400,15 +412,18 @@ function StatsScreen({ tab }) {
     }catch(e){toast(e.userCode==='REPLAY_NOT_FOUND'?t('该回放已被替换，请刷新记录。'):t('回放读取失败，请稍后重试。'),'error');}
     finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
   };
+  const updateReplay=(rec,result)=>{
+    const next={...accountRef.current,replays:result.replays,records:accountRef.current.records.map(r=>r.id===rec.matchId?{...r,replay:result.replay}:r)};
+    accountRef.current=next;setAccount(next);
+    setReplay(current=>current?.matchId===rec.matchId?{...current,replay:result.replay}:current);
+    savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200)}});
+  };
   const pinReplay=async rec=>{
     if(replayFlight.current||offline)return;
     replayFlight.current=true;setReplayBusy(true);
     try{
       const result=await userRequest('/api/user/replay/pin',{matchId:rec.matchId,pinned:!rec.replay.pinned});
-      if(mounted.current&&profileStore.get().user?.id===profile.user?.id){
-        const next={...accountRef.current,replays:result.replays,records:accountRef.current.records.map(r=>r.id===rec.matchId?{...r,replay:result.replay}:r)};
-        setAccount(next);savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200)}});
-      }
+      if(mounted.current&&profileStore.get().user?.id===profile.user?.id)updateReplay(rec,result);
     }catch(e){toast(e.userCode==='REPLAY_PIN_LIMIT'?t('固定名额已满，请先取消固定其他回放。'):t('操作失败，请刷新后重试。'),'error');}
     finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
   };
@@ -417,10 +432,7 @@ function StatsScreen({ tab }) {
     replayFlight.current=true;setReplayBusy(true);
     try{
       const result=await userRequest('/api/user/replay/share',{matchId:rec.matchId,shared:!rec.replay.shared});
-      if(mounted.current&&profileStore.get().user?.id===profile.user?.id){
-        const next={...accountRef.current,replays:result.replays,records:accountRef.current.records.map(r=>r.id===rec.matchId?{...r,replay:result.replay}:r)};
-        setAccount(next);savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200)}});
-      }
+      if(mounted.current&&profileStore.get().user?.id===profile.user?.id)updateReplay(rec,result);
     }catch{toast(t('操作失败，请刷新后重试。'),'error');}
     finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
   };
@@ -428,7 +440,11 @@ function StatsScreen({ tab }) {
 
   if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
     <${PageHeader} onBack=${() => setReplay(null)} backTitle=${t('返回统计')} title=${t('对局记录')} micro="MATCH RECORD" />
-    <${Replay} rec=${replay} offline=${offline} actions=${replay.replay?.available?html`<${Button} variant="secondary" size="sm" icon="play" disabled=${replayBusy||inMatch||offline} onClick=${()=>playReplay(replay)}>${t('播放回放')}<//>`:null} />
+    <${Replay} rec=${replay} offline=${offline} actions=${replay.replay?.available?html`
+      <${Button} class="st-replay-play" variant="secondary" size="sm" icon="play" title=${t('播放回放')} aria-label=${t('播放回放')} disabled=${replayBusy||inMatch||offline} onClick=${()=>playReplay(replay)}>${t('播放回放')}<//>
+      <${ReplayStatus} available=${true} pinned=${replay.replay.pinned} shared=${profile.user?.visibility?.replays&&replay.replay.shared} marksOnly=${true} />
+      <${HistoryMenu} rec=${replay} showPlay=${false} busy=${replayBusy||offline} locked=${inMatch} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} quota=${account?.replays}
+        onPrivacy=${()=>{setReplay(null);profileStore.set({tab:'privacy'});}} />`:null} />
   </div>`;
 
   const empty = !records.length;

@@ -130,9 +130,6 @@
 .st-table tr.is-clickable { cursor: pointer; }
 .st-table tr.is-clickable:hover td, .st-table tr.is-clickable:focus-visible td { background: rgba(78, 216, 175, .1); color: var(--text-hi); }
 .st-table tr.is-clickable:focus-visible { outline: 2px solid var(--mint-400); outline-offset: -2px; }
-.st-go { width: calc(.24 * var(--ui-unit, 1rem)); color: var(--text-lo); }
-.st-go .icon { width: max(calc(.18 * var(--ui-unit, 1rem)), 12px); height: max(calc(.18 * var(--ui-unit, 1rem)), 12px); }
-.st-table tr.is-clickable:hover .st-go { color: var(--mint-400); }
 .st-more { display: flex; justify-content: center; margin: calc(.14 * var(--ui-unit, 1rem)) 0 0; }
 .st-hint { margin: calc(.1 * var(--ui-unit, 1rem)) 0 0; font-size: max(calc(.13 * var(--utility-text, var(--t))), 10px); line-height: 1.6; color: var(--text-lo); letter-spacing: .04em; }
 

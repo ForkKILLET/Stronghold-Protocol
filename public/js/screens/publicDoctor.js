@@ -7,7 +7,7 @@ import {useStore,selectRoute} from '../store.js';
 import {data,useData} from '../data.js';
 import {makeLookups,BandIcon} from '../ui/gameComponents.js';
 import {profileAvatarUrl} from '../ui/assetUrls.js';
-import {Overview,Bands,CombatSums,StatCard,dateTime} from './stats.js';
+import {Overview,Bands,CombatSums,StatCard,dateTime,ReplayStatus,HistoryMenu} from './stats.js';
 import {AchievementMark} from '../ui/achievements.js';
 import {ACHIEVEMENT_GROUPS} from '../../../shared/achievementStats.js';
 import {formatDoctorId} from '../../../shared/publicProfiles.js';
@@ -80,8 +80,10 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
      :tab==='bands'?html`<${Bands} agg=${page.aggregate} gd=${gd} />`:tab==='totals'?html`<${CombatSums} agg=${page.aggregate} />`
      :tab==='achievements'?html`<section class="doctor-achievements">${ACHIEVEMENT_GROUPS.filter(([id])=>page.achievements.some(a=>a.group===id)).map(([id,label,icon])=>html`<div key=${id} class="ach-list"><h3 class="st-sec__h">${t(label)}</h3><div class="ach-marks ach-marks--list">${page.achievements.filter(a=>a.group===id).map(a=>html`<${AchievementMark} key=${a.id} a=${a} icon=${icon} />`)}</div></div>`)}</section>`
      :html`<section class="st-sec"><h3 class="st-sec__h"><span>${tab==='replays'?t('公开回放'):t('对局记录')}</span><${MicroLabel}>${tab==='replays'?'PUBLIC REPLAYS':'MATCH HISTORY'}<//></h3>
-      ${page.records?.length?html`<div class="st-tablewrap"><table class="st-table st-table--history"><thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="st-round">${t('回合')}</th><th>${t('回放')}</th></tr></thead>
-       <tbody>${page.records.map(row=>html`<tr key=${row.matchId}><td>${date(row.t)}</td><td><${DifficultyTag} difficulty=${row.difficulty} size="sm" /></td><td>${row.roomMode==='solo'?t('单人'):t('同盟')}</td><td><span class="st-band"><${BandIcon} bandId=${row.bandId} size="xs" />${gd.band(row.bandId)?.name || '—'}</span></td><td>${row.victory?t('胜'):t('负')}${row.modded?html`<em class="st-chip">${t('非官方')}</em>`:null}</td><td class="st-round num">${row.rounds}</td><td>${row.replay?html`<${Button} size="sm" variant="secondary" icon="play" disabled=${busy||inMatch} onClick=${()=>play(row.matchId)}>${t('播放')}<//>`:t('未公开')}</td></tr>`)}</tbody></table></div>`:html`<p class="st-empty">${t('暂无公开记录')}</p>`}
+      ${page.records?.length?html`<div class="st-tablewrap"><table class="st-table st-table--history st-table--actions"><thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="st-round">${t('回合')}</th><th>${t('回放')}</th><th class="st-history-actions" aria-label=${t('对局操作')}></th></tr></thead>
+       <tbody>${page.records.map(row=>html`<tr key=${row.matchId}><td>${date(row.t)}</td><td><${DifficultyTag} difficulty=${row.difficulty} size="sm" /></td><td>${row.roomMode==='solo'?t('单人'):t('同盟')}</td><td><span class="st-band"><${BandIcon} bandId=${row.bandId} size="xs" />${gd.band(row.bandId)?.name || '—'}</span></td><td>${row.victory?t('胜'):t('负')}${row.modded?html`<em class="st-chip">${t('非官方')}</em>`:null}</td><td class="st-round num">${row.rounds}</td>
+        <td><${ReplayStatus} available=${!!row.replay} shared=${!!row.replay} unavailableLabel=${t('未公开')} /></td>
+        <td class="st-history-actions"><${HistoryMenu} rec=${{matchId:row.matchId,replay:{available:!!row.replay}}} readOnly=${true} busy=${busy} locked=${inMatch} onPlay=${()=>play(row.matchId)} /></td></tr>`)}</tbody></table></div>`:html`<p class="st-empty">${t('暂无公开记录')}</p>`}
       ${page.next?html`<div class="st-more"><${Button} variant="secondary" loading=${busy} onClick=${more}>${t('加载更早的对局')}<//></div>`:null}
       ${inMatch?html`<p class="st-hint">${t('请先结束当前对局，再播放回放。')}</p>`:null}</section>`}
    `}

@@ -2671,5 +2671,8 @@
   "服务器已保存部分明细 · 未记录的战斗不计为零": "Partial details saved on server · Missing battles are not counted as zero",
   "当前显示本机明细；服务器未记录或暂时不可用。": "Showing local details; server details are unrecorded or temporarily unavailable.",
   "该回合尚未记录干员伤害明细。": "No operator damage details have been recorded for this round.",
-  "该回合没有可统计的干员数据。": "This round has no operator data to count."
+  "该回合没有可统计的干员数据。": "This round has no operator data to count.",
+  "已保存": "Saved",
+  "对局操作": "Match actions",
+  "查看结算": "View results"
 }

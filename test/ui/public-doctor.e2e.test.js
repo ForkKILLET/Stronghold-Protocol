@@ -9,6 +9,7 @@ import {startServer} from '../../server/index.js';
 import {makeMatch,legalTileFor} from '../match/harness.js';
 import {TestClient} from '../helpers/wsClient.js';
 import {formatDoctorId} from '../../shared/publicProfiles.js';
+import {localFontsOnly} from '../helpers/localFonts.js';
 
 function recording(cs){
  const h=makeMatch({mode:'coop',humans:2,difficulty:'NORMAL',instant:false,botRehearsal:0});
@@ -28,6 +29,7 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
  try{
   browser=await puppeteer.launch({browser:engine,executablePath,headless:true,args:engine==='chrome'?['--no-sandbox','--mute-audio','--no-proxy-server','--use-angle=swiftshader']:[],extraPrefsFirefox:{'webgl.force-enabled':true}});
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await localFontsOnly(page);
   await page.setViewport({width:1440,height:900});
   await page.evaluateOnNewDocument(()=>{localStorage.setItem('sp.name','档案测试博士');sessionStorage.setItem('sp.entered','1');});
   await page.goto(server.url,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__SP__?.store.get().connection.status==='online');
@@ -54,6 +56,7 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   await page.keyboard.press('Escape');await page.waitForSelector('.public-doctor',{hidden:true});
   assert.ok(await page.evaluate(()=>document.documentElement.classList.contains('sp-stats-open')),'public preview leaves the own archive overlay intact');
   const context=await browser.createBrowserContext(),visitor=await context.newPage(),requests=[];
+  await localFontsOnly(visitor);
   visitor.on('pageerror',e=>errors.push(e.message));visitor.on('request',r=>requests.push(new URL(r.url()).pathname));
   await visitor.setViewport({width:1440,height:900});
   const sessions=[...server.registry.all()].length;
@@ -86,16 +89,20 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   await visitor.evaluate(()=>window.__releaseHistory());await settle(visitor);
   assert.equal(await visitor.$$('.public-doctor .st-table tbody tr').then(rows=>rows.length),0,'late history pagination cannot replace the public replay list');
   await visitor.evaluate(()=>window.__restoreDoctorFetch());
-  await page.bringToFront();await page.locator('.st-tab[data-tab="history"]').click();await page.waitForSelector('.st-replay-actions');
-  await page.locator('button[aria-label="回放操作"]').click();await page.waitForSelector('.doctor-replay-menu');
+  await page.bringToFront();await page.locator('.st-tab[data-tab="history"]').click();await page.waitForSelector('.st-history-actions');
+  await page.locator('button[aria-label="对局操作"]').click();await page.waitForSelector('.doctor-replay-menu');
   await page.evaluate(()=>[...document.querySelectorAll('.doctor-replay-menu button')].find(e=>e.textContent.trim()==='设为公开').click());
-  await page.waitForSelector('.doctor-replay-menu',{hidden:true});await page.waitForFunction(()=>document.querySelector('.st-replay-visibility')?.textContent==='公开');
+  await page.waitForFunction(()=>[...document.querySelectorAll('.doctor-replay-menu button')].some(e=>e.textContent.trim()==='设为私密'&&!e.disabled));
+  assert.ok(await page.$('.doctor-replay-menu'),'sharing keeps the menu open');await page.keyboard.press('Escape');await page.waitForSelector('.doctor-replay-menu',{hidden:true});
+  await page.waitForSelector('.st-replay-marks svg[role=img] title');await page.waitForFunction(()=>[...document.querySelectorAll('.st-replay-marks title')].some(e=>e.textContent==='公开'));
   await visitor.bringToFront();await visitor.locator('.public-doctor .st-top__right .btn--ghost').click();await visitor.waitForSelector('.public-doctor .st-table .btn');
   await visitor.locator('.st-tab[data-tab="achievements"]').click();await visitor.waitForSelector('.ach-mark');await capture(visitor,'public-achievements','.public-doctor');
   await visitor.setViewport({width:844,height:390});await capture(visitor,'achievements-mobile','.public-doctor');
   await visitor.locator('.st-tab[data-tab="replays"]').click();await visitor.waitForSelector('.public-doctor .st-table .btn');await capture(visitor,'public-replays-mobile','.public-doctor');
   await visitor.setViewport({width:390,height:844});await capture(visitor,'public-replays-portrait','.public-doctor');
-  await visitor.setViewport({width:1440,height:900});await visitor.locator('.public-doctor .st-table .btn').click();await visitor.waitForSelector('.st--playback');
+  await visitor.setViewport({width:1440,height:900});await visitor.locator('.public-doctor .st-table .btn').click();await visitor.waitForSelector('.doctor-replay-menu');
+  assert.equal(await visitor.$$('.doctor-replay-menu button').then(els=>els.length),1,'public menu only offers playback');
+  await visitor.locator('.doctor-replay-menu button').click();await visitor.waitForSelector('.st--playback');
   await visitor.waitForFunction(()=>document.querySelector('.replay-canvas')?.dataset.ready==='true',{timeout:30000});
   await visitor.locator('.replay-toolbar label:first-child .game-select').click();await visitor.waitForSelector('.game-select-popover');
   assert.equal(await visitor.$$eval('.game-select-popover [role="option"]',rows=>rows.length),1,'only the sharer has a private prep perspective');await visitor.keyboard.press('Escape');
@@ -106,8 +113,10 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   await visitor.goto(url+'&replay='+summary.matchId,{waitUntil:'domcontentloaded'});await visitor.waitForSelector('.st--playback');
   assert.equal(requests.includes('/api/user'),false,'direct replay links remain anonymous');
   await visitor.keyboard.press('Escape');await visitor.waitForSelector('.public-doctor');
-  await page.bringToFront();await page.locator('button[aria-label="回放操作"]').click();await page.waitForSelector('.doctor-replay-menu');
-  await page.evaluate(()=>[...document.querySelectorAll('.doctor-replay-menu button')].find(e=>e.textContent.trim()==='设为私密').click());await page.waitForSelector('.doctor-replay-menu',{hidden:true});
+  await page.bringToFront();await page.locator('button[aria-label="对局操作"]').click();await page.waitForSelector('.doctor-replay-menu');
+  await page.evaluate(()=>[...document.querySelectorAll('.doctor-replay-menu button')].find(e=>e.textContent.trim()==='设为私密').click());
+  await page.waitForFunction(()=>[...document.querySelectorAll('.doctor-replay-menu button')].some(e=>e.textContent.trim()==='设为公开'&&!e.disabled));
+  assert.ok(await page.$('.doctor-replay-menu'),'revoking sharing keeps the menu open');await page.keyboard.press('Escape');await page.waitForSelector('.doctor-replay-menu',{hidden:true});
   assert.equal((await fetch(server.url+'/api/doctors/'+user.publicId+'/replay?matchId='+summary.matchId)).status,404);
   await page.locator('.st .app-back').click();await page.waitForSelector('.st',{hidden:true});
   await page.evaluate(()=>window.__SP__.net.request('room.create',{mode:'coop',difficulty:'NORMAL'}));await page.waitForSelector('.room-screen');
