@@ -99,7 +99,8 @@
 }
 .draft-order__info .btn__icon { color: var(--mint-400); }
 .modal__box.minfo-dlg {
-  width: min(max(calc(12 * var(--ui-unit, 1rem)), 600px), calc(100vw - calc(.6 * var(--ui-unit, 1rem)) - var(--sa-l, 0px) - var(--sa-r, 0px)));
+  /* Feed the shared utility-modal sizing instead of competing with its more specific width rule. */
+  --utility-width: min(max(calc(12 * var(--ui-unit, 1rem)), 600px), calc(100vw - calc(.6 * var(--ui-unit, 1rem)) - var(--sa-l, 0px) - var(--sa-r, 0px)));
   max-height: calc(100vh - calc(.6 * var(--ui-unit, 1rem)));
   max-height: calc(100svh - calc(.6 * var(--ui-unit, 1rem)));
 }
