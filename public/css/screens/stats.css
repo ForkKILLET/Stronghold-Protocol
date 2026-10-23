@@ -106,6 +106,7 @@
 /* the per-difficulty and per-strategy tables stay narrow enough to read across; the history takes the width */
 .st-table:not(.st-table--history) { max-width: max(calc(9.4 * var(--ui-unit, 1rem)), 560px); }
 .st-table th.num, .st-table td.num { text-align: right; }
+.st-table--history th.st-round, .st-table--history td.st-round { text-align: left; }
 .st-table tbody tr:hover td { background: rgba(78, 216, 175, .05); }
 .st-table td.st-diff { color: var(--d-color, var(--text-md)); font-weight: 700; white-space: nowrap; }
 .st-band { display: inline-flex; align-items: center; gap: calc(.06 * var(--ui-unit, 1rem)); color: var(--text-hi); white-space: nowrap; vertical-align: middle; }

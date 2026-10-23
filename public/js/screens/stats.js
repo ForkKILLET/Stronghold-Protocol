@@ -215,8 +215,9 @@ function HistoryRow({ rec, gd, onOpen }) {
     <td>${rec.roomMode === 'solo' ? t('单人') : rec.roomMode === 'coop' ? t('同盟') : '—'}</td>
     <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : self?.bandId || '—'}</span></td>
     <td class="st-res">${quit ? html`<span class="t-quit">${t('中途退出')}</span>` : html`<span class=${won ? 't-win' : 't-lose'}>${won ? t('胜') : t('负')}</span>`}
-      ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}</td>
-    <td>${isModdedRecord(rec) ? t('非官方') : ''}</td><td class="num">${known ? fmtNum(rounds) : '—'}</td>
+      ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}
+      ${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
+    <td class="num st-round">${known ? fmtNum(rounds) : '—'}</td>
     <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
   </tr>`;
 }
@@ -230,7 +231,7 @@ function History({ records, gd, onOpen, more, loading, onMore }) {
   return html`<${Section} title=${t('对局记录')} micro=${`HISTORY · ${filtered.length}`}>
     <div class="doctor-history-tools"><button type="button" class=${deviceOnly?'is-on':''} aria-pressed=${deviceOnly} onClick=${()=>{setDeviceOnly(!deviceOnly);setShown(HISTORY_PAGE);}}>${t('仅看此设备记录')}</button></div>
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history">
-      <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num">${t('回合')}</th><th aria-hidden="true"></th></tr></thead>
+      <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th aria-hidden="true"></th></tr></thead>
       <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} />`)}</tbody>
     </table></div>
     ${filtered.length > shown ? html`<div class="st-more"><${Button} size="sm" variant="secondary" onClick=${() => setShown(shown + HISTORY_PAGE)}>${t('显示更多（还有 {n} 局）', { n: filtered.length - shown })}<//></div>` : null}
