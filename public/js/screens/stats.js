@@ -196,7 +196,7 @@ function CombatSums({ agg }) {
 }
 
 /** One 对局记录 row: what it was, who won, whether it counted and whether the settlement can be re-viewed. */
-function HistoryRow({ rec, gd, onOpen }) {
+function HistoryRow({ rec, gd, onOpen, onPlay, onPin, busy, locked, quota }) {
   const self = selfRowOf(rec);
   const quit = rec.end === 'quit';
   const counted = countsTowardStats(rec);
@@ -209,7 +209,7 @@ function HistoryRow({ rec, gd, onOpen }) {
   return html`<tr class=${cx(quit ? 'is-quit' : won ? 'is-win' : 'is-lose', !counted && 'is-excluded', view && 'is-clickable')}
       title=${view ? t('点击查看该局结算') : !counted ? t('没有清完第一个回合就退出，不计入统计') : quit ? t('中途退出的对局没有结算可看') : t('较早的对局只保留汇总，不能回看结算')}
       tabIndex=${view ? 0 : undefined}
-      onClick=${view ? open : undefined} onKeyDown=${view ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } } : undefined}>
+      onClick=${view ? open : undefined} onKeyDown=${view ? (e) => { if (e.target===e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(); } } : undefined}>
     <td class="st-t">${dateTime(rec.t)}${rec.deviceOnly?html`<em class="st-chip">${t('仅此设备')}</em>`:null}</td>
     <td>${difficultyName(rec.difficulty)}</td>
     <td>${rec.roomMode === 'solo' ? t('单人') : rec.roomMode === 'coop' ? t('同盟') : '—'}</td>
@@ -218,21 +218,23 @@ function HistoryRow({ rec, gd, onOpen }) {
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}
       ${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
     <td class="num st-round">${known ? fmtNum(rounds) : '—'}</td>
+    <td class="st-replay-actions" onClick=${e=>e.stopPropagation()}>${rec.replay?.available?html`<${Button} size="sm" variant="secondary" icon="play" disabled=${busy||locked} onClick=${()=>onPlay(rec)}>${t('播放')}<//><${Button} size="sm" variant=${rec.replay.pinned?'primary':'ghost'} icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${()=>onPin(rec)}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>`:html`<span class="st-no-replay">${t('无回放')}</span>`}</td>
     <td class="st-go" aria-hidden="true">${view ? html`<${Icon} name="chevronRight" />` : null}</td>
   </tr>`;
 }
 
 /** 对局记录: every stored match, newest first, HISTORY_PAGE rows at a time. */
-function History({ records, gd, onOpen, more, loading, onMore }) {
+function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, busy, locked, quota }) {
   const [shown, setShown] = useState(HISTORY_PAGE);
   const [deviceOnly,setDeviceOnly]=useState(false);
   const filtered=deviceOnly?records.filter(r=>r.deviceOnly):records;
   const rows = filtered.slice(0, shown);
   return html`<${Section} title=${t('对局记录')} micro=${`HISTORY · ${filtered.length}`}>
-    <div class="doctor-history-tools"><button type="button" class=${deviceOnly?'is-on':''} aria-pressed=${deviceOnly} onClick=${()=>{setDeviceOnly(!deviceOnly);setShown(HISTORY_PAGE);}}>${t('仅看此设备记录')}</button></div>
+    <div class="doctor-history-tools"><button type="button" class=${deviceOnly?'is-on':''} aria-pressed=${deviceOnly} onClick=${()=>{setDeviceOnly(!deviceOnly);setShown(HISTORY_PAGE);}}>${t('仅看此设备记录')}</button>${quota?html`<span class="st-replay-quota">${t('已保存 {n}/{limit} 个回放',{n:quota.saved,limit:quota.limit})} · ${t('已固定 {n}/{limit}',{n:quota.pinned,limit:quota.pinLimit})}</span>`:null}</div>
+    ${quota?html`<p class="st-hint">${locked?t('请先结束当前对局，再播放回放。'):t('新回放会替换最旧的未固定回放；对局记录始终保留。')}</p>`:null}
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history">
-      <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th aria-hidden="true"></th></tr></thead>
-      <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} />`)}</tbody>
+      <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th>${t('回放')}</th><th aria-hidden="true"></th></tr></thead>
+      <tbody>${rows.map((r) => html`<${HistoryRow} key=${r.id} rec=${r} gd=${gd} onOpen=${onOpen} onPlay=${onPlay} onPin=${onPin} busy=${busy} locked=${locked} quota=${quota} />`)}</tbody>
     </table></div>
     ${filtered.length > shown ? html`<div class="st-more"><${Button} size="sm" variant="secondary" onClick=${() => setShown(shown + HISTORY_PAGE)}>${t('显示更多（还有 {n} 局）', { n: filtered.length - shown })}<//></div>` : null}
     ${more&&!deviceOnly?html`<div class="st-more"><${Button} size="sm" variant="secondary" disabled=${loading} onClick=${onMore}>${t('加载更早的对局')}<//></div>`:null}
@@ -255,6 +257,10 @@ function StatsScreen({ tab }) {
   const gd = useMemo(() => makeLookups(ready), [ready, data.locale()]);
   const [stats, setStats] = useState(() => loadStats());
   const [replay, setReplay] = useState(null);
+  const [playback,setPlayback]=useState(null),[replayBusy,setReplayBusy]=useState(false);
+  const playbackRef=useRef(null);playbackRef.current=playback;
+  const mounted=useRef(true),replayFlight=useRef(false);
+  useEffect(()=>()=>{mounted.current=false;},[]);
   const profile=useStore(s=>s,Object.is,profileStore);
   const [account,setAccount]=useState(()=>(()=>{const c=cachedAccountStats(loadPref('doctorStats',null),profile.user?.id);return c?.withModded?null:c;})());
   const [loading,setLoading]=useState(false);
@@ -287,9 +293,9 @@ function StatsScreen({ tab }) {
   useEffect(() => { if (!matchAtOpen.current && inMatch) closeStats();matchAtOpen.current=inMatch; }, [inMatch]);
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key !== 'Escape' || document.querySelector('.modal')) return; // a confirm dialog on top takes the Esc
+      if (e.key !== 'Escape' || document.querySelector('.modal,.game-select-popover')) return; // a confirm dialog on top takes the Esc
       e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-      if (replayRef.current) setReplay(null); else closeStats();
+      if(playbackRef.current)setPlayback(null);else if (replayRef.current) setReplay(null); else closeStats();
     };
     window.addEventListener('keydown', onKey, true);
     const timer = setTimeout(() => boxRef.current?.focus?.(), 30);
@@ -338,8 +344,32 @@ function StatsScreen({ tab }) {
     toast(t('已清空本机统计数据'), 'success');
   };
 
+  const playReplay=async rec=>{
+    if(replayFlight.current||inMatch||offline)return;
+    replayFlight.current=true;setReplayBusy(true);
+    try{
+      const [{replay:body},{ReplayScreen}]=await Promise.all([userRequest('/api/user/replay?matchId='+encodeURIComponent(rec.matchId),undefined,{timeoutMs:30000}),import('./replay.js')]);
+      if(mounted.current&&profileStore.get().user?.id===profile.user?.id)setPlayback({body,Screen:ReplayScreen,selfId:rec.selfId});
+    }catch(e){toast(e.userCode==='REPLAY_NOT_FOUND'?t('该回放已被替换，请刷新记录。'):t('回放读取失败，请稍后重试。'),'error');}
+    finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
+  };
+  const pinReplay=async rec=>{
+    if(replayFlight.current||offline)return;
+    replayFlight.current=true;setReplayBusy(true);
+    try{
+      const result=await userRequest('/api/user/replay/pin',{matchId:rec.matchId,pinned:!rec.replay.pinned});
+      if(mounted.current&&profileStore.get().user?.id===profile.user?.id){
+        const next={...accountRef.current,replays:result.replays,records:accountRef.current.records.map(r=>r.id===rec.matchId?{...r,replay:result.replay}:r)};
+        setAccount(next);savePref('doctorStats',{userId:profile.user.id,data:{...next,records:next.records.slice(0,200)}});
+      }
+    }catch(e){toast(e.userCode==='REPLAY_PIN_LIMIT'?t('固定名额已满，请先取消固定其他回放。'):t('操作失败，请刷新后重试。'),'error');}
+    finally{replayFlight.current=false;if(mounted.current)setReplayBusy(false);}
+  };
+  if(playback)return html`<${playback.Screen} replay=${playback.body} selfId=${playback.selfId} onBack=${()=>setPlayback(null)} />`;
+
   if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
     <${PageHeader} onBack=${() => setReplay(null)} backTitle=${t('返回统计')} title=${t('对局记录')} micro="MATCH RECORD" />
+    ${replay.replay?.available?html`<div class="st-detail-replay"><${Button} variant="secondary" size="sm" icon="play" disabled=${replayBusy||inMatch||offline} onClick=${()=>playReplay(replay)}>${t('播放回放')}<//></div>`:null}
     <${Replay} rec=${replay} />
   </div>`;
 
@@ -368,7 +398,7 @@ function StatsScreen({ tab }) {
           <section><h3 class="st-sec__h">${t('此设备的记录')}</h3><p class="profile-note">${t('导入、导出和清空只影响此设备，不修改已保存的档案战绩。')}</p>
           <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="ghost" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
           <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
-        : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} />`
+        : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
         : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
         : tab==='achievements' ? achievement?html`<${AchievementContent} s=${achievement} gd=${gd} />`:html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : !agg.count ? html`<div class="st-empty"><p>${loading?t('正在读取…'):offline&&!account?t('此设备尚无档案缓存，请稍后刷新；已有本机记录仍可查看。'):t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>${!empty?html`<${Button} variant="secondary" onClick=${()=>statsStore.set({tab:'history'})}>${t('查看此设备的旧记录')}<//>`:null}</div>`

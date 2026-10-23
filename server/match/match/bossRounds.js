@@ -1,3 +1,4 @@
+import {recordFrame} from '../../replays/capture.js';
 // server/match/match/bossRounds.js — Match methods: the Final Assault / Hidden Core (the rules:
 // server/match/finalAssault.js) — the boss fields and the shared pool; client-side boss fields (plausibility budgets on
 // the field clock, cumulative credits, handovers, the boss clock, the end: pool 0 → victory, team LP 0 → defeat);
@@ -497,6 +498,7 @@ export class MatchBoss {
 
   _bossTick(runner) {
     this._applyOvertime(runner.time);
+    if(this.replayMaxBytes && !this.fields.some(f=>f.cc) && runner.ticks%15===0)recordFrame(this,null,{t:'b.pool',hp:this.bossPool.hp,max:this.bossPool.maxHp,teamLp:this.teamLp,acked:Object.fromEntries(this.fields.map(f=>[f.fieldId,f.players.reduce((n,p)=>n+(this.bossPool.byPlayer.get(p)||0),0)]))});
     if (this.teamLp <= 0 && this.bossPool.hp > 0) runner.forceAll('forced');
     // client-side combat with every boss field on the server: humans that reconnect / watch run display replicas
     // whose LocalBossPool follows b.pool

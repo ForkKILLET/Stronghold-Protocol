@@ -185,7 +185,7 @@ export function accountRecord(row) {
   const {frame, ...self} = row.payload || {};
   const modeId = frame?.modeId || row.mode;
   return {...frame, id:'account.'+row.id, matchId:row.id, t:row.endedAt,
-    end:'settled', selfId:row.playerId, players:[{...self,playerId:row.playerId,victory:!!row.victory,roundsPassed:row.rounds}], difficulty:row.difficulty,
+    end:'settled', replay:row.replay || null, selfId:row.playerId, players:[{...self,playerId:row.playerId,victory:!!row.victory,roundsPassed:row.rounds}], difficulty:row.difficulty,
     modeId, roomMode:frame?.roomMode || (modeId?.includes('_single_')?'solo':modeId?.includes('_multi_')?'coop':null),
     roundsPassed:row.rounds, victory:row.victory, account:true, missingFrame:!frame};
 }

@@ -1,3 +1,4 @@
+import {REPLAY_DEFAULTS} from './users/replays.js';
 // Operator settings only. No gameplay data, credentials, global env mutation or hot reload.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,6 +37,8 @@ export const SERVER_FIELDS=Object.freeze([
  ['workers.matches','matchWorkers','SP_MATCH_WORKERS',0,integer(0,32)],
  ['workers.maxQueue','workerQueue','SP_WORKER_QUEUE',()=>workerDefaults().maxQueue,integer(0,10000)],
  ['workers.timeoutMs','workerTimeoutMs','SP_WORKER_TIMEOUT_MS',()=>workerDefaults().timeoutMs,integer(1,3600_000)],
+ ['replays.perUser','replayLimit','SP_REPLAY_LIMIT',REPLAY_DEFAULTS.perUser,integer(0,100)],
+ ['replays.maxBytes','replayMaxBytes','SP_REPLAY_MAX_BYTES',REPLAY_DEFAULTS.maxBytes,integer(65536,64*1024*1024)],
  ['shutdown.timeoutMs','shutdownTimeoutMs','SP_SHUTDOWN_TIMEOUT_MS',60_000,integer(1000,300_000)],
 ].map(Object.freeze));
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);

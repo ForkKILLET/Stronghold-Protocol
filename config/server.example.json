@@ -24,5 +24,6 @@
   },
   "persistence": { "saveMs": 10000 },
   "workers": { "rooms": 0, "matches": 0, "maxQueue": 256, "timeoutMs": 120000 },
+  "replays": { "perUser": 10, "maxBytes": 8388608 },
   "shutdown": { "timeoutMs": 60000 }
 }

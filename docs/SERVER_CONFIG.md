@@ -22,6 +22,7 @@ npm start
 | `network` | `ratePerSec`、`rateBurst`、`heavyPerSec`、`heavyBurst`、`abuseDropsPerSec` | `SP_RATE_PER_SEC`、`SP_RATE_BURST`、`SP_HEAVY_PER_SEC`、`SP_HEAVY_BURST`、`SP_ABUSE_DROPS_PER_SEC` |
 | `persistence` | `saveMs` | `SP_REDIS_SAVE_MS` |
 | `workers` | `simulation`、`rooms`、`matches`、`maxQueue`、`timeoutMs` | `SP_WORKERS`、`SP_ROOM_WORKERS`、`SP_MATCH_WORKERS`、`SP_WORKER_QUEUE`、`SP_WORKER_TIMEOUT_MS` |
+| `replays` | `perUser`、`maxBytes` | `SP_REPLAY_LIMIT`、`SP_REPLAY_MAX_BYTES` |
 | `shutdown` | `timeoutMs` | `SP_SHUTDOWN_TIMEOUT_MS` |
 
 容量范围为 0–1000000，`maxSessions` 至少 1。每网络容量的 0 表示不限；全局连接／房间的 0 禁止新接入／新建，不代表不限。时间通常为 1 毫秒至 7 天；存档周期至少 1000 毫秒。Worker 数量 0–32，房间 lane 不能超过模拟 Worker 总数；队列 0–10000，Worker 超时 1–3600000 毫秒。退出超时 1000–300000 毫秒，默认 60000；超时退出状态为失败，避免将未完成保存误报为成功。
@@ -36,7 +37,7 @@ node tools/server-config.mjs /absolute/path/server.json
 
 输出下次启动将采用的 `values` 和各字段的 `sources`（默认、文件、环境变量、显式参数），可以在发布前只读校验；`startServer()` 返回的 `runtimeConfig` 才是该实例启动时实际采用的不可变快照。编辑文件不会更新正在运行的实例。启动日志只报告使用的文件；该工具不输出环境中的凭据。
 
-配置不经公共 HTTP 提供，也不加入浏览器构建或 WebSocket。密码／令牌仍使用 Secrets；HTTP 监听、CDN、Redis 连接、账户路径及插件策略继续沿用原有专用配置。未合入的 pending 接入、满员恢复优待和回放限额随功能加入注册表，当前写入此类未知键会明确报错。内部批大小、协议常量不作为运营设置暴露。
+配置不经公共 HTTP 提供，也不加入浏览器构建或 WebSocket。密码／令牌仍使用 Secrets；HTTP 监听、CDN、Redis 连接、账户路径及插件策略继续沿用原有专用配置。未合入的 pending 接入、满员恢复优待随功能加入注册表，当前写入此类未知键会明确报错。内部批大小、协议常量不作为运营设置暴露。
 
 ## 容器和发布
 
@@ -45,3 +46,5 @@ node tools/server-config.mjs /absolute/path/server.json
 本服务的部署配置位于个人配置仓库 `deploy/stronghold-protocol`。发布脚本首次安装其 `server.json` 策略，之后保留服务器配置目录已有内容。候选构建校验配置副本；等待期间若文件变化则要求重新准备候选。Compose 停止宽限至少为生效的退出超时加 30 秒，发布停止容器时尊重该宽限。原有环境变量仍优先，遇到不符预期的值应先检查 `sources`。
 
 验证：`test/server-runtime-config.test.js`、房间／容量、监控、账户／存档和 Match Worker 回归。配置变化本身无需重新构建前端；首次接入配置读取器仍需发布新服务。
+
+回放数量默认每账户 10，固定上限 9；单局原始记录默认 8 MiB。字段范围、降额保护和禁用语义见 [REPLAYS.md](REPLAYS.md)。

@@ -1,3 +1,4 @@
+import {recordFrame,recordViews} from '../../replays/capture.js';
 // server/match/match/messaging.js — Match methods: messaging — unicast, broadcast, toasts, the ticker lines
 // (config.broadcasts by type; the remake's CUSTOM lines), the dirty marks and flush: m.private per player only when it
 // changed (plus the prep scouts of that player's board), m.public throttled (DELAYS.PUBLIC_THROTTLE) and deduplicated.
@@ -12,6 +13,7 @@ import { wireMessage } from '../../../shared/i18n.js';
 export class MatchMessaging {
   sendTo(playerId, msg, encoded = null) {
     if (this.disposed) return false;
+    recordFrame(this,playerId,msg);
     const ps = this.players.get(playerId) || this.spectators.get(playerId);
     if (!ps || ps.isBot || ps.left) return false;
     try { return !!this.sendFn(playerId, msg, encoded); } catch (e) { this.reportError('send', e); return false; }
@@ -19,6 +21,7 @@ export class MatchMessaging {
 
   broadcast(msg) {
     if (this.disposed) return;
+    recordFrame(this,null,msg);
     try { this.broadcastFn(msg); } catch (e) { this.reportError('broadcast', e); }
   }
 
@@ -67,6 +70,7 @@ export class MatchMessaging {
   /** Send pending m.private (per player, only when changed) and m.public (throttled ≤ 10/s). */
   flush(forcePublic = false) {
     if (this.disposed) return;
+    if(this._privDirty.size || this._pubDirty || forcePublic)recordViews(this);
     if (this._privDirty.size) {
       const list = [...this._privDirty];
       this._privDirty.clear();

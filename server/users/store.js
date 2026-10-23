@@ -1,7 +1,7 @@
 import {Worker} from 'node:worker_threads';
 import path from 'node:path';
-export async function openUserStore(file,{backups=file===':memory:'?null:path.join(path.dirname(file),'backups'),log=console,hiddenBonds=[]}={}) {
- const worker=new Worker(new URL('./worker.js',import.meta.url),{workerData:{file,hiddenBonds},execArgv:[]});
+export async function openUserStore(file,{backups=file===':memory:'?null:path.join(path.dirname(file),'backups'),log=console,hiddenBonds=[],replays}={}) {
+ const worker=new Worker(new URL('./worker.js',import.meta.url),{workerData:{file,hiddenBonds,replays},execArgv:[]});
  let seq=0;let dead=false;const pending=new Map();
  const rejectAll=()=>{dead=true;for(const p of pending.values())p.reject(new Error('User storage unavailable'));pending.clear();};
  worker.on('error',rejectAll);worker.on('exit',rejectAll);

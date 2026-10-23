@@ -73,6 +73,8 @@ export const ICONS = {
   keyboard: { d: 'M3 5h18v14H3zm2 2v10h14V7zm2 2h2v2H7zm3 0h2v2h-2zm3 0h2v2h-2zm3 0h2v2h-2zM7 13h10v2H7z' },
   terminal: { d: 'M3 4h18v16H3zm2 2v12h14V6zm2.2 3.1 1.4-1.4L13.8 11l-5.2 3.3-1.4-1.4L10.2 11zM14 14h3v2h-3z' },
   warn: { d: 'M12 2 1 21h22zm-1 7v6h2V9zm0 7.5v2h2v-2z', eo: true },
+  pause: { d: 'M5 3h5v18H5zM14 3h5v18h-5z' },
+  pin: { d: 'M7 2h10v2h-1v6l4 4v2h-7v6h-2v-6H4v-2l4-4V4H7z' },
   play: { d: 'M7 4v16l13-8z' },
   mic: { d: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11z' },
   edit: { d: 'M3 17.2V21h3.8l11-11-3.8-3.8zM20.7 7.1a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.8 1.8 3.8 3.8z' },

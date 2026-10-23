@@ -180,7 +180,7 @@ function withProps(value, extra) {
  * order, pool, schedulers) or transient (clocks, view plumbing, timers, battle objects).
  */
 const MATCH_FIELDS = Object.freeze([
-  'userMatchId', 'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
+  'replayArchive', 'userMatchId', 'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
   'botRehearsal', 'clientCombat', 'verifyMode', 'headlessSliceMs', 'verifyStats', '_battleSeq', 'pausedMs',
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'aiPicksLast', 'setupRevision', '_setupVoteSeq',
@@ -233,7 +233,7 @@ export function captureMatch(m) {
   const now = m.sched.now();
   const doc = { v: SNAPSHOT_VERSION, phase: m.phase, round: m.round, savedAt: now };
   for (const k of MATCH_FIELDS) {
-    if (k === 'round') continue;
+    if (k === 'round' || (k === 'replayArchive' && !m.replayArchive)) continue;
     doc[k] = m[k];
   }
   // the phase clock travels as *remaining* time: the match is frozen while the server is down
@@ -271,7 +271,7 @@ export function encodeMatchCapture(capture) {
     Object.defineProperty(doc.factions, 'schedule', { value: factionSchedule, enumerable: false });
   }
   const out = { ...doc };
-  for (const k of MATCH_FIELDS) if (k !== 'round') out[k] = encodeState(doc[k]);
+  for (const k of MATCH_FIELDS) if (k !== 'round' && (k !== 'replayArchive' || doc[k] != null)) out[k] = encodeState(doc[k]);
   out.players = doc.players.map((p) => {
     const encoded = { playerId: p.playerId };
     for (const k of PLAYER_FIELDS) if (k !== 'playerId') encoded[k] = encodeState(p[k]);
@@ -336,6 +336,7 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     const previous = Array.isArray(m.bossWaves) ? m.bossWaves.map(w => w?.players) : null;
     m.bossPairs = validPairs(previous) ? previous.map(ids => ids.slice()) : null;
   }
+  if(m.replayArchive)m.replayArchive.start=now-Math.max(0,Number(doc.savedAt)-Number(m.replayArchive.start));
   m.round = Number(doc.round) || 0;
   if (bestEffort && (!Number.isInteger(m.round) || m.round < 0
     || (m.round === 0 && [PHASE.PREP, PHASE.ROUND_START, PHASE.SP_DRAFT].includes(doc.phase)))) {
@@ -613,7 +614,7 @@ function enterPhase(m, doc, now) {
  */
 export function matchState(m) {
   const match = {};
-  for (const k of MATCH_FIELDS) match[k] = encodeState(m[k]);
+  for (const k of MATCH_FIELDS) if(k!=='replayArchive' || m[k])match[k] = encodeState(m[k]);
   // the draft turn clocks are absolute times of the *old* run: the restored match re-arms them from its own clock
   for (const k of ['draft', 'sp']) if (match[k] && typeof match[k] === 'object') delete match[k].turnDeadline;
   const pool = {};

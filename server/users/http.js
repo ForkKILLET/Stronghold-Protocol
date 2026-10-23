@@ -1,3 +1,4 @@
+import {acceptsGzip} from '../http/files.js';
 import {sendJson} from '../http/common.js';
 import {sanitizeName,clientAddress,limitKeyOf,isLocalIp} from '../net.js';
 export const USER_COOKIE='sp_user';
@@ -6,7 +7,7 @@ export function sameOrigin(req){
  if(req.headers['sec-fetch-site']==='cross-site')return false;
  try{return !req.headers.origin || new URL(req.headers.origin).host===req.headers.host;}catch{return false;}
 }
-export function createUserApi({users,registry,lobby,data,moderation,trustProxy,log,network}){
+export function createUserApi({users,registry,lobby,data,content,moderation,trustProxy,log,network}){
  const limits=new Map();
  const json=(req,res,status,data)=>{res.setHeader('Cache-Control','no-store');sendJson(req,res,status,data);};
  const cookie=(req,res,token)=>{
@@ -43,8 +44,22 @@ export function createUserApi({users,registry,lobby,data,moderation,trustProxy,l
     const before=cursor==null?null:Number(cursor);if(before!=null&&(!Number.isSafeInteger(before)||before<1)){json(req,res,400,{error:'CURSOR'});return true;}
     json(req,res,200,await users.call('stats',{id:user.id,before,modded:new URL(req.url,'http://local').searchParams.get('modded')==='1'}));return true;
    }
+   if(pathname==='/api/user/replay'&&req.method==='GET'){
+    const matchId=new URL(req.url,'http://local').searchParams.get('matchId');
+    if(typeof matchId!=='string'||!/^[A-Za-z0-9_-]{1,160}$/.test(matchId)){json(req,res,400,{error:'MATCH_ID'});return true;}
+    const gzip=acceptsGzip(req.headers['accept-encoding']);
+    const result=await users.call('replayBody',{id:user.id,matchId,gzip});
+    if(result.error){json(req,res,404,result);return true;}
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':result.body.byteLength,'Vary':'Accept-Encoding',...(gzip?{'Content-Encoding':'gzip'}:{}),...(content?.cs?{'X-SP-Replay-Content':content.cs}:{})});
+    res.end(result.body);return true;
+   }
    if(req.method!=='POST'){json(req,res,405,{error:'METHOD'});return true;}
    const input=await body(req);
+   if(pathname==='/api/user/replay/pin'){
+    if(typeof input.matchId!=='string'||!/^[A-Za-z0-9_-]{1,160}$/.test(input.matchId)||typeof input.pinned!=='boolean'){json(req,res,400,{error:'REPLAY_INPUT'});return true;}
+    const result=await users.call('pinReplay',{id:user.id,matchId:input.matchId,pinned:input.pinned});
+    json(req,res,result.error==='REPLAY_NOT_FOUND'?404:result.error?409:200,result);return true;
+   }
    if(pathname==='/api/user/profile' || pathname==='/api/user/name'){
     const name=sanitizeName(input.name);const avatarId=pathname==='/api/user/name'?user.avatarId:input.avatarId;
     if(!name || (pathname==='/api/user/profile' && !(avatarId===null || (typeof avatarId==='string' && Object.hasOwn(data['profile-avatars']?.avatars||{},avatarId))))){json(req,res,400,{error:'PROFILE'});return true;}

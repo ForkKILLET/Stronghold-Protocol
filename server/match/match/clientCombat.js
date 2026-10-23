@@ -1,3 +1,4 @@
+import {recordSpec,recordEnd} from '../../replays/capture.js';
 // server/match/match/clientCombat.js — Match methods: client-side combat bookkeeping (DESIGN §14) — field records (the
 // JSON BattleSpec + the authority / result state), spec battles on the server, the field clock, the authority (the
 // lowest connected seat), b.start per recipient, result deadlines and releases, server runs (headless slices,
@@ -41,6 +42,7 @@ export class MatchClientCombat {
     // protocol ids are ≤ 64 chars (shared/protocol.js isId): the field id is informational, the sequence is unique
     const battleId = seq.length + 1 + String(fieldId).length <= 64 ? `${seq}.${fieldId}` : seq;
     const spec = buildBattleSpec({ ...opts, battleId, fieldId, kind, content: this.battleContent, boss, cs: this.cs, vs: this.vs });
+    recordSpec(this,spec);
     let total = 0;
     for (const x of spec.spawns) if (x && x.tag !== 'boss' && x.tag !== 'part' && x.countInTotal !== false) total += Math.max(1, Math.floor(Number(x.count) || 1));
     return {
@@ -250,6 +252,7 @@ export class MatchClientCombat {
     this._clearFieldTimers(f);
     if (!f.result) f.result = syntheticResult(f.players, { bossBy: f.bossBy });
     f.progress.done = true;
+    recordEnd(this,f,f.result);
     this.markPublic();
     this._maybeFieldsDone();
   }

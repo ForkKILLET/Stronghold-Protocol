@@ -43,7 +43,7 @@ const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 /** The lobby options a worker can take (JSON-safe: no callbacks, no data, no class). */
 export function wireOptions(opts) {
   const out = {};
-  for (const k of ['prepSeconds', 'prepMultiplier', 'combatSpeed', 'userPersistence', 'roomCode', 'mode', 'difficulty', 'modeId', 'aiPicksLast', 'seats', 'spectators', 'seed', 'matchNo', 'cs', 'vs', 'requireCs', 'consoleEnabled', 'hostId', 'checkpoint', 'departedPlayerIds']) {
+  for (const k of ['prepSeconds', 'prepMultiplier', 'combatSpeed', 'replayMaxBytes', 'userPersistence', 'roomCode', 'mode', 'difficulty', 'modeId', 'aiPicksLast', 'seats', 'spectators', 'seed', 'matchNo', 'cs', 'vs', 'requireCs', 'consoleEnabled', 'hostId', 'checkpoint', 'departedPlayerIds']) {
     if (opts[k] !== undefined) out[k] = opts[k];
   }
   return out;
@@ -178,7 +178,10 @@ export class MatchProxy {
     if (this.disposed) return;
     if (m.type === 'send') { try { this.opts.send(m.playerId, m.msg); } catch (e) { this.log.error?.(`[match ${this.roomCode}] send failed`, e); } return; }
     if (m.type === 'broadcast') { try { this.opts.broadcast(m.msg); } catch (e) { this.log.error?.(`[match ${this.roomCode}] broadcast failed`, e); } return; }
-    if (m.type === 'end') { this._end(m.summary ?? null); return; }
+    if (m.type === 'end') {
+      let replay=null;try{if(m.replayJson)replay=JSON.parse(m.replayJson);}catch{}
+      this._end(m.summary?{...m.summary,replay}:null); return;
+    }
     if (m.type === 'failed') { this.crash('plugin-start', m.error); }
   }
 

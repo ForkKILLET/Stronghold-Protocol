@@ -347,3 +347,7 @@ P3b integration (DESIGN §32.11): sandbox script sets require valid locked bytes
 `content.trusted`. Execution mode is bound to cs through the hashed script descriptors. Mixed script/trusted sets
 are entirely native and require consent [ASSUMED]; trusted classes cannot load in sandbox mode. The page verifies
 same-origin native script responses before import; all gameplay battle simulations run in Workers.
+
+## 本 Fork：私有回放接口
+
+账户回放通过同源 Cookie 认证的 `/api/user/replay` 与 `/api/user/replay/pin` 读取／固定，仅允许该局参与者读取自己保留的副本。不增加公开 WS 广播或客户端上传，原有 C2S／S2C 表不变。经营视图差量复用 stateDelta v1；播放器使用独立实例并且不发送游戏命令。细节见 [REPLAYS.md](../REPLAYS.md)。

@@ -211,7 +211,10 @@ function create(matchId, opts) {
       now: Date.now,
       send: (playerId, msg) => { post({ type: 'send', matchId, playerId, msg }); return true; },
       broadcast: (msg) => post({ type: 'broadcast', matchId, msg }),
-      onEnd: (summary) => post({ type: 'end', matchId, summary: plain(summary) }),
+      onEnd: (summary) => {
+        const {replay,...settlement}=summary;
+        post({type:'end',matchId,summary:plain(settlement),replayJson:replay?JSON.stringify(replay):null});
+      },
       ...(sched ? { scheduler: sched } : {}),
     });
   } catch (e) {

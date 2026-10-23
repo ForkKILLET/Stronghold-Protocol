@@ -1046,3 +1046,7 @@ Negative internal balance is a deficit, never negative available stock; selling 
 Operator-trait gifts retain the branch exemption described above, including Rockrock's measured equipment subset. Ordinary strategy grants (including Damazti), shop purchases and item rewards keep stock checks; matching a fixed gift's name or passing requirePool:false does not exempt them. Flametail's weighted operator subset retains ordinary stock accounting (§30.2).
 凯瑟琳's `pool_equip_kathe` is every shop-eligible item plus 突变细胞 (`also`), uniform
 [ASSUMED], at any 调度中心 level (#631); the shop item slot does not read `also`.
+
+## 本 Fork：账户回放
+
+完整经营过程以服务端确认视图差量录制，战斗保留原 BattleSpec 和领袖池同步；不改变 Match 操作、结果或固定模拟步长。结束时随账户结算 outbox 原子入库，限额／固定不删除结算。实现、规则身份约束和配置见 [REPLAYS.md](REPLAYS.md)。

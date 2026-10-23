@@ -1,3 +1,4 @@
+import {recordSpec,recordEnd} from '../../replays/capture.js';
 // server/match/match/combat.js — Match methods: the battles of a normal round — Battle construction (newBattle, the
 // spawn list sanitised, a player's normal field after the onBattleStart handlers), the COMBAT phase in both modes
 // (server-run streaming, client-side combat), the per-field results and the sim-error log, then 联防 or SETTLE.
@@ -16,6 +17,7 @@ export class MatchCombat {
   newBattle(opts, { preview = false } = {}) {
     const full = { data: this.ds, content: this.battleContent, logger: this.log, ...opts,
       ...(preview ? { logger: {}, quiet: true } : {}) };
+    if(!preview)recordSpec(this,opts);
     try {
       return new this.BattleClass(full);
     } catch (e) {
@@ -119,6 +121,7 @@ export class MatchCombat {
 
   /** Aggregate a finished field's content/engine errors (battle.errors: unique records) for diagnostics. */
   _collectSimErrors(f, res) {
+    recordEnd(this,f,res);
     this.simErrors += Number(res && res.errors) || 0;
     const list = f && Array.isArray(f.workerErrors) ? f.workerErrors : f && f.battle && Array.isArray(f.battle.errors) ? f.battle.errors : [];
     for (const e of list) {

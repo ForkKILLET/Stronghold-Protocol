@@ -982,7 +982,7 @@ export class Lobby {
     const difficulty = typeof checkpoint.difficulty === 'string' && checkpoint.difficulty ? checkpoint.difficulty : 'NORMAL';
     try {
       const match = new this.MatchClass({
-        userPersistence:!!this.users, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats,
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats,
         consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast, seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
         data: this.safeData(), workerPool: this.workerPoolFor(room?.code || roomCode), log: this.log, now: this.now,
         send: (playerId, msg, encoded) => (ctx.live ? this.queueMatchSend(ctx, playerId, msg, encoded) : false),
@@ -1034,7 +1034,7 @@ export class Lobby {
       members: seats, lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     try {
       const match = await this.matchWorkerPool.create(roomCode, {
-        userPersistence:!!this.users, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
         seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
       }, {
         created: (match) => this.attachQueuedWorker(ctx, room, match),
@@ -2093,7 +2093,7 @@ export class Lobby {
     const matchNo = checkpoint ? Math.max(1, room.matchCount) : room.matchCount + 1;
     try {
       const match = await this.matchWorkerPool.create(room.code, {
-        userPersistence:!!this.users, roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: modeIdFor(room.mode, room.difficulty),
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: modeIdFor(room.mode, room.difficulty),
         seats, spectators: room.spectators.map((s) => s.playerId), consoleEnabled: !!room.consoleEnabled,
         hostId: room.hostId, ...(room.content ? { cs: room.content.cs } : {}),
         seed, matchNo, aiPicksLast: !!room.aiPicksLast,
@@ -2163,7 +2163,7 @@ export class Lobby {
     if (!checkpoint) for (const seat of seats) if (!seat.isBot) Object.assign(seat, this.seatSettings(room, room.seatOf(seat.playerId), data));
     try {
       const opts = {
-        userPersistence:!!this.users, roomCode: room.code,
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: room.code,
         mode: room.mode,
         difficulty: room.difficulty,
         // a plugin mode the host chose (header "Gameplay plugins"), else the official mode of the difficulty
@@ -2288,7 +2288,7 @@ export class Lobby {
     try { seed = this.seedFn() >>> 0; } catch { seed = randomInt(2 ** 32); }
     try {
       const match = await this.matchWorkerPool.create(matchCode, {
-        userPersistence:!!this.users, roomCode: matchCode, mode: owner.mode, difficulty: owner.difficulty, modeId: modeIdFor(owner.mode, owner.difficulty),
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: matchCode, mode: owner.mode, difficulty: owner.difficulty, modeId: modeIdFor(owner.mode, owner.difficulty),
         seats, consoleEnabled: !!room?.consoleEnabled, aiPicksLast: !!room?.aiPicksLast, seed, matchNo: room ? room.matchCount + 1 : 1,
       }, {
         created: (match) => {
@@ -2349,7 +2349,7 @@ export class Lobby {
     ctx.workerKey = matchCode;
     try {
       const match = new this.MatchClass({
-        userPersistence:!!this.users, roomCode: matchCode,
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: matchCode,
         mode: owner.mode,
         difficulty: owner.difficulty,
         modeId: modeIdFor(owner.mode, owner.difficulty),
@@ -2395,6 +2395,7 @@ export class Lobby {
   }
 
   recordUserResult(ctx,summary,room=null){
+    const {replay,...settlement}=summary || {};summary=settlement;
     if(!this.users || !summary?.matchId || !Array.isArray(summary.players))return;
     const frame={...summary,roomMode:room?.mode || (summary.modeId?.includes('_single_')?'solo':'coop'),
       content:room?.modded?{cs:room.content.cs,plugins:(room.content.plugins || []).map(p=>`${p.id}@${p.version}`)}:null};
@@ -2402,7 +2403,7 @@ export class Lobby {
       playerId:p.playerId,victory:!!p.victory,rounds:Number(p.roundsPassed)||0,payload:{...p,frame:Object.fromEntries(Object.entries(frame).filter(([key])=>key!=='players'))}})).filter(p=>p.userId);
     if(!rows.length)return;
     if(!this.userOutbox.has(summary.matchId)){
-      this.userOutbox.set(summary.matchId,{id:summary.matchId,endedAt:Date.now(),mode:summary.modeId || '',difficulty:summary.difficulty || '',source:'server',rows});
+      this.userOutbox.set(summary.matchId,{id:summary.matchId,endedAt:Date.now(),mode:summary.modeId || '',difficulty:summary.difficulty || '',source:'server',rows,replay});
       this.onUserResultStaged?.();
     }
     this.flushUserResults();
@@ -2456,6 +2457,7 @@ export class Lobby {
   onQueuedMatchEnd(ctx, summary) {
     if (!ctx || ctx.ended || !ctx.live) return;
     this.recordUserResult(ctx,summary);
+    if(summary){summary={...summary};delete summary.replay;}
     const room = ctx.room;
     for (const p of ctx.members) if (!p.isBot) {
       const session = this.registry.byId(p.playerId);
@@ -2484,6 +2486,7 @@ export class Lobby {
   onMatchEnd(room, ctx, summary) {
     if (ctx.ended || !ctx.live || room.matchCtx !== ctx || room.disposed) return;
     this.recordUserResult(ctx,summary,room);
+    if(summary){summary={...summary};delete summary.replay;}
     ctx.ended = true;
     room.lastSummary = summary ?? null;
     room.match = null;
@@ -2762,7 +2765,7 @@ export class Lobby {
     // Main-thread membership is authoritative even before a Worker acknowledges onLeave.
     member.left = true;
     member.connected = false;
-    this.callMatchContext(ctx, 'onLeave', playerId);
+    this.holdRoomDeparture(ctx.room,this.callMatchContext(ctx, 'onLeave', playerId));
     const session = this.registry.byId(playerId);
     if (session?.activeMatchCtx === ctx) session.activeMatchCtx = null;
     if (ctx.room) this.disposeEmptyRoom(ctx.room);
@@ -2889,7 +2892,7 @@ export class Lobby {
       seat.connected = false;
       seat.ready = false;
       if (room.matchCtx?.queue) this.leaveQueuedMatchPlayer(room.matchCtx, playerId);
-      else this.callMatch(room, 'onLeave', playerId);
+      else this.holdRoomDeparture(room,this.callMatch(room, 'onLeave', playerId));
       if (session?.activeMatchCtx === room.matchCtx) session.activeMatchCtx = null;
     } else {
       room.seats[seat.seat] = null;
@@ -2902,7 +2905,15 @@ export class Lobby {
   }
 
   /** An empty party is not an empty match: retain the original code/lane while external humans still own it. */
+  holdRoomDeparture(room,result){
+    if(!room || !room.matchCtx?.live || room.match?.ready===false || !result || typeof result.then!=='function')return;
+    room.pendingDepartures=(room.pendingDepartures || 0)+1;
+    const done=()=>{room.pendingDepartures--;this.disposeEmptyRoom(room);};
+    result.then(done,done);
+  }
+
   disposeEmptyRoom(room) {
+    if(room.pendingDepartures)return;
     if (room.disposed || room.activeHumans().length) return;
     const ctx = room.matchCtx;
     if (ctx?.queue && !ctx.ended && !ctx.disposed && ctx.members.some((p) =>

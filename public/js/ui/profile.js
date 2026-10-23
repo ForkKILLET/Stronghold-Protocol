@@ -12,9 +12,9 @@ import {NAME_MAX_LEN} from '../../../shared/constants.js';
 import {profileAvatarUrl} from './assetUrls.js';
 
 export const profileStore=createStore({enabled:false,user:null,open:false,tab:'overview',status:'idle'});
-export async function userRequest(path,body){
- const response=await fetch(path,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(5000)});
- const result=await response.json();if(!response.ok)throw Object.assign(new Error(result.error),{userCode:result.error});return result;
+export async function userRequest(path,body,{timeoutMs=5000,signal}={}){
+ const response=await fetch(path,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:signal || AbortSignal.timeout(timeoutMs)});
+ const result=await response.json();if(result.replay&&response.headers.has('x-sp-replay-content'))result.replay.currentCs=response.headers.get('x-sp-replay-content');if(!response.ok)throw Object.assign(new Error(result.error),{userCode:result.error});return result;
 }
 function remember(user){profileStore.set({user,status:'saved'});savePref('doctorProfile',user);if(user.name)identity.saveName(user.name);}
 export async function initProfile(){

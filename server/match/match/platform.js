@@ -1,3 +1,4 @@
+import {recordAction} from '../../replays/capture.js';
 // server/match/match/platform.js — Match methods: the platform interface of the server/match/Match.js header
 // (server/lobby.js ⇄ Match) — start, handle (validation, error isolation, flush; the intents themselves: intents.js
 // _handle), setLoadout (INFO_CHECK only), onDisconnect / onReconnect and the full resync of one human, onLeave and 中途退出
@@ -53,6 +54,7 @@ export class MatchPlatform {
       this.reportError(`handle ${msg.t}`, e);
       res = fail(ERR.INTERNAL);
     }
+    if(!res?.error)recordAction(this,ps,msg);
     try { this.flush(); } catch (e) { this.reportError('flush', e); }
     if (res && typeof res === 'object' && res.error) return res;
     return OK;

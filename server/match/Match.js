@@ -290,6 +290,8 @@ export class Match {
     this.sendFn = opts.send;
     this.broadcastFn = opts.broadcast;
     this.onEndFn = opts.onEnd;
+    this.replayMaxBytes = Number(opts.replayMaxBytes) || 0;
+    this.replayArchive = null;
     this.data = opts.data && typeof opts.data === 'object' ? opts.data : {};
     /** the room's content hash (opts.cs, DESIGN §32): every BattleSpec carries it */
     this.cs = isContentHash(opts.cs) ? opts.cs : null;

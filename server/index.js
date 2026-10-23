@@ -82,7 +82,7 @@ export {
  * Build and start the HTTP + WebSocket server.
  * @param {{
  *   serverConfigFile?: string | null | false, shutdownTimeoutMs?: number, maxSessions?: number,
- *   userFile?: string, adminToken?: string | null, adminPort?: number, adminHost?: string,
+ *   userFile?: string, replayLimit?: number, replayMaxBytes?: number, adminToken?: string | null, adminPort?: number, adminHost?: string,
  *   nameModeration?: { check: Function, close?: Function } | null,
  *   port?: number, host?: string, quiet?: boolean, log?: object,
  *   publicDir?: string, dataDir?: string, sharedDir?: string, packsDir?: string, pluginsDir?: string,
@@ -180,9 +180,10 @@ export async function startServer(opts = {}) {
   const { registry, lobby, network } = createSessionStack({ ...opts, nameModeration }, { data, log, workerPool, matchWorkerPool, content, plugins: roomSets, hosts });
   const userFile=opts.userFile ?? process.env.SP_USER_DB;
   let users=null;
-  try{users=userFile?await openUserStore(userFile,{log,hiddenBonds:Object.values(data.bonds || {}).filter(b=>b.noStack).map(b=>b.bondId)}):null;}
+  try{users=userFile?await openUserStore(userFile,{log,replays:{perUser:opts.replayLimit,maxBytes:opts.replayMaxBytes},hiddenBonds:Object.values(data.bonds || {}).filter(b=>b.noStack).map(b=>b.bondId)}):null;}
   catch(e){network.close();if(ownsWorkerPool)await workerPool?.close();if(ownsMatchWorkerPool)await matchWorkerPool?.close();nameModeration?.close?.();await store?.close();throw e;}
   lobby.users=users;
+  lobby.replayMaxBytes=users&&opts.replayLimit>0?opts.replayMaxBytes:0;
   network.onProfileName=(id,name)=>{if(users)users.call('rename',{id,name}).catch(()=>log.warn('[users] nickname save failed'));};
   // Resume the last state before listening: every reconnecting client is recognized by its token right away.
   const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs }) : null;
@@ -221,7 +222,7 @@ export async function startServer(opts = {}) {
   const servePublicApi = createPublicApi({ lobby, announcements, trustProxy: network.opts.trustProxy, sendJson, sendError });
 
   const serveNameReview = createNameModerationRoute({ moderation: nameModeration, trustProxy: network.opts.trustProxy });
-  const serveUserApi=createUserApi({users,registry,lobby,data,moderation:nameModeration,trustProxy:network.opts.trustProxy,log,network});
+  const serveUserApi=createUserApi({users,registry,lobby,data,content,moderation:nameModeration,trustProxy:network.opts.trustProxy,log,network});
   const serveApi = async (req, res, pathname) => await serveUserApi(req,res,pathname) || await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
 
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, simDir, packsDir, pluginsDir, packs, content, log, visual, contents, cdnBase: assetsCdn, dataCdnBase: dataCdn, resourcePackRoutes, clientBuild });
