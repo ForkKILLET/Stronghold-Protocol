@@ -83,7 +83,7 @@
 .result__actions > .btn--square .btn__icon { width:18px; height:18px; }
 .result__actions > .combat-metrics { z-index:55; --utility-text:max(var(--t),100px); }
 /* The nested modal must cover the sibling page header (z-index:3), including on short screens. */
-.st--replay:has(.doctor-replay-menu) > .result-view { z-index:4; }
+.st--replay.is-replay-menu-open > .result-view { z-index:4; }
 @media (max-width:760px),(pointer:coarse) { .result__actions { --result-action-size:44px; } }
 @media (max-width:900px) and (orientation:landscape) {
   .result__actions { gap:6px; }

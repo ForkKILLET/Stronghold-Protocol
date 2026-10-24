@@ -211,8 +211,10 @@ export function ReplayStatus({available,pinned=false,shared=false,unavailableLab
       ${available&&shared?html`<${Icon} name="eye" title=${t('公开')} />`:null}
     </span></span>`;
 }
-export function HistoryMenu({rec,busy,locked,onPlay,onOpen,view=false,readOnly=false,onPin,onShare,publicId,allowSharing,quota,showPlay=true,onPrivacy}){
-  const [open,setOpen]=useState(false);
+export function HistoryMenu({rec,busy,locked,onPlay,onOpen,view=false,readOnly=false,onPin,onShare,publicId,allowSharing,quota,showPlay=true,onPrivacy,onOpenChange}){
+  const [open,setOpenState]=useState(false);
+  const setOpen=value=>{setOpenState(value);onOpenChange?.(value);};
+  useEffect(()=>()=>onOpenChange?.(false),[onOpenChange]);
   const available=!!rec.replay?.available;
   return html`<${Button} class="st-history-menu-trigger" size="sm" square=${true} variant="ghost" icon="dots" aria-label=${t('对局操作')} disabled=${!available&&!view} onClick=${()=>setOpen(true)} />
     <${Modal} open=${open} title=${t('对局操作')} micro="MATCH ACTIONS" utility=${true} onClose=${()=>setOpen(false)}>
@@ -315,6 +317,7 @@ function StatsScreen({ tab }) {
   const gd = useMemo(() => makeLookups(ready), [ready, data.locale()]);
   const [stats, setStats] = useState(() => loadStats());
   const [replay, setReplay] = useState(null);
+  const [replayMenuOpen,setReplayMenuOpen]=useState(false);
   const [playback,setPlayback]=useState(null),[replayBusy,setReplayBusy]=useState(false);
   const playbackRef=useRef(null);playbackRef.current=playback;
   const mounted=useRef(true),replayFlight=useRef(false);
@@ -438,12 +441,12 @@ function StatsScreen({ tab }) {
   };
   if(playback)return html`<${playback.Screen} replay=${playback.body} selfId=${playback.selfId} onBack=${()=>setPlayback(null)} />`;
 
-  if (replay) return html`<div class="st st--replay" ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
+  if (replay) return html`<div class=${cx('st','st--replay',replayMenuOpen&&'is-replay-menu-open')} ref=${boxRef} tabindex="-1" role="dialog" aria-modal="true" aria-label=${t('博士档案')}>
     <${PageHeader} onBack=${() => setReplay(null)} backTitle=${t('返回统计')} title=${t('对局记录')} micro="MATCH RECORD" />
     <${Replay} rec=${replay} offline=${offline} actions=${replay.replay?.available?html`
       <${Button} class="st-replay-play" variant="secondary" size="sm" icon="play" title=${t('播放回放')} aria-label=${t('播放回放')} disabled=${replayBusy||inMatch||offline} onClick=${()=>playReplay(replay)}>${t('播放回放')}<//>
       <${ReplayStatus} available=${true} pinned=${replay.replay.pinned} shared=${profile.user?.visibility?.replays&&replay.replay.shared} marksOnly=${true} />
-      <${HistoryMenu} rec=${replay} showPlay=${false} busy=${replayBusy||offline} locked=${inMatch} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} quota=${account?.replays}
+      <${HistoryMenu} rec=${replay} onOpenChange=${setReplayMenuOpen} showPlay=${false} busy=${replayBusy||offline} locked=${inMatch} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} quota=${account?.replays}
         onPrivacy=${()=>{setReplay(null);profileStore.set({tab:'privacy'});}} />`:null} />
   </div>`;
 
