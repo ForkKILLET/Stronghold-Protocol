@@ -84,12 +84,18 @@ export function createPluginWatcher({ pluginsDir, registry, log = {}, debounceMs
   function rescan() {
     if (timer) { clearTimeout(timer); timer = null; }
     const before = states || pluginStates(registry);
-    try { registry.rescan(); } catch (e) { log.warn?.(`[studio] rescan failed: ${e?.message || e}`); }
-    const after = pluginStates(registry);
-    states = after;
-    const ids = [...new Set([...before.keys(), ...after.keys()])].filter((id) => before.get(id) !== after.get(id)).sort();
-    if (ids.length) { try { onChange(ids); } catch (e) { log.warn?.(`[studio] change listener failed: ${e?.message || e}`); } }
-    return ids;
+    const finish = () => {
+      const after = pluginStates(registry);
+      states = after;
+      const ids = [...new Set([...before.keys(), ...after.keys()])].filter((id) => before.get(id) !== after.get(id)).sort();
+      if (ids.length) { try { onChange(ids); } catch (e) { log.warn?.(`[studio] change listener failed: ${e?.message || e}`); } }
+      return ids;
+    };
+    try {
+      const pending = registry.rescan();
+      if (pending?.then) return pending.then(finish, (e) => { log.warn?.(`[studio] rescan failed: ${e.message}`); return []; });
+    } catch (e) { log.warn?.(`[studio] rescan failed: ${e?.message || e}`); }
+    return finish();
   }
 
   const schedule = () => {

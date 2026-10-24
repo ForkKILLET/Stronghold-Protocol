@@ -5,8 +5,29 @@
 import { parentPort } from 'node:worker_threads';
 import { getData, setData } from '../data.js';
 import { serialize } from 'node:v8';
+import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
+import { matchWorkQueue } from '../cooperative.js';
+import { WorkerStateEncoder } from './stateEncoder.js';
 
 const matches = new Map();
+const loopDelay = monitorEventLoopDelay({ resolution: 20 });
+loopDelay.enable();
+let lastUtilization = performance.eventLoopUtilization();
+const loadTimer = setInterval(() => {
+  const current = performance.eventLoopUtilization();
+  let serverFields = 0;
+  for (const { match } of matches.values()) {
+    for (const field of match.fields || []) if (!field.done && field.mode === 'server') serverFields++;
+  }
+  parentPort.postMessage({ type: 'load', load: {
+    utilization: performance.eventLoopUtilization(current, lastUtilization).utilization,
+    delayP99Ms: loopDelay.count ? Math.max(0, loopDelay.percentile(99) / 1e6 - 20) : 0,
+    workQueued: matchWorkQueue.tasks.size, serverFields,
+  } });
+  lastUtilization = current;
+  loopDelay.reset();
+}, 1000);
+loadTimer.unref();
 const quiet = { info() {}, warn() {}, error() {}, debug() {} };
 const sentMetadata = new WeakMap();
 const PLAYER_META_KEYS = ['playerId', 'seat', 'name', 'isBot', 'left', 'connected'];
@@ -64,6 +85,7 @@ function encodeMessage(msg) {
 }
 
 function makeOptions(key, instanceId, input, isReady) {
+  const stateEncoder = new WorkerStateEncoder();
   const base = { ...(input || {}) };
   base.data = sharedData;
   delete base.send;
@@ -79,13 +101,13 @@ function makeOptions(key, instanceId, input, isReady) {
     if (!isReady()) return;
     const json = encoded ?? encodeMessage(msg);
     emit({ type: 'send', key, instanceId, playerId,
-      ...(json === null ? { msg, encoded: null } : { kind: msg.t, encoded: json }) });
+      ...(json === null ? { msg, encoded: null } : { kind: msg.t, encoded: json, state: stateEncoder.encode(msg.t, json, playerId) }) });
   };
   base.broadcast = (msg) => {
     if (!isReady()) return;
     const json = encodeMessage(msg);
     emit({ type: 'broadcast', key, instanceId,
-      ...(json === null ? { msg, encoded: null } : { kind: msg.t, encoded: json }) });
+      ...(json === null ? { msg, encoded: null } : { kind: msg.t, encoded: json, state: stateEncoder.encode(msg.t, json) }) });
   };
   base.onEnd = (summary) => {
     if (isReady()) emitWithMetadata({ type: 'end', key, instanceId, summary }, matchFor(key, instanceId));

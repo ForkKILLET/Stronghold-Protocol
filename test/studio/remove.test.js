@@ -74,7 +74,7 @@ describe('removing plugins in the studio', () => {
     assert.equal((await listed()).includes('_removed'), false, 'plugins/_removed/ is no plugin');
     // restored: the folder moved back and named by its id again
     fs.renameSync(at(to), path.join(plugins, 'old-skin'));
-    srv.packs.rescan();
+    await srv.packs.rescan();
     assert.equal(srv.packs.plugin('old-skin')?.status, 'loaded');
     assert.equal((await listed()).includes('old-skin'), true);
   });
@@ -102,7 +102,7 @@ describe('removing plugins in the studio', () => {
     skin(path.join(plugins, 'Mixed-Case'));
     const target = skin(path.join(tmp, 'linked-target'));
     testLink(target, path.join(plugins, 'linked-skin'));
-    srv.packs.rescan();
+    await srv.packs.rescan();
     const r = await remove(['Bad_ID', '../old-skin', 'nope-skin', 'mixed-case', '_keep', '.hidden', 'linked-skin', 'ok-skin']);
     assert.equal(r.status, 200);
     assert.deepEqual(r.body.removed.map((x) => x.id), ['ok-skin']);
@@ -124,7 +124,7 @@ describe('removing plugins in the studio', () => {
     assert.deepEqual([none.status, none.body.removed, none.body.refused.map((x) => x.error)], [200, [], ['PLUGIN_UNKNOWN', 'PLUGIN_STUDIO_PATH']]);
     fs.rmSync(path.join(plugins, 'linked-skin'));
     fs.rmSync(path.join(plugins, 'Mixed-Case'), { recursive: true });
-    srv.packs.rescan();
+    await srv.packs.rescan();
   });
 
   test('a plugin an open room uses is refused (PLUGIN_STUDIO_IN_USE: the room, its match running too), and goes once the room is gone', async () => {

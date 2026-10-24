@@ -1586,20 +1586,20 @@ describe('lobby timers and match interface', () => {
     assert.ok(freed);
   });
 
-  test('a dropped solo run keeps the official singleReconnectTime (24 h), not the 10-minute window', () => {
-    assert.equal(srv.lobby.soloResumeWindowMs(), 86_400 * 1000, 'data config.constants.singleReconnectTime');
+  test('a dropped solo run keeps the branch 6-hour window, not the official 24 hours or co-op window', () => {
+    assert.equal(srv.lobby.soloResumeWindowMs(), 6 * 60 * 60_000, 'branch solo retention');
     assert.ok(srv.lobby.soloResumeWindowMs() > WINDOW);
   });
 });
 
 // ---------------------------------------------------------------------------------------------------
-// Solo runs: 下半 solo has no prep / 机变 timer and may be resumed within singleReconnectTime (24 h, research 01 §1,
-// 06 §17); only co-op sessions expire after the reconnect window (real Match: the untimed solo match waits).
+// Solo runs: no prep / 机变 timer; this branch retains disconnected solo matches for 6 hours.
+// Co-op sessions keep their shorter reconnect window (real Match: the untimed solo match waits).
 // ---------------------------------------------------------------------------------------------------
 
 describe('solo resume window', () => {
   const WINDOW = 300;       // stands in for the 10-minute reconnect window
-  const SOLO_WINDOW = 1500; // stands in for singleReconnectTime (24 h)
+  const SOLO_WINDOW = 1500; // stands in for the branch's 6-hour solo window
   let srv;
   let url;
   const open = [];

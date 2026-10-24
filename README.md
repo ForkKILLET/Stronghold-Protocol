@@ -2,7 +2,7 @@
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–4 人联机合作。
 
-本仓库基于 [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol) 的 `5160d018`，原项目为 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)。保留上游历史、许可证与素材声明；本分支更新见 [CHANGELOG.md](CHANGELOG.md)。
+本仓库基于 [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol) 的 `e01036ae`（0.3.0），原项目为 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)。保留上游历史、许可证与素材声明；本分支更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 ![version](https://img.shields.io/badge/version-0.3.0-2ea44f)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
@@ -65,7 +65,7 @@ English summary: [below](#english).
 - **联防**：有人漏怪、又有人完美作战时，完美作战的队友带着阵容帮忙拦截漏掉的敌人。
 - **最终攻势与隐秘核心**：两人共享一个战场，全队共同削减同一条领袖血条；10 个敌方领袖，巨型领袖约 5×3 格的受击范围，以及官方的限伤规则。
 - **结算称号**：卫戍之星、不朽盟约、坚若磐石等 6 个称号。
-- **断线重连**：同盟模拟断线后 10 分钟内重新打开页面即可回到原座位，掉线期间按原阵容自动作战，也可以「暂离」交给 AI 托管；独立模拟 24 小时内可以回来继续（同一个浏览器）。
+- **断线重连**：同盟模拟断线后 10 分钟内重新打开页面即可回到原座位，掉线期间按原阵容自动作战，也可以「暂离」交给 AI 托管；独立模拟 6 小时内可以回来继续（同一个浏览器）。
 - **交互细节**：漏怪时顶栏用红字 + 「−N」标记待扣的目标生命值（结算时才扣除）；点选、拖放和配发装备都按地上的方格；购买、升级和机变选卡都需要点两次确认；只有一名玩家时除作战外不计时。
 - **画面与声音**：真实 Spine 小人、官方 BGM 与音效、表情（6 套 × 6 个）、作战特效；可选的官方 3D 棋盘（需要从本机客户端提取贴图）。
 - **资源预载（默认关闭）**：首页右下角或「设置 ▸ 预载资源」打开资源管理模态框，按分类查看进度和大小。默认只预载地图、干员图片、Spine、界面及字体等必备资源；角色语音、音效、音乐等可选资源可勾选一起下载。支持导出已缓存资源为 ZIP，导入旧版 ZIP 时校验完整性及当前资源指纹，再增量补齐缺失或变化的文件（Service Worker + Cache Storage，需要 HTTPS；见 [docs/ASSETS.md](docs/ASSETS.md)「Preload」）。
@@ -147,7 +147,8 @@ npm start          # 启动服务器：http://localhost:3000
 | `SP_REDIS_URL` | 空 | 设置后把会话、房间与对局检查点存入 Redis（容器重启后玩家回到原座位，见 [docs/DEPLOY.md](docs/DEPLOY.md)「断点续玩」）；不设置 = 纯内存、行为与以前完全一致 |
 | `SP_REDIS_PREFIX` | `stronghold:` | Redis 键前缀（多个实例共用一个 Redis 时区分） |
 | `SP_REDIS_TTL` | `90000` | 状态键的过期秒数（默认 25 小时，兜底清理） |
-| `SP_REDIS_SAVE_MS` | `10000` | 状态写入间隔（毫秒）；优雅关闭时另会立即写一次 |
+| `SP_REDIS_SAVE_MS` | `30000` | 周期检查和状态写入间隔（毫秒）；开局捕获合并到周期写入，优雅关闭时另存最后一次 |
+| `SP_SHUTDOWN_TIMEOUT_MS` | `60000` | 正常退出等待最后存档与资源关闭的上限（毫秒）；超时退出码为 1 |
 | `SP_ASSETS_CDN` | 空 | 素材 CDN 目录，例如 `https://cdn.example.com/stronghold` 或同源 `/cdn`：素材清单里的 `/assets/…` 改写为该地址；清单从数据 CDN 读取时由浏览器改写（见 [docs/ASSETS.md](docs/ASSETS.md)「CDN」） |
 | `SP_DATA_CDN` | 空 | 数据 CDN 根目录，例如 `https://cdn.example.com/stronghold`：浏览器直接从该目录下的 `data/` 读取静态 JSON（含 `assets.json`、`asset-hashes.json`），上传原文件即可；本地 `data/` 仍须保留，本地素材清单与动态预载清单继续走游戏源站；Node 的 `/data/` 始终提供本地数据，不跳转（见 [docs/DEPLOY.md](docs/DEPLOY.md#32-素材放-cdn)） |
 | `SP_MAX_ROOMS` | `1000` | 全局同时存在的房间数上限（含正在对局的房间）；满了新房间会被拒绝 |
@@ -171,7 +172,7 @@ npm start          # 启动服务器：http://localhost:3000
 
 独立模拟会创建 `solo` 房间并直接开始，不会进入同盟队列。同盟匹配会让单人进入公共队列，等待其他玩家加入；同盟房间内，房主也可以勾选「匹配同盟队友」，再点击「立即开始」进入同盟匹配。所有匹配只使用真人，满四人立即开始，不足四人持续等待且可以取消，不设 AI 补位倒计时。房间已有 AI 队友时须先移除，才能加入真人匹配；不匹配、直接启动的私人房间仍可手动添加 AI。房间匹配的对局结束后会回到原房间。
 
-刷新页面或断线后，同盟模拟 10 分钟内、独立模拟 24 小时内重新打开即可回到原座位。服务器把房间和对局都保存在内存里，**重启服务器会结束所有对局**。
+刷新页面或断线后，同盟模拟 10 分钟内、独立模拟 6 小时内重新打开即可回到原座位。服务器把房间和对局都保存在内存里，**重启服务器会结束所有对局**。
 
 ## 插件
 

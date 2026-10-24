@@ -5,7 +5,7 @@ import { cleanPlayerCard } from '../shared/playerCard.js';
 // Responsibilities:
 //   * Session objects (playerId, secret reconnect token, name, bound socket, connection state) and the
 //     SessionRegistry that resolves reconnect tokens and expires sessions after the reconnect window (10 min; the
-//     lobby may extend it per session via `session.resumeWindowMs` — a solo run: 24 h, see server/lobby.js).
+//     lobby may extend it per session via `session.resumeWindowMs` — a solo run: 6 h, see server/lobby.js).
 //   * Per-connection pipeline: token-bucket rate limit (40 msg/s) → JSON decode → schema validation
 //     (shared/protocol.js) → `hello`/`ping` handling → dispatch to the lobby handler → `ok`/`error`
 //     reply echoing the request id (`rid`). Intents whose answer is a large state resend (`g.watch` →
@@ -24,9 +24,10 @@ import { cleanPlayerCard } from '../shared/playerCard.js';
 //     while the socket has more than 1 MB queued; a socket with more than 16 MB queued is terminated
 //     (the client reconnects and receives a full state resync).
 //
-// Close codes used by the server (clients should NOT auto-reconnect on 4001):
+// Close codes used by the server (clients must stop auto-reconnect on 4001 and 4003):
 //   4001 session replaced (the same token connected from another socket/tab)
 //   4002 hello timeout
+//   4003 server capacity full (no auto-reconnect)
 //   1008 abusive flooding (rate-limit drops > abuseDropsPerSec)
 //   1001 server shutdown
 //
@@ -61,7 +62,9 @@ export const NET_DEFAULTS = Object.freeze({
   reconnectWindowMs: 10 * 60_000, // disconnected sessions stay resumable this long
   snapDropBytes: 1 << 20,       // skip b.snap while bufferedAmount exceeds this
   hardBufferBytes: 16 << 20,    // terminate a socket whose send queue exceeds this
-  maxConnections: 2000,         // concurrent sockets (enforced by index.js at upgrade time)
+  maxConnections: 2000,         // authenticated players at hello; recent match resumes may exceed this
+  capacityReconnectMs: 10 * 60_000, // recent match admission priority; independent of saved-game retention
+  maxPendingConnections: 256,  // unauthenticated/closing sockets, independent of the online cap
   maxConnectionsPerAddr: 64,    // concurrent sockets per client network key (0 = unlimited); see clientAddress
   maxSessions: 20_000,          // registry cap; oldest idle sessions are evicted first
   heavyPerSec: 2,               // refill of the bucket for resend-heavy intents (HEAVY_TYPES)
@@ -80,7 +83,8 @@ export const NET_DEFAULTS = Object.freeze({
 export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.skins', 'room.card', 'room.ownership', 'room.diy', 'room.spectate', 'state.resync', 'room.setPlugins']);
 
 /** Close codes (see header). */
-export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, POLICY: 1008, SHUTDOWN: 1001 });
+export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, SERVER_FULL: 4003, POLICY: 1008, SHUTDOWN: 1001 });
+export const CAPACITY_RECONNECT_MS = NET_DEFAULTS.capacityReconnectMs;
 
 const WS_OPEN = 1;
 export const PRESENCE_INTERVAL_MS = 10_000;
@@ -119,6 +123,8 @@ export class Session {
     this.lastSeen = now;
     /** @type {number | null} ms epoch when the socket was lost (null while connected) */
     this.disconnectedAt = now;
+    /** @type {number | null} last server-observed participation in a match (lobby-owned) */
+    this.lastMatchAt = null;
     /** @type {string | null} room code — owned and maintained by server/lobby.js */
     this.roomCode = null;
     /** @type {string | null} pending `room.closed` reason to deliver on the next resume (lobby-owned) */
@@ -149,7 +155,7 @@ export class Session {
     this.limitKey = null;
     /**
      * @type {number | null} lobby-owned extension of the reconnect window for this session (ms; null = the registry's
-     * window). A solo run keeps its session resumable for the official `singleReconnectTime` (24 h) — see lobby.js.
+     * window). This branch keeps a disconnected solo run resumable for 6 h — see lobby.js.
      */
     this.resumeWindowMs = null;
   }
@@ -208,7 +214,7 @@ export class SessionRegistry {
    * Re-create a persisted session verbatim (server/persist.js): the exact playerId and token are kept, so the client
    * that owns the token is recognized as the same player after a restart. Always disconnected — the socket is gone.
    * Returns null when the id or the token is already taken / malformed.
-   * @param {{ playerId: string, token: string, name: string, disconnectedAt?: number, resumeWindowMs?: number|null,
+   * @param {{ playerId: string, token: string, name: string, disconnectedAt?: number, lastMatchAt?: number|null, resumeWindowMs?: number|null,
    *           roomCode?: string|null, loadout?: object|null, addr?: string, notice?: string|null, pendingResult?: string[]|null }} doc
    * @param {{ allowOverCapacity?: boolean }} [opts] preserve existing active identities while keeping normal admission bounded
    * @returns {Session | null}
@@ -227,6 +233,7 @@ export class SessionRegistry {
     s.ws = null;
     const since = Number(doc.disconnectedAt);
     s.disconnectedAt = Number.isFinite(since) ? since : now;
+    s.lastMatchAt = Number.isFinite(doc.lastMatchAt) && doc.lastMatchAt >= 0 ? doc.lastMatchAt : null;
     s.resumeWindowMs = Number.isFinite(doc.resumeWindowMs) && doc.resumeWindowMs > 0 ? Number(doc.resumeWindowMs) : null;
     s.roomCode = typeof doc.roomCode === 'string' && doc.roomCode ? doc.roomCode : null;
     s.loadout = doc.loadout && typeof doc.loadout === 'object' ? doc.loadout : null;
@@ -592,7 +599,7 @@ export class Network {
    * @param {{
    *   nameModeration?: { check: Function },
    *   registry: SessionRegistry,
-   *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function, welcomeInfo?: Function },
+   *   handler: { onHello?: Function, onMessage: Function, onDisconnect?: Function, onExpire?: Function, welcomeInfo?: Function, hasActiveMatch?: Function },
    *   log?: { info: Function, warn: Function, error: Function, debug?: Function },
    *   now?: () => number,
    *   options?: Partial<typeof NET_DEFAULTS>,
@@ -754,7 +761,7 @@ export class Network {
    */
   admission(req) {
     if (this.closed || this.draining) return 'shutdown';
-    if (this.conns.size >= this.opts.maxConnections) return 'full';
+    if (this.conns.size - this.onlineCount >= this.opts.maxPendingConnections) return 'full';
     const { key } = clientAddress(req, this.opts.trustProxy);
     const cap = this.opts.maxConnectionsPerAddr;
     if (key && cap > 0 && (this.connsPerKey.get(key) || 0) >= cap) return 'per-address';
@@ -883,6 +890,7 @@ export class Network {
     }
     const name = sanitizeName(conn.userProfile?.name || msg.name);
     if (!name) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'bad field name')); return; }
+    if (this.rejectAtCapacity(conn, msg, now)) return;
     if (this.nameModeration) {
       const generation = ++conn.helloReview;
       conn.reviewPending = true;
@@ -908,6 +916,28 @@ export class Network {
     this.acceptHello(conn, msg, name, now);
   }
 
+  /** Check before review and again before binding; async reviews never reserve a capacity slot. */
+  rejectAtCapacity(conn, msg, now) {
+    if (conn.session || this.onlineCount < this.opts.maxConnections) return false;
+    const candidate = msg.token ? this.registry.byToken(msg.token) : null;
+    // Apply the same ownership gate as binding before giving a token any admission privilege.
+    const session = candidate?.userId && candidate.userId !== conn.userProfile?.id ? null : candidate;
+    // An existing online identity moving sockets adds no player.
+    if (session?.connected && session.ws) return false;
+    // Recovery must finish before deciding whether a saved token belongs to an active match.
+    if (msg.token && this.registry.recoveryPending && !candidate) return false;
+    if (session && session.disconnectedAt != null) {
+      const away = now - session.disconnectedAt;
+      const recent = session.lastMatchAt != null && now >= session.lastMatchAt
+        && now - session.lastMatchAt <= this.opts.capacityReconnectMs;
+      if (away >= 0 && away <= this.opts.capacityReconnectMs
+        && (recent || this.handler.hasActiveMatch?.(session))) return false;
+    }
+    this.reply(conn, errorMsg(ERR.SERVER_FULL, msg.rid));
+    conn.close(CLOSE.SERVER_FULL, 'server capacity full');
+    return true;
+  }
+
   // Only bind/create/rename after approval. Re-resolve tokens after the async boundary.
   acceptHello(conn, msg, name, now) {
     const rid = msg.rid;
@@ -915,6 +945,7 @@ export class Network {
       conn.close(1013, 'saved session recovery pending');
       return;
     }
+    if (this.rejectAtCapacity(conn, msg, now)) return;
 
     let session = conn.session;
     let resumed = false;

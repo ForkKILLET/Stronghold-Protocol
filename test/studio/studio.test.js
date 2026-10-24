@@ -438,7 +438,7 @@ describe('the studio over HTTP', () => {
     writePlugin(target, cosmetic({ assets: { chars: { char_102_texas: { avatar: 'a.png' } } } }), { 'a.png': png(4, 4, [9, 9, 9, 255]), 'secret.json': '{"s":"LEAK-JSON"}', 'notes.txt': 'LEAK-TXT' });
     const before = fs.readdirSync(target).sort();
     testLink(target, path.join(plugins, 'linked-skin'));
-    srv.packs.rescan();
+    await srv.packs.rescan();
     const leaks = (b) => /LEAK/.test(Buffer.isBuffer(b) ? b.toString('latin1') : JSON.stringify(b));
     const NO = {};
     for (const [m, u, h] of [['GET', 'linked-skin', NO], ['GET', 'linked-skin/files/secret.json', NO], ['GET', 'linked-skin/files/notes.txt', NO], ['GET', 'linked-skin/zip', NO],
@@ -460,7 +460,7 @@ describe('the studio over HTTP', () => {
     assert.equal((await raw('GET', `/p/linked-skin/${h8}/a.png`)).status, 200);
     for (const f of ['secret.json', 'notes.txt', 'plugin.json']) assert.equal((await raw('GET', `/p/linked-skin/${h8}/${f}`)).status, 404, f);
     fs.rmSync(path.join(plugins, 'linked-skin'));
-    srv.packs.rescan();
+    await srv.packs.rescan();
   });
 
   test('a file system error answers with its code only — never the message, which names the absolute path', { skip: (process.platform === 'win32' || process.getuid?.() === 0) && 'needs a folder the server cannot write' }, async () => {

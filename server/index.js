@@ -89,9 +89,9 @@ export {
  *   MatchClass?: Function, seedFn?: () => number,
  *   lobbyGraceMs?: number, matchmakingTickMs?: number, reconnectWindowMs?: number, heartbeatMs?: number, helloTimeoutMs?: number,
  *   ratePerSec?: number, rateBurst?: number, maxConnections?: number, maxRooms?: number,
- *   maxConnectionsPerAddr?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
+ *   maxConnectionsPerAddr?: number, maxPendingConnections?: number, capacityReconnectMs?: number, maxRoomsPerAddr?: number, maxMatchesPerAddr?: number, resyncMinGapMs?: number,
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
- *   store?: object | null, resume?: boolean, saveMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
+ *   store?: object | null, resume?: boolean, saveMs?: number, checkpointConcurrency?: number, checkpointWaitMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
  *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
  * }} [opts]
@@ -138,8 +138,8 @@ export async function startServer(opts = {}) {
   // language packs and plugins (docs/PACKS.md, docs/PLUGINS.md): scanned now — the start log names them — and again
   // whenever their folders change
   const scriptMode = process.env.SP_PLUGIN_SCRIPTS;
-  const packs = createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log, scriptHost:host, scriptMode });
-  packs.refresh(true);
+  const packs = createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log, scriptHost:host, scriptMode, background: true });
+  await packs.refresh(true);
   // the visual sets of the cosmetic plugins (DESIGN §32 P1a): what a room's host switches on, served at /vs/ and /p/
   const visual = createVisualSets({ registry: packs, log });
   // the server owner's policy (plugins/config.json), the content sets of the gameplay plugins (served at /cs/<cs16>/…),
@@ -181,12 +181,13 @@ export async function startServer(opts = {}) {
   const userFile=opts.userFile ?? process.env.SP_USER_DB;
   let users=null;
   try{users=userFile?await openUserStore(userFile,{log,replays:{perUser:opts.replayLimit,maxBytes:opts.replayMaxBytes},hiddenBonds:Object.values(data.bonds || {}).filter(b=>b.noStack).map(b=>b.bondId)}):null;}
-  catch(e){network.close();if(ownsWorkerPool)await workerPool?.close();if(ownsMatchWorkerPool)await matchWorkerPool?.close();nameModeration?.close?.();await store?.close();throw e;}
+  catch(e){network.close();if(ownsWorkerPool)await workerPool?.close();if(ownsMatchWorkerPool)await matchWorkerPool?.close();nameModeration?.close?.();await packs.close();await store?.close();throw e;}
   lobby.users=users;
   lobby.replayMaxBytes=users&&opts.replayLimit>0?opts.replayMaxBytes:0;
   network.onProfileName=(id,name)=>{if(users)users.call('rename',{id,name}).catch(()=>log.warn('[users] nickname save failed'));};
   // Resume the last state before listening: every reconnecting client is recognized by its token right away.
-  const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs }) : null;
+  const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs,
+    checkpointConcurrency: opts.checkpointConcurrency, checkpointWaitMs: opts.checkpointWaitMs }) : null;
   if (store && opts.resume !== false) {
     try {
       const doc = await store.load();
@@ -283,7 +284,7 @@ export async function startServer(opts = {}) {
     // Check the kernel's address too: aliases/DNS and bind fallback cannot weaken the owner gate.
     const actual = server.address();
     const scriptHost = actual && typeof actual === 'object' ? actual.address : '';
-    packs.setScriptHost(scriptHost);
+    await packs.setScriptHost(scriptHost);
     if (!trustedHostAllowed(scriptHost, scriptMode)) {
       lobby.trustedRuntime = null;
       await trustedRuntime?.close();
@@ -302,6 +303,8 @@ export async function startServer(opts = {}) {
     if (ownsMatchWorkerPool) await matchWorkerPool?.close();
     studio?.close();
     await admin?.close();
+    await packs.close();
+    await serveStatic.close?.();
     await trustedRuntime?.close();
     throw e;
   }
@@ -334,6 +337,8 @@ export async function startServer(opts = {}) {
       if (ownsWorkerPool) await workerPool?.close();
       if (ownsMatchWorkerPool) await matchWorkerPool?.close();
       studio?.close();
+      await packs.close();
+      await serveStatic.close?.();
       await trustedRuntime?.close();
       await new Promise((resolve) => {
         server.close(() => resolve());

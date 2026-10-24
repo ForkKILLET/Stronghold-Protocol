@@ -43,11 +43,13 @@ test('default path is optional, explicit paths are required, unknown/invalid set
  writeFileSync(f.file,' '.repeat(65537));assert.throws(()=>resolveServerConfig({},{root:f.root,env:{}}),/64 KiB/);
 });
 test('actual server uses the file for admission, registry, lobby, worker settings and restart-only reload',async t=>{
- const f=fixture(t,{limits:{maxRooms:1,maxSessions:17},reconnect:{soloMs:86400000,coopMs:700000,lobbyMs:55000},network:{rateBurst:20},workers:{simulation:0},shutdown:{timeoutMs:60000}});
+ const f=fixture(t,{limits:{maxRooms:1,maxSessions:17,maxPendingConnections:5},reconnect:{soloMs:86400000,capacityGraceMs:100,coopMs:700000,lobbyMs:55000},network:{rateBurst:20},persistence:{checkpointConcurrency:2,checkpointWaitMs:750},workers:{simulation:0},shutdown:{timeoutMs:60000}});
  const clients=[];let server;
  t.after(async()=>{await Promise.all(clients.map(c=>c.close()));await server?.close();});
- const options={serverConfigFile:f.file,port:0,host:'127.0.0.1',quiet:true,announcementsFile:null,nameModeration:null};
+ const options={serverConfigFile:f.file,port:0,host:'127.0.0.1',quiet:true,announcementsFile:null,nameModeration:null,store:{async load(){return null;},async saveSerialized(){return true;}}};
  server=await startServer(options);
+ assert.equal(server.network.opts.maxPendingConnections,5);assert.equal(server.network.opts.capacityReconnectMs,100);
+ assert.equal(server.persister.checkpointConcurrency,2);assert.equal(server.persister.checkpointWaitMs,750);
  assert.equal(server.registry.maxSessions,17);assert.equal(server.registry.reconnectWindowMs,700000);
  assert.equal(server.network.opts.rateBurst,20);assert.equal(server.lobby.soloResumeWindowMs(),86400000);
  assert.equal(server.lobby.opts.lobbyGraceMs,55000);assert.equal(server.workerPool,null);
@@ -72,4 +74,11 @@ test('configuration validation happens before listening and the process honors i
  const started=Date.now();child.kill('SIGTERM');const [exit]=await once(child,'exit');
  assert.equal(exit,1);assert.ok(Date.now()-started>=900);assert.match(errors,/timed out/);
  f.write({limits:{unknown:2}});await assert.rejects(()=>startServer({serverConfigFile:f.file,quiet:true}),/unknown server config key/);
+});
+
+test('explicit null solo retention follows game data while the omitted default follows upstream',async t=>{
+ const a=await startServer({port:0,host:'127.0.0.1',quiet:true,workers:0,serverConfigFile:null,soloReconnectWindowMs:null});t.after(()=>a.close());
+ assert.equal(a.lobby.soloResumeWindowMs(),86400_000);
+ const b=resolveServerConfig({serverConfigFile:null},{env:{}});assert.equal(b.options.soloReconnectWindowMs,21600_000);
+ for(const doc of [{limits:{maxPendingConnections:-1}},{reconnect:{capacityGraceMs:0}},{persistence:{checkpointConcurrency:0}},{persistence:{checkpointWaitMs:'fast'}}])assert.throws(()=>validateServerConfig(doc));
 });

@@ -38,6 +38,7 @@
 // every such rescan is told to its listeners (onScan: the visual sets look for the sets in use whose plugins changed).
 // server/packs.js re-exports the pack API of this file for its old callers.
 
+import { BackgroundClient } from '../workers/backgroundClient.js';
 import { nodeSha256 } from './identity.js';
 import { readScripts, applyTrust, isScriptClass } from './trusted.js';
 import { readContentData } from './contentData.js';
@@ -749,7 +750,7 @@ function signature({ publicDir, dataDir, packsDir, pluginsDir }) {
  * @param {{ log?: { info: Function, warn: Function }, app?: string, recheckMs?: number }} [opts]
  *   recheckMs: how long a scan stays trusted before the folders are looked at again (default 1000; 0 = every call)
  */
-export function createPluginRegistry(dirs, { log = { info: noop, warn: noop }, app = APP_VERSION, recheckMs = 1000, scriptHost = '0.0.0.0', scriptMode = process.env.SP_PLUGIN_SCRIPTS } = {}) {
+export function createPluginRegistry(dirs, { log = { info: noop, warn: noop }, app = APP_VERSION, recheckMs = 1000, background = false, scriptHost = '0.0.0.0', scriptMode = process.env.SP_PLUGIN_SCRIPTS } = {}) {
   let sig = null;
   let checkedAt = -Infinity;
   /** @type {ReturnType<typeof scanPlugins> & { packs: Plugin[], index: ReturnType<typeof packIndexOf>, byId: Map<string, Plugin> }} */
@@ -763,8 +764,38 @@ export function createPluginRegistry(dirs, { log = { info: noop, warn: noop }, a
   /** @type {Set<() => void>} told after every scan that read the folders (onScan) */
   const scanListeners = new Set();
 
+  const scanner = background ? new BackgroundClient(new URL('../workers/pluginScan.js', import.meta.url), {
+    dirs, options: { app, recheckMs: 0, scriptHost, scriptMode },
+  }) : null;
+  let scanning = null;
+  let closed = false;
+  function notifyScan() {
+    for (const fn of [...scanListeners]) { try { fn(); } catch (e) { log.warn?.(`[plugins] a scan listener failed: ${e?.message || e}`); } }
+  }
+  function refreshAsync(force = false, host = undefined) {
+    if (!scanner) { refresh(force); return Promise.resolve(); }
+    if (closed) return Promise.reject(new Error('plugin registry closed'));
+    if (scanning) return force || host !== undefined ? scanning.then(() => refreshAsync(force, host)) : scanning;
+    checkedAt = Date.now();
+    scanning = scanner.request({ force, scriptHost: host }).then(({ snapshot, lines }) => {
+      if (closed) return;
+      for (const [level, line] of lines) log[level]?.(line);
+      if (snapshot) {
+        const first = !state;
+        state = snapshot;
+        if (!first) notifyScan();
+      }
+    }).finally(() => { scanning = null; });
+    return scanning;
+  }
+
   function refresh(force = false) {
     const now = Date.now();
+    if (scanner) {
+      if (!state) throw new Error('await registry.refresh() before using a background registry');
+      if (!closed && (force || now - checkedAt >= recheckMs)) refreshAsync(force).catch((e) => log.warn?.(`[plugins] background scan failed: ${e.message}`));
+      return state;
+    }
     if (state && !force && now - checkedAt < recheckMs) return state;
     checkedAt = now;
     const s = signature(dirs);
@@ -794,18 +825,22 @@ export function createPluginRegistry(dirs, { log = { info: noop, warn: noop }, a
 
   return {
     contentDirs: { ...dirs },
+    snapshot: () => refresh(),
+    refreshAsync,
+    close: async () => { closed = true; await scanner?.close(); },
     /** Recheck the actual listening address, and retain it across every subsequent rescan. */
     setScriptHost(host) {
       scriptHost = host;
+      if (scanner) return refreshAsync(true, host);
       if (state) applyTrust(state.plugins, { pluginsDir:dirs.pluginsDir, host:scriptHost, mode:scriptMode, log });
     },
     /** Re-read the folders now if they changed (force: even within recheckMs). */
-    refresh: (force = false) => { refresh(force); },
+    refresh: (force = false) => scanner ? refreshAsync(force) : refresh(force),
     /**
      * Re-read the folders now even when their names, sizes and times look unchanged: a served file was found changed
      * (server/http/static.js /p/), deeper than the signature looks or within a second of the last look.
      */
-    rescan: () => { sig = null; refresh(true); },
+    rescan: () => { if (scanner) return refreshAsync(true); sig = null; refresh(true); },
     /**
      * `fn()` after every scan that read the folders again (not the first): the visual sets look for the sets in use
      * whose plugins changed (server/plugins/visualSet.js onStale). Returns the unsubscribe.

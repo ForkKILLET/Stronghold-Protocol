@@ -39,6 +39,23 @@ for (const [browser, executablePath] of [['chrome', '/run/current-system/sw/bin/
       });
       assert.deepEqual(result, { fresh: 'current-model', range: { status: 206, body: 'current' },
         old: 'legacy-model', cleared: 404, currentExists: false });
+      let effectNetworkRequests = 0;
+      srv.server.on('request', req => { if (req.url.startsWith('/assets/local/fx/')) effectNetworkRequests++; });
+      const effects = await page.evaluate(async () => {
+        const { FxLibrary } = await import('/js/render/vfx/library.js');
+        const cache = await caches.open('stronghold-resources-v1-all');
+        const path = '/assets/local/fx/prefabs/cache-probe.json';
+        await cache.put(path, new Response(JSON.stringify({ format: 'cached-effect' }), { headers: { 'Content-Type': 'application/json' } }));
+        const found = [];
+        for (const assetsCdn of ['', location.origin]) {
+          const list = { groups: { 'fx/prefabs': { probe: { path } } } };
+          const lib = new FxLibrary({ list, assetsCdn });
+          found.push({ format: (await lib.descriptor('probe'))?.format, path: list.groups['fx/prefabs'].probe.path });
+        }
+        return found;
+      });
+      assert.deepEqual(effects, Array(2).fill({ format: 'cached-effect', path: '/assets/local/fx/prefabs/cache-probe.json' }));
+      assert.equal(effectNetworkRequests, 0, 'raw effect URLs and CDN rewriting both resolve to the preloaded cache');
     } finally {
       await instance?.close();
       await srv.close();

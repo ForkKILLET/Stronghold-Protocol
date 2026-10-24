@@ -138,6 +138,7 @@ export const ERR = Object.freeze({
   BAD_MSG: 'BAD_MSG',             // malformed / unknown message
   SESSION_IN_USE: 'SESSION_IN_USE', // a local recovery candidate cannot replace the connected holder
   ACCOUNT_ACTIVE: 'ACCOUNT_ACTIVE', // another session of this profile already owns a player seat or queue ticket
+  SERVER_FULL: 'SERVER_FULL',
   NAME_REJECTED: 'NAME_REJECTED',
   CHAT_REJECTED: 'CHAT_REJECTED',
   RATE: 'RATE',                   // rate limited
@@ -190,6 +191,7 @@ export const ERR = Object.freeze({
 
 export const ERR_TEXT = {
   ACCOUNT_ACTIVE: N_('此博士档案已在其他页面入座或参赛，请返回原页面或选择观战'),
+  SERVER_FULL: N_('当前服务器容量已满'),
   SESSION_IN_USE: N_('此对局仍在其他窗口中，或当前浏览器无法安全恢复。请关闭原窗口后重试。'),
   NAME_REJECTED: N_('该名称不可用'),
   CHAT_REJECTED: N_('该内容不可用'),

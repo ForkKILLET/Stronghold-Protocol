@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {NET_DEFAULTS} from './net.js';
 import {LOBBY_DEFAULTS} from './lobby.js';
-import {SAVE_MS} from './persist.js';
+import {SAVE_MS,CHECKPOINT_DEFAULTS} from './persist.js';
 import {workerSettings} from './workers/pool.js';
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -15,11 +15,13 @@ const workerDefaults=()=>workerSettings({});
 // JSON path, existing startServer option, env name, default, validator. Keep defaults owned by upstream modules.
 export const SERVER_FIELDS=Object.freeze([
  ['limits.maxConnections','maxConnections','SP_MAX_CONNECTIONS',NET_DEFAULTS.maxConnections,limit],
+ ['limits.maxPendingConnections','maxPendingConnections','SP_MAX_PENDING_CONNECTIONS',NET_DEFAULTS.maxPendingConnections,limit],
  ['limits.maxConnectionsPerAddr','maxConnectionsPerAddr','SP_MAX_CONNECTIONS_PER_ADDR',NET_DEFAULTS.maxConnectionsPerAddr,limit],
  ['limits.maxSessions','maxSessions','SP_MAX_SESSIONS',NET_DEFAULTS.maxSessions,integer(1,1_000_000)],
  ['limits.maxRooms','maxRooms','SP_MAX_ROOMS',LOBBY_DEFAULTS.maxRooms,limit],
  ['limits.maxRoomsPerAddr','maxRoomsPerAddr','SP_MAX_ROOMS_PER_ADDR',LOBBY_DEFAULTS.maxRoomsPerAddr,limit],
  ['limits.maxMatchesPerAddr','maxMatchesPerAddr','SP_MAX_MATCHES_PER_ADDR',LOBBY_DEFAULTS.maxMatchesPerAddr,limit],
+ ['reconnect.capacityGraceMs','capacityReconnectMs','SP_CAPACITY_RECONNECT_MS',NET_DEFAULTS.capacityReconnectMs,duration],
  ['reconnect.coopMs','reconnectWindowMs','SP_RECONNECT_WINDOW_MS',NET_DEFAULTS.reconnectWindowMs,duration],
  ['reconnect.soloMs','soloReconnectWindowMs','SP_SOLO_RECONNECT_MS',LOBBY_DEFAULTS.soloReconnectWindowMs,value=>value===null||duration(value)],
  ['reconnect.lobbyMs','lobbyGraceMs','SP_LOBBY_GRACE_MS',LOBBY_DEFAULTS.lobbyGraceMs,duration],
@@ -32,6 +34,8 @@ export const SERVER_FIELDS=Object.freeze([
  ['network.heavyBurst','heavyBurst','SP_HEAVY_BURST',NET_DEFAULTS.heavyBurst,limit],
  ['network.abuseDropsPerSec','abuseDropsPerSec','SP_ABUSE_DROPS_PER_SEC',NET_DEFAULTS.abuseDropsPerSec,limit],
  ['persistence.saveMs','saveMs','SP_REDIS_SAVE_MS',SAVE_MS,integer(1000,7*86400_000)],
+ ['persistence.checkpointConcurrency','checkpointConcurrency','SP_CHECKPOINT_CONCURRENCY',CHECKPOINT_DEFAULTS.concurrency,integer(1,32)],
+ ['persistence.checkpointWaitMs','checkpointWaitMs','SP_CHECKPOINT_WAIT_MS',CHECKPOINT_DEFAULTS.waitMs,integer(1,3600_000)],
  ['workers.simulation','workers','SP_WORKERS',()=>workerDefaults().size,integer(0,32)],
  ['workers.rooms','roomWorkers','SP_ROOM_WORKERS',0,integer(0,32)],
  ['workers.matches','matchWorkers','SP_MATCH_WORKERS',0,integer(0,32)],

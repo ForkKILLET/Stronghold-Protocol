@@ -100,6 +100,21 @@ test('capture failures keep the last checkpoint and do not block other state wri
   assert.equal(writes, 2);
 });
 
+test('late capture from an old Match cannot replace a newer generation checkpoint', async (t) => {
+  const worker = new PersistenceWorker();
+  const h = makeMatch({ humans: 1, fake: true });
+  t.after(async () => { h.m.dispose(); await worker.close(); });
+  h.start();
+  const capture = captureMatch(h.m);
+  await worker.request('checkpoint', { key: 'TEST', generation: 2, capture });
+  const entries = [{ key: 'TEST', generation: 2 }];
+  const expected = await worker.request('serialize', { doc: {}, entries });
+  h.m.order[0].funds++;
+  await worker.request('checkpoint', { key: 'TEST', generation: 1, capture: captureMatch(h.m) });
+  const actual = await worker.request('serialize', { doc: {}, entries });
+  assert.deepEqual(actual.bytes, expected.bytes);
+});
+
 test('restored checkpoints survive combat and a Worker restart before the first save', async (t) => {
   const h = makeMatch({ humans: 1, bots: 3, fake: true });
   t.after(() => h.m.dispose());

@@ -82,7 +82,7 @@ server starts or notices a change, and by `node tools/packs.mjs list`.
 The server's registry (`server/plugins/registry.js`) scans `public/i18n/`, `data/i18n/`, `packs/` (and `plugins/`) when it starts and again
 whenever something there changes: on a request for the index or a pack file it compares the names, sizes and times of
 the files it reads (at most once a second, a few `stat` calls) and scans again if they differ. A pack dropped into a
-folder shows on the next page load — no restart, no build step; a removed one leaves (a player whose stored language is
+folder shows once the background index refresh finishes — no restart, no build step; a removed one leaves (a player whose stored language is
 gone gets Chinese).
 
 `GET /packs/index.json` (never cached) answers the packs of supported types:

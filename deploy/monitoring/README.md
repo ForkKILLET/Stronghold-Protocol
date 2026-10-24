@@ -188,3 +188,16 @@ scrape_configs:
 - 官方ComposeCLI `config --quiet` 通过；YAML/JSON解析、任务路径ESLint、TypeScript及 `git diff --check` 通过。
 - 全量Node：5510项，5493通过、2项既有i18n失败、15跳过。失败仍为资源导入准备文本缺英文msgid及语言包计数1241/1240；本次没有修改对应源码、语言包或断言。
 - **未在Linux Docker实际启动此栈、未运行Grafana浏览器自动化、未部署线上或验证通知送达。** 本机CLI/Prometheus验证不是这些部署验证。未提交，原公告修改、本机同步脚本与资源ZIP保留。
+
+## 2026-10-18 存档诊断字段
+
+更新游戏与 exporter 后，可查询以下新增指标。旧游戏缺少这些字段时不补零：
+
+- sp_persist_save_interval_seconds：当前有效周期，默认 30 秒。
+- sp_persist_recovery_retained：仍保留的失败恢复记录数。
+- sp_persist_recovery_removed_expired_total / superseded_total / departed_total：进程内按原因累计清理数。
+- sp_persist_last_capture_seconds / assemble_seconds / post_seconds / encode_seconds / serialize_seconds / write_seconds / total_seconds：最近保存各阶段耗时；sp_persist_last_sample_timestamp_seconds 用于判断样本是否陈旧。post 与 encode 包含在 serialize 中，不能重复相加，也不是客户端 RTT 或主线程 CPU 时间。
+- 分批传输后，post_seconds 是所有提交的同步耗时之和，sp_persist_last_post_max_seconds 对应 `/metrics.persist.timing.postMaxMs`，观察最长单次提交；sp_persist_last_post_batches 是提交次数。总提交耗时高不等于一次连续卡顿。线程创建耗时计入提交；元数据组装、批次打包、GC 和 Redis 客户端提交不包含于 postMaxMs。
+- sp_persist_failures_total / skipped_total：保存与捕获失败、因读取待恢复而跳过的次数。
+
+存档字节仍是最近成功保存的整份 JSON 大小。清理计数变化后，须看到 writes 增加才表示 Redis 已保存清理后的文档。正常退出会在等待已有写入后另存最终状态；SP_SHUTDOWN_TIMEOUT_MS 默认 60000，容器停止宽限应更长，例如 70 秒。异常强制终止不保证执行最后存档。

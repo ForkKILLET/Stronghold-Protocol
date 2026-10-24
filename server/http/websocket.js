@@ -4,7 +4,8 @@
 //     protocol, server/net.js), built from the startServer() options (config.js decides which go where);
 //   * WebSocket (ws) at /ws, maxPayload 64 KB, permessage-deflate (WS_DEFLATE) → Network.handleConnection. Refused at
 //     the upgrade: any other path 404; per-network socket limit for internet clients (maxConnectionsPerAddr, see net.js
-//     clientAddress; local/LAN peers are exempt) 429; server full (maxConnections) or shutting down 503.
+//     clientAddress; local/LAN peers are exempt) 429; unauthenticated socket cap or shutting down 503.
+//     The online player cap (maxConnections) is checked at hello, allowing authenticated match recovery.
 
 import {userToken,sameOrigin} from '../users/http.js';
 import { WebSocketServer } from 'ws';
@@ -78,7 +79,8 @@ export function createSessionStack(opts, { data, log, workerPool, matchWorkerPoo
   for (const [target, key, env, fallback] of envLimits) {
     if (target[key] == null) target[key] = parseEnvLimit(process.env[env], fallback, env, log);
   }
-  log.info(`[http] limits: rooms ${lobbyOptions.maxRooms} (${perNetwork(lobbyOptions.maxRoomsPerAddr)}/network), matches ${perNetwork(lobbyOptions.maxMatchesPerAddr)}/network, sockets ${netOptions.maxConnections} (${perNetwork(netOptions.maxConnectionsPerAddr)}/network)`);
+  netOptions.maxPendingConnections ??= NET_DEFAULTS.maxPendingConnections;
+  log.info(`[http] limits: rooms ${lobbyOptions.maxRooms} (${perNetwork(lobbyOptions.maxRoomsPerAddr)}/network), matches ${perNetwork(lobbyOptions.maxMatchesPerAddr)}/network, online ${netOptions.maxConnections}, sockets ${perNetwork(netOptions.maxConnectionsPerAddr)}/network, pending ${netOptions.maxPendingConnections}`);
   log.info(`[match] tuning: combat ${parseCombat(process.env.SP_COMBAT)}, verify ${parseVerify(process.env.SP_VERIFY)}, bot rehearsal ${parseBotRehearsal(process.env.SP_BOT_REHEARSAL)} (docs/DEPLOY.md §3.4)`);
   const registry = new SessionRegistry({ reconnectWindowMs: netOptions.reconnectWindowMs ?? NET_DEFAULTS.reconnectWindowMs,
     maxSessions: opts.maxSessions ?? NET_DEFAULTS.maxSessions });
@@ -135,6 +137,9 @@ export function attachWebSocket(server, { network, log, wsCompression = parseWsC
       try{const token=userToken(req);req.userProfile=token?await users.call('authenticate',{token}):null;}
       catch{reject(503,'Service Unavailable');return;}
       if(socket.destroyed)return;
+      // Account lookup yields: other handshakes may have consumed the pending budget.
+      const afterAuth = network.admission(req);
+      if (afterAuth) { reject(afterAuth === 'per-address' ? 429 : 503, afterAuth === 'per-address' ? 'Too Many Requests' : 'Service Unavailable'); return; }
     }
     if (narrowDeflateOffer(req.headers['sec-websocket-extensions'])) delete req.headers['sec-websocket-extensions'];
     try {

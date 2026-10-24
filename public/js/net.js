@@ -55,6 +55,8 @@ export const CLIENT_ERR_TEXT = Object.freeze({
 export const CLOSE_REPLACED = 4001;
 /** Server close code: the socket never sent `hello` (server/net.js CLOSE.HELLO_TIMEOUT, ~30–60 s). */
 export const CLOSE_HELLO_TIMEOUT = 4002;
+/** Capacity refusal is terminal for this page, including network/focus events and direct connect calls. */
+export const CLOSE_SERVER_FULL = 4003;
 /** A pre-hello socket must have lived this long before a 4002 close is swapped quietly (no loop). */
 const QUIET_SWAP_MIN_AGE_MS = 5000;
 
@@ -156,6 +158,7 @@ export class Net {
     this._expired = new Set(); // rids that timed out locally (their late error was already reported)
     this._listeners = new Map();
     this._manualClose = false;
+    this._serverFull = false;
     this._quietSwap = false;   // next connect() keeps the current status (see CLOSE_HELLO_TIMEOUT)
     this._openedAt = 0;
     this._reconnectTimer = null;
@@ -218,6 +221,7 @@ export class Net {
 
   /** Open the socket (no-op when already open/connecting). Also resumes after close()/replacement. */
   connect() {
+    if (this._serverFull) return;
     const quiet = this._quietSwap;
     this._quietSwap = false;
     if (this.ws && (this.ws.readyState === WS_OPEN || this.ws.readyState === WS_CONNECTING)) return;
@@ -311,6 +315,7 @@ export class Net {
   }
 
   _onClose(ev) {
+    if (ev?.code === CLOSE_SERVER_FULL) { this._stopAtCapacity(); return; }
     this._teardownSocket();
     this._failPending('DISCONNECTED', false);
     if (this._manualClose) { this._setStatus('closed'); return; }
@@ -426,6 +431,7 @@ export class Net {
   }
 
   _onHelloError(msg) {
+    if (msg.code === 'SERVER_FULL') { this._stopAtCapacity(); return; }
     this._clearTimer('_helloTimer', 'clearTimeout');
     this._helloRid = null;
     this.lastError = new NetError(msg.code, msg.msg, msg.detail);
@@ -441,6 +447,14 @@ export class Net {
     this._setStatus('connected');
     // Queued requests can't be sent without a session.
     this._failPending('OFFLINE', true);
+    this._emit('helloError', this.lastError);
+  }
+
+  _stopAtCapacity() {
+    if (this._serverFull) return;
+    this._serverFull = true;
+    this.lastError = new NetError('SERVER_FULL');
+    this.close();
     this._emit('helloError', this.lastError);
   }
 

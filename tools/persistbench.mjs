@@ -5,6 +5,39 @@ import { setImmediate as nextTurn } from 'node:timers/promises';
 import { makeMatch } from '../test/match/harness.js';
 import { canSnapshot, snapshotMatch } from '../server/match/snapshot.js';
 import { Persister } from '../server/persist.js';
+import { PersistenceWorker } from '../server/workers/persistenceClient.js';
+
+// Synthetic metadata load, separate from the real-match fixture below. No Redis or live service is contacted.
+if (process.argv.includes('--metadata')) {
+  const sessions = Array.from({ length: 3000 }, (_, i) => ({ playerId: `p${i}`, token: `token${i}`,
+    loadout: Object.fromEntries(Array.from({ length: 300 }, (_, j) => [`char_${j}`, { skill: 1, potential: 6, module: 0 }])) }));
+  const rooms = Array.from({ length: 1000 }, (_, i) => ({ code: `R${i}`,
+    seats: sessions.slice(i * 3, i * 3 + 3).map(s => ({ playerId: s.playerId, loadout: s.loadout })) }));
+  const doc = { v: 1, sessions, rooms, recovery: {} };
+  const documentBytes = Buffer.byteLength(JSON.stringify(doc));
+  const worker = new PersistenceWorker();
+  try {
+    await worker.serialize({ v: 1 }, []); // exclude thread startup
+    for (let round = 0; round < 3; round++) {
+      let longestGap = 0, previous = performance.now();
+      const heartbeat = setInterval(() => {
+        const now = performance.now();
+        longestGap = Math.max(longestGap, now - previous); previous = now;
+      }, 1);
+      try {
+        await nextTurn();
+        const start = performance.now();
+        const result = await worker.serialize(doc, []);
+        await new Promise(resolve => setTimeout(resolve, 5));
+        console.log(JSON.stringify({ fixture: 'synthetic-metadata', round, documentBytes,
+          totalMs: +(performance.now() - start).toFixed(2), postMs: +result.postMs.toFixed(2),
+          postMaxMs: result.postMaxMs, postBatches: result.postBatches,
+          largestHeartbeatGapMs: +longestGap.toFixed(2) }));
+      } finally { clearInterval(heartbeat); }
+    }
+  } finally { await worker.close(); }
+  process.exit(0);
+}
 
 const h = makeMatch({ humans: 1, bots: 3, seed: 42, fake: true, captureFrames: false });
 h.start();

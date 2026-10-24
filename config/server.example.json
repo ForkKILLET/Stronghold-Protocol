@@ -5,12 +5,14 @@
     "maxSessions": 20000,
     "maxRooms": 1000,
     "maxRoomsPerAddr": 16,
-    "maxMatchesPerAddr": 8
+    "maxMatchesPerAddr": 8,
+    "maxPendingConnections": 256
   },
   "reconnect": {
     "soloMs": 86400000,
     "coopMs": 600000,
-    "lobbyMs": 60000
+    "lobbyMs": 60000,
+    "capacityGraceMs": 600000
   },
   "network": {
     "heartbeatMs": 30000,
@@ -22,8 +24,22 @@
     "heavyBurst": 6,
     "abuseDropsPerSec": 400
   },
-  "persistence": { "saveMs": 10000 },
-  "workers": { "rooms": 0, "matches": 0, "maxQueue": 256, "timeoutMs": 120000 },
-  "replays": { "perUser": 10, "maxBytes": 8388608 },
-  "shutdown": { "timeoutMs": 60000 }
+  "persistence": {
+    "saveMs": 10000,
+    "checkpointConcurrency": 4,
+    "checkpointWaitMs": 2000
+  },
+  "workers": {
+    "rooms": 0,
+    "matches": 0,
+    "maxQueue": 256,
+    "timeoutMs": 120000
+  },
+  "replays": {
+    "perUser": 10,
+    "maxBytes": 8388608
+  },
+  "shutdown": {
+    "timeoutMs": 60000
+  }
 }

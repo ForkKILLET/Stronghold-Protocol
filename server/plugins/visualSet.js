@@ -239,7 +239,7 @@ export function createVisualSets({ registry, log = noopLog, limits = VISUAL_LIMI
         const now = Date.now();
         if (now - at < 5000) return;
         at = now;
-        setImmediate(() => { try { registry.rescan?.(); } catch (e) { log.error?.('[plugins] rescan failed', e); } });
+        setImmediate(() => { try { registry.rescan?.()?.catch?.((e) => log.error?.('[plugins] rescan failed', e)); } catch (e) { log.error?.('[plugins] rescan failed', e); } });
       };
     })(),
     stats: () => ({ sets: sets.size, held: held.size, docs: docs.size }),

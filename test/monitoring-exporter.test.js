@@ -40,6 +40,24 @@ test('renderMetrics exports recent windows, counters and valid histogram familie
   assert.doesNotMatch(text, /url=|http:\/\/game/);
 });
 
+test('persistence recovery counts and save-stage gauges preserve units and omit unavailable timings', () => {
+  const data = structuredClone(sample);
+  Object.assign(data.persist, { saveMs: 30_000, failures: 2, skipped: 3,
+    recovery: { retained: 4, removed: { expired: 5, superseded: 6, departed: 7 } },
+    timing: { postMs: 12, postMaxMs: 2, postBatches: 80, encodeMs: 100, totalMs: 400, sampledAt: 2000 } });
+  const text = renderMetrics([{ name: 'prod', url: 'http://game/metrics' }],
+    new Map([['prod', { up: true, data, errors: 0, lastSuccess: 100 }]]));
+  assert.match(text, /^sp_persist_save_interval_seconds\{game="prod"\} 30$/m);
+  assert.match(text, /^sp_persist_recovery_retained\{game="prod"\} 4$/m);
+  assert.match(text, /^sp_persist_recovery_removed_expired_total\{game="prod"\} 5$/m);
+  assert.match(text, /^sp_persist_last_post_seconds\{game="prod"\} 0.012$/m);
+  assert.match(text, /^sp_persist_last_post_max_seconds\{game="prod"\} 0.002$/m);
+  assert.match(text, /^sp_persist_last_post_batches\{game="prod"\} 80$/m);
+  assert.match(text, /^sp_persist_last_encode_seconds\{game="prod"\} 0.1$/m);
+  assert.match(text, /^sp_persist_last_sample_timestamp_seconds\{game="prod"\} 2$/m);
+  assert.doesNotMatch(text, /sp_persist_last_assemble_seconds\{/);
+});
+
 test('targets and fetches are bounded and failures do not expose stale game gauges', async () => {
   assert.throws(() => validateTargets([{ name: 'x', url: 'file:///etc/passwd' }]));
   assert.throws(() => validateTargets([{ name: 'x', url: 'http://u:p@example.com/metrics' }]));

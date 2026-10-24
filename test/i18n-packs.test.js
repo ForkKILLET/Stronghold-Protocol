@@ -143,7 +143,9 @@ test('the server: GET /packs/index.json lists the packs live, GET /packs/<id>/<f
     assert.equal((await get('/i18n/qaa.json')).status, 200, 'a single-file pack: the language folder');
     put(root, 'public/i18n/qag.json', { 开始: 'G' });
     await new Promise((r) => setTimeout(r, 1100)); // the registry looks again after a second
-    assert.ok((await (await get('/packs/index.json')).json()).packs.some((p) => p.id === 'qag'), 'a dropped pack shows on the next request');
+    await (await get('/packs/index.json')).json(); // trigger the nonblocking background scan
+    await srv.packs.refresh(); // join that scan; readers keep the previous complete snapshot until it finishes
+    assert.ok((await (await get('/packs/index.json')).json()).packs.some((p) => p.id === 'qag'), 'a dropped pack shows after the background scan completes');
   } finally {
     await srv.close();
     fs.rmSync(root, { recursive: true, force: true });

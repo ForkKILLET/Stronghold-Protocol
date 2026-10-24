@@ -38,6 +38,7 @@ import { createPreviewLayers } from './preview/layers.js';
 import { FieldPreview } from './preview/field.js';
 import { CardPreview } from './preview/cards.js';
 import { SoundPreview } from './preview/sound.js';
+import { installDeviceSupport } from '../../js/ui/device.js';
 
 const cx = (...p) => p.filter(Boolean).join(' ');
 
@@ -413,6 +414,7 @@ function App({ info }) {
 }
 
 async function boot() {
+  installDeviceSupport();
   const root = document.getElementById('app');
   try {
     await initLang().catch(() => {});

@@ -159,6 +159,10 @@ test('production Worker encodes broadcasts/unicasts and room/queue routing reuse
     assert.equal(typeof packet.kind, 'string');
     assert.equal(typeof packet.encoded, 'string');
     assert.equal(Object.hasOwn(packet, 'msg'), false, 'valid frames do not clone a redundant object graph');
+    if (packet.kind === 'm.public' || packet.kind === 'm.private') {
+      assert.ok(packet.state?.seq > 0, 'production worker prepares state transport before IPC');
+      assert.equal(typeof packet.state.stream, 'string');
+    }
   }
   const malformed = { t: 'malformed' };
   malformed.self = malformed;

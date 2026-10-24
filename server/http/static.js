@@ -1,3 +1,4 @@
+import { BackgroundClient } from '../workers/backgroundClient.js';
 // server/http/static.js — the static file server (routes.js hands it every GET / HEAD that is not an API route):
 // (i18n-ignore-file: the error pages are bilingual by design, 中文 · English — docs/I18N.md)
 //
@@ -110,6 +111,8 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
   const resources = createResourceIndex({ dataDir, publicDir, cdnBase: cdn, resourcePackRoutes, rewrite: (v) => (cdn ? rewriteAssetPaths(v, cdn) : v), log });
   /** @type {Map<string, { mtimeMs: number, size: number, body: Buffer }>} rewritten manifests (per file path) */
   const cdnCache = new Map();
+  const cdnPending = new Map();
+  const manifestEncoder = new BackgroundClient(new URL('../workers/manifestEncode.js', import.meta.url));
   const sets = visual || (typeof registry.pluginFile === 'function' ? createVisualSets({ registry, log }) : null);
   let vanilla = content;
   const vanillaContent = () => (vanilla ||= computeVanillaContent({ simDir, sharedDir, dataDir, shim: DATA_SHIM_JS, log: /** @type {any} */ (log) }));
@@ -359,11 +362,19 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
     // assets CDN: the manifests are rewritten on the way out, so every client keeps requesting /data/assets.json
     if (cdn && mount.name === 'data' && segments.length === 1 && CDN_MANIFESTS.has(segments[0].toLowerCase())) {
       const cached = cdnCache.get(absPath);
-      let body = cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size ? cached.body : null;
+      let body = cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size
+        && cached.ctimeMs === stat.ctimeMs && cached.ino === stat.ino ? cached.body : null;
       if (!body) {
         try {
-          body = Buffer.from(JSON.stringify(rewriteAssetPaths(JSON.parse(fs.readFileSync(absPath, 'utf8')), cdn)));
-          cdnCache.set(absPath, { mtimeMs: stat.mtimeMs, size: stat.size, body });
+          const identity = `${absPath}:${stat.mtimeMs}:${stat.size}:${stat.ctimeMs}:${stat.ino}`;
+          let pending = cdnPending.get(identity);
+          if (!pending) {
+            pending = manifestEncoder.request({ file: absPath, cdn }).then((bytes) => Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+              .finally(() => cdnPending.delete(identity));
+            cdnPending.set(identity, pending);
+          }
+          body = await pending;
+          cdnCache.set(absPath, { mtimeMs: stat.mtimeMs, size: stat.size, ctimeMs: stat.ctimeMs, ino: stat.ino, body });
         } catch (e) {
           log.error(`[http] cannot rewrite ${segments[0]} for the CDN`, e);
           sendError(req, res, 500, '服务器内部错误 · Internal error');
@@ -375,6 +386,7 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
     }
     await serveFile(req, res, absPath, stat, mount.name, segments, query, gzipCache, log);
   };
+  serveStatic.close = () => manifestEncoder.close();
   serveStatic.cacheStats = () => ({ gzipBytes: gzipCache.total, gzipEntries: gzipCache.map.size, gzipLimitBytes: gzipCache.maxTotal, gzipInflight: gzipCache.inflight.size });
   return serveStatic;
 }

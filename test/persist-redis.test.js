@@ -431,3 +431,53 @@ test('0.2.4 signed shared/private stock and passive/console gift provenance surv
       await pool.close();
     }
   });
+
+test('account identity, economic replay, combat manifests and pending results survive two real Redis/Worker saves',
+  { skip: !available && `no Redis at ${REDIS_URL}`, timeout: 30000 }, async t => {
+    const { Persister } = await import('../server/persist.js');
+    const { recordViews } = await import('../server/replays/capture.js');
+    const { captureCombatSpec } = await import('../server/users/combatCapture.js');
+    const h = makeMatch({ mode: 'solo', humans: 1, fake: true, seed: 73 });
+    h.m.userMatchId = 'archive-recovery'; h.m.replayMaxBytes = 8 * 1024 * 1024;
+    h.m.order[0].userId = 'test-account'; h.start().toPrep();
+    recordViews(h.m);
+    assert.equal(h.m.handle('p_0', { t: 'g.refresh' }).error, undefined);
+    captureCombatSpec(h.m, { battleId: 'battle-1', fieldId: 'n:p_0', players: [{ playerId: 'p_0' }] });
+    const initial = snapshotMatch(h.m);
+    assert.ok(initial.replayArchive.events.some(e => e.kind === 'action' && e.action === 'g.refresh'));
+    assert.equal(initial.combatArchive.fields.length, 1);
+    const session = { playerId: 'p_0', token: 'original-game-token', userId: 'test-account', name: 'Archive',
+      avatarId: 'avatar:Avatar_def_01', publicId: '5JT4', connected: true };
+    const result = { id: 'queued-result', rows: [{ userId: 'test-account', playerId: 'p_0' }],
+      replay: { v: 1, events: initial.replayArchive.events, fields: initial.replayArchive.fields, duration: 1 },
+      combat: initial.combatArchive };
+    const probe = store('account-archives'), encoders = [], pools = [];
+    t.after(async () => {
+      h.m.dispose();
+      for (const writer of encoders) await writer.encoder.close();
+      for (const pool of pools) await pool.close();
+      try { await probe.clear(); } finally { await probe.close(); }
+    });
+    let match = h.m;
+    for (let restart = 0; restart < 2; restart++) {
+      const writer = new Persister({ store: probe, registry: { all: () => [session] },
+        lobby: { rooms: new Map(), userOutbox: new Map([[result.id, result]]),
+          persistenceMatches: () => [{ key: 'TEST', match }] } });
+      encoders.push(writer);
+      assert.equal(await writer.flush(), true);
+      const saved = await probe.load();
+      assert.deepEqual(saved.userResultOutbox, [result]);
+      assert.equal(saved.sessions[0].userId, session.userId);
+      assert.equal(saved.sessions[0].publicId, session.publicId);
+      assert.equal(saved.sessions[0].avatarId, session.avatarId);
+      const pool = new MatchWorkerPool({ data: DATA, lanes: 1 }); pools.push(pool);
+      match = await pool.create('archive-' + restart, { roomCode: 'TEST', mode: 'solo', difficulty: 'NORMAL',
+        seed: 73, matchNo: 1, userMatchId: h.m.userMatchId, replayMaxBytes: h.m.replayMaxBytes,
+        seats: [{ seat: 0, playerId: 'p_0', userId: session.userId, name: session.name, isBot: false, connected: true }] }, {}, saved.matches.TEST);
+      const restored = await match.snapshot();
+      assert.deepEqual(restored.replayArchive.events, initial.replayArchive.events);
+      assert.deepEqual(restored.combatArchive, initial.combatArchive);
+      assert.equal(restored.userMatchId, h.m.userMatchId);
+      assert.equal(restored.players[0].userId, session.userId);
+    }
+  });

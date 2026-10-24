@@ -16,18 +16,18 @@ npm start
 
 | 分组 | 字段 | 环境变量 |
 | --- | --- | --- |
-| `limits` | `maxConnections`、`maxConnectionsPerAddr`、`maxRooms`、`maxRoomsPerAddr`、`maxMatchesPerAddr`、`maxSessions` | 分别为 `SP_MAX_CONNECTIONS`、`SP_MAX_CONNECTIONS_PER_ADDR`、`SP_MAX_ROOMS`、`SP_MAX_ROOMS_PER_ADDR`、`SP_MAX_MATCHES_PER_ADDR`、`SP_MAX_SESSIONS` |
-| `reconnect` | `soloMs`、`coopMs`、`lobbyMs` | `SP_SOLO_RECONNECT_MS`、`SP_RECONNECT_WINDOW_MS`、`SP_LOBBY_GRACE_MS` |
+| `limits` | `maxConnections`、`maxPendingConnections`、`maxConnectionsPerAddr`、`maxRooms`、`maxRoomsPerAddr`、`maxMatchesPerAddr`、`maxSessions` | 分别为 `SP_MAX_CONNECTIONS`、`SP_MAX_PENDING_CONNECTIONS`、`SP_MAX_CONNECTIONS_PER_ADDR`、`SP_MAX_ROOMS`、`SP_MAX_ROOMS_PER_ADDR`、`SP_MAX_MATCHES_PER_ADDR`、`SP_MAX_SESSIONS` |
+| `reconnect` | `soloMs`、`coopMs`、`lobbyMs`、`capacityGraceMs` | `SP_SOLO_RECONNECT_MS`、`SP_RECONNECT_WINDOW_MS`、`SP_LOBBY_GRACE_MS`、`SP_CAPACITY_RECONNECT_MS` |
 | `network` | `heartbeatMs`、`helloTimeoutMs`、`resyncMinGapMs` | `SP_HEARTBEAT_MS`、`SP_HELLO_TIMEOUT_MS`、`SP_RESYNC_MIN_GAP_MS` |
 | `network` | `ratePerSec`、`rateBurst`、`heavyPerSec`、`heavyBurst`、`abuseDropsPerSec` | `SP_RATE_PER_SEC`、`SP_RATE_BURST`、`SP_HEAVY_PER_SEC`、`SP_HEAVY_BURST`、`SP_ABUSE_DROPS_PER_SEC` |
-| `persistence` | `saveMs` | `SP_REDIS_SAVE_MS` |
+| `persistence` | `saveMs`、`checkpointConcurrency`、`checkpointWaitMs` | `SP_REDIS_SAVE_MS`、`SP_CHECKPOINT_CONCURRENCY`、`SP_CHECKPOINT_WAIT_MS` |
 | `workers` | `simulation`、`rooms`、`matches`、`maxQueue`、`timeoutMs` | `SP_WORKERS`、`SP_ROOM_WORKERS`、`SP_MATCH_WORKERS`、`SP_WORKER_QUEUE`、`SP_WORKER_TIMEOUT_MS` |
 | `replays` | `perUser`、`maxBytes` | `SP_REPLAY_LIMIT`、`SP_REPLAY_MAX_BYTES` |
 | `shutdown` | `timeoutMs` | `SP_SHUTDOWN_TIMEOUT_MS` |
 
 容量范围为 0–1000000，`maxSessions` 至少 1。每网络容量的 0 表示不限；全局连接／房间的 0 禁止新接入／新建，不代表不限。时间通常为 1 毫秒至 7 天；存档周期至少 1000 毫秒。Worker 数量 0–32，房间 lane 不能超过模拟 Worker 总数；队列 0–10000，Worker 超时 1–3600000 毫秒。退出超时 1000–300000 毫秒，默认 60000；超时退出状态为失败，避免将未完成保存误报为成功。
 
-省略 `workers.simulation` 时保持自动选择线程数。省略 `reconnect.soloMs` 时保持当前分支的单人恢复规则；设为 `null` 可显式跟随游戏数据。部署策略建议明确写入 86400000（24 小时）和 `persistence.saveMs:10000`（10 秒），避免同步上游默认值时改变运营策略。
+省略 `workers.simulation` 时保持自动选择线程数。省略 `reconnect.soloMs` 时使用上游默认 6 小时；省略 `persistence.saveMs` 时为上游默认 30 秒；设为 `null` 可显式跟随游戏数据。部署策略建议明确写入 86400000（24 小时）和 `persistence.saveMs:10000`（10 秒），避免同步上游默认值时改变运营策略。
 
 ## 查看生效值
 
@@ -37,7 +37,7 @@ node tools/server-config.mjs /absolute/path/server.json
 
 输出下次启动将采用的 `values` 和各字段的 `sources`（默认、文件、环境变量、显式参数），可以在发布前只读校验；`startServer()` 返回的 `runtimeConfig` 才是该实例启动时实际采用的不可变快照。编辑文件不会更新正在运行的实例。启动日志只报告使用的文件；该工具不输出环境中的凭据。
 
-配置不经公共 HTTP 提供，也不加入浏览器构建或 WebSocket。密码／令牌仍使用 Secrets；HTTP 监听、CDN、Redis 连接、账户路径及插件策略继续沿用原有专用配置。未合入的 pending 接入、满员恢复优待随功能加入注册表，当前写入此类未知键会明确报错。内部批大小、协议常量不作为运营设置暴露。
+配置不经公共 HTTP 提供，也不加入浏览器构建或 WebSocket。密码／令牌仍使用 Secrets；HTTP 监听、CDN、Redis 连接、账户路径及插件策略继续沿用原有专用配置。待认证连接上限 `maxPendingConnections` 默认 256，达到上限拒绝新 WS 升级；`maxConnections` 按 hello 后的在线身份计数。`capacityGraceMs` 默认 600000，仅控制满员时近期对局重连优待，不延长存档保留；使用账户会话前先校验归属。检查点并发分组 `checkpointConcurrency` 为 1–32（默认 4），单局等候 `checkpointWaitMs` 为 1–3600000 毫秒（默认 2000），超时复用安全检查点，不取消对局请求。内部批大小、协议常量不作为运营设置暴露。
 
 ## 容器和发布
 

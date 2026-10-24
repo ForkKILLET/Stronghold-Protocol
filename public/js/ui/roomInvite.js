@@ -21,7 +21,7 @@ export function RoomInviteHost({onCancel,onRetry,onSpectate}){
  const open=useStore(inviteActive),conn=useStore(s=>s.connection),ui=useStore(s=>s.ui);
  useTicker(open&&conn.status==='reconnecting'?500:0);
  const status=inviteStatus(conn,ui.pendingJoinBusy,ui.pendingJoinError,ui.pendingSpectate);
- const refresh=conn.lastError?.text===CLIENT_ERR_TEXT.VERSION;
+ const refresh=conn.lastError?.code==='SERVER_FULL'||conn.lastError?.text===CLIENT_ERR_TEXT.VERSION;
  const canSpectate=ui.pendingJoinError?.code==='ACCOUNT_ACTIVE'&&!ui.pendingSpectate;
  const seconds=Math.max(0,Math.ceil((conn.retryAt-Date.now())/1000));
  return html`<${Modal} open=${open} title=${ui.pendingSpectate?t('进入观战'):t('加入同盟')} micro="ALLIANCE INVITATION"

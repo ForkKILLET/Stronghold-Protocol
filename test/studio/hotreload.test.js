@@ -105,7 +105,7 @@ describe('rooms follow a plugin changed on disk', () => {
     const vs = await withSet(host, 'quiet-skin');
     host.clearInbox();
     touch('quiet-skin', 3);
-    srv.packs.rescan();
+    await srv.packs.rescan();
     const toast = await host.waitFor('m.toast', (m) => m.msgid === TOAST, 3000);
     assert.equal(toast.params?.names, 'quiet-skin');
     assert.equal(srv.lobby.rooms.values().next().value.content.vs, vs, 'the set stays until the host applies it again');

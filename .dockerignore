@@ -4,6 +4,8 @@
 .claude
 node_modules
 .cache
+# Local archives and resource packages are not Docker build inputs.
+artifacts
 .venv*
 **/__pycache__
 test/*

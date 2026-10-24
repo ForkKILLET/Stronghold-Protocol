@@ -44,6 +44,7 @@ export { stripLoneSurrogates, sanitizeName, isValidName } from '../ui/playerName
  * @returns {boolean} false when the name is invalid
  */
 export function enterSession(rawName) {
+  if (net.lastError?.code === 'SERVER_FULL') return false;
   const name = sanitizeName(rawName);
   if (!name) return false;
   identity.saveName(name);
@@ -53,9 +54,10 @@ export function enterSession(rawName) {
   return true;
 }
 
-/** Explicit rejection always returns to the editable title, even if a rename preserved the accepted session. */
+/** Name rejection or server capacity refusal returns to the title without abandoning the saved identity. */
 export function returnToTitleAfterNameReview(error, connection = net, sessionIdentity = identity, state = store) {
-  if (error?.code !== 'NAME_REJECTED' && !(error?.code === 'BAD_MSG' && connection.status !== 'online')) return false;
+  if (!['NAME_REJECTED', 'SERVER_FULL'].includes(error?.code)
+    && !(error?.code === 'BAD_MSG' && connection.status !== 'online')) return false;
   sessionIdentity.setEntered(false);
   state.patch('session', { entered: false });
   state.patch('ui', { restoring: false });
@@ -161,6 +163,7 @@ function Ridges() {
 
 /** Title screen component. */
 export function TitleScreen() {
+  const conn = useStore(s => s.connection);
   const pendingJoin = useStore((s) => s.ui.pendingJoin);
   const pendingSpectate = useStore((s) => s.ui.pendingSpectate);
   const settings = useSettings();
@@ -193,9 +196,10 @@ export function TitleScreen() {
   const cssRidges = assetsSettled && (!ridges || ridgesFailed);
 
   const valid = isValidName(name);
+  const serverFull = conn.lastError?.code === 'SERVER_FULL';
   const [starting, setStarting] = useState(false);
   const start = async () => {
-    if (starting) return;
+    if (starting || serverFull) return;
     if (!valid) { toast(t('请输入博士代号'), 'warn'); return; }
     setStarting(true);
     try {
@@ -254,7 +258,7 @@ export function TitleScreen() {
         <${TextField} label=${t('博士代号')} micro="CALLSIGN" size="lg" icon="user" value=${name} maxLength=${NAME_MAX_LEN}
           placeholder=${t('输入你的代号（最多 {NAME_MAX_LEN} 字）', { NAME_MAX_LEN })} autoFocus=${!touchUi}
           onInput=${setName} onEnter=${start} />
-        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!valid || starting} onClick=${start}>${t('开始')}<//>
+        <${Button} variant="primary" size="xl" block=${true} iconRight="chevrons" disabled=${!serverFull && (!valid || starting)} onClick=${serverFull ? () => location.reload() : start}>${serverFull ? t('刷新页面') : t('开始')}<//>
       </div>
       <div class="title-about-wrap">
         <${Button} variant="ghost" size="sm" class="title-about-button" aria-haspopup="dialog"
