@@ -1,4 +1,6 @@
 {
+  "此博士档案已在其他页面加入本场模拟，请返回原页面或选择观战": "This Doctor profile has already joined this simulation in another tab. Return there or spectate instead.",
+  "可返回原页面继续本场模拟，或选择观战、加入其他模拟。": "Continue this simulation in the original tab, spectate here, or join another simulation.",
   "同盟创建者已变更为「{name}」": "Alliance host is now {name}",
   "请先取消匹配": "Cancel matchmaking first",
   "观战席已满": "Spectator seats are full",
@@ -6,9 +8,7 @@
   "转为观战": "Switch to spectator",
   "转入观战席后，创建者身份将移交给其他博士。有空位时可以重新入座。": "Switching to spectator transfers the host role to another Doctor. You can sit again when a seat is free.",
   "转入观战席后仅观看模拟，有空位时可以重新入座。": "As a spectator, you only watch the simulation. You can sit again when a seat is free.",
-  "此博士档案已在其他页面入座或参赛，请返回原页面或选择观战": "This Doctor profile already has a seat or match in another tab. Return there or spectate instead.",
   "改为观战": "Spectate instead",
-  "请返回原页面继续游玩，或在此页面观战。": "Return to your original tab to keep playing, or spectate in this tab.",
   "取消邀请": "Cancel invitation",
   "可以重试，或返回大厅选择其他同盟。": "Try again, or return to the lobby to choose another alliance.",
   "已识别同盟邀请 {code}，正在初始化…": "Alliance invitation {code} received. Initializing…",

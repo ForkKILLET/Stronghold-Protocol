@@ -158,12 +158,12 @@ function manualQueue(t) {
     lobby, states, launched,
     at(time) { now = time; },
     queueState(entry) { return sessions.get(entry.players[0].playerId).messages.at(-1); },
-    join({ count = 1, difficulty = 'NORMAL', room = null } = {}) {
+    join({ count = 1, difficulty = 'NORMAL', room = null, profiles = [] } = {}) {
       const entry = lobby.makeQueueEntry({ mode: 'coop', difficulty, room,
-        players: Array.from({ length: count }, () => {
+        players: Array.from({ length: count }, (_, i) => {
           const playerId = `queue-test-${++seq}`;
           const messages = [];
-          sessions.set(playerId, { playerId, connected: true, messages,
+          sessions.set(playerId, { playerId, userId: profiles[i] || null, connected: true, messages,
             ws: { readyState: 1, bufferedAmount: 0, send: (data) => messages.push(JSON.parse(data)) } });
           return { playerId, isBot: false };
         }) });
@@ -250,6 +250,65 @@ test('queued launch rejects AI before dispatching to either local or Worker engi
   assert.equal(lobby.startQueuedMatch({ mode: 'coop', difficulty: 'NORMAL' }, players).error, ERR.BAD_MSG);
   lobby.matchWorkerPool = { create() { assert.fail('AI must never reach a Match Worker'); } };
   assert.equal(lobby.startQueuedMatch({ mode: 'coop', difficulty: 'NORMAL' }, players).error, ERR.BAD_MSG);
+});
+
+test('queue counts and launches exclude overlapping profiles without splitting parties or blocking later groups', (t) => {
+  const q = manualQueue(t);
+  const specs = [['a', 'b', 'c'], ['a', 'd'], ['b', 'e'], ['c', 'f'], ['g'], ['h']];
+  const entries = specs.map(profiles => q.join({ count: profiles.length, profiles }));
+  // Oldest three-player party takes the first compatible solo; subsequent parties still form a full team.
+  assert.deepEqual(q.lobby.groupMatchEntries(entries), [[entries[0], entries[4]], [entries[1], entries[2]], [entries[3], entries[5]]]);
+  assert.deepEqual(entries.map(entry => q.queueState(entry).count), [4, 4, 4, 3, 4, 3]);
+  q.lobby.processMatchQueues();
+  assert.equal(q.launched.length, 2);
+  for (const team of q.launched) {
+    const profiles = team.map(p => q.lobby.registry.byId(p.playerId).userId);
+    assert.equal(new Set(profiles).size, team.length);
+  }
+  assert.deepEqual(q.lobby.matchQueues.get('coop:NORMAL'), [entries[3], entries[5]]);
+  assert.equal(q.queueState(entries[3]).count, 3);
+});
+
+test('account-aware packing preserves oldest-first selection for mixed parties and unbound guests', (t) => {
+  const q = manualQueue(t);
+  let seed = 7391;
+  const random = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0);
+  for (let run = 0; run < 40; run++) {
+    const bucket = Array.from({ length: 100 }, () => {
+      const profiles = Array.from(new Set(Array.from({ length: 1 + random() % 4 }, () => `u${random() % 20}`)));
+      const entry = q.join({ count: profiles.length, profiles: profiles.map(id => random() % 5 ? id : null) });
+      entry.removed = random() % 11 === 0;
+      return entry;
+    });
+    let remaining = bucket.filter(e => !e.removed);
+    const expected = [];
+    while (remaining.length) {
+      const group = q.lobby.selectMatchEntries(remaining);
+      expected.push(group); remaining = remaining.filter(e => !group.includes(e));
+    }
+    assert.deepEqual(q.lobby.groupMatchEntries(bucket), expected);
+    // These tickets only exercise packing, and must not accumulate in the live queue between runs.
+    q.lobby.matchQueues.clear(); q.lobby.queueByPlayer.clear();
+  }
+});
+
+test('many tickets of one account stay in separate one-player groups', (t) => {
+  const q = manualQueue(t);
+  const players = Array.from({ length: 2000 }, (_, i) => ({ playerId: `same-profile-${i}` }));
+  q.lobby.registry = { byId: id => ({ playerId: id, userId: 'one-profile' }) };
+  const entries = players.map(p => ({ players: [p] }));
+  const groups = q.lobby.groupMatchEntries(entries);
+  assert.equal(groups.length, entries.length);
+  assert.ok(groups.every((group, i) => group.length === 1 && group[0] === entries[i]));
+});
+
+test('a duplicate profile is rejected before local or Worker queued launch', (t) => {
+  const lobby = new Lobby({ registry: { byId: id => ({ playerId: id, userId: 'same' }) } });
+  t.after(() => lobby.shutdown());
+  const players = [{ playerId: 'tab-a' }, { playerId: 'tab-b' }];
+  assert.equal(lobby.startQueuedMatch({ mode: 'coop', difficulty: 'NORMAL' }, players).error, ERR.ACCOUNT_ACTIVE);
+  lobby.matchWorkerPool = { create() { assert.fail('duplicate profiles must never reach a Match Worker'); } };
+  assert.equal(lobby.startQueuedMatch({ mode: 'coop', difficulty: 'NORMAL' }, players).error, ERR.ACCOUNT_ACTIVE);
 });
 
 test('matchmaking screens no longer expose AI flags, AI countdowns or deadline timers', async () => {

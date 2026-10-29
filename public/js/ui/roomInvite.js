@@ -34,7 +34,7 @@ export function RoomInviteHost({onCancel,onRetry,onSpectate}){
    <div class=${`room-invite__status${status.failed?' room-invite__error':''}`} role=${status.failed?'alert':'status'} aria-live="polite">
     ${status.failed?html`<${Icon} name="warn" />`:html`<${Spinner} size="sm" />`}<strong>${status.text}</strong>
    </div>
-   <p class="room-invite__hint">${canSpectate?t('请返回原页面继续游玩，或在此页面观战。')
+   <p class="room-invite__hint">${canSpectate?t('可返回原页面继续本场模拟，或选择观战、加入其他模拟。')
      :ui.pendingJoinError?.code==='ROOM_NOT_FOUND'?t('请与房主核对密钥，同盟结束后邀请链接即失效。')
      :ui.pendingJoinError?t('可以重试，或返回大厅选择其他同盟。')
        :ui.pendingJoinBusy?t('正在等待服务器确认，请稍候。')

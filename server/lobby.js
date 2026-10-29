@@ -1093,7 +1093,6 @@ export class Lobby {
     const active = this.activeMatchOf(session);
     if (active) return fail(ERR.ROOM_STARTED, 'match already running');
     if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
-    if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
     if (mode === 'solo') {
       if (room) return fail(ERR.MATCHING, 'leave the room before solo matchmaking');
       // Compatibility for clients from the first queue rollout. The current UI keeps independent simulation on its
@@ -1174,6 +1173,7 @@ export class Lobby {
     for (let i = 1; i < bucket.length && total < MAX_SEATS; i++) {
       const next = bucket[i];
       if (!next || next.removed || total + next.players.length > MAX_SEATS) continue;
+      if (this.accountSeatConflict([...selected.flatMap((entry) => entry.players), ...next.players])) continue;
       selected.push(next);
       total += next.players.length;
     }
@@ -1183,6 +1183,15 @@ export class Lobby {
   /** Use identical groups for counts and match launch. */
   groupMatchEntries(bucket) {
     const remaining = bucket.filter((entry) => entry && !entry.removed);
+    const seen = new Set();
+    let repeated = false;
+    const accounts = remaining.map((entry) => entry.players.filter((p) => !p.isBot)
+      .map((p) => this.registry?.byId(p.playerId)?.userId).filter(Boolean));
+    for (const ids of accounts) for (const id of ids) {
+      if (seen.has(id)) repeated = true;
+      seen.add(id);
+    }
+    if (repeated) return this.groupDistinctAccountEntries(remaining, accounts);
     const groups = [];
     // At most four seats: keep FIFO candidates by party size, then choose the
     // earliest party that fits. Each candidate is visited once; packing is unchanged.
@@ -1210,6 +1219,41 @@ export class Lobby {
         used.add(next);
         selected.push(remaining[next]);
         total += remaining[next].players.length;
+      }
+      groups.push(selected);
+    }
+    return groups;
+  }
+
+  /** Same FIFO packing when a profile has several tickets, excluding its other tickets from each group.
+   * Bitsets skip all conflicting tickets together, so many tabs of one account do not cause quadratic rescans.
+   * Account identifiers stay here in the lobby; neither tickets nor public counts contain them.
+   */
+  groupDistinctAccountEntries(entries, accounts) {
+    const available = Array(MAX_SEATS + 1).fill(0n), byAccount = new Map();
+    const bits = entries.map((entry, i) => {
+      const bit = 1n << BigInt(i), size = entry.players.length;
+      if (size > 0 && size <= MAX_SEATS) available[size] |= bit;
+      for (const id of accounts[i]) byAccount.set(id, (byAccount.get(id) || 0n) | bit);
+      return bit;
+    });
+    const groups = [];
+    for (let i = 0; i < entries.length; i++) {
+      if (!(available[entries[i].players.length] & bits[i])) continue;
+      const selected = [];
+      let next = i, total = 0, blocked = 0n;
+      while (next < entries.length) {
+        const entry = entries[next];
+        selected.push(entry);
+        total += entry.players.length;
+        available[entry.players.length] &= ~bits[next];
+        for (const id of accounts[next]) blocked |= byAccount.get(id);
+        let candidates = 0n;
+        for (let size = 1; size <= MAX_SEATS - total; size++) candidates |= available[size];
+        candidates &= ~blocked;
+        if (!candidates) break;
+        // The least significant set bit is the earliest compatible ticket.
+        next = (candidates & -candidates).toString(2).length - 1;
       }
       groups.push(selected);
     }
@@ -1313,7 +1357,6 @@ export class Lobby {
   create(session, { mode, difficulty, prepSeconds = null, prepMultiplier = null, battleSpeed = 2 }) {
     if (!isBattleSpeed(battleSpeed) || !isPrepSeconds(prepSeconds) || !isPrepMultiplier(prepMultiplier) || (prepSeconds != null && prepMultiplier != null)) return fail(ERR.BAD_MSG, 'invalid preparation time');
     if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
-    if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
     const cur = this.roomOf(session);
     if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (this.rooms.size >= this.opts.maxRooms) {
@@ -1365,7 +1408,7 @@ export class Lobby {
     const cur = this.roomOf(session);
     // idempotent for members; a spectator of this room goes on below: it may take a free player seat (header)
     if (cur === room && !room.spectatorOf(session.playerId)) { this.sendState(room, session); return OK; }
-    if (this.accountSeatConflict([session])) return fail(ERR.ACCOUNT_ACTIVE);
+    if (this.accountSeatConflict([...room.activeHumans(), session])) return fail(ERR.ACCOUNT_ACTIVE);
     if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.matching) return fail(ERR.MATCHING);
@@ -2258,6 +2301,7 @@ export class Lobby {
    * acquire one, so the result screen returns them to the public lobby. */
   startQueuedMatch(owner, players, selected = [owner]) {
     if (players.some((p) => p.isBot)) return fail(ERR.BAD_MSG, 'matchmaking only accepts human players');
+    if (this.accountSeatConflict(players)) return fail(ERR.ACCOUNT_ACTIVE);
     if (this.matchWorkerPool) return this.startQueuedMatchWorker(owner, players, selected);
     return this.startQueuedMatchLocal(owner, players, selected);
   }
@@ -2841,26 +2885,17 @@ export class Lobby {
   // Membership helpers
   // ---------------------------------------------------------------------------------------------------
 
-  /** One profile may browse/watch in many sessions, but own only one player participation.
-   * Main-thread seats, queue tickets and match members reserve ownership even while disconnected or a Worker starts.
-   * Profiles stay private: this check never adds account identifiers to room/queue snapshots.
+  /** One profile may play several matches, but only once in any given room or selected team.
+   * Disconnected seats still count. Profiles stay private: public snapshots never contain account identifiers.
    */
   accountSeatConflict(players) {
     const accounts = new Set();
     for (const player of players) {
-      const session = this.registry.byId(player.playerId);
+      const session = this.registry?.byId(player.playerId);
       const userId = session?.userId;
       if (!userId || player.isBot) continue;
       if (accounts.has(userId)) return true;
       accounts.add(userId);
-      for (const other of this.registry.all()) {
-        if (other.playerId === player.playerId || other.userId !== userId) continue;
-        const seat = this.roomOf(other)?.seatOf(other.playerId);
-        if (seat && !seat.left && !seat.isBot) return true;
-        if (this.queueByPlayer.has(other.playerId)) return true;
-        const ctx = other.activeMatchCtx;
-        if (ctx && !ctx.ended && !ctx.disposed && ctx.members?.some(p => p.playerId === other.playerId && !p.left && !p.isBot)) return true;
-      }
     }
     return false;
   }
