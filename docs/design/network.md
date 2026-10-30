@@ -8,6 +8,10 @@ Transport: one WebSocket per tab at `/ws`, JSON text frames `{ t: '<type>', ...p
 
 ### 8.1 Session & lobby
 
+Fork quit handling (2026-10-30): clear the local match only after `g.leave` succeeds or reports `NOT_IN_ROOM`.
+Only `WRONG_PHASE` falls back to `room.leave`; an acknowledged game departure needs no second request.
+Offline, timeout and other errors retain the latest view for retry/reconnect and do not record a successful quit.
+
 Fork account participation (2026-10-29): separate sessions of one profile may participate in different simulations concurrently. Within a target room or selected match team, each account may own only one human seat, including disconnected seats retained for recovery. Public matchmaking accepts overlapping-profile tickets but skips incompatible parties when packing FIFO groups, without splitting parties or combining difficulties. Queue counts use those same groups; launch rechecks account uniqueness before dispatch to local or Match Worker engines. A session itself still owns at most one match. Spectator access, reconnect tokens and settlement persistence are unchanged; account identifiers stay private. See [USERS.md](../USERS.md).
 Branch transport fallback (2026-10-26): the runtime `SP_WS_URL` is preferred, with the page's own
 `ws(s)://host/ws` as a sticky fallback until reload. Initial transport failure, an 8 s upgrade timeout,

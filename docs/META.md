@@ -1050,3 +1050,7 @@ Operator-trait gifts retain the branch exemption described above, including Rock
 ## 本 Fork：账户回放
 
 完整经营过程以服务端确认视图差量录制，战斗保留原 BattleSpec 和领袖池同步；不改变 Match 操作、结果或固定模拟步长。结束时随账户结算 outbox 原子入库，限额／固定不删除结算。实现、规则身份约束和配置见 [REPLAYS.md](REPLAYS.md)。
+
+## 本 Fork：退出确认
+
+退出请求失败或离线不表示服务端已释放席位，本机保留最新对局视图，供重连后重试。`g.leave` 成功或返回 `NOT_IN_ROOM` 后可以清理本机状态并记录退出；仅 `WRONG_PHASE` 回退到 `room.leave`，成功确认不会被多余请求的失败推翻。观战出口沿用原行为。回归：`test/ui/quit-failure.test.js`。
