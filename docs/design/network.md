@@ -9,6 +9,15 @@ Transport: one WebSocket per tab at `/ws`, JSON text frames `{ t: '<type>', ...p
 ### 8.1 Session & lobby
 
 Fork account participation (2026-10-29): separate sessions of one profile may participate in different simulations concurrently. Within a target room or selected match team, each account may own only one human seat, including disconnected seats retained for recovery. Public matchmaking accepts overlapping-profile tickets but skips incompatible parties when packing FIFO groups, without splitting parties or combining difficulties. Queue counts use those same groups; launch rechecks account uniqueness before dispatch to local or Match Worker engines. A session itself still owns at most one match. Spectator access, reconnect tokens and settlement persistence are unchanged; account identifiers stay private. See [USERS.md](../USERS.md).
+Branch transport fallback (2026-10-26): the runtime `SP_WS_URL` is preferred, with the page's own
+`ws(s)://host/ws` as a sticky fallback until reload. Initial transport failure, an 8 s upgrade timeout,
+or hello/heartbeat timeout selects the page on the next backoff retry. A previously working primary
+(welcome or valid pong received) gets a 30 s recovery window; shutdown (1001) / restart (1012) closes
+get 60 s. Failed retries do not renew that deadline; a welcome/pong from the primary resets it.
+Capacity/replacement refusals, manual close, idle title swaps (4002), policy closes (1008) and business
+errors keep their existing semantics. Explicit `Net({ url })` stays fixed. Both routes must reach the
+same stateful backend; token/hello and full-state recovery are unchanged. See [DEPLOY](../DEPLOY.md).
+
 
 Branch capacity admission (2026-10-18): `SP_MAX_CONNECTIONS` / `maxConnections` (default 2000) caps authenticated online identities at `hello`. At capacity, new admission receives `error SERVER_FULL` followed by close code 4003; the client returns to the title with “当前服务器容量已满” and stops every WS reconnect trigger until explicit page reload (the title provides a refresh action). Repeated hello and replacement of an online identity do not add a player. A valid token disconnected for at most ten minutes may exceed the cap if the server still owns that player's active match or records match participation within ten minutes; spectators and ordinary lobby tokens do not qualify. Name moderation rechecks capacity after its async boundary. The optional persisted session field `lastMatchAt` preserves recent participation, with old records defaulting to null. Upgrade admission independently bounds unauthenticated/closing sockets to 256 and retains per-network limits; it leaves room for match recovery even when authenticated online count reaches the cap. Deployment details: [DEPLOY §3.4](../DEPLOY.md#34-上限调整房间--对局--连接).
 

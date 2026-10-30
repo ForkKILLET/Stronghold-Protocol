@@ -25,7 +25,7 @@ before(async () => {
   await build({ configFile: path.join(root, 'vite.config.js'), logLevel: 'silent', build: { outDir } });
   manifest = JSON.parse(await fs.readFile(path.join(outDir, '.vite/manifest.json'), 'utf8'));
   const handler = createStaticHandler({ publicDir, dataDir: path.join(root, 'data'), sharedDir: path.join(root, 'shared'),
-    cdnBase: 'https://art.example.com/game', dataCdnBase: 'https://data.example.com/game' });
+    cdnBase: 'https://art.example.com/game', dataCdnBase: 'https://data.example.com/game', wsUrl: 'wss://backend.example.com/ws' });
   server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     handler(req, res, url.pathname, url.search.slice(1)).catch((err) => { res.statusCode = 500; res.end(String(err)); });
@@ -36,6 +36,15 @@ before(async () => {
 after(async () => {
   if (server) await new Promise((resolve) => server.close(resolve));
   if (temp) await fs.rm(temp, { recursive: true, force: true });
+});
+
+test('built client keeps the WebSocket endpoint as an external runtime setting', async () => {
+  const entry = await fs.readFile(path.join(outDir, manifest['index.html'].file), 'utf8');
+  assert.match(entry, /["']\/js\/ws-config\.js["']/);
+  const response = await fetch(`${origin}/js/ws-config.js`);
+  assert.equal(response.headers.get('cache-control'), 'no-cache');
+  const runtime = await import('data:text/javascript,' + encodeURIComponent(await response.text()));
+  assert.equal(runtime.WS_URL, 'wss://backend.example.com/ws');
 });
 
 test('management density overrides are bundled after touch rules without bypassing mandatory landscape', async () => {

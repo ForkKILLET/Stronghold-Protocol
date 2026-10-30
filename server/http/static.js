@@ -102,7 +102,7 @@ const CS_FILE = /^\/cs\/([0-9a-f]{16})\/([A-Za-z0-9._\/-]{1,200})$/;
  *   packs: the server pack registry; runtime CDN and Vite behavior remain branch-owned.
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, rawPath: string, query: string) => Promise<void>}
  */
-export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), pluginsDir = path.join(path.dirname(path.resolve(packsDir)), 'plugins'), packs = null, content = null, visual = null, contents = null, log = noopLog, cdnBase = '', dataCdnBase = '', resourcePackRoutes = [], clientBuild = true }) {
+export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), pluginsDir = path.join(path.dirname(path.resolve(packsDir)), 'plugins'), packs = null, content = null, visual = null, contents = null, log = noopLog, cdnBase = '', dataCdnBase = '', wsUrl = '', resourcePackRoutes = [], clientBuild = true }) {
   const registry = packs || createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log: /** @type {any} */ (log) });
   const cdn = typeof cdnBase === 'string' ? cdnBase : '';
   const builtIndex = path.join(publicDir, 'build', 'index.html');
@@ -137,6 +137,8 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
   // A small runtime module supplies the base before client data/asset loaders run; no separate config fetch needed.
   const cdnConfigBody = Buffer.from(`export const ASSETS_CDN = ${JSON.stringify(cdn)};\nexport const DATA_CDN = ${JSON.stringify(dataCdnBase)};\n`);
   const cdnConfigTag = `"asset-cdn-${createHash('sha256').update(cdnConfigBody).digest('hex')}"`;
+  const wsConfigBody = Buffer.from(`export const WS_URL = ${JSON.stringify(wsUrl)};\n`);
+  const wsConfigTag = `"ws-config-${createHash('sha256').update(wsConfigBody).digest('hex')}"`;
 
   const serveStatic = async function (req, res, rawPath, query) {
     let decoded;
@@ -147,6 +149,14 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
     }
     if (useBuiltClient && (decoded === '/' || decoded === '/index.html')) {
       await serveFile(req, res, builtIndex, await fsp.stat(builtIndex), 'public', ['build', 'index.html'], query, gzipCache, log);
+      return;
+    }
+    if (decoded === '/js/ws-config.js') {
+      const headers = { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache', ETag: wsConfigTag };
+      if (isNotModified(req, wsConfigTag, new Date(0))) { res.writeHead(304, headers); res.end(); return; }
+      headers['Content-Length'] = wsConfigBody.length;
+      res.writeHead(200, headers);
+      res.end(req.method === 'HEAD' ? undefined : wsConfigBody);
       return;
     }
     // The runtime CDN setting is served by the game origin, independent of the data CDN.

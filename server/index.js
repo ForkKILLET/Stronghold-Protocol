@@ -37,7 +37,7 @@ import { nameModerationFromEnv } from './nameModeration.js';
 import {resolveServerConfig} from './runtimeConfig.js';
 import { createNameModerationRoute } from './http/nameModeration.js';
 import path from 'node:path';
-import { parseAssetCdn, parseEnvLimit, parseWsCompression } from './http/config.js';
+import { parseAssetCdn, parseEnvLimit, parseWsCompression, parseWsUrl } from './http/config.js';
 import { openStoreFromEnv } from './redis.js';
 import { Persister, restoreServer, SAVE_MS } from './persist.js';
 import { SimulationPool, workerSettings } from './workers/pool.js';
@@ -93,7 +93,7 @@ export {
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
  *   store?: object | null, resume?: boolean, saveMs?: number, checkpointConcurrency?: number, checkpointWaitMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
- *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, clientBuild?: boolean,
+ *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, wsUrl?: string, clientBuild?: boolean,
  * }} [opts]
  * @returns {Promise<{ port: number, host: string, url: string, server: http.Server, wss: import('ws').WebSocketServer,
  *                     lobby: import('./lobby.js').Lobby, network: import('./net.js').Network,
@@ -113,6 +113,11 @@ export async function startServer(opts = {}) {
   const simDir = path.join(ROOT, 'server', 'sim');
 
   const clientBuild = opts.clientBuild ?? !process.argv.includes('--source-client');
+  const rawWsUrl = opts.wsUrl ?? process.env.SP_WS_URL;
+  const wsUrl = parseWsUrl(rawWsUrl);
+  if (String(rawWsUrl ?? '').trim() && !wsUrl) {
+    log.warn('[http] SP_WS_URL ignored: a complete ws(s):// URL without credentials or fragments is required (docs/DEPLOY.md)');
+  }
   const resourcePackRoutes = parseResourcePackRoutes(opts.resourcePackRoutes ?? process.env.SP_RESOURCE_PACK_ROUTES);
   // assets CDN: a serving-time rewrite of the two manifests (docs/DEPLOY.md §3.2)
   const rawCdn = opts.assetsCdn != null ? opts.assetsCdn : (process.env.SP_ASSETS_CDN ?? process.env.ASSETS_CDN);
@@ -226,7 +231,7 @@ export async function startServer(opts = {}) {
   const serveUserApi=createUserApi({users,registry,lobby,data,content,moderation:nameModeration,trustProxy:network.opts.trustProxy,log,network});
   const serveApi = async (req, res, pathname) => await serveUserApi(req,res,pathname) || await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
 
-  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, simDir, packsDir, pluginsDir, packs, content, log, visual, contents, cdnBase: assetsCdn, dataCdnBase: dataCdn, resourcePackRoutes, clientBuild });
+  const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, simDir, packsDir, pluginsDir, packs, content, log, visual, contents, cdnBase: assetsCdn, dataCdnBase: dataCdn, wsUrl, resourcePackRoutes, clientBuild });
   // the plugin studio (DESIGN §32.9): its page and API for this machine and the local network; it watches plugins/ only
   // once it is used (hot reload), and rooms whose host is the author or alone follow a plugin's changes by themselves
   const studio = opts.studio === false ? null : createStudio({ publicDir, pluginsDir, dataDir, registry: packs, lobby, sessions: registry, log, fetch: opts.fetch });

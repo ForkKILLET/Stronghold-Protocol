@@ -5,6 +5,7 @@ import { defineConfig, normalizePath } from 'vite';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const absolute = (rel) => normalizePath(path.join(root, rel));
 const runtimeCdn = absolute('public/js/asset-cdn.js');
+const runtimeWs = absolute('public/js/ws-config.js');
 const serverData = absolute('server/data.js');
 const browserData = '\0stronghold-browser-data';
 
@@ -19,6 +20,7 @@ function browserContracts() {
       const resolved = source.startsWith('.') && importer
         ? normalizePath(path.resolve(path.dirname(importer), source)) : normalizePath(source);
       if (resolved === runtimeCdn) return { id: '/js/asset-cdn.js', external: true };
+      if (resolved === runtimeWs) return { id: '/js/ws-config.js', external: true };
       if (resolved === serverData) return browserData;
       if (resolved === absolute('server/sim/nodeData.js')) this.error('Node-only simulation data cannot enter the client bundle');
     },

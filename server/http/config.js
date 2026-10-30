@@ -133,3 +133,16 @@ export function parseWsCompression(v) {
   const s = String(v ?? '').trim().toLowerCase();
   return !['0', 'false', 'no', 'off', 'never'].includes(s);
 }
+
+/** Public browser endpoint; require a complete ws(s) URL and reject credentials/fragments. */
+export function parseWsUrl(v) {
+  const s = String(v ?? '').trim();
+  if (!/^wss?:\/\//i.test(s)) return '';
+  try {
+    const url = new URL(s);
+    if (!url.hostname || url.username || url.password || s.includes('#')) return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}

@@ -1,6 +1,7 @@
 // WebSocket client for the game server (DESIGN §8).
 //
-// - One socket at ws(s)://<host>/ws, JSON text frames `{ t, ...payload }`.
+// - Prefer SP_WS_URL; on transport failure use the page's ws(s)://<host>/ws until reload.
+//   JSON text frames `{ t, ...payload }`; an explicit Net({ url }) stays fixed.
 // - Auto-reconnect with exponential backoff + jitter; a heartbeat (`ping`) measures latency and
 //   detects dead sockets (a ping left unanswered — no inbound frame at all — for DEAD_AFTER_MS ⇒
 //   close ⇒ reconnect). Measured from the oldest unanswered ping, not from the last inbound frame,
@@ -34,8 +35,13 @@ import { PROTOCOL_VERSION, ERR_TEXT } from '../../shared/constants.js';
 import { validateC2S } from '../../shared/protocol.js';
 import { N_ } from '../../shared/i18n.js';
 import { StateReceiver, STATE_DELTA_VERSION } from '../../shared/stateDelta.js';
+import { WS_URL } from './ws-config.js';
 
 export const REQUEST_TIMEOUT_MS = 8000;
+export const CONNECT_TIMEOUT_MS = 8000;
+// Give a working endpoint time to recover; a shutdown/restart close gets a longer deployment window.
+export const RECONNECT_GRACE_MS = 30000;
+export const RESTART_GRACE_MS = 60000;
 export const HELLO_TIMEOUT_MS = 8000;
 export const PING_INTERVAL_MS = 4000;
 export const DEAD_AFTER_MS = 15000;
@@ -97,11 +103,13 @@ export function backoffDelay(attempt, rand = Math.random) {
 }
 
 /**
- * WebSocket URL for the current page (`ws(s)://host/ws`).
+ * Runtime WebSocket endpoint, falling back to the current page (`ws(s)://host/ws`).
  * @param {{protocol: string, host: string}} [loc]
+ * @param {string} [configuredUrl]
  * @returns {string}
  */
-export function defaultWsUrl(loc = globalThis.location) {
+export function defaultWsUrl(loc = globalThis.location, configuredUrl = WS_URL) {
+  if (configuredUrl) return configuredUrl;
   if (!loc || !loc.host) return 'ws://localhost:3000/ws';
   return `${loc.protocol === 'https:' ? 'wss' : 'ws'}://${loc.host}/ws`;
 }
@@ -116,7 +124,7 @@ const NAME_REVIEW_ERRORS = new Set(['NAME_REJECTED', 'NAME_REVIEW_UNAVAILABLE', 
 export class Net {
   /**
    * @param {object} [opts]
-   * @param {string} [opts.url] socket URL (default: derived from location at connect time)
+   * @param {string} [opts.url] socket URL (default: SP_WS_URL, then location at connect time)
    * @param {any} [opts.WebSocket] WebSocket constructor (default: globalThis.WebSocket)
    * @param {() => (string|null)} [opts.getToken] reconnect-token provider for `hello`
    * @param {() => ({ noReplace: boolean, claimAt?: number })} [opts.getTokenClaim] local ownership for this hello
@@ -126,6 +134,10 @@ export class Net {
    */
   constructor(opts = {}) {
     this.url = opts.url || null;
+    this._pageWsUrl = '';      // sticky page-origin fallback after the configured endpoint fails
+    this._primaryHealthy = false;
+    this._recoveryStartedAt = null; // one window per outage; failed reconnects must not renew it
+    this._restartGrace = false;
     this.WS = opts.WebSocket || null;
     this.getToken = typeof opts.getToken === 'function' ? opts.getToken : () => null;
     this.getTokenClaim = typeof opts.getTokenClaim === 'function' ? opts.getTokenClaim : () => null;
@@ -162,6 +174,7 @@ export class Net {
     this._quietSwap = false;   // next connect() keeps the current status (see CLOSE_HELLO_TIMEOUT)
     this._openedAt = 0;
     this._reconnectTimer = null;
+    this._connectTimer = null;
     this._pingTimer = null;
     this._helloTimer = null;
     this._stateResyncTimer = null;
@@ -229,7 +242,7 @@ export class Net {
     this._clearTimer('_reconnectTimer', 'clearTimeout');
     this.retryAt = 0;
     const WS = this.WS || globalThis.WebSocket;
-    const url = this.url || defaultWsUrl();
+    const url = this.url || this._pageWsUrl || defaultWsUrl();
     let ws;
     try {
       ws = new WS(url);
@@ -244,6 +257,17 @@ export class Net {
     ws.onmessage = (ev) => { if (ws === this.ws) this._onMessage(ev?.data); };
     ws.onerror = () => { /* followed by close */ };
     ws.onclose = (ev) => { if (ws === this.ws) this._onClose(ev); };
+    // Browser TCP/TLS/upgrade attempts can otherwise hang for a long time before trying the page.
+    if (this._fallbackWsUrl()) {
+      this._connectTimer = this.timers.setTimeout(() => {
+        this._connectTimer = null;
+        if (ws !== this.ws || ws.readyState !== WS_CONNECTING) return;
+        this._teardownSocket();
+        try { ws.close(4000, 'connect timeout'); } catch { /* ignore */ }
+        this._failPending('DISCONNECTED', false);
+        this._scheduleReconnect();
+      }, CONNECT_TIMEOUT_MS);
+    }
   }
 
   /** Close for good (no reconnect). Pending requests reject with CLOSED. */
@@ -299,6 +323,7 @@ export class Net {
   }
 
   _onOpen() {
+    this._clearTimer('_connectTimer', 'clearTimeout');
     this._openedAt = this.now();
     this._lastRx = this._openedAt;
     this._unansweredSince = null;
@@ -335,11 +360,38 @@ export class Net {
       this.connect();
       return;
     }
-    this._scheduleReconnect();
+    // Policy/idle closes do not select another route. 1001 is our server's shutdown code; 1012 means restart.
+    this._scheduleReconnect(ev?.code !== CLOSE_HELLO_TIMEOUT && ev?.code !== 1008,
+      ev?.code === 1001 || ev?.code === 1012);
   }
 
-  _scheduleReconnect() {
-    if (this._manualClose) return;
+  /** Only runtime configuration gets a fallback; fixed URLs and equivalent page URLs stay put. */
+  _fallbackWsUrl() {
+    if (this.url || this._pageWsUrl || !WS_URL || !globalThis.location?.host) return '';
+    const pageUrl = defaultWsUrl(globalThis.location, '');
+    try {
+      if (new URL(WS_URL).href === new URL(pageUrl).href) return '';
+    } catch { /* a malformed static runtime setting can still fall back to the page */ }
+    return pageUrl;
+  }
+
+  _markEndpointHealthy() {
+    if (!this._fallbackWsUrl()) return;
+    this._primaryHealthy = true;
+    this._recoveryStartedAt = null;
+    this._restartGrace = false;
+  }
+
+  _scheduleReconnect(allowFallback = true, restarting = false) {
+    if (this._manualClose || this._serverFull) return;
+    const fallbackUrl = allowFallback ? this._fallbackWsUrl() : '';
+    if (fallbackUrl) {
+      if (this._recoveryStartedAt == null && (this._primaryHealthy || restarting)) this._recoveryStartedAt = this.now();
+      if (restarting) this._restartGrace = true;
+      this._primaryHealthy = false;
+      const grace = this._restartGrace ? RESTART_GRACE_MS : RECONNECT_GRACE_MS;
+      if (this._recoveryStartedAt == null || this.now() - this._recoveryStartedAt >= grace) this._pageWsUrl = fallbackUrl;
+    }
     const delay = backoffDelay(this.attempt, this.random);
     this.attempt += 1;
     this.retryAt = this.now() + delay;
@@ -352,6 +404,7 @@ export class Net {
   }
 
   _teardownSocket() {
+    this._clearTimer('_connectTimer', 'clearTimeout');
     this._helloHadSession = false;
     this._states.reset();
     this._clearTimer('_stateResyncTimer', 'clearTimeout');
@@ -416,6 +469,7 @@ export class Net {
   }
 
   _onWelcome(msg) {
+    this._markEndpointHealthy();
     this._clearTimer('_helloTimer', 'clearTimeout');
     this._helloRid = null;
     // Compare future setName() calls against what we sent (the server may normalise the name).
@@ -675,6 +729,7 @@ export class Net {
     if (!Number.isFinite(c)) return;
     const rtt = now - c;
     if (!(rtt >= 0 && rtt < 60000)) return;
+    this._markEndpointHealthy();
     this.ping = Math.round(rtt);
     if (Number.isFinite(msg.s)) this._addClockSample(msg.s + rtt / 2 - now, rtt);
     this._emit('ping', this.ping);
