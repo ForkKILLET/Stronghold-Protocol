@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-10-30 移植主线 `ff0b4bf3`／`354544a6`／`143864e8` 的战场声音清理，保留本分支旧 SfxLimiter，不引入新版 bank/pool。stopFieldSounds 取消已播放及待解码的 limited 音效、语音和落地音，重复清理只归还一次额度，旧插件失败不再触发回退；UI／BGM／盟约提示维持独立生命周期。离开 MatchScreen、准备／战斗切换及 setFieldUnits 使用同一清理入口。原字幕事件立即清除播放句，本机 fieldRevision 同时释放已结束的悬停句；普通换语音仍保留悬停。验证 field-audio、audio、deploy-replay、voice-subtitles 及双浏览器回归。
+
 - 2026-10-30 移植主线 `a8808a27`／`c6c30652`：quitMatch 仅在服务端确认离开后清除本机对局，OFFLINE／TIMEOUT 不代表已退席；g.leave 成功或 NOT_IN_ROOM 后不重复 room.leave，只有 WRONG_PHASE 才走等待室离开回退。失败保留最新服务器视图及本机记录、观战出口；验证 ui/quit-failure。
 
 - 2026-10-30 同步 xinhai 网络更新至 `3327c490`。本部署保持同源 `/ws`，`SP_WS_URL` 默认空；账户升级继续严格校验 Origin 和 Cookie，不为跨域示例放宽认证。两条路线必须指向同一个有状态后端，保留多标签页令牌归属、满员停止重连及同账户多场模拟规则。运行时 `/js/ws-config.js` 外置于 Vite，保持 no-cache／ETag；8s 连接超时、30s 故障恢复／60s 重启宽限沿用上游常量，不新增配置格式。

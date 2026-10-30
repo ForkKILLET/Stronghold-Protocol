@@ -572,6 +572,8 @@ export class AudioManager {
     this.bufBytes = new Map(); // url → decoded PCM bytes (the byte budget of the LRU, see _buffer)
     this.warned = new Set();
     this.limiter = new SfxLimiter();
+    this.fieldSounds = new Set(); // pending and playing limited cues, cancelled together when their field ends
+    this.fieldRevision = 0; // local subtitle holds end with their field; ordinary voice takeover keeps them
     // prep landings (deployCue): their own voices — a full pool hands the oldest one's voice to the newest (_playLanding);
     // no per-file gap (one landing per piece, the cap bounds the overlap), the per-piece cooldown of the battle sounds
     this.landLimiter = new SfxLimiter({ maxVoices: LAND_VOICES, maxPerUrl: LAND_VOICES, urlGapMs: 0 });
@@ -1094,8 +1096,20 @@ export class AudioManager {
     if (limited) { if (!this.limiter.tryAcquire(now, unitKey, url)) return; }
     else if (this.uiVoices >= 12) return;
     else this.uiVoices += 1;
-    const release = () => { if (limited) this.limiter.release(url); else this.uiVoices = Math.max(0, this.uiVoices - 1); };
+    let done = false, source = null, gain = null, timer = null;
+    const release = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (limited) { this.limiter.release(url); this.fieldSounds.delete(voice); }
+      else this.uiVoices = Math.max(0, this.uiVoices - 1);
+      try { source?.disconnect(); gain?.disconnect(); } catch { /* ignore */ }
+    };
+    const voice = { stop: () => { try { source?.stop(); } catch { /* already ended */ } release(); } };
+    if (limited) this.fieldSounds.add(voice);
     this._buffer(url).then((buf) => {
+      // Cleanup releases pending requests too: neither the old decode nor a plugin fallback may start afterwards.
+      if (done) return;
       if (!buf && again && this.fellBack.has(url)) {
         release();
         const next = again();
@@ -1104,19 +1118,25 @@ export class AudioManager {
       }
       if (!buf || !this.ctx) { release(); return; }
       try {
-        const s = this.ctx.createBufferSource();
+        const s = source = this.ctx.createBufferSource();
         s.buffer = buf;
         s.playbackRate.value = rate;
-        const g = this.ctx.createGain();
+        const g = gain = this.ctx.createGain();
         g.gain.value = Math.max(0, Math.min(1.5, volume));
         s.connect(g); g.connect(this.sfxGain);
-        let done = false;
-        const end = () => { if (!done) { done = true; release(); try { g.disconnect(); } catch { /* ignore */ } } };
-        s.onended = end;
-        setTimeout(end, (buf.duration / rate) * 1000 + 250); // safety if onended never fires
+        s.onended = release;
+        timer = setTimeout(release, (buf.duration / rate) * 1000 + 250); // safety if onended never fires
         s.start();
       } catch { release(); }
     }, release);
+  }
+
+  /** End field-owned cues and late decodes. UI/BGM/bond cues keep their separate lifetimes. */
+  stopFieldSounds() {
+    this.fieldRevision++;
+    for (const voice of [...this.fieldSounds]) voice.stop();
+    this._stopVoice(); // also invalidates a loading line and clears its subtitle through the existing voice event
+    for (const voice of [...this.landVoices]) this._stopLanding(voice);
   }
 
   /**
@@ -1340,6 +1360,7 @@ export class AudioManager {
 
   /** Reset the unit map for a new field (m.field.units = UnitInfo[]). */
   setFieldUnits(units) {
+    this.stopFieldSounds();
     this.stopBondCue();
     this.units.clear();
     // unit ids belong to one battle: a cast still held for a unit of the field left must not sound for a unit of the new
@@ -1349,7 +1370,7 @@ export class AudioManager {
     this.consumed.clear();
     // a new field is a new battle: the first operator deployed says 行动出发 again and no cooldown carries over
     this.startVoiceDone = false;
-    try { this.voiceGate.reset(); this._stopVoice(); } catch { /* ignore */ }
+    this.voiceGate.reset();
     for (const u of Array.isArray(units) ? units : []) this._track(u);
   }
 
@@ -1398,7 +1419,7 @@ export class AudioManager {
 
   /**
    * Play a landing sound in the landing voices: never dropped for want of a voice — over LAND_VOICES (any file) the oldest
-   * landing, playing or still loading, gives its voice up (_stealLanding) and the new one starts; only the per-piece
+   * landing, playing or still loading, gives its voice up (_stopLanding) and the new one starts; only the per-piece
    * cooldown refuses one (the same piece twice within UNIT_COOLDOWN_MS: one landing never sounds twice), checked before
    * anything is taken over. The battle limiter is not touched. Muted or at SFX volume 0, nothing happens.
    * @param {string} url
@@ -1412,7 +1433,8 @@ export class AudioManager {
     if (pool.cooling(now, unitKey)) return;
     while (!pool.tryAcquire(now, unitKey, url)) {
       if (!this.landVoices.length) return;   // (a full pool always holds voices; never loop on a refusal it cannot lift)
-      this._stealLanding(this.landVoices[0]);
+      this._stopLanding(this.landVoices[0]);
+      this.landStats.stolen += 1;
     }
     const v = { url, src: null, gain: null, over: false, release: null };
     v.release = () => {
@@ -1442,10 +1464,9 @@ export class AudioManager {
     }, v.release);
   }
 
-  /** A landing sound gives its voice to a newer one: the voice is free at once, the sound fades out over LAND_STEAL_S. */
-  _stealLanding(v) {
+  /** Release a landing on takeover or field cleanup; a playing source fades out over LAND_STEAL_S. */
+  _stopLanding(v) {
     v.release();
-    this.landStats.stolen += 1;
     if (!v.src || !v.gain || !this.ctx) return;
     try {
       const t = this.ctx.currentTime;

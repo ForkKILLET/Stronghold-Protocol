@@ -28,11 +28,13 @@ export function VoiceSubtitleHost({ manager = audio }) {
   useLayoutEffect(() => { setHeld(null); }, [enabled, manager, route, settings.voiceSubtitleMode, lang]);
   useEffect(() => {
     if (!enabled) { setLine(null); return; }
+    let fieldRevision = manager.fieldRevision;
     return manager.subscribeVoice(value => {
       setLine(value);
-      // A natural end keeps the hovered text; inaudible/background playback must still clear it.
-      if (document.hidden || manager.volumes?.muted || manager.volumes?.voice <= 0
+      // Natural end/takeover keep hovered text; field cleanup and inaudible/background playback clear it.
+      if (fieldRevision !== manager.fieldRevision || document.hidden || manager.volumes?.muted || manager.volumes?.voice <= 0
         || ['suspended', 'interrupted', 'closed'].includes(manager.ctx?.state)) setHeld(null);
+      fieldRevision = manager.fieldRevision;
     });
   }, [enabled, manager]);
   useLayoutEffect(() => {

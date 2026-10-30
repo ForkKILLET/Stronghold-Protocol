@@ -31,3 +31,5 @@ node tools/build-voice-captions.mjs --offline
 原表缓存在 `.cache/voice-captions/`，不提交。生成字幕文本随 Git／镜像发布，不进入素材预载 ZIP；开启字幕后按所需语言读取，不额外下载语音。
 
 验证：`test/ui/voice-subtitles.test.js`、原音频／设置／i18n 回归，及 `SP_E2E=1 node --test test/ui/voice-subtitles.e2e.test.js`（Chrome／Firefox，真实 HUD 截图和 Web Audio 播放生命周期）。缓存及失败恢复见 `voice-caption-tables.test.js`；`SP_E2E=1 node test/ui/voice-caption-loading.e2e.test.js` 使用真实 HTTP no-cache 响应、挂起的条件校验和 12 秒冷加载，验证两种浏览器的缓存命中、后台更新和过时台词保护。
+
+战场声音清理（2026-10-30）：换场、准备／战斗切换及退出对局会结束在播／待解码语音，并释放旧场的字幕悬停；新语音的异步回调不能被旧句覆盖。本机 `AudioManager.fieldRevision` 仅用于该生命周期，未进入账户／对局存档或网络协议；普通换句及自然结束时仍保留悬停文本。

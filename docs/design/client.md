@@ -593,3 +593,8 @@ as private account attachments after settlement ([COMBAT_STATS.md](../COMBAT_STA
 and a tracked battle's result and rendered events are byte-identical to an untracked one
 (test/match/combat-metrics.test.js, test/match/runner.test.js). Ported from [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol)
 (其公开部署分支，作者 @临夏俨然) with thanks.
+
+Fork field audio lifetime (2026-10-30): `stopFieldSounds()` ends pending and playing limited SFX, operator voices
+and prep landings on replacement / exit, with idempotent limiter release and no stale plugin fallback. UI, BGM and
+bond cues retain separate lifetimes. Existing voice events and the local field revision clear current/held subtitles
+without changing ordinary takeover holds. See [ASSETS.md](../ASSETS.md) and [VOICE_SUBTITLES.md](../VOICE_SUBTITLES.md).

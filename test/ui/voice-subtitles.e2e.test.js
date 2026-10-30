@@ -255,6 +255,12 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
         await settle(); assert.equal(await page.$('.voice-subtitles'), null, `${reason} must not resurrect expired text`);
         await page.mouse.move(0, 0);
       }
+      // A field ending clears an already-finished held line, while ordinary voice takeover above keeps it.
+      await play('char_102_texas', 'cn'); await page.waitForSelector('.voice-subtitles', { visible: true }); await hover(); await endVoice();
+      await page.evaluate(async () => { const { audio } = await import('/js/audio.js'); audio.stopFieldSounds(); });
+      await page.waitForSelector('.voice-subtitles', { hidden: true });
+      await page.mouse.move(0, 0);
+
       // Disabling still removes a retained phrase, rather than just waiting for pointerleave.
       await play('char_102_texas', 'cn'); await page.waitForSelector('.voice-subtitles', { visible: true }); await hover(); await endVoice();
       await page.evaluate(async () => { const { updateSettings } = await import('/js/ui/settings.js'); updateSettings({ voiceSubtitles: false }); });
