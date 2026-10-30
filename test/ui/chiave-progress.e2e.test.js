@@ -75,6 +75,66 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       await settleTip('3 / 6');
       const mobile = await geometry(); assert.ok(mobile.gap >= 2 && mobile.centerError < 1 && mobile.left >= 0);
       await page.screenshot({ path: new URL(`${engine}-compact-tooltip.png`, out).pathname });
+      // The scout's strategy and counter must agree, even when both players use Chiave.
+      const otherId = await page.evaluate(() => {
+        const mock = window.__MOCK__;
+        mock.mutate(s => { s.pub.players[2].bandId = 'band_chiave'; });
+        mock.pushPublic();
+        return mock.S().pub.players[2].playerId;
+      });
+      const memberButtons = await page.$$('.team__btn');
+      await memberButtons[2].click();
+      await page.waitForFunction(id => window.__MOCK__.store.get().match.field?.fieldId === `n:${id}`, {}, otherId);
+      await page.evaluate(effect => {
+        const store = window.__MOCK__.store;
+        const field = store.get().match.field;
+        store.patch('match', { field: { ...field, effects: [{ ...effect, progress: { current: 2, total: 6 }, roundProgress: { current: 0, total: 2 } }] } });
+      }, states[0]);
+      await page.waitForFunction(() => document.querySelector('.effect__progress')?.textContent === '2 / 6');
+      await page.click('[data-testid="check-player"]');
+      await page.waitForFunction(() => document.querySelector('.iband .strategy-progress')?.textContent.includes('2 / 6'));
+      // Start on a combat frame, then select a teammate through the same button used by server-run spectators.
+      await page.goto(`http://127.0.0.1:${srv.port}/dev/game-mock.html?render=fallback&shot=1&phase=COMBAT`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => !!window.__MOCK__ && window.__SP_VIEW__?.kind === 'fallback');
+      await page.waitForSelector('.pbanner--overlay, .mpop--phase', { hidden: true });
+      await page.evaluate(effect => {
+        const mock = window.__MOCK__;
+        mock.mutate(s => {
+          s.priv.bandId = 'band_chiave'; s.priv.effects = [effect];
+          s.pub.players[0].bandId = 'band_chiave'; s.pub.players[2].bandId = 'band_chiave';
+        });
+        mock.pushPublic();
+      }, states.at(-1));
+      await (await page.$$('.team__btn'))[2].click();
+      await page.waitForFunction(id => window.__MOCK__.store.get().match.field?.fieldId === `n:${id}`, {}, otherId);
+      await page.evaluate(effect => {
+        const store = window.__MOCK__.store, field = store.get().match.field;
+        store.patch('match', { field: { ...field, effects: [{ ...effect, progress: { current: 4, total: 6 } }] } });
+      }, states[0]);
+      await page.waitForFunction(() => document.querySelector('.effect__progress')?.textContent === '4 / 6');
+      await page.click('[data-testid="check-player"]');
+      await page.waitForFunction(() => document.querySelector('.iband .strategy-progress')?.textContent.includes('4 / 6'));
+      const watchedName = await page.evaluate(id => window.__MOCK__.store.get().match.public.players.find(p => p.playerId === id).name, otherId);
+      assert.ok((await page.$eval('.iband', e => e.textContent)).includes(watchedName));
+      await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.edrawer')).opacity) > .99);
+      await page.screenshot({ path: new URL(`${engine}-watched-combat.png`, out).pathname });
+      // A one-player leader field has a public owner even without an n: field id.
+      await page.evaluate(id => {
+        const store = window.__MOCK__.store, match = store.get().match, fieldId = 'watched-leader';
+        store.patch('match', { public: { ...match.public, fields: [...match.public.fields, { fieldId, kind: 'boss', players: [id] }] },
+          field: { ...match.field, fieldId, kind: 'boss' } });
+      }, otherId);
+      await page.waitForFunction(name => document.querySelector('.iband')?.textContent.includes(name)
+        && document.querySelector('.iband .strategy-progress')?.textContent.includes('4 / 6'), {}, watchedName);
+      // Shared battles have no single progress owner and must never borrow our own 3 / 6 counter.
+      await page.evaluate(() => {
+        const store = window.__MOCK__.store, match = store.get().match, fieldId = 'shared-test';
+        store.patch('match', { public: { ...match.public, fields: [...match.public.fields, { fieldId, kind: 'unite', players: ['p3', 'p4'] }] },
+          field: { ...match.field, fieldId, kind: 'unite', effects: null } });
+      });
+      await page.waitForFunction(() => !document.querySelector('.iband .strategy-progress') && !document.querySelector('.effect__progress'));
+      await (await page.$$('.team__btn'))[0].click();
+      await page.waitForFunction(() => document.querySelector('.iband .strategy-progress')?.textContent.includes('3 / 6'));
       assert.deepEqual(errors, []);
     } finally { await browser?.close(); await srv.close(); h.m.dispose(); }
   });

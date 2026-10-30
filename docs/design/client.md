@@ -598,3 +598,8 @@ Fork field audio lifetime (2026-10-30): `stopFieldSounds()` ends pending and pla
 and prep landings on replacement / exit, with idempotent limiter release and no stale plugin fallback. UI, BGM and
 bond cues retain separate lifetimes. Existing voice events and the local field revision clear current/held subtitles
 without changing ordinary takeover holds. See [ASSETS.md](../ASSETS.md) and [VOICE_SUBTITLES.md](../VOICE_SUBTITLES.md).
+
+Fork watched strategy details (2026-10-30): prep scouts and combat spectators use the same viewed effects in the
+sidebar and information drawer. A normal field ID or single public field member identifies the strategy owner;
+shared fields never borrow own counters. Returning home restores own progress. Browser regression covers same-band
+players with different values, single-owner leader fields and ambiguous shared fields.

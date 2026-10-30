@@ -1054,3 +1054,5 @@ Operator-trait gifts retain the branch exemption described above, including Rock
 ## 本 Fork：退出确认
 
 退出请求失败或离线不表示服务端已释放席位，本机保留最新对局视图，供重连后重试。`g.leave` 成功或返回 `NOT_IN_ROOM` 后可以清理本机状态并记录退出；仅 `WRONG_PHASE` 回退到 `room.leave`，成功确认不会被多余请求的失败推翻。观战出口沿用原行为。回归：`test/ui/quit-failure.test.js`。
+
+观战策略说明（2026-10-30）：准备侦察及战斗中的本局信息与效果列共用所查看战场的 effects。`n:<playerId>` 或公开战场清单中的单一成员决定策略归属；共享场不猜归属、不用本人经营计数填空。返回自身恢复本人数据。复用现有快照元数据，不增加持久化字段。

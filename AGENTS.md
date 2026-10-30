@@ -1,6 +1,8 @@
 # 合并上游时的仓库约定
 
-- 2026-10-30 移植主线 `ff0b4bf3`／`354544a6`／`143864e8` 的战场声音清理，保留本分支旧 SfxLimiter，不引入新版 bank/pool。stopFieldSounds 取消已播放及待解码的 limited 音效、语音和落地音，重复清理只归还一次额度，旧插件失败不再触发回退；UI／BGM／盟约提示维持独立生命周期。离开 MatchScreen、准备／战斗切换及 setFieldUnits 使用同一清理入口。原字幕事件立即清除播放句，本机 fieldRevision 同时释放已结束的悬停句；普通换语音仍保留悬停。验证 field-audio、audio、deploy-replay、voice-subtitles 及双浏览器回归。
+- 2026-10-30 移植主线 `ecc89724` 的观战说明修正及 `184aaadd` 测试调整：准备侦察与战斗观战时，本局信息和右侧效果共用 viewedEffects，归属取普通场 ID 或公开单人战场成员；共享场不猜单一策略计数，返回自身恢复本人的实时值。保留本分支全部经营策略计数；不引入第一期玩法数据或重复移植原 PR。验证 chiave-progress 双浏览器，覆盖同策略不同计数、单人领袖场、共享场及返回自身。
+
+- 2026-10-30 移植主线 `ff0b4bf3`／`354544a6`／`143864e8` 的战场声音清理，保留本分支旧 SfxLimiter，不引入新版 bank/pool。stopFieldSounds 取消已播放及待解码的 limited 音效、语音和落地音，重复清理只归还一次额度，旧插件失败不再补播回退音效；UI／BGM／盟约提示维持独立生命周期。离开 MatchScreen、准备／战斗切换及 setFieldUnits 使用同一清理入口。原字幕事件立即清除播放句，本机 fieldRevision 同时释放已结束的悬停句；普通换语音仍保留悬停。验证 field-audio、audio、deploy-replay、voice-subtitles 及双浏览器回归。
 
 - 2026-10-30 移植主线 `a8808a27`／`c6c30652`：quitMatch 仅在服务端确认离开后清除本机对局，OFFLINE／TIMEOUT 不代表已退席；g.leave 成功或 NOT_IN_ROOM 后不重复 room.leave，只有 WRONG_PHASE 才走等待室离开回退。失败保留最新服务器视图及本机记录、观战出口；验证 ui/quit-failure。
 

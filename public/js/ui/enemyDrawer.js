@@ -69,7 +69,7 @@ function InfoTab({ pub, priv, onChess, bandId = null, bandOwner = null, effects 
   });
   const { bonds, banned, perBond, stateOf } = model;
   const disabled = new Set(bonds.filter((b) => stateOf(b.bondId)).map((b) => b.bondId));
-  // while scouting a teammate's prep board the drawer shows THEIR 策略 in place of one's own (user playtest #2 item 2)
+  // While watching a teammate's prep board or combat, the drawer shows their strategy and captured progress.
   const band = (bandId || priv?.bandId) ? data.lookup('bands', bandId || priv.bandId) : null;
   const bandEffect = band && effects?.find(e => e.iconKind === 'band' && e.id === band.effectId);
   const stage = pub?.stageId ? data.lookup('stages', pub.stageId) : null;
@@ -98,7 +98,7 @@ function InfoTab({ pub, priv, onChess, bandId = null, bandOwner = null, effects 
 /**
  * @param {{ tab:'enemies'|'info', onTab:(t:string)=>void, pub:any, priv:any, onClose:Function, onEnemy:(key:string, count:number)=>void, onChess:(id:string)=>void,
  *   bandId?: string|null, bandOwner?: string|null, effects?: any[]|null }} props
- *   bandId / bandOwner: while scouting a teammate's prep board, the watched player's 策略 (m.public players[].bandId)
+ *   bandId / bandOwner: while watching a teammate's prep board or combat, their strategy (m.public players[].bandId)
  *   replaces one's own in the 本局信息 tab (game.js scoutBandId; user playtest #2 item 2)
  */
 export function EnemyDrawer({ tab, onTab, pub, priv, onClose, onEnemy, onChess, bandId = null, bandOwner = null, effects = bandOwner ? null : priv?.effects }) {
