@@ -9,7 +9,7 @@ import { useState } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, MicroLabel } from '../ui/components.js';
 import { useGameData, Img, RichText } from '../ui/gameComponents.js';
 import { StepHeader, ExitModal } from '../ui/matchChrome.js';
-import { MatchInfo, matchInfoModel } from '../ui/matchInfo.js';
+import { MatchInfo, matchInfoModel, MatchBondDialog } from '../ui/matchInfo.js';
 import { LoadoutButton } from './loadout.js';
 import { UnofficialMark } from '../ui/pluginTag.js';
 import { SetupReroll } from '../ui/setupReroll.js';
@@ -34,6 +34,7 @@ export function BriefingScreen() {
   const gd = useGameData();
   const [exit, setExit] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [bondId, setBondId] = useState(null);
   if (!pub) return null;
 
   const players = sortedPlayers(pub);
@@ -97,7 +98,7 @@ export function BriefingScreen() {
         <${CommunicationActivity} players=${players} />
       </section>
       <section class="brief__right">
-        <div class="brief__bonds"><${MatchInfo} model=${info} /></div>
+        <div class="brief__bonds"><${MatchInfo} model=${info} onBond=${setBondId} /></div>
         <${SetupReroll} pub=${pub} />
       </section>
     </main>
@@ -114,5 +115,6 @@ export function BriefingScreen() {
         disabled=${!!me?.ready || !me || !!pub.rerollVote} onClick=${ready}>${me?.ready ? t('已就绪') : me ? t('准备就绪') : t('观战中')}<//>
     </footer>
     <${ExitModal} open=${exit} onClose=${() => setExit(false)} solo=${solo} />
+    <${MatchBondDialog} bondId=${bondId} onClose=${() => setBondId(null)} priv=${priv} banned=${info.banned} off=${info.sets.off.has(bondId)} />
   </div>`;
 }

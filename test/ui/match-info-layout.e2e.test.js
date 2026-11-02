@@ -32,6 +32,10 @@ for (const [engine, executablePath] of [
     await request('room.start'); await page.waitForSelector('.brief');
     await request('g.infoReady'); await page.waitForSelector('.draft');
     await page.locator('[data-testid="match-info-open"]').click(); await page.waitForSelector('.minfo-dlg .brief-banned');
+    await page.locator('.minfo-dlg .brief-bond.is-off button.bond').click();
+    await page.waitForSelector('.match-bond-dialog .bpop[aria-modal="true"]');
+    await page.keyboard.press('Escape'); await page.waitForSelector('.match-bond-modal', { hidden: true });
+    assert.ok(await page.$('.minfo-dlg'), 'closing a banned-bond card preserves the strategy information dialog');
     for (const size of [
       { width: 1366, height: 768 }, { width: 1920, height: 1080 }, { width: 1024, height: 768 },
       { width: 844, height: 390, safe: true }, { width: 740, height: 360, text: 'xl' }, { width: 390, height: 844 },
