@@ -63,7 +63,7 @@
 // comparison needs the built stage.
 //
 // --out defaults to <tmp>/stronghold-protocol-release and must be outside the repository. --no-install skips npm ci
-// (no node_modules, no public/vendor: a test build). Zipping needs `zip` (or a bsdtar `tar`, e.g. Windows 10+).
+// (no node_modules, no public/vendor: a test build). Zipping needs `zip`, 7-Zip or a bsdtar `tar` (e.g. Windows 10+).
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -636,22 +636,25 @@ export function packageOutIsUnsafe(out, root = REPO) {
 }
 
 /**
- * Zip `cwd`/`folder` (FOLDER unless named: the asset pack's folder) into `zipPath`: Info-ZIP `zip`, else a bsdtar
+ * Zip `cwd`/`folder` (FOLDER unless named: the asset pack's folder) into `zipPath`: Info-ZIP `zip`, 7-Zip, else a bsdtar
  * `tar --format zip` (Windows 10+, macOS). bsdtar writes
  * the names in UTF-8 (flag bit 11) only when told: its default is the system code page, which loses a name it cannot
  * spell (卫戍 becomes ?? on Windows code page 1252) and leaves no UTF-8 copy for a reader.
  */
 export function zipFolder(cwd, zipPath, folder = FOLDER) {
   // deflate everything: storing PNG / MP3 as they are made the full zip 8.5 MB larger and saved no real time
-  // Do not inherit the caller's stdin: a Windows node:test child can have a non-inheritable stdin handle.
   // Capture diagnostics so an unavailable tool and a real archive failure are distinguishable.
   const options = { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1024 * 1024 };
   const z = spawnSync('zip', ['-q', '-r', '-X', zipPath, folder], options);
   if (!z.error && z.status === 0) return;
+  // Some Windows system bsdtar builds crash on non-ASCII paths (0xC0000005). Prefer 7-Zip when available.
+  const installed = process.platform === 'win32' ? path.join(process.env.ProgramFiles || 'C:\\Program Files', '7-Zip', '7z.exe') : null;
+  const s = spawnSync(installed && isFile(installed) ? installed : '7z', ['a', '-tzip', '-mm=Deflate', '-mcu=on', '-bd', '-y', zipPath, folder], options);
+  if (!s.error && s.status === 0 && isFile(zipPath)) return;
   const t = spawnSync('tar', ['-c', '--format', 'zip', '--options', 'zip:hdrcharset=UTF-8', '-f', zipPath, folder], options);
   if (t.error || t.status !== 0 || !isFile(zipPath)) {
     const diagnostic = (name, r) => `${name}: ${r.error?.message || `exit ${r.status ?? r.signal}`} ${String(r.stderr || '').trim()}`.trim();
-    throw new Error(`zipping failed: install \`zip\` (or a bsdtar \`tar\`)\n${diagnostic('zip', z)}\n${diagnostic('tar', t)}`, { cause: t.error || z.error });
+    throw new Error(`zipping failed: install \`zip\`, 7-Zip or a bsdtar \`tar\`\n${diagnostic('zip', z)}\n${diagnostic('7z', s)}\n${diagnostic('tar', t)}`, { cause: t.error || s.error || z.error });
   }
 }
 

@@ -111,6 +111,7 @@ test('MANIFEST.json and UPDATE.json pass the personal-info scan: paths are scann
 // Bases and a whole round trip on a temporary checkout (tools/package.mjs, --no-install)
 
 const hasZipTool = !spawnSync('zip', ['-v'], { encoding: 'utf8' }).error
+  || !spawnSync('7z', ['i'], { encoding: 'utf8' }).error
   || /bsdtar/.test(spawnSync('tar', ['--version'], { encoding: 'utf8' }).stdout || '');
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
 
