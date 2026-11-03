@@ -112,7 +112,7 @@ test('the game screen hands the mode-disabled set to the shop bar, the detail ca
   assert.match(src, /const offBonds = modeOffBonds\(getMode\(pub\?\.modeId\)\)/);
   assert.match(src, /<\$\{ShopBar\}[\s\S]*?offBonds=\$\{offBonds\}/);
   assert.match(src, /<\$\{DetailPanel\}[\s\S]*?offBonds=\$\{offBonds\}/);
-  assert.match(src, /<\$\{BondPopup\}[\s\S]*?off=\$\{offBonds\.has\(bondPop\.bondId\)\}/);
+  assert.match(src, /<\$\{bondOpen\?\.from === 'info' \? MatchBondDialog : BondPopup\}[\s\S]*?off=\$\{offBonds\.has\(bondPop\.bondId\)\}/);
 });
 
 test('hidden-layer bonds show activation and tiers without a stack badge or layer count', () => {
