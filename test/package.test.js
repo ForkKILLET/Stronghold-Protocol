@@ -264,6 +264,7 @@ test('scans and guards: home paths and the account name in shipped files (art to
 
 // tools/package.mjs zips with `zip`, else with a bsdtar `tar --format zip` (Windows 10+, macOS; GNU tar cannot)
 const hasZipTool = !spawnSync('zip', ['-v'], { encoding: 'utf8' }).error
+  || !spawnSync('7z', ['i'], { encoding: 'utf8' }).error
   || /bsdtar/.test(spawnSync('tar', ['--version'], { encoding: 'utf8' }).stdout || '');
 const hasUnzip = !spawnSync('unzip', ['-h'], { encoding: 'utf8' }).error;
 

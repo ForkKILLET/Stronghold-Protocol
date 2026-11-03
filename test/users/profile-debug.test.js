@@ -67,8 +67,11 @@ test('import preserves profile, privacy, history ordering and replay bytes but u
     assert.equal(metadata.records,2); assert.equal(metadata.pinned,1);
     const token = JSON.parse(fs.readFileSync(path.join(target,'session.json'))).token;
     assert.notEqual(token,f.owner.token);
-    for (const name of ['users.sqlite','snapshot.json','session.json']) assert.equal(fs.statSync(path.join(target,name)).mode & 0o777,0o600);
-    assert.equal(fs.statSync(target).mode & 0o777,0o700);
+    // Windows modes do not express POSIX owner-only access; content/identity checks below run on every platform.
+    if (process.platform !== 'win32') {
+      for (const name of ['users.sqlite','snapshot.json','session.json']) assert.equal(fs.statSync(path.join(target,name)).mode & 0o777,0o600);
+      assert.equal(fs.statSync(target).mode & 0o777,0o700);
+    }
     const db = new DatabaseSync(path.join(target,'users.sqlite'),{readOnly:true});
     try {
       assert.equal(db.prepare('SELECT count(*) n FROM users').get().n,1);
