@@ -353,12 +353,14 @@
 /* ---- bond strip ---------------------------------------------------------------------------------------- */
 .gm__bonds { position: absolute; left: 1.56rem; top: 1.36rem; right: 5.2rem; pointer-events: none;
   display: flex; align-items: flex-start; gap: max(.1rem, 8px); }
+.gm__bonds--empty { align-items: center; }
 /* Only the bond discs (and the +N chip) take the pointer: the strip's box spans the width under the top bar, where the
    top board row's units stand (row 12 at 16:9 / 21:9 / 720p / phones, the boss field's row 5 in a boss prep) — it used
    to swallow the taps and drags on them (review of user playtest #2 item 8: every own unit reachable). */
 .gm__bonds > *, .gm__bonds .bstrip { pointer-events: none; }
 .gm__bonds .bslot, .gm__bonds .bstrip__more { pointer-events: auto; }
 .gm__bond-list { min-width: 0; }
+.gm__bond-list:not([hidden]) { display: flex; }
 /* The hidden list leaves no hit area over the board; only this compact tab can reopen it (GitHub #142). */
 /* A bare arrow (the owner's request after 0.2.0: the boxed 「收起」 tab looked heavy): transparent, half-visible until
    hovered or focused; the 44 × 44 touch target stays (an invisible hit area), the name is the aria-label. */

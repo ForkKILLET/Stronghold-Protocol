@@ -1645,7 +1645,7 @@ function MatchScreen() {
         live=${liveLpNow} spectator=${spectator}
         spectators=${specFacts.list} myId=${myId} isHost=${specFacts.isHost} onRemoveSpectator=${removeSpectator} room=${modRoom} />
 
-      <div class="gm__bonds">
+      <div class=${cx('gm__bonds', !strip.bonds.length && 'gm__bonds--empty')}>
         <button type="button" class="bonds-toggle" aria-expanded=${!bondsCollapsed} aria-controls="match-bond-strip"
           aria-label=${bondsCollapsed ? t('展开盟约') : t('收起盟约')} title=${bondsCollapsed ? t('展开盟约') : t('收起盟约')}
           onKeyDown=${(e) => {
