@@ -65,13 +65,17 @@ test('actual server uses the file for admission, registry, lobby, worker setting
 });
 test('configuration validation happens before listening and the process honors its configured shutdown deadline',async t=>{
  const f=fixture(t,{shutdown:{timeoutMs:1000},workers:{simulation:0}});
- const code=`import {runMain} from './server/http/boot.js'; await runMain(async()=>({url:'http://localhost',host:'127.0.0.1',port:0,runtimeConfig:{values:{shutdown:{timeoutMs:1000}}},close:()=>new Promise(()=>{})})); setInterval(()=>{},1000);`;
- const child=spawn(process.execPath,['--input-type=module','-e',code],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe']});
+ // Windows kill('SIGTERM') terminates immediately instead of delivering a catchable signal. Exercise the same
+ // installed handler through IPC there; Unix still verifies delivery of the actual operating-system signal.
+ const code=`import {runMain} from './server/http/boot.js'; await runMain(async()=>({url:'http://localhost',host:'127.0.0.1',port:0,runtimeConfig:{values:{shutdown:{timeoutMs:1000}}},close:()=>new Promise(()=>{})})); process.on('message',message=>{if(message==='shutdown')process.emit('SIGTERM');}); setInterval(()=>{},1000);`;
+ const child=spawn(process.execPath,['--input-type=module','-e',code],{cwd:new URL('..',import.meta.url),stdio:['ignore','pipe','pipe','ipc']});
  t.after(()=>{if(child.exitCode===null)child.kill('SIGKILL');});
  let output='';child.stdout.setEncoding('utf8');child.stdout.on('data',part=>{output+=part;});
  while(!output.includes('Internet:'))await once(child.stdout,'data');
  let errors='';child.stderr.on('data',part=>{errors+=part;});
- const started=Date.now();child.kill('SIGTERM');const [exit]=await once(child,'exit');
+ const started=Date.now(),exited=once(child,'exit');
+ if(process.platform==='win32')child.send('shutdown');else child.kill('SIGTERM');
+ const [exit]=await exited;
  assert.equal(exit,1);assert.ok(Date.now()-started>=900);assert.match(errors,/timed out/);
  f.write({limits:{unknown:2}});await assert.rejects(()=>startServer({serverConfigFile:f.file,quiet:true}),/unknown server config key/);
 });

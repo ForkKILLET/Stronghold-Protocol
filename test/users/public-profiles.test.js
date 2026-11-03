@@ -104,7 +104,8 @@ test('schema 1 long IDs migrate once with a consistent backup, keeping credentia
    assert.equal(backup.prepare('SELECT public_id FROM public_profiles WHERE user_id=?').get(a.user.id).public_id,oldA);
    assert.equal(backup.prepare('SELECT count(*) AS n FROM credentials').get().n,2);
   }finally{backup.close();}
-  assert.equal((await stat(backupFile)).mode&0o777,0o600);
+  // POSIX mode bits have no equivalent owner-only meaning on Windows; backup contents are checked above everywhere.
+  if(process.platform!=='win32')assert.equal((await stat(backupFile)).mode&0o777,0o600);
   await store.close();store=await openUserStore(file,{backups:null});
   assert.equal((await store.call('authenticate',{token:a.token})).publicId,migratedA.publicId);
   assert.deepEqual(await readdir(path.join(directory,'backups')),backups);

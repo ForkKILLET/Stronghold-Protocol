@@ -643,10 +643,16 @@ export function packageOutIsUnsafe(out, root = REPO) {
  */
 export function zipFolder(cwd, zipPath, folder = FOLDER) {
   // deflate everything: storing PNG / MP3 as they are made the full zip 8.5 MB larger and saved no real time
-  const z = spawnSync('zip', ['-q', '-r', '-X', zipPath, folder], { cwd, stdio: 'inherit' });
+  // Do not inherit the caller's stdin: a Windows node:test child can have a non-inheritable stdin handle.
+  // Capture diagnostics so an unavailable tool and a real archive failure are distinguishable.
+  const options = { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1024 * 1024 };
+  const z = spawnSync('zip', ['-q', '-r', '-X', zipPath, folder], options);
   if (!z.error && z.status === 0) return;
-  const t = spawnSync('tar', ['-c', '--format', 'zip', '--options', 'zip:hdrcharset=UTF-8', '-f', zipPath, folder], { cwd, stdio: 'inherit' });
-  if (t.error || t.status !== 0 || !isFile(zipPath)) throw new Error('zipping failed: install `zip` (or a bsdtar `tar`)');
+  const t = spawnSync('tar', ['-c', '--format', 'zip', '--options', 'zip:hdrcharset=UTF-8', '-f', zipPath, folder], options);
+  if (t.error || t.status !== 0 || !isFile(zipPath)) {
+    const diagnostic = (name, r) => `${name}: ${r.error?.message || `exit ${r.status ?? r.signal}`} ${String(r.stderr || '').trim()}`.trim();
+    throw new Error(`zipping failed: install \`zip\` (or a bsdtar \`tar\`)\n${diagnostic('zip', z)}\n${diagnostic('tar', t)}`, { cause: t.error || z.error });
+  }
 }
 
 const isLib = (f) => f.startsWith('node_modules/') || f.startsWith('public/vendor/');
