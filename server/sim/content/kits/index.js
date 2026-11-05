@@ -162,6 +162,9 @@ export const OPERATOR_KIT_FILES = Object.freeze([
   'op-kalts2.js',
   'op-monstr.js',
   'op-clemnt.js',
+  'op-tocka.js',
+  'op-dminon.js',
+  'op-oxi.js',
 ]);
 
 /**
@@ -382,6 +385,9 @@ const KIT_LOADERS = Object.freeze({
   'op-kalts2.js': () => import('./ops/op-kalts2.js'),
   'op-monstr.js': () => import('./ops/op-monstr.js'),
   'op-clemnt.js': () => import('./ops/op-clemnt.js'),
+  'op-tocka.js': () => import('./ops/op-tocka.js'),
+  'op-dminon.js': () => import('./ops/op-dminon.js'),
+  'op-oxi.js': () => import('./ops/op-oxi.js'),
   'ver-aurora.js': () => import('./ops/ver-aurora.js'),
   'ver-blackd.js': () => import('./ops/ver-blackd.js'),
   'ver-ceylon.js': () => import('./ops/ver-ceylon.js'),

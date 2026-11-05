@@ -43,13 +43,16 @@ export function presentationUnion(sets) {
   return { operators, enemies, tokens, bands, items, bonds, moduleTypes: [...modules].sort() };
 }
 
-/** Add-only preserves existing values (including arrays and null), while admitting newly planned keys. */
-export function addManifestEntries(previous, next) {
+/** Add-only preserves existing values; one unit's SFX mode mapping is atomic, not a collection of extra slots. */
+export function addManifestEntries(previous, next, path = []) {
   if (!previous || typeof previous !== 'object' || Array.isArray(previous)) return previous;
   if (!next || typeof next !== 'object' || Array.isArray(next)) return previous;
+  // A filename-letter fallback can assign the existing S2 file to S1 when no extracted mode index is available.
+  // Preserve a verified unit mapping as a whole; adding another index changes its meaning, even if no file is lost.
+  if (path.length === 4 && path[0] === 'audio' && path[1] === 'sfx' && path[2] === 'units') return previous;
   const out = { ...previous };
   for (const [key, value] of Object.entries(next)) {
-    out[key] = Object.hasOwn(previous, key) ? addManifestEntries(previous[key], value) : value;
+    out[key] = Object.hasOwn(previous, key) ? addManifestEntries(previous[key], value, [...path, key]) : value;
   }
   return out;
 }

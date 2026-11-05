@@ -59,7 +59,7 @@ export function ReplayScreen({replay,selfId,onBack,visitor=false}){
    <label>${t('观看玩家')}<${Select} value=${playerId} options=${perspectives.map(p=>({value:p.playerId,label:p.name || p.playerId}))} onChange=${id=>{setPlayerId(id);setFieldId('auto');}} /></label>
    <label>${t('回合')}<${Select} value=${String(pub.round??0)} options=${timeline.rounds.map(r=>({value:String(r.round),label:t('第 {n} 回合',{n:r.round})}))} onChange=${round=>seek(timeline.rounds.find(r=>String(r.round)===round)?.at || 0)} /></label>
    <label>${t('战场')}<${Select} value=${fieldId} options=${[{value:'auto',label:t('跟随玩家')},...candidates.map(f=>({value:f.fieldId,label:t(PHASES[f.kind==='unite'?'UNITE':f.kind==='boss'?'FINAL_ASSAULT':f.kind==='hidden'?'HIDDEN_CORE':'COMBAT'])+' · '+f.spec.players.map(p=>replay.players.find(x=>x.playerId===p.playerId)?.name || p.playerId).join(' / ')}))]} onChange=${setFieldId} /></label>
-   <span class="replay-phase">${t(PHASES[pub.phase] || '正在读取…')}</span>
+   <span class="replay-phase">${t(PHASES[pub.phase] || N_('正在读取…'))}</span>
   </div>
   <main class="replay-main">
    ${ready?html`<${ReplayCanvas} timeline=${timeline} state=${state} time=${cursor} playerId=${playerId} field=${field} onBuffering=${buffer} />`:html`<div class="replay-field"><div class="replay-field-status"><${Spinner} />${t('正在读取…')}</div></div>`}
@@ -71,7 +71,7 @@ export function ReplayScreen({replay,selfId,onBack,visitor=false}){
     ${pub.sp?html`<div class="replay-choices">${pub.sp.name || t('选择奖励')}${pub.sp.cards.map(c=>html`<span>${c.name || c.id}${pub.sp.taken?.[c.idx]?t('（已选）'):''}</span>`)}</div>`:null}
     ${priv?.personalChoice?.cards?html`<div class="replay-choices">${t('选择奖励')}${priv.personalChoice.cards.map(c=>html`<span>${c.name || c.id}</span>`)}</div>`:null}
     ${priv?.board?.length?html`<h4>${t('阵容')}</h4><div class="replay-roster">${priv.board.map(p=>html`<${Piece} key=${p.uid} piece=${p} />`)}</div>`:null}
-    <h4>${t('操作记录')}</h4><ol class="replay-actions">${actions.map((a,i)=>html`<li key=${`${a.at}-${i}`}><button type="button" onClick=${()=>seek(a.at)}><time class="num">${stamp(a.at)}</time><span>${t(ACTIONS[a.action] || '调整部署')}</span></button></li>`)}</ol>
+    <h4>${t('操作记录')}</h4><ol class="replay-actions">${actions.map((a,i)=>html`<li key=${`${a.at}-${i}`}><button type="button" onClick=${()=>seek(a.at)}><time class="num">${stamp(a.at)}</time><span>${t(ACTIONS[a.action] || N_('调整部署'))}</span></button></li>`)}</ol>
    </aside>
   </main>
   <section class="replay-prep" aria-label=${t('经营记录')}>

@@ -732,6 +732,8 @@ export const EV = Object.freeze({
   // only: the renderer paces the attack clip over it (render/attackRate.js) instead of waiting to measure two attacks,
   // which is what made the first swing of a skill / buff change slow-motion for a while.
   RATE: 'rate',
+  // ['resource', id, 'cost'|'sp', actual signed delta, source reason]: optional live-display receipts (#657).
+  RESOURCE: 'resource',
 });
 
 /**

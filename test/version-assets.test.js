@@ -7,6 +7,17 @@ import { assetCoverage } from '../tools/assets/coverage.mjs';
 import { addManifestEntries, presentationUnion, versionAssetData } from '../tools/assets/versions.mjs';
 import { fxFixture } from './helpers/fxFixtures.js';
 
+test('add-only admits new operator sounds without turning a verified S2 attack into an S1 attack', () => {
+  const unit={attacks:{1:'/assets/s2.mp3',2:'/assets/s3.mp3'},attackPools:{1:'attack.2',2:'attack.3'}};
+  const old={audio:{sfx:{units:{char_4064_mlynar:unit}}}};
+  const extra={attack:'/assets/new.mp3'};
+  const next={audio:{sfx:{units:{char_4064_mlynar:{attacks:{0:'/assets/s2.mp3',1:'/assets/s3.mp3'}},char_4247_oxi:extra}}}};
+  const merged=addManifestEntries(old,next);
+  assert.deepEqual(merged.audio.sfx.units,{char_4064_mlynar:unit,char_4247_oxi:extra});
+  assert.equal(merged.audio.sfx.units.char_4064_mlynar.attacks[0],undefined);
+  assert.deepEqual(old.audio.sfx.units,{char_4064_mlynar:unit});
+});
+
 const root = path.resolve(import.meta.dirname, '..');
 const assets = JSON.parse(readFileSync(path.join(root, 'data/assets.json'), 'utf8'));
 
@@ -33,7 +44,7 @@ test('coverage fails for missing earlier-version pictures, model, skill icon, en
 
 test('presentation union retains the operators behind reused chess ids and their skills', () => {
   const sets = versionAssetData(root), all = presentationUnion(sets);
-  assert.equal(Object.keys(all.operators).length, 229);
+  assert.equal(Object.keys(all.operators).length, 232);   // 冻河, 国度 and 塔露拉 (CN 2.7.91, DESIGN §37.91)
   assert.ok(all.operators.char_198_blackd.skills.some((s) => s.skillId === 'skchr_blackd_2'));
   assert.ok(all.enemies.enemy_1254_lypa);
   assert.ok(all.bands.band_zumama);
@@ -67,6 +78,8 @@ test('add-only FX extraction retains shared metadata and old files while crawlin
   const f = fxFixture(t);
   const script = `import sys,json,pathlib
 from unittest.mock import patch
+# This metadata-only fixture must also run on CI without Pillow installed (#881).
+sys.modules['PIL'] = None
 sys.path.insert(0,${JSON.stringify(path.join(root, 'tools/local-extract'))})
 import fx
 root=pathlib.Path(${JSON.stringify(f.root)})
@@ -96,7 +109,7 @@ with patch.object(fx,'check_texture_format',return_value=None), \\
  patch.object(fx,'client_version',return_value='fixture'), \\
  patch.object(fx,'game_data',return_value={'chars':['char_old','char_new'],'enemies':[],'tokens':[]}), \\
  patch.object(fx,'crawl_units',side_effect=crawl), patch.object(fx,'_export_worker',side_effect=worker):
- fx.export_fx(root,out,{},lambda line:None,selection='used',jobs=1,root=root,fx_manifest=manifest,add_only=True)
+ fx.export_fx(root,out,{},lambda line:None,selection='used',jobs=1,root=root,fx_manifest=manifest,add_only=True,texture_format='png')
 new=json.loads((dest/'index.json').read_text())
 for group in ['units','projectiles','skills','skins','prefabs']:
  for key,value in old[group].items(): assert new[group][key]==value,(group,key)

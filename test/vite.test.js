@@ -265,6 +265,31 @@ test('built Wisdel shadows obey boss/hidden field ownership exactly like Node, i
   }
 });
 
+test('built CN 2.7.91 kits match Node for every new operator skill without a generic fallback', async () => {
+  const simulation = Object.values(manifest).find(m => m.name === 'simulation');
+  const namespaces = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
+  const spec = namespaces.find(n => typeof n?.createBattleFromSpec === 'function');
+  const simdata = namespaces.find(n => typeof n?.setSimData === 'function');
+  const raw = getData({ log: { warn() {} } }); simdata.setSimData(raw);
+  for (const charId of ['char_4244_tocka', 'char_4246_dminon', 'char_4247_oxi']) for (const skillIndex of [0, 1, 2]) {
+    const input = nativeSpec.buildBattleSpec({ kind: 'normal', seed: 2791, round: 3, stageId: 'act2autochess_m01', timeLimit: 20,
+      players: [{ playerId: 'p', units: [{ uid: 1, chessId: 'chess_char_6_diy1_b', row: 10, col: 4,
+        diy: { charId, skillIndex } }], bonds: {} }],
+      spawns: [{ enemyKey: 'enemy_1007_slime', count: 4, time: 1 }] });
+    const native = nativeSpec.createBattleFromSpec(input, new DataSource(raw), { quiet: true, recordEvents: true });
+    const built = spec.createBattleFromSpec(input, new simdata.DataSource(raw), { quiet: true, recordEvents: true });
+    native.start(); built.start();
+    for (const battle of [native, built]) {
+      const unit = battle.allyUnits[0];
+      assert.equal(unit.def.charId, charId); assert.equal(!!unit.kit.generic, false, `${charId}/${skillIndex}: custom kit loaded`);
+      assert.equal(unit.kit.skillSource, 'skills'); unit.skill.gainSp(999, 'init'); battle.runToEnd(120);
+      assert.deepEqual(battle.errors, []);
+    }
+    assert.deepEqual(spec.compactResult(built.result()), nativeSpec.compactResult(native.result()), `${charId}/${skillIndex}`);
+    assert.deepEqual(built.snapshot(), native.snapshot()); assert.deepEqual(built.drainEvents(), native.drainEvents());
+  }
+});
+
 test('build detection follows built files and separately served worker modules', async () => {
   const initial = computeBuildTag(temp);
   await fs.writeFile(path.join(publicDir, 'index.html'), 'source-only change');

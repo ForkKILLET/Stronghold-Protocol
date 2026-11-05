@@ -1,5 +1,8 @@
 # Golden results
 
+2026-11-05：主线 dev 精选移植重算四版共 998 个场景，无删除、无模拟异常。
+相对 `96ff8ab0` 的逐项差异见 [本轮审阅记录](../../docs/GOLDEN_DEV_2026-11-05.md)。
+
 The simulation is deterministic: the same seed and inputs give the same battle and the same match, bit for bit. These
 files record the exact outcome of a fixed corpus of seeded scenarios, so a change that alters gameplay — even one meant
 to be a pure refactor that only reorders random draws, hook order or iteration order — fails loudly instead of slipping

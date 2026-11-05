@@ -1232,6 +1232,10 @@
 .ff-float--true { color: #fff; }
 .ff-float--heal { color: #6dff9c; }
 .ff-float--crit { color: #ff2a2a; }
+.ff-float--cost { color: #fff; }
+.ff-float--costLoss { color: #ff4545; }
+.ff-float--sp { color: #6fd3e2; }
+.ff-float--cost, .ff-float--costLoss, .ff-float--sp { white-space: nowrap; font-size: .16rem; }
 .ff-float--miss { color: #ff9000; }
 @keyframes float-up { to { transform: translate(-50%, -.4rem); opacity: 0; } }
 .ff-badge { position: absolute; left: 50%; bottom: .08rem; transform: translateX(-50%); font-family: var(--font-display); font-size: .1rem; letter-spacing: .3em; color: var(--text-dim); opacity: .5; pointer-events: none; }
@@ -1248,9 +1252,12 @@
 .ff-board--pen .ff-pen__enemy .ff-unit__art { border-color: rgba(255, 90, 60, .7); }
 .ff-pen__empty { position: absolute; left: 0; right: 0; top: 45%; text-align: center; color: var(--text-lo); font-size: .16rem; }
 
-/* enemy preview pen view (research 09 §2): the bond strip and the effects column step aside for the pen */
-.gm__bonds, .gm__effects { transition: opacity var(--t-med) var(--ease-out); }
-.gm.is-pen .gm__bonds, .gm.is-pen .gm__effects { opacity: 0; pointer-events: none; }
+/* enemy preview pen view (research 09 §2): the bond strip and the effects column step aside for the pen. #892: once
+   faded they are also visibility: hidden (flipped after the fade, back at once on return), so no browser's hit test
+   can reach a hidden disc through the pen's enemies — pointer-events alone let Chrome 155 / Windows open a bond. */
+.gm__bonds, .gm__effects { transition: opacity var(--t-med) var(--ease-out), visibility 0s linear 0s; }
+.gm.is-pen .gm__bonds, .gm.is-pen .gm__effects { opacity: 0; pointer-events: none; visibility: hidden;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear var(--t-med); }
 .gm.is-pen .gm__bonds > *, .gm.is-pen .gm__effects > *, .gm.is-pen .gm__bonds .bslot, .gm.is-pen .gm__bonds .bstrip__more { pointer-events: none; }
 
 /* solo pause overlay (screens/game.js PausedOverlay; m.public.paused): the field dims under an official matte plate */

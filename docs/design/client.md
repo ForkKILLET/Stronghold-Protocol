@@ -111,6 +111,10 @@ plays its attack clip [ASSUMED]. `app/windup.js` / `UnitView.windUpCast` start t
 frame aligns with the event; rendering consumes that wind-up without restarting it. Subsequent plain attacks keep
 their attack clip.
 
+A normal attack's wind-up (`UnitView.windUp`, started by `app/windup.js` ahead of the 'atk') turns an enemy toward
+that attack's target with the same rule as `onAttack` (|dx| > 0.1) the moment the clip starts (#869, DESIGN §37.54).
+Operators keep their deploy direction. The clip's start time is unchanged.
+
 The pre-game text fit (§35.56): while a strategy status shows, the draft's step name gives way at 大 / 特大 at any
 width, and at heights ≤ 640 px; 小 / 中 retain it in taller windows. The guide button keeps its width. On short screens
 (≤ 520 px tall), the briefing's step name may wrap, its header grows, and the 机变 timing line sits below its title.
@@ -506,6 +510,9 @@ charId's forms, listing only the dubs this server has and offering a preview. An
 preference, then the own-language dub when the switch is on and the operator has one, then Chinese. A missing line
 falls back to the Chinese file of the same name. Changing the global language does not clear per-operator choices.
 
+The selected-piece underframe uses fixed viewport positioning, matching `tileScreen` client coordinates; screen-fit
+insets must not be added again by the HUD containing block (#889, [0.3.4](../history/0.3.4.md)).
+
 异形屏适配 (`ui/screenFit.js`) persists `sp.pref.screenFit` — four whole pixel offsets `{ l, r, t, b }` in ±100 (inward
 positive; the settings show each as a 0–100 slider, 50 = 0, 2 px a step) — on this device only. While any offset is
 non-zero, `<html data-fit>` with `--fit-l/r/t/b` makes `.app-root` and the full-page panels (统计数据, 干员调配, 玩法说明)
@@ -603,6 +610,16 @@ Imported-art index additions and old-version pruning serialize their full read/m
 origin-wide Web Lock (`sp-imported-assets-v1:index`); the cache name and index JSON format stay unchanged. This prevents
 cooperating tabs from losing index updates. It does not lock an import's file writes or cache clearing. A browser
 without Web Locks keeps the previous sequential behaviour, without cross-tab serialization (ASSETS.md).
+
+### Waiting-room readiness sound (§36.4)
+
+In a co-op waiting room, an accepted human false-to-true ready transition in `room.state` plays `sfx.ui.ready` on
+every connected room member's client, including the sender and spectators. It uses the same manifest key as
+`g.infoReady` in the briefing and respects each listener's mute/SFX volume and browser audio unlock. Cancelling and
+readying again plays it again with no time-based cooldown. Initial room snapshots, reconnect restoration,
+repeated states, cancellation, new seats/AI additions and match start/end do not
+replay it. No protocol or match-ready sound changes. [ASSUMED] This shared-room feedback policy follows the
+2026-10-25 player report; no official multiplayer recording was independently checked.
 
 ### Skill-mode sound and delayed models (§28.17, §28.22)
 
@@ -1152,3 +1169,12 @@ window is [ASSUMED]; damage, attack timing and targeting are unchanged.
 Skill model fallback (#786, §35.90): when facing up, a skill with an authored Front clip and only an attack fallback
 on Back uses Front through the skill clip and ending. Back-authored skills keep Back. [ASSUMED] This model choice
 is presentation inferred from the available animation roles; simulation facing and targeting do not change.
+
+### COST / SP receipts (#657)
+
+Both renderers display settled resource receipts above the attributed operator, under the damage-number master
+switch. Official mode permits agent skill/charger kill COST gains and actual merchant deductions; default mode also
+permits pioneer skill gains ([ASSUMED] scope approved in #657). SP permits extra bond/talent/skill recovery only,
+excluding time, ordinary attack/hurt and initial SP. Full/locked bars and zero receipts show nothing. White COST,
+red deductions and cyan SP follow the issue examples; exact colours, 80% numeric size, centred placement, 0.9 s
+lifetime and up to two decimals are [ASSUMED]. Receipts do not merge. Revision: [§37.3](../history/0.3.4.md).

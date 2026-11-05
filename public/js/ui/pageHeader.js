@@ -33,7 +33,7 @@ export function PageHeader({ onBack, backTitle, backBusy = false, title = null, 
   const openArchive = () => import('../screens/stats.js').then(m => m.openStats());
   const backButton = isTitle ? html`<span class="app-header__connection" role=${connection.lastError?.code === 'SERVER_FULL' ? 'alert' : 'status'}>
     <span class=${`status-dot ${dot}`} aria-hidden="true"></span>
-    <span>${t(connection.lastError?.code === 'SERVER_FULL' ? '当前服务器容量已满' : STATUS_TEXT[connection.status] || '未连接')}</span>
+    <span>${t(connection.lastError?.code === 'SERVER_FULL' ? N_('当前服务器容量已满') : STATUS_TEXT[connection.status] || N_('未连接'))}</span>
   </span>` : html`<${BackButton} onClick=${onBack} title=${backTitle || t('返回')} busy=${backBusy} />`;
   const status = html`<div class="app-header__status connection-status">
     ${visitor?html`<span class="doctor-visitor-status">${t('只读访问')}</span>`:!isTitle || connection.status === 'online' ? html`

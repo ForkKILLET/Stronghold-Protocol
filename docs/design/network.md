@@ -514,3 +514,10 @@ and clear timers. No shrinking-electorate auto-approval. `aiTakeoverRound` is op
 player rows; local history retains it. [ASSUMED] inherited seat totals do not grant personal awards or aggregates.
 
 The internal welcome preserves the socket’s negotiated delta version and clears its public baseline for a full resync. The inherited seat’s pending pool/delegated rehearsal is cancelled; other seats continue.
+
+### Resource-number display events (#657)
+
+Live display hosts opt into Battle `resourceNumbers`; optional `b.ev` tuples are
+`['resource', unitId, 'cost'|'sp', actualSignedDelta, reason]`. They carry post-settlement receipts, never mutable
+SP requests or bar differences sampled by the renderer. These cosmetic events may be dropped when stale; they
+change no gameplay state and are absent from headless/golden observation. See [§37.3](../history/0.3.4.md).

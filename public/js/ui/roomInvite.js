@@ -2,14 +2,14 @@
 import {html,Modal,Button,Icon,Spinner,useTicker} from './components.js';
 import {useStore} from '../store.js';
 import {CLIENT_ERR_TEXT} from '../net.js';
-import {t} from '../../../shared/i18n.js';
+import {t,N_} from '../../../shared/i18n.js';
 
 export const inviteActive=s=>!!(s.session.entered&&s.ui.pendingJoin&&!s.room&&!s.match.public);
 
 /** Status is based on the socket and the actual request, never an optimistic room membership. */
 export function inviteStatus(conn,busy,error,spectate=false){
  if(error)return{text:t(error.text),retry:true,failed:true};
- if(conn.status==='closed')return{text:t(conn.lastError?.text||'连接已关闭'),retry:true,failed:true};
+ if(conn.status==='closed')return{text:t(conn.lastError?.text||N_('连接已关闭')),retry:true,failed:true};
  if(conn.status==='connected'&&conn.lastError)return{text:t(conn.lastError.text),retry:true,failed:true};
  if(busy||conn.status==='online')return{text:spectate?t('正在进入观战…'):t('正在加入同盟…'),retry:false,failed:false};
  if(conn.status==='reconnecting')return{text:t('连接中断，正在重连…'),retry:true,failed:false};
