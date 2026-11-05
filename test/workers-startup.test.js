@@ -33,7 +33,9 @@ test('startServer submits real bot prep to its public pool and accepts the worke
     assert.ok(match.rehearsalPoolStats.accepted > 0);
     assert.equal(match.rehearsalPoolStats.fallbacks, 0);
     assert.equal(match.errorCount, 0);
-    assert.equal(srv.simPool.stats().rooms, 0, 'settled jobs release the room bookkeeping');
+    // The default public SimulationPool has no room assignments; RoomWorkerPool owns that optional bookkeeping.
+    assert.equal(srv.simPool.stats().queued, 0, 'settled rehearsals leave no queued work');
+    assert.equal(srv.simPool.stats().busy, 0, 'settled rehearsals release the worker slots');
   } finally {
     await client?.terminate();
     await srv?.close();

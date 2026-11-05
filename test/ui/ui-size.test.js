@@ -142,7 +142,7 @@ describe('the stylesheet side', () => {
         if (!args.some((a) => /(^|[^\w.-])[1-9][\d.]*px|0?\.\d*[1-9]\d*px/.test(a))) continue;
         const k = Math.max(s.lastIndexOf(';', m.index), s.lastIndexOf('{', m.index));
         const prop = s.slice(k + 1, m.index).split(':')[0].trim();
-        out.push({ file: path.relative(ROOT, file), line: s.slice(0, m.index).split('\n').length, prop, args });
+        out.push({ file: path.relative(ROOT, file).replaceAll('\\', '/'), line: s.slice(0, m.index).split('\n').length, prop, args });
       }
     }
     return out;

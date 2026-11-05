@@ -374,13 +374,17 @@ test('zipFolder writes a UTF-8 name on this machine (or says why it cannot)', {
 test('zipFolder\'s error names every attempt and keeps the install hint only when no tool exists', () => {
   const dir = tmp('zip-hint');
   const PATH = process.env.PATH;
+  const programFiles = process.env.ProgramFiles;
   try {
     put(dir, `${FOLDER}/package.json`, '{"version":"0.2.0"}');
     process.env.PATH = path.join(dir, 'no-such-bin');
+    // Windows also probes the installed 7-Zip outside PATH; hide that location in this no-tools fixture.
+    process.env.ProgramFiles = path.join(dir, 'no-such-programs');
     assert.throws(() => zipFolder(dir, path.join(dir, 'out.zip')),
       /^Error: zipping failed: install `zip`, 7-Zip or a bsdtar `tar`\nzip: .*ENOENT\n7z: .*ENOENT\ntar: .*ENOENT$/);
   } finally {
     process.env.PATH = PATH;
+    if (programFiles === undefined) delete process.env.ProgramFiles; else process.env.ProgramFiles = programFiles;
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
