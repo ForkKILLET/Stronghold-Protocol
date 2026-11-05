@@ -2,7 +2,7 @@
 
 《明日方舟》季节性自走棋塔防玩法「卫戍协议：盟约」的**非官方同人复刻**：浏览器即开即玩，单人或 1–4 人联机合作。
 
-本仓库基于 [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol) 的 `e01036ae`（0.3.0），原项目为 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol)。保留上游历史、许可证与素材声明；本分支更新见 [CHANGELOG.md](CHANGELOG.md)。
+本仓库以 [sganggs/Stronghold-Protocol](https://github.com/sganggs/Stronghold-Protocol) 为直接上游，保留 [xinhai-ai/Stronghold-Protocol](https://github.com/xinhai-ai/Stronghold-Protocol) 的服务端与资源优化，以及本分支的账户、回放和界面功能。保留原有历史、许可证与素材声明；同步约定见 [迁移记录](docs/MERGE_MAINLINE_2026-11-05.md)，本分支更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 ![version](https://img.shields.io/badge/version-0.3.0-2ea44f)
 ![license](https://img.shields.io/badge/code%20license-GPL--3.0--or--later-blue)
