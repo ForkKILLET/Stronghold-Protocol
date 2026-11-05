@@ -4,6 +4,7 @@ import {installPublicProfiles,PUBLIC_PROFILE_SCHEMA_VERSION} from './publicProfi
 import {publicReplay} from '../replays/public.js';
 import {gzipSync} from 'node:zlib';
 import {achievementStats} from '../../shared/achievementStats.js';
+import { VERSIONS, DEFAULT_VERSION } from '../../shared/versions.js';
 import {aggregateStats,accountRecord} from '../../shared/userStats.js';
 // The SQLite connection lives off the game/network event loop. Only newly issued credentials are returned; existing credentials are stored as hashes.
 import {parentPort,workerData} from 'node:worker_threads';
@@ -66,10 +67,17 @@ const methods={
   const achievements=achievementStats(modded?records:records.filter(r=>!r.content),{hiddenLayers:id=>hidden.has(id),modded});
   achievements.achievements=achievements.achievements.map(({value:_value,...a})=>a);
   aggregate.missingFrame=all.some(r=>!JSON.parse(r.payload).frame);
+  const byVersion=Object.fromEntries(VERSIONS.map(v=>{
+   const subset=records.filter(r=>(r.version || DEFAULT_VERSION)===v.id);
+   const hidden=new Set(workerData.hiddenBondsByVersion?.[v.id] || workerData.hiddenBonds || []);
+   const achievements=achievementStats(subset,{hiddenLayers:id=>hidden.has(id),modded});
+   achievements.achievements=achievements.achievements.map(({value:_value,...a})=>a);
+   return [v.id,{aggregate:aggregateStats(subset,{modded}),achievements}];
+  }));
   const rows=q(`SELECT g.id,g.ended_at AS endedAt,g.mode,g.difficulty,g.source,r.player_id AS playerId,r.victory,r.rounds,r.payload FROM results r JOIN games g ON g.id=r.game_id WHERE r.user_id=? AND (? IS NULL OR g.rowid<?) ORDER BY g.rowid DESC LIMIT 51`).all(id,before,before);
   const hasMore=rows.length>50;rows.length=Math.min(rows.length,50);
   const last=rows[rows.length-1];const next=hasMore&&last?q('SELECT rowid FROM games WHERE id=?').get(last.id).rowid:null;
-  return {userId:id,replays:replays.status(id),summary,aggregate,achievements,...(before===null?{matchIds:all.map(r=>r.id)}:{}),records:rows.map(r=>({...r,replay:replays.entry(id,r.id),victory:!!r.victory,payload:JSON.parse(r.payload)})),next};
+  return {userId:id,replays:replays.status(id),summary,aggregate,achievements,byVersion,...(before===null?{matchIds:all.map(r=>r.id)}:{}),records:rows.map(r=>({...r,replay:replays.entry(id,r.id),victory:!!r.victory,payload:JSON.parse(r.payload)})),next};
  },
  replay(args){return replays.get(args);},
  combat(args){return combat.get(args);},
@@ -78,14 +86,15 @@ const methods={
  pinReplay(args){return replays.pin(args);},
  visibility({id,visibility}){const result=publicProfiles.update(id,visibility);return result.error?result:{user:profile(id)};},
  shareReplay({id,matchId,shared}){const result=publicProfiles.share(id,matchId,shared);return result.error?result:{replay:replays.entry(id,matchId),replays:replays.status(id)};},
- publicDoctor({publicId,before=null,modded=false,section='history'}){
+ publicDoctor({publicId,before=null,modded=false,section='history',version=DEFAULT_VERSION}){
   const user=publicProfiles.find(publicId);if(!user)return {error:'DOCTOR_NOT_FOUND'};
   const {id,name,avatarId,visibility}=user,result={doctor:{publicId,name,avatarId},visibility};
   if(visibility.trophies||visibility.achievements||visibility.statistics){
    const stats=methods.stats({id,modded});
+   const scoped=stats.byVersion[version] || stats.byVersion[DEFAULT_VERSION];
    if(visibility.trophies)result.trophies=stats.aggregate.trophies;
-   if(visibility.statistics)result.aggregate=Object.fromEntries(['total','count','excluded','modded','wins','rounds','duration','hidden','byDifficulty','byMode','titles','bands','sums','bonds','maxima','missingFrame'].map(key=>[key,stats.aggregate[key]]));
-   if(visibility.achievements)result.achievements=stats.achievements.achievements.filter(a=>visibility.trophies||a.group!=='trophy');
+   if(visibility.statistics)result.aggregate=Object.fromEntries(['total','count','excluded','modded','wins','rounds','duration','hidden','byDifficulty','byMode','titles','bands','sums','bonds','maxima','missingFrame'].map(key=>[key,scoped.aggregate[key]]));
+   if(visibility.achievements)result.achievements=scoped.achievements.achievements.filter(a=>visibility.trophies||a.group!=='trophy');
   }
   const replayList=section==='replays';
   if(replayList?visibility.replays:visibility.history){
@@ -94,7 +103,7 @@ const methods={
     ORDER BY g.rowid DESC LIMIT 51`).all(id,before,before);
    result.next=rows.length>50?rows[49].cursor:null;
    result.records=rows.slice(0,50).map(row=>{const payload=JSON.parse(row.payload);return {matchId:row.id,t:row.endedAt,roomMode:payload.frame?.roomMode || row.mode,difficulty:row.difficulty,
-    victory:!!row.victory,rounds:row.rounds,bandId:payload.bandId || null,modded:!!payload.frame?.content,
+    victory:!!row.victory,rounds:row.rounds,version:payload.frame?.version || null,bandId:payload.bandId || null,modded:!!payload.frame?.content,
     replay:visibility.replays&&publicProfiles.shared(id,row.id)};});
   }
   return result;
@@ -106,7 +115,7 @@ const methods={
   const owner=q('SELECT player_id FROM results WHERE user_id=? AND game_id=?').get(user.id,matchId);
   return {replay:publicReplay(result.replay,owner.player_id)};
  },
- publicReplayBody(args){const result=methods.publicReplay(args);if(result.error)return result;const text=JSON.stringify(result);return {body:args.gzip?gzipSync(text):Buffer.from(text)};},
+ publicReplayBody(args){const result=methods.publicReplay(args);if(result.error)return result;const text=JSON.stringify(result);return {version:result.replay.version,body:args.gzip?gzipSync(text):Buffer.from(text)};},
  backup({directory}){
   fs.mkdirSync(directory,{recursive:true,mode:0o700});const target=path.join(directory,'users-'+Date.now()+'.sqlite');
   db.prepare('VACUUM INTO ?').run(target);fs.chmodSync(target,0o600);

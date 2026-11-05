@@ -6,6 +6,15 @@
 const str = (v) => (typeof v === 'string' && v ? v : null);
 const obj = (v) => (v && typeof v === 'object' ? v : null);
 
+/** Skin pictures belong to the effective operator, never the original chess of a stand-in / DIY slot. */
+function skinPicture(m, chess, skinId, field) {
+  if (!skinId) return null;
+  const id = chess?.charId || str(chess?.assets?.[field])?.replace(/_[12]$/, '');
+  const skin = m?.chars?.[id]?.skins?.[skinId];
+  const elite = chess?.isGolden || /_2$/.test(chess?.assets?.[field] || '');
+  return str(elite && skin?.[`${field}E2`]) || str(skin?.[field]) || (field === 'portrait' ? str(skin?.illust) : null);
+}
+
 /** @param {any} m manifest @param {string} key 'group/key' */
 export function uiUrl(m, key) {
   return str(obj(obj(m)?.ui)?.[key]);
@@ -16,7 +25,9 @@ export function uiUrl(m, key) {
  * @param {any} m manifest
  * @param {any} chess chess.json record (or { assets: { avatar } })
  */
-export function chessAvatarUrl(m, chess) {
+export function chessAvatarUrl(m, chess, { skin = null } = {}) {
+  const picture = skinPicture(m, chess, skin, 'avatar');
+  if (picture) return picture;
   const chars = obj(obj(m)?.chars);
   const id = str(chess?.assets?.avatar) || str(chess?.charId);
   if (!chars || !id) return null;
@@ -24,7 +35,12 @@ export function chessAvatarUrl(m, chess) {
     const base = chars[id.slice(0, -2)];
     return str(base?.avatarE2) || str(base?.avatar);
   }
-  return str(chars[id]?.avatar) || (chess?.charId ? str(chars[chess.charId]?.avatar) : null);
+  // A golden piece whose avatar id is the character key uses that entry's E2 art when it has one.
+  // Official ids are `charId` or `charId_2` (the suffix branch above). Model and voice have no E2
+  // field on the character entry: the composed `spine` / `voice` id is already the form's.
+  const entry = chars[id];
+  if (entry && chess?.isGolden && str(entry.avatarE2)) return str(entry.avatarE2);
+  return str(entry?.avatar) || (chess?.charId ? str(chars[chess.charId]?.avatar) : null);
 }
 
 /**
@@ -32,7 +48,9 @@ export function chessAvatarUrl(m, chess) {
  * @param {any} m
  * @param {any} chess
  */
-export function chessPortraitUrl(m, chess, opts) {
+export function chessPortraitUrl(m, chess, opts = {}) {
+  const picture = skinPicture(m, chess, opts.skin, 'portrait');
+  if (picture) return picture;
   const chars = obj(obj(m)?.chars);
   const id = str(chess?.assets?.portrait);
   if (!chars) return null;
@@ -42,6 +60,10 @@ export function chessPortraitUrl(m, chess, opts) {
     if (portrait) return portrait;
   }
   if (id) {
+    // A golden piece whose portrait id is the character key uses portraitE2 when the entry has one.
+    // An entry with only `portrait` (a custom golden URL included) keeps that URL. Official ids are
+    // `charId_1` / `charId_2` and are not character keys, so they stay on the suffix branches below.
+    if (chars[id]) return (chess?.isGolden ? str(chars[id].portraitE2) : null) || str(chars[id].portrait);
     if (id.endsWith('_2')) {
       const base = chars[id.slice(0, -2)];
       if (base) return str(base.portraitE2) || str(base.portrait);
@@ -90,6 +112,12 @@ const PROF_KEY = {
 export function profIconUrl(m, profession) {
   const k = PROF_KEY[String(profession || '').toUpperCase()];
   return k ? str(obj(obj(obj(m)?.prof)?.icon)?.[k]) : null;
+}
+
+/** Square profession glyph (manifest `prof.large`: a black glyph on white, drawn as a white one by loadout.css). */
+export function profGlyphUrl(m, profession) {
+  const v = obj(obj(obj(m)?.prof)?.large)?.[String(profession || '').toLowerCase()];
+  return str(v);
 }
 
 /** Sub-profession icon from a chess record (`assets.subProfIcon` = 'sub_<id>_icon'). */

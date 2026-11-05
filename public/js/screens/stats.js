@@ -1,3 +1,4 @@
+import { useReplayVersion } from '../ui/replayVersion.js';
 import { PageHeader } from '../ui/pageHeader.js';
 import {profileStore,ProfileEditor,ProfileRecovery,ProfileVisibility,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
 import {publicDoctorStore,doctorLink,ensureDoctorStyles} from '../ui/doctorLinks.js';
@@ -18,7 +19,7 @@ import {mergeAccountHistory} from '../../../shared/userStats.js';
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
 import { html, Icon, MicroLabel, Spinner, Button, Modal, confirmDialog } from '../ui/components.js';
-import { useGameData, makeLookups, BandIcon, Img } from '../ui/gameComponents.js';
+import { useGameData, makeLookups, BandIcon, BondGlyph, Img } from '../ui/gameComponents.js';
 import { data, useData } from '../data.js';
 import { fmtNum } from '../ui/gameLogic.js';
 import { titleIconUrl } from '../ui/assetUrls.js';
@@ -27,10 +28,16 @@ import { store, useStore, selectRoute, loadPref, savePref } from '../store.js';
 import { ResultView } from './result.js';
 import { toast, toastError } from '../ui/toasts.js';
 import {
-  loadStats, saveStats, cachedAccountStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf, isModdedRecord,
-  recordToResult, IMPORT_MAX_CHARS,
+  loadStats, cachedAccountStats, peekStatsRecords, saveStats, emptyStats, importStats, exportStats, aggregateStats, countsTowardStats, selfRowOf, roundsOf, isModdedRecord,
+  recordToResult, MAX_RECORDS, FULL_KEEP, IMPORT_MAX_CHARS,
+  trophyMedalOf, strategyBadgeIds, bondMemberChess, highestBondRecord, achievementRecords, recordVersion, recordsOfVersion, recordsOfSeason,
 } from '../ui/stats.js';
 import { t, N_ } from '../../../shared/i18n.js';
+import { scriptOf } from '../../../shared/i18nPacks.js';
+import { VersionTag } from '../ui/pluginTag.js';
+import { contentSet, retryContentSet } from '../content.js';
+import { DEFAULT_VERSION, shownVersion, seasonOf, versionLabel, welcomeVersion } from '../versions.js';
+import { VERSIONS } from '../../../shared/versions.js';
 
 const identityName=()=>store.get().me.name;
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -49,6 +56,11 @@ export function openStats(tab = 'overview') {
   openProfile(typeof tab === 'string' ? tab : 'overview');
 }
 export const closeStats = () => statsStore.set({ open: false });
+/**
+ * Whether 统计数据 is open (the lobby's 成就统计 card reads the records again when it closes; main.js floats the room's
+ * version vote above it, ui/versionVote.js CoveredVersionVote).
+ */
+export const useStatsOpen = () => useStore((s) => s.open, Object.is, statsStore);
 
 const TABS = [
   { id: 'overview', name: N_('总览'), micro: 'OVERVIEW' },
@@ -202,6 +214,30 @@ export function CombatSums({ agg }) {
   <//>`;
 }
 
+/**
+ * The version filter (see the header): the version shown, every version with records, 全部版本 — only once records of
+ * another version exist or the server enables versions.
+ */
+function VersionFilter({ records, value, shown }) {
+  const enabled = useStore((s) => Array.isArray(s.versions));
+  const have = new Set((records || []).map(recordVersion));
+  have.add(shown);
+  if (!enabled && have.size < 2) return null;
+  const options = [...VERSIONS.filter((v) => have.has(v.id)).map((v) => ({ id: v.id, name: versionLabel(v.id) })), { id: 'all', name: t('全部版本') }];
+  return html`<div class="st-verfilter" role="radiogroup" aria-label=${t('版本')} data-testid="stats-version">
+    <span class="st-verfilter__k">${t('版本')}</span>
+    ${options.map((o) => html`<button key=${o.id} type="button" role="radio" aria-checked=${value === o.id ? 'true' : 'false'} data-version=${o.id}
+      class=${cx('dpick__opt', value === o.id && 'is-active')} onClick=${() => statsStore.set({ version: o.id === shown ? null : o.id })}>${o.name}</button>`)}
+  </div>`;
+}
+
+/**
+ * Can this page show `version`'s data outside a room? 第二期下半 always (its own /data/ files); another version only when
+ * this server offers it (welcome.versions: content.js loads a version set from there).
+ * @param {any} s the app store's state @param {string} version
+ */
+const versionOffered = (s, version) => version === DEFAULT_VERSION || !!welcomeVersion(s, version);
+
 /** One 对局记录 row: what it was, who won, whether it counted and whether the settlement can be re-viewed. */
 export function ReplayStatus({available,pinned=false,shared=false,unavailableLabel,marksOnly=false}){
   if(marksOnly&&(!available||(!pinned&&!shared)))return null;
@@ -234,13 +270,23 @@ function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSh
   const quit = rec.end === 'quit';
   const counted = countsTowardStats(rec);
   const won = self ? !!self.victory : !!rec.victory;
-  const band = self?.bandId ? gd.band(self.bandId) : null;
+  const currentVersion = useStore(shownVersion);
+  const band = self?.bandId && recordVersion(rec) === currentVersion ? gd.band(self.bandId) : null;
   const rounds = roundsOf(rec);
   const known = Number.isFinite(self?.roundsPassed) || Number.isFinite(rec.roundsPassed);
-  const view = !quit && !rec.compact; // a quit has nothing settled; a compacted record no rows left
+  // another version's settlement needs its data on the page (see the header): offered as a switch outside a room
+  const version = recordVersion(rec);
+  const shown = useStore(shownVersion);
+  const inRoom = useStore((s) => !!s.room);
+  const offered = useStore((s) => versionOffered(s, version));
+  const other = version !== shown;
+  // a quit has nothing settled; a compacted record no rows left; another version needs the lobby and this server's offer
+  const view = !quit && !rec.compact && !(other && (inRoom || !offered));
   const open = () => onOpen(rec);
-  return html`<tr class=${cx(quit ? 'is-quit' : won ? 'is-win' : 'is-lose', !counted && 'is-excluded', view && 'is-clickable')}
-      title=${view ? t('点击查看该局结算') : !counted ? t('没有清完第一个回合就退出，不计入统计') : quit ? t('中途退出的对局没有结算可看') : t('较早的对局只保留汇总，不能回看结算')}
+  return html`<tr class=${cx(quit ? 'is-quit' : won ? 'is-win' : 'is-lose', !counted && 'is-excluded', view && 'is-clickable')} data-version=${version}
+      title=${!quit && !rec.compact && other ? (inRoom ? t('同盟中的数据由房间的版本决定，离开同盟后才能回看「{version}」的结算', { version: versionLabel(version) })
+        : !offered ? t('这台服务器没有提供「{version}」，不能回看该局结算', { version: versionLabel(version) }) : t('切换到「{version}」查看', { version: versionLabel(version) }))
+        : view ? t('点击查看该局结算') : !counted ? t('没有清完第一个回合就退出，不计入统计') : quit ? t('中途退出的对局没有结算可看') : t('较早的对局只保留汇总，不能回看结算')}
       tabIndex=${view ? 0 : undefined}
       onClick=${view ? open : undefined} onKeyDown=${view ? (e) => { if (e.target===e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(); } } : undefined}>
     <td class="st-t">${dateTime(rec.t)}${rec.deviceOnly?html`<em class="st-chip">${t('仅此设备')}</em>`:null}</td>
@@ -249,10 +295,10 @@ function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSh
     <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : self?.bandId || '—'}</span></td>
     <td class="st-res">${quit ? html`<span class="t-quit">${t('中途退出')}</span>` : html`<span class=${won ? 't-win' : 't-lose'}>${won ? t('胜') : t('负')}</span>`}
       ${!counted ? html`<em class="st-chip">${t('不计入统计')}</em>` : null}
-      ${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
+      <${VersionTag} version=${rec.version ?? null} compact=${true} class="st-chip" />${isModdedRecord(rec) ? html`<em class="st-chip">${t('非官方')}</em>` : null}</td>
     <td class="num st-round">${known ? fmtNum(rounds) : '—'}</td>
     <td><${ReplayStatus} available=${!!rec.replay?.available} pinned=${rec.replay?.pinned} shared=${allowSharing&&rec.replay?.shared} /></td>
-    <td class="st-history-actions" onClick=${e=>e.stopPropagation()}><${HistoryMenu} rec=${rec} view=${view} onOpen=${onOpen} onPlay=${onPlay} busy=${busy} locked=${locked}
+    <td class="st-history-actions" onClick=${e=>e.stopPropagation()}><${HistoryMenu} rec=${rec} view=${view} onOpen=${onOpen} onPlay=${onPlay} busy=${busy} locked=${locked || (other && (inRoom || !offered))}
       onPin=${onPin} onShare=${onShare} publicId=${publicId} allowSharing=${allowSharing} quota=${quota} /></td>
   </tr>`;
 }
@@ -279,6 +325,7 @@ function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, on
 
 /** A stored match re-viewed as its settlement screen: the full game data is loaded now (the lobby alone never loads it). */
 function Replay({ rec, actions, offline }) {
+  const versionState = useReplayVersion(rec);
   const gd = useGameData();
   const res = useMemo(() => recordToResult(rec), [rec]);
   const readMetrics=matchKey=>{let storage;try{storage=globalThis.localStorage;}catch{/* unavailable */}return archivedCombatReader(storage,{matchId:rec.matchId,matchKey});};
@@ -307,14 +354,15 @@ function Replay({ rec, actions, offline }) {
     }catch{if(!controller.signal.aborted)setMetrics(current=>({...current,offline:true}));}
     finally{if(!controller.signal.aborted)setMetricsLoading(false);flight.current=null;}
   };
-  if (!gd.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;
+  if (versionState.error) return html`<p class="st-note is-warn" role="alert">${versionState.error}</p>`;
+  if (!gd.ready || !versionState.ready) return html`<div class="st-loading"><${Spinner} size="md" /></div>`;
   return html`<${ResultView} res=${res} pub=${null} myId=${rec.selfId} quiet=${true} actions=${actions} metricsRunner=${metrics} metricsLoading=${metricsLoading} onMetricsOpen=${loadMetrics} content=${rec.content ? { cs: rec.content.cs, vanilla: false, plugins: rec.content.plugins } : null} />`;
 }
 
 /** The overlay, rendered while open (its data hooks run only then). */
 function StatsScreen({ tab }) {
   const ready = useData('config', 'bands', 'assets', 'chess', 'bonds', 'items', 'backups');
-  const gd = useMemo(() => makeLookups(ready), [ready, data.locale()]);
+  const gd = useMemo(() => makeLookups(ready), [ready, data.locale(), data.contentId()]);
   const [stats, setStats] = useState(() => loadStats());
   const [replay, setReplay] = useState(null);
   const [replayMenuOpen,setReplayMenuOpen]=useState(false);
@@ -365,8 +413,12 @@ function StatsScreen({ tab }) {
   }, []);
 
   const records=useMemo(()=>profile.enabled?mergeAccountHistory(stats.newer?[]:stats.records,account?.records||[],account?.matchIds||[]):stats.records,[stats,account,profile.enabled]);
-  const agg = profile.enabled?(account?.aggregate || aggregateStats([])):aggregateStats(stats.records,{modded:withModded});
-  const achievement = profile.enabled ? account?.achievements : achievementStats(stats.records,{hiddenLayers:id=>!!gd.bond(id)?.noStack,modded:withModded});
+  const shownVersionId = useStore(shownVersion);
+  const filterVersion = profile.version || shownVersionId;
+  const filteredRecords = recordsOfVersion(records, filterVersion);
+  const scopedAccount = filterVersion === 'all' ? account : account?.byVersion?.[filterVersion] || (filterVersion === DEFAULT_VERSION && !account?.byVersion ? account : null);
+  const agg = profile.enabled?(scopedAccount?.aggregate || aggregateStats([])):aggregateStats(recordsOfVersion(stats.records,filterVersion),{modded:withModded});
+  const achievement = profile.enabled ? scopedAccount?.achievements : achievementStats(recordsOfVersion(stats.records,filterVersion),{hiddenLayers:id=>!!gd.bond(id)?.noStack,modded:withModded});
   const reload = () => setStats(loadStats());
 
   const doExport = () => {
@@ -468,6 +520,7 @@ function StatsScreen({ tab }) {
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}
     ${stats.dropped ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('有 {n} 条记录已损坏，已忽略。', { n: stats.dropped })}</p>` : null}
     <main class="st-body" data-tab=${tab}>
+      ${!['profile','privacy','manage'].includes(tab)?html`<${VersionFilter} records=${records} value=${filterVersion} shown=${shownVersionId} />`:null}
       ${!['profile','privacy','manage'].includes(tab)?html`<label class=${cx('doctor-modded',withModded&&'is-on',loading&&'is-disabled')}><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>`:null}
       ${!ready ? html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : tab==='profile'&&profile.user ? html`<${ProfileEditor} user=${profile.user} />`
@@ -476,7 +529,7 @@ function StatsScreen({ tab }) {
           <section><h3 class="st-sec__h">${t('此设备的记录')}</h3><p class="profile-note">${t('导入、导出和清空只影响此设备，不修改已保存的档案战绩。')}</p>
           <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="ghost" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
           <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
-        : tab==='history' ? html`<${History} records=${records} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
+        : tab==='history' ? html`<${History} records=${filteredRecords} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
         : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
         : tab==='achievements' ? achievement?html`<${AchievementContent} s=${achievement} gd=${gd} />`:html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : !agg.count ? html`<div class="st-empty"><p>${loading?t('正在读取…'):offline&&!account?t('此设备尚无档案缓存，请稍后刷新；已有本机记录仍可查看。'):t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>${!empty?html`<${Button} variant="secondary" onClick=${()=>statsStore.set({tab:'history'})}>${t('查看此设备的旧记录')}<//>`:null}</div>`
@@ -485,6 +538,21 @@ function StatsScreen({ tab }) {
         : html`<${Overview} agg=${agg} gd=${gd} account=${profile.enabled} />`}
     </main>
   </div>`;
+}
+
+/**
+ * 成就统计 (the lobby's achievement card, PR #643 — the event's 卫戍协议：盟约 achievement window, video 1:28–1:43; the
+ * lobby's statistics entry by the maintainer's decision of 2026-10-21): one scrolling window under an orange banner — the
+ * doctor's line and titles, 卫戍成就 (the peak alliance's match and the single-match records), 盟约记录 and 策略记录. It
+ * only reads this browser's records (`peekStatsRecords`: a damaged or newer store is left for 统计数据 to handle) and,
+ * like 统计数据 with 「含插件对局」 off, leaves the gameplay-plugin matches out of every block (achievementRecords for the
+ * peak and the marks); 查看完整统计 opens 统计数据. The lineup's portraits, 自选 units and gear need chess / backups / items:
+ * loaded here, since nothing on the lobby path loads them.
+ * @param {{ onClose: () => void }} props
+ */
+export function AchievementDialog({ onClose }) {
+  useEffect(() => { openStats('achievements'); onClose?.(); }, []);
+  return null;
 }
 
 /** Global stats viewer host — mounted once by main.js; renders nothing (and loads nothing) until opened. */

@@ -7,7 +7,7 @@ const messageTypes = new Set(['invalid', 'hello', 'ping', 'g.ready', 'g.rerollVo
   'g.leave', 'g.pause', 'g.autoplay', 'g.console', 'g.destroy', 'g.art', 'g.emote', 'b.result', 'b.progress', 'b.rehearsalResult',
   'room.create', 'room.join', 'room.leave', 'room.ready', 'room.start', 'room.setDifficulty', 'room.setAiPicksLast', 'room.rerollSetup', 'room.cancelReroll', 'room.addBot',
   'room.emote', 'room.chat', 'room.setOptions', 'room.removeBot', 'room.kick', 'room.loadout', 'room.skins', 'room.card', 'room.setPlugins', 'room.setMode', 'room.contentReady', 'room.consent', 'room.ownership', 'room.diy', 'room.spectate',
-  'room.removeSpectator', 'room.console.enable', 'room.console.disable', 'match.join', 'match.leave', 'state.resync']);
+  'room.removeSpectator', 'room.console.enable', 'room.console.disable', 'match.join', 'match.leave', 'state.resync', 'room.setSoloUnlimited', 'room.setAiTakeover', 'room.aiRequest', 'room.aiVote', 'room.proposeVersion', 'room.versionVote', 'room.cancelVersionVote', 'g.unequip', 'g.offer', 'g.offerRefresh', 'g.test']);
 const fields = [
   ['uptime_seconds', 'uptimeSec'],
   ...['sockets', 'sessions', 'rooms', 'matches', 'roomMatches', 'standaloneMatches', 'humans', 'bots', 'spectators', 'queued']

@@ -1,3 +1,4 @@
+// Fork-specific UI and persistence contracts; mainline additions are covered alongside this file.
 import {designCss} from '../helpers/designCss.js';
 // Node/vnode + CSS-contract regressions; not a browser/real-device layout test.
 import { test, before } from 'node:test';
@@ -167,8 +168,8 @@ test('enemy codex uses real base stats/abilities and labels its letter grades as
   for (const k of ['maxHp', 'atk', 'def', 'res']) assert.ok(find(tree, (v) => has(v, 'sw-stat') && v.key === k), k);
   assert.equal(enemyGrade('maxHp', 2000), 'D');
   assert.equal(enemyGrade('maxHp', 200000), 'S');
-  assert.equal(enemyGrade('interval', 0.7), 'S');
-  assert.equal(enemyGrade('interval', 6), 'E');
+  assert.equal(enemyGrade('interval', 0.7), 'S+');
+  assert.equal(enemyGrade('interval', 6), 'D');
   for (const v of [null, NaN, Infinity, undefined]) assert.equal(enemyGrade('atk', v), '—');
   assert.equal(enemyGrade('not-a-stat', 5), '—');
   let scope = 'not changed', query, rank, selected;
@@ -203,7 +204,7 @@ test('achievement canvas follows the reference design rem and viewport, without 
     if (r.selector === '.ach__box') r.walkDecls('height', (d) => sizes.push(d.value));
   });
   assert.ok(sizes.includes('min(9.06rem, calc(var(--sp-vh, 1vh) * 100 - .9rem))'));
-  assert.doesNotMatch(read('public/css/screens/lobby.css'), /1080px|720px/);
+  assert.doesNotMatch(read('public/css/screens/lobby.css'), /height:\s*(?:1080|720)px/);
   const stats = postcss.parse(read('public/css/screens/stats.css'));
   const compact = [];
   stats.walkRules((r) => { if (r.selector === '.st:not(.st--replay)') compact.push(r); });

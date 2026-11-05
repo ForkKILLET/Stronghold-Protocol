@@ -11,8 +11,9 @@ import { SkinSection } from '../ui/skinPicker.js';
 //
 // Left: the 112 visible chess as one list (tier / class / bond filters, search, 仅看已调整) — a row per operator, its columns
 // aligned (0.2.2; the quick choices of PR #301 by @farridge, laid out as one list instead of three columns of cards — the
-// owner's decision of 2026-10-08): portrait, name and bonds (a click opens the detail), the skills and the elite's modules
-// to tap (不装备 first), the 潜能 and 练度 selects (screens/cultivation.js). Right: the selected chess — its 潜能 / 练度,
+// owner's decision of 2026-10-08): portrait, name and bonds, the skills and the elite's modules to tap (不装备 first), the
+// 潜能 and 练度 selects (screens/cultivation.js) — a click anywhere else in the row picks the operator too (the controls act
+// on their own). Right: the selected chess — its 潜能 / 练度,
 // its 特质 (the in-match card's block, PR #301), skills (icon, name, 默认,
 // SP recovery, 初始 / 消耗 SP, duration, description at 普通 Lv.4 or 精锐 Lv.7), 局内数值 (the stats, 攻击范围, 特性 and
 // 天赋 the chosen variant — 精锐 first, 普通 on the toggle — fights with under the chosen skill and module: the detail
@@ -34,29 +35,40 @@ import { usePresence, LEAVE_MS } from '../ui/transitions.js';
 import { html, Icon, MicroLabel, Button, TierChip, TextField, Countdown, Spinner, confirmDialog, hasDeadline, Modal, Fragment } from '../ui/components.js';
 import { Img, RichText, UnitThumb } from '../ui/gameComponents.js';
 import { chessAvatarUrl, subProfIconUrl, bondIconUrl, moduleTypeIconUrl } from '../ui/assetUrls.js';
+import { OperatorImage, PromotionIcon } from '../ui/gameComponents.js';
+import { profGlyphUrl, uiUrl } from '../ui/assetUrls.js';
 import { GarrisonBlock } from '../ui/detailPanel.js';
 import { data, useData, localAsset, DATA_FILES } from '../data.js';
 import { useStore, loadPref, savePref } from '../store.js';
+import { opsOf } from '../ui/loadoutModel.js';
 import { PHASE } from '../../../shared/constants.js';
+import { ruleOption } from '../../../shared/plugins/rules.js';
 import {
-  MODULE_NONE, PROF_ORDER, PROF_NAME, rosterOf, filterRoster, recordsOf, chessOptions, effectiveChoice, setChoice, resetChoice,
-  changedCount, skillLabel, moduleBadge, attrRows, skillTags, quickSkillTags, traitLines, serializeExport, parseImport, LOADOUT_IMPORT_MAX_BYTES,
-  opsOf, setOps, resetOps, moduleRecord,
+  MODULE_NONE, PROF_NAME, rosterOf, filterRoster, recordsOf, chessOptions, effectiveChoice, setChoice, resetChoice,
+  changedCount, skillLabel, moduleBadge, quickSkillTags, serializeExport, parseImport, LOADOUT_IMPORT_MAX_BYTES,
+  setOps, resetOps,
 } from '../ui/loadoutModel.js';
-import { loadoutStore, openLoadout, closeLoadout, setEntries, setOpsMap, applyLoadoutEntries, setNotOwned, applyOwnershipImport, setDiyPicks, applyDiyImport } from '../ui/loadoutSync.js';
+import { loadoutStore, openLoadout, closeLoadout, setEntries, setOpsMap, applyLoadoutEntries, setNotOwned, applyOwnershipImport, setDiyPicks, applyDiyImport, importedEntries, importedNotOwned } from '../ui/loadoutSync.js';
 import { OperatorVoice } from '../ui/operatorVoice.js';
+// 皮肤 (docs/SKINS.md): a self-contained section — everything it does lives in ui/skinPicker.js, so this screen keeps
+// one import and one line in its detail body
+
 import { CultivationSelects, CultivationSection, cultivationView, potentialEditable } from './cultivation.js';
 import { cultivationCharIds } from '../../../shared/protocol.js';
-import { atPotential } from '../../../shared/potential.js';
 import { setOwned, notOwnedCount, serializeOwnership, parseOwnershipImport, OWNERSHIP_IMPORT_MAX_BYTES } from '../ui/ownershipModel.js';
 import { OwnershipPanel, useOwnershipRoster } from './ownership.js';
 import { DiyPanel, diyData } from './diy.js';
+// the roster's detail sections and their pieces live in screens/loadoutSections.js (the 自选编队 picker draws the same
+// ones); re-exported here, where the tests and the screen have always imported them from
+import { ModuleGlyph, ModuleInfo, SkillOption, SkillIcon, SkillSection, ModuleSection, ProfFilter, rowControlHit } from './loadoutSections.js';
+export { ModuleGlyph, ModuleInfo, SkillOption };
 import { LoadoutStats } from '../ui/loadoutStats.js';
 export { LoadoutStats, statsPreview } from '../ui/loadoutStats.js';
 import { diyCount, sanitizeDiyPicks, setPick, serializeDiy, parseDiyImport, DIY_IMPORT_MAX_BYTES, diySlotList, slotRecord } from '../ui/diyModel.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { copyText } from '../ui/clipboard.js';
 import { toast } from '../ui/toasts.js';
+import { reducedMotion } from '../ui/device.js';
 
 export { openLoadout, closeLoadout };
 
@@ -100,63 +112,8 @@ function exportFilename(now = new Date(), what = 'loadout') {
   return `stronghold-${what}-${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}.json`;
 }
 
-/** Square profession glyph (manifest prof.large: black glyph on white, drawn as a white glyph by loadout.css). */
-function profGlyphUrl(m, prof) {
-  const k = String(prof || '').toLowerCase();
-  const v = m && m.prof && m.prof.large ? m.prof.large[k] : null;
-  return typeof v === 'string' ? v : null;
-}
 
-/** Skill icon URL for a SkillRecord (assets manifest `skills[iconId]` / `skillsById`), null when absent. */
-function skillIconOf(m, rec) {
-  const skills = m && typeof m === 'object' ? m.skills : null;
-  if (!skills || !rec) return null;
-  const id = rec.iconId || rec.skillId;
-  if (id && typeof skills[id] === 'string') return skills[id];
-  const alt = m.skillsById && rec.skillId ? m.skillsById[rec.skillId] : null;
-  return alt && typeof skills[alt] === 'string' ? skills[alt] : null;
-}
 
-/**
- * Module icon URL: the official type icon from the local-client art (`local-assets.json` groups.module, matched
- * case-insensitively by typeName), else manifest `modules[icon]` / `uniequip[icon]` when the asset pipeline provides one.
- */
-function moduleIconOf(m, rec) {
-  if (!rec) return null;
-  const local = moduleTypeIconUrl(data.get('local'), rec.typeName || rec.type);
-  if (local) return local;
-  if (!m) return null;
-  for (const group of ['modules', 'uniequip', 'equip']) {
-    const g = m[group];
-    if (g && typeof g === 'object') {
-      const v = g[rec.icon] || g[rec.uniEquipId] || g[rec.typeIcon];
-      if (typeof v === 'string') return v;
-    }
-  }
-  return null;
-}
-
-/** Skill icon with the official selection outline; falls back to a lettered tile. */
-function SkillIcon({ m, rec, index, on = false, size = 'md' }) {
-  const src = skillIconOf(m, rec);
-  return html`<span class=${cx('lo-sicon', `lo-sicon--${size}`, on && 'is-on')}>
-    <${Img} src=${src} fallback=${html`<span class="lo-sicon__glyph num">${skillLabel(index)}</span>`} />
-    ${on && size !== 'xs' ? html`<${Img} src=${localAsset('ui/outer', 'image_skill_select_outline')} class="lo-sicon__outline" fallback=${html`<i class="lo-sicon__ring"></i>`} />` : null}
-  </span>`;
-}
-
-/** Module badge tile: the official type icon when the local-client art has it, else the type letter; ⊘ for 不装备. */
-export function ModuleGlyph({ m, rec, id, size = 'md' }) {
-  const src = rec ? moduleIconOf(m, rec) : null;
-  if (id === MODULE_NONE || !rec) {
-    return html`<span class=${cx('lo-mglyph', 'lo-mglyph--none', `lo-mglyph--${size}`)}>
-      <${Img} src=${localAsset('ui/outer', 'icon_equip_non')} fallback=${html`<i class="lo-mglyph__slash"></i>`} />
-    </span>`;
-  }
-  return html`<span class=${cx('lo-mglyph', `lo-mglyph--${size}`)} data-type=${moduleBadge(rec)}>
-    <${Img} src=${src} fallback=${html`<b class="lo-mglyph__t num">${moduleBadge(rec)}</b>`} />
-  </span>`;
-}
 
 // ---- roster rows -----------------------------------------------------------------------------------------------------
 //
@@ -197,10 +154,12 @@ export function RosterHead() {
 }
 
 /**
- * One operator's row (`.lo-card`, like the cards before it): portrait + name + bonds (`.lo-card__pick`: selects it, opens
- * the detail), three skill slots (an empty one when the chess has two skills), the elite's modules, the 潜能 / 练度 selects.
- * `level` 'elite': the skills' details at 精锐 Lv.7 (the shared preview). A chess marked not owned (干员持有) shows the
- * 「替补」 tag: its stand-in fights with a fixed skill and no 潜能 / 练度, the choices here apply once it is owned again.
+ * One operator's row (`.lo-card`, like the cards before it): the portrait / name / bonds of `.lo-card__pick`, three skill
+ * slots (an empty one when the chess has two skills), the elite's modules, the 潜能 / 练度 selects. That button and any
+ * other click on the row pick the operator (selects it, opens the detail); a control inside the row acts on its own
+ * instead (onRowClick). `level` 'elite': the skills' details at 精锐 Lv.7 (the shared preview). A chess marked not owned
+ * (干员持有) shows the 「替补」 tag: its stand-in fights with a fixed skill and no 潜能 / 练度, the choices here apply once it
+ * is owned again.
  */
 export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPick, onChange, onOps, level = 'normal', notOwned = false }) {
   const choice = effectiveChoice(entries, chess, golden);
@@ -211,11 +170,17 @@ export function RosterRow({ m, chess, golden, entries, ops = {}, selected, onPic
   const elite = level === 'elite' && !!golden;
   const slots = [0, 1, 2].map((i) => opt.skillOptions[i] || null);
   const standInNote = notOwned ? t('未持有（干员持有）：由替补干员上场，替补干员没有潜能与练度') : null;
+  // The row itself picks the operator (as the portrait / name button does). A click on one of the row's own controls
+  // keeps that control's action instead: a skill / module button has already selected the row (quickChange) and a phone
+  // must stay on the list (PR #301), a 潜能 / 练度 select opens its own list rather than the detail. `rowControlHit`
+  // (screens/loadoutSections.js) anchors that guard to the row itself.
+  const onRowClick = (e) => { if (!rowControlHit(e)) onPick(chess.chessId); };
   return html`<div role="listitem" data-chess=${chess.chessId} data-variant=${elite ? 'elite' : 'normal'}
-      class=${cx('lo-card', `lo-card--t${chess.tier}`, selected && 'is-sel', changed && 'is-changed', notOwned && 'is-standin')}>
+      class=${cx('lo-card', `lo-card--t${chess.tier}`, selected && 'is-sel', changed && 'is-changed', notOwned && 'is-standin')}
+      onClick=${onRowClick}>
     <button type="button" class="lo-card__pick" aria-pressed=${selected ? 'true' : 'false'} title=${chess.name} onClick=${() => onPick(chess.chessId)}>
       <span class="lo-card__art">
-        <${Img} src=${chessAvatarUrl(m, chess)} fallback=${html`<span class="lo-card__glyph">${[...(chess.name || '?')][0]}</span>`} />
+        <${OperatorImage} m=${m} chess=${chess} fallback=${html`<span class="lo-card__glyph">${[...(chess.name || '?')][0]}</span>`} />
         <${TierChip} tier=${chess.tier} size="sm" class="lo-card__tier" />
       </span>
       <span class="lo-card__id">
@@ -248,67 +213,6 @@ export function LoadoutGarrisons({ chess, m }) {
   </section>` : null;
 }
 
-function SkillOption({ m, opt, on, level, onPick }) {
-  const rec = level === 'elite' ? opt.elite || opt.normal : opt.normal || opt.elite;
-  const tags = skillTags(rec);
-  return html`<button type="button" role="radio" aria-checked=${on ? 'true' : 'false'} class=${cx('lo-skill', on && 'is-on')}
-      data-skill=${opt.index} onClick=${() => onPick(opt.index)}>
-    ${on ? html`<span class="lo-skill__deco" aria-hidden="true"><${Img} src=${localAsset('ui/outer', 'skill_select_deco')} fallback=${html`<i></i>`} /></span>` : null}
-    <${SkillIcon} m=${m} rec=${rec} index=${opt.index} on=${on} size="md" />
-    <span class="lo-skill__body">
-      <span class="lo-skill__head">
-        <span class="lo-skill__slot num">${skillLabel(opt.index)}</span>
-        <b class="lo-skill__name">${rec?.name || t('未知技能')}</b>
-        ${opt.isDefault ? html`<span class="lo-badge lo-badge--def">${t('默认')}</span>` : null}
-        ${on ? html`<span class="lo-badge lo-badge--on"><${Icon} name="check" />${t('已装备')}</span>` : null}
-      </span>
-      <span class="lo-skill__tags">
-        <span class=${cx('lo-sp', `lo-sp--${tags.spKind}`)}>${tags.sp}</span>
-        ${tags.init != null ? html`<span class="lo-tag">${t('初始')} <b class="num">${tags.init}</b></span>` : null}
-        ${tags.cost != null ? html`<span class="lo-tag">${t('消耗')} <b class="num">${tags.cost}</b></span>` : null}
-        ${tags.duration ? html`<span class="lo-tag">${t('持续')} <b class="num">${tags.duration}</b></span>` : null}
-        ${tags.charges ? html`<span class="lo-tag">${t('充能')} <b class="num">${tags.charges}</b></span>` : null}
-      </span>
-      <${RichText} as="span" class="lo-skill__desc" text=${rec?.descRaw || rec?.desc || ''} />
-    </span>
-  </button>`;
-}
-
-/**
- * The chosen module's card: its stat bonus, the 特性 it fights with, its talent changes — read at the operator's 潜能
- * (`potential`, 0.2.2: the elite composed at it first, shared/potential.js atPotential, as 局内数值 and the battle do; the
- * data record is the full-potential one — 余's 闲云隐市 「生命上限2%（+0.5%）」 is 「1.5%」 at 潜能1). null = full potential.
- * @param {{ m: any, golden: any, opt: { id: string, rec: any, isDefault?: boolean }, potential?: number|null }} props
- */
-export function ModuleInfo({ m, golden, opt, potential = null }) {
-  if (!golden) return null;
-  const at = atPotential(golden, potential);
-  const rec = opt.id === MODULE_NONE ? null : at === golden ? opt.rec : moduleRecord(at, opt.id) || opt.rec;
-  if (!rec) {
-    const traitBase = golden.traitBase || null;
-    return html`<div class="lo-minfo lo-minfo--none">
-      <p class="lo-minfo__lead">${t('不装备模组：精锐干员以基础属性、特性与天赋作战。')}</p>
-      ${traitBase?.desc ? html`<div class="lo-minfo__row"><span class="lo-minfo__k">${t('特性')}</span><${RichText} class="lo-minfo__v" text=${traitBase.descRaw || traitBase.desc} /></div>` : null}
-    </div>`;
-  }
-  const rows = attrRows(rec.attr);
-  // 特性: the trait the elite fights with under this module (the class trait, or the module's rewrite of it), then the
-  // module's extra line under PRTS's own label 特性追加 — the line adds to the class trait (item 16.2)
-  const lines = traitLines(rec.traitOverride);
-  const talents = (Array.isArray(rec.talentChanges) ? rec.talentChanges : []).filter((t) => t && (t.name || t.desc) && !t.hidden);
-  return html`<div class="lo-minfo">
-    <div class="lo-minfo__title"><${Img} src=${moduleIconOf(m, rec)} class="lo-minfo__icon" /><span class="lo-minfo__type num">${rec.typeName || ''}</span><b>${rec.name || rec.uniEquipId}</b>
-      ${opt.isDefault ? html`<span class="lo-badge lo-badge--def">${t('默认')}</span>` : null}</div>
-    <div class="lo-minfo__row">
-      <span class="lo-minfo__k">${t('属性')}</span>
-      <span class="lo-minfo__v lo-attrs">${rows.length ? rows.map((r) => html`<span key=${r.key} class=${cx('lo-attr', r.positive ? 'is-up' : 'is-down')}>${r.label}<b class="num">${r.text}</b></span>`) : html`<span class="t-dim">${t('无属性加成')}</span>`}</span>
-    </div>
-    ${lines.base ? html`<div class="lo-minfo__row" data-trait="base"><span class="lo-minfo__k">${t('特性')}</span><${RichText} class="lo-minfo__v" text=${lines.base} /></div>` : null}
-    ${lines.added ? html`<div class="lo-minfo__row" data-trait="added"><span class="lo-minfo__k">${t('特性追加')}</span><${RichText} class="lo-minfo__v" text=${lines.added} /></div>` : null}
-    ${talents.map((tal, i) => html`<div key=${i} class="lo-minfo__row"><span class="lo-minfo__k">${t('天赋')}</span>
-      <span class="lo-minfo__v">${tal.name ? html`<b class="lo-minfo__tname">${tal.name}</b>` : null}<${RichText} text=${tal.descRaw || tal.desc || ''} /></span></div>`)}
-  </div>`;
-}
 
 /** The name of a chess's 补位 stand-in (data/backups.json), or null. */
 const standInName = (chess) => data.get('backups')?.units?.[chess?.backup?.charId]?.name ?? null;
@@ -324,8 +228,6 @@ function Detail({ m, chess, golden, entries, ops = {}, onChange, onOps, onReset,
   const choice = effectiveChoice(entries, chess, golden);
   const cv = cultivationView(chess.charId, ops);
   const changed = choice.changed || cv.changed;
-  const modOpt = opt.moduleOptions.find((x) => x.id === choice.module) || null;
-  const lv = (c) => c?.status?.skillLevel ?? '—';
   return html`<aside class="lo-detail" aria-label=${t('{name} 调配', { name: chess.name })}>
     <div class="lo-dhead">
       <div class=${cx('lo-dhead__art', `lo-dhead__art--t${chess.tier}`)}>
@@ -346,43 +248,15 @@ function Detail({ m, chess, golden, entries, ops = {}, onChange, onOps, onReset,
       <${Button} variant="ghost" size="sm" icon="refresh" class="lo-dhead__reset" disabled=${!changed} onClick=${onReset}>${t('恢复默认')}<//>
     </div>
     <div class="lo-detail__body" ref=${bodyRef}>
-      <${OperatorVoice} charId=${chess.charId} />
+      <${OperatorVoice} charId=${chess.assets?.voice || chess.charId} />
       <${SkinSection} chess=${chess} />
       <${CultivationSection} charId=${chess.charId} ops=${ops} onSet=${onOps} standIn=${notOwned} />
       <${LoadoutGarrisons} chess=${level === 'elite' && golden ? golden : chess} m=${m} />
-      <section class="lo-sec">
-        <header class="lo-sec__head">
-          <h3>${t('技能')}<${MicroLabel}>SKILL<//></h3>
-          <div class="lo-seg" role="tablist" aria-label=${t('技能等级')}>
-            <button type="button" role="tab" aria-selected=${level === 'normal' ? 'true' : 'false'} class=${cx(level === 'normal' && 'is-on')} onClick=${() => setLevel('normal')}>${t('普通')} <span class="num">Lv.${lv(chess)}</span></button>
-            <button type="button" role="tab" aria-selected=${level === 'elite' ? 'true' : 'false'} class=${cx(level === 'elite' && 'is-on')} disabled=${!golden} onClick=${() => setLevel('elite')}>${t('精锐')} <span class="num">Lv.${lv(golden)}</span></button>
-          </div>
-        </header>
-        <div class="lo-skills" role="radiogroup" aria-label=${t('选择技能')}>
-          ${opt.skillOptions.map((s) => html`<${SkillOption} key=${s.index} m=${m} opt=${s} level=${level} on=${s.index === choice.skill}
-            onPick=${(i) => onChange({ skill: i })} />`)}
-        </div>
-      </section>
+      <${SkillSection} m=${m} chess=${chess} golden=${golden} skillOptions=${opt.skillOptions} skill=${choice.skill} level=${level}
+        onLevel=${setLevel} onPick=${(i) => onChange({ skill: i })} />
       <${LoadoutStats} base=${chess} golden=${golden} entries=${entries} ops=${ops} level=${statLevel} onLevel=${setStatLevel} />
-      ${golden ? html`<section class="lo-sec lo-sec--mod">
-        <header class="lo-sec__head">
-          <h3>${t('模组')}<${MicroLabel}>MODULE<//></h3>
-          <span class="lo-sec__note">${t('仅精锐干员装备 · 模组等级')} <b class="num">${golden.status?.equipLevel ?? 1}</b></span>
-        </header>
-        <div class="lo-mods" role="radiogroup" aria-label=${t('选择模组')}>
-          ${opt.moduleOptions.map((mo) => html`<button key=${mo.id} type="button" role="radio" aria-checked=${mo.id === choice.module ? 'true' : 'false'}
-              data-module=${mo.id} class=${cx('lo-mod', mo.id === choice.module && 'is-on', mo.id === MODULE_NONE && 'lo-mod--none')}
-              onClick=${() => onChange({ module: mo.id })}>
-            <${ModuleGlyph} m=${m} rec=${mo.rec} id=${mo.id} />
-            <span class="lo-mod__text">
-              <span class="lo-mod__type num">${mo.id === MODULE_NONE ? 'NONE' : mo.rec?.typeName || ''}</span>
-              <b class="lo-mod__name">${mo.id === MODULE_NONE ? t('不装备') : mo.rec?.name || mo.id}</b>
-            </span>
-            ${mo.isDefault ? html`<span class="lo-badge lo-badge--def lo-mod__def">${t('默认')}</span>` : null}
-          </button>`)}
-        </div>
-        ${modOpt ? html`<${ModuleInfo} m=${m} golden=${golden} opt=${modOpt} potential=${cv.potentialOn ? cv.potential : null} />` : null}
-      </section>` : null}
+      <${ModuleSection} m=${m} golden=${golden} moduleOptions=${opt.moduleOptions} module=${choice.module}
+        onPick=${(id) => onChange({ module: id })} potential=${cv.potentialOn ? cv.potential : null} />
       ${notOwned ? html`<p class="lo-locknote lo-locknote--standin" data-testid="loadout-standin-note"><${Icon} name="info" />${standInName(chess) ? t('干员持有中标记为未持有：此棋子由替补干员 {name} 上场，技能与模组固定（补位干员技能不可更改）；这里的调配在改回「持有」后生效', { name: standInName(chess) })
         : t('干员持有中标记为未持有：此棋子由替补干员上场，技能与模组固定（补位干员技能不可更改）；这里的调配在改回「持有」后生效')}</p>` : null}
       ${locked ? html`<p class="lo-locknote"><${Icon} name="info" />${t('本局的调配已锁定，修改将在下一局生效')}</p>` : null}
@@ -392,7 +266,8 @@ function Detail({ m, chess, golden, entries, ops = {}, onChange, onOps, onReset,
 
 // ---- filters -------------------------------------------------------------------------------------------------------------
 
-function Filters({ m, filters, onFilters, bonds }) {
+/** The roster's filters; `onDeck` (the list view): a button at the end that switches to the 卡片视图. */
+function Filters({ m, filters, onFilters, bonds, onDeck = null }) {
   const set = (patch) => onFilters({ ...filters, ...patch });
   return html`<div class="lo-filters">
     <div class="lo-frow">
@@ -405,11 +280,7 @@ function Filters({ m, filters, onFilters, bonds }) {
         onInput=${(v) => set({ query: String(v).slice(0, 24) })} />
     </div>
     <div class="lo-frow">
-      <div class="lo-chips lo-chips--prof" role="group" aria-label=${t('职业')}>
-        ${PROF_ORDER.map((p) => html`<button key=${p} type="button" class=${cx('lo-chip', 'lo-chip--prof', filters.prof === p && 'is-on')}
-          aria-pressed=${filters.prof === p ? 'true' : 'false'} title=${t(PROF_NAME[p])} onClick=${() => set({ prof: filters.prof === p ? null : p })}>
-          <${Img} src=${profGlyphUrl(m, p)} class="lo-chip__icon lo-profglyph" fallback=${html`<span>${t(PROF_NAME[p])[0]}</span>`} /><span class="lo-chip__lbl">${t(PROF_NAME[p])}</span></button>`)}
-      </div>
+      <${ProfFilter} m=${m} prof=${filters.prof} onProf=${(prof) => set({ prof })} />
       <label class="lo-select">
         <span class="lo-select__k">${t('盟约')}</span>
         <${Select} value=${filters.bond || ''} onChange=${value => set({ bond: value || null })} label=${t('按盟约筛选')}
@@ -417,6 +288,8 @@ function Filters({ m, filters, onFilters, bonds }) {
       </label>
       <button type="button" class=${cx('lo-toggle', filters.changedOnly && 'is-on')} aria-pressed=${filters.changedOnly ? 'true' : 'false'}
         onClick=${() => set({ changedOnly: !filters.changedOnly })}><i class="lo-toggle__box"><${Icon} name="check" /></i>${t('仅看已调整')}</button>
+      ${onDeck ? html`<button type="button" class="lo-tbtn lo-viewbtn" data-testid="loadout-view-deck" onClick=${onDeck}
+        title=${t('切换为卡片视图（物资调配处）')}><${Icon} name="expand" /><span class="lo-tbtn__l">${t('卡片视图')}</span></button>` : null}
     </div>
   </div>`;
 }
@@ -688,7 +561,7 @@ function LoadoutScreen({ st, leaving = false }) {
   const m = data.get('assets');
   const getChess = (id) => data.lookup('chess', id);
   const getBond = (id) => data.lookup('bonds', id);
-  const roster = useMemo(() => rosterOf(data.list('chess')), [ready, data.locale()]); // (names follow a language switch)
+  const roster = useMemo(() => rosterOf(data.list('chess')), [ready, data.locale(), data.contentId()]); // names follow a language switch; the list follows the room's content and a version switch (§35.36, §35.23)
   const bonds = useMemo(() => {
     const used = new Set(roster.flatMap((c) => c.bonds || []));
     return (data.list('bonds') || []).filter((b) => b && used.has(b.bondId))
@@ -698,7 +571,11 @@ function LoadoutScreen({ st, leaving = false }) {
   const selId = st.sel && roster.some((c) => c.chessId === st.sel) ? st.sel : list[0]?.chessId || roster[0]?.chessId || null;
   const { base, golden } = selId ? recordsOf(selId, getChess) : { base: null, golden: null };
   const nChanged = changedCount(st.entries, getChess, st.ops, roster, potentialEditable);
-  const locked = (inMatch && phase && phase !== PHASE.INFO_CHECK && phase !== PHASE.LOBBY) || st.sync === 'locked';
+  const rules = useStore((s) => s.room?.content?.rules ?? null);
+  const seatReady = useStore((s) => !!s.match?.private?.ready);
+  // prepLoadout 'prep': the panel stays editable in 休整期 until this seat presses 准备
+  const prepOpen = phase === PHASE.PREP && ruleOption(rules, 'prepLoadout') === 'prep' && !seatReady;
+  const locked = ((inMatch && phase && phase !== PHASE.INFO_CHECK && phase !== PHASE.LOBBY) && !prepOpen) || st.sync === 'locked';
   const gridRef = useRef(null);
   const fileRef = useRef(null);                            // hidden <input type=file> of the 导入 dialog
   const [narrowDetail, setNarrowDetail] = useState(false); // phones: the detail slides over the roster
@@ -719,6 +596,9 @@ function LoadoutScreen({ st, leaving = false }) {
   const diySlots = ready ? diySlotList(diyData()) : [];
 
   const tab = st.tab === 'ownership' || st.tab === 'diy' ? st.tab : 'loadout';
+  // leaving 干员调配 (干员持有, the 甄选干员 card, or openLoadout naming a tab) closes the card view's layers: hidden, they
+  // used to swallow the first Esc there and came back stale on return (PR #811 review)
+  useEffect(() => { if (tab !== 'loadout') { setDrawer(false); setQuick(null); setMenu(null); } }, [tab]);
   const lost = ready ? missingGameData(tab) : [];
   const ownRoster = useOwnershipRoster(ready);
   const nNotOwned = notOwnedCount(st.notOwned, ownRoster);
@@ -732,30 +612,35 @@ function LoadoutScreen({ st, leaving = false }) {
     if (ok) setDiyPicks({});
   };
   const setTab = (t) => loadoutStore.set({ tab: t });
-  const toggleOwned = (id, owned) => setNotOwned(setOwned(loadoutStore.get().notOwned, id, owned));
+  const toggleOwned = (id, owned) => setNotOwned(setOwned(st.notOwned, id, owned), { base: st.notOwned });
   const ownAll = async () => {
     if (!nNotOwned) return;
     const ok = await confirmDialog({ utility: true, title: t('全部持有'), text: t('将 {nNotOwned} 名未持有的干员恢复为持有（由本人上场）？', { nNotOwned }), okText: t('全部持有') });
     if (ok) setNotOwned([]);
   };
-  // the deck: a card opens the drawer, the open card again closes it
+  // the cards: a card opens the drawer, the open card again closes it
+  // (the list's phone 'detail over the list' state stays off here: 筛选 → 列表 would reopen the detail)
   const pick = (id) => {
     if (view === 'deck' && drawer && loadoutStore.get().sel === id) { setDrawer(false); return; }
-    loadoutStore.set({ sel: id }); setNarrowDetail(true); setDrawer(true);
+    loadoutStore.set({ sel: id });
+    if (view === 'deck') setDrawer(true); else setNarrowDetail(true);
   };
   // a row's quick choice (PR #301): the same setChoice / setEntries path; the row becomes the selection, a phone stays on the list
+  // (the edit is made on the view this render drew, with this render's records: written back through that view's map —
+  // a click that lands while another version's data replaces it is re-based, never filed under another operator,
+  // DESIGN §35.23)
   const quickChange = (id, patch) => {
     const recs = recordsOf(id, getChess);
-    setEntries(setChoice(loadoutStore.get().entries, recs.base, recs.golden, patch));
+    setEntries(setChoice(st.entries, recs.base, recs.golden, patch), { base: st.entries });
     loadoutStore.set({ sel: id });
   };
-  const change = (patch) => { if (base) setEntries(setChoice(loadoutStore.get().entries, base, golden, patch)); };
+  const change = (patch) => { if (base) setEntries(setChoice(st.entries, base, golden, patch), { base: st.entries }); };
   // 0.2.2: an operator's 潜能 / 练度 (by charId: its normal, elite and 自选 forms share them)
   const setOpsOf = (charId, patch) => setOpsMap(setOps(loadoutStore.get().ops, charId, patch));
   const resetOne = () => {
     if (!base) return;
     setOpsMap(resetOps(loadoutStore.get().ops, base.charId));
-    setEntries(resetChoice(loadoutStore.get().entries, base.chessId));
+    setEntries(resetChoice(st.entries, base.chessId), { base: st.entries });
   };
   const resetAll = async () => {
     if (!nChanged) return;
@@ -775,9 +660,10 @@ function LoadoutScreen({ st, leaving = false }) {
   const ioOwn = io?.kind === 'ownership';
   const ioDiy = io?.kind === 'diy';
   const openExport = () => setIo(tab === 'ownership'
-    ? { mode: 'export', kind: 'ownership', text: serializeOwnership(loadoutStore.get().notOwned) }
-    : tab === 'diy' ? { mode: 'export', kind: 'diy', text: serializeDiy(loadoutStore.get().diy) }
-      : { mode: 'export', kind: 'loadout', text: serializeExport(loadoutStore.get().entries, { ops: loadoutStore.get().ops }) });
+    // (by operator, every version's — DESIGN §35.23; a v1 store still migrating exports what it has)
+    ? { mode: 'export', kind: 'ownership', text: serializeOwnership(loadoutStore.get().notOwnedChars || []) }
+    : tab === 'diy' ? { mode: 'export', kind: 'diy', text: serializeDiy(loadoutStore.get().diy, { version: loadoutStore.get().diyVersion }) }
+      : { mode: 'export', kind: 'loadout', text: serializeExport(loadoutStore.get().byChar || {}, { ops: loadoutStore.get().ops }) });
   const openImport = () => setIo({ mode: 'import', kind: tab, text: '' });
   const ioCopy = async () => {
     const ok = await copyText(ioText);
@@ -810,7 +696,7 @@ function LoadoutScreen({ st, leaving = false }) {
     if (ioOwn) {
       const r = parseOwnershipImport(ioText);
       if (!r.ok) { toast(t('导入失败：{error}', { error: r.error }), 'error'); return; }
-      const { applied, dropped } = applyOwnershipImport(r.notOwned, getChess);
+      const { applied, dropped } = applyOwnershipImport(importedNotOwned(r), getChess);
       setIo(null);
       toast(applied ? (dropped ? t('已导入：{applied} 名干员未持有（另有 {dropped} 项无效，未导入）', { applied, dropped }) : t('已导入：{applied} 名干员未持有', { applied }))
         : t('已导入：全部持有'), dropped ? 'warn' : 'success');
@@ -824,7 +710,8 @@ function LoadoutScreen({ st, leaving = false }) {
     if (opsRefused) { toast(opsRefused.text, opsRefused.tone); return; }
     // 0.2.2: a payload with `ops` replaces the 潜能 / 练度 too (an older export leaves them alone)
     const opIds = res.ops ? cultivationCharIds(data.get('chess'), data.get('backups')) : null;
-    const r = applyLoadoutEntries(res.entries, getChess, res.ops ? { ops: res.ops, isOperator: (id) => opIds.has(id) } : {});
+    // (v2 by operator, v1 by 第二期下半's chess ids: as entries of the data on screen — DESIGN §35.23)
+    const r = applyLoadoutEntries(importedEntries(res), getChess, res.ops ? { ops: res.ops, isOperator: (id) => opIds.has(id) } : {});
     const { applied, dropped } = r;
     const nOps = r.ops ?? 0;
     // nothing survived sanitising (unknown chess, or every choice already the default): keep the current loadout
@@ -846,11 +733,13 @@ function LoadoutScreen({ st, leaving = false }) {
       const typing = e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName);
       if (e.key === 'Escape') {
         e.preventDefault(); e.stopImmediatePropagation();
-        // the deck peels back one layer at a time: a popover, 快速配置, the drawer, then the overlay
+        // the card view peels back one layer at a time on its tab: a popover, 快速配置, the drawer, then the overlay
+        // (on 干员持有 / 自选编队 none of them is drawn, so the first Esc closes the overlay, as in the list)
         const u = ui.current;
-        if (u.menu) { u.setMenu(null); return; }
-        if (u.quick) { u.setQuick(null); return; }
-        if (u.drawer) { u.setDrawer(false); return; }
+        const onDeckTab = loadoutStore.get().tab !== 'ownership' && loadoutStore.get().tab !== 'diy';
+        if (onDeckTab && u.menu) { u.setMenu(null); return; }
+        if (onDeckTab && u.quick) { u.setQuick(null); return; }
+        if (onDeckTab && u.drawer) { u.setDrawer(false); return; }
         closeLoadout(); return;
       }
       if (typing) return;
@@ -906,7 +795,7 @@ function LoadoutScreen({ st, leaving = false }) {
     const deck = deckRef.current;
     const sec = deck?.querySelector(`.lo-tgroup[data-tier="${tier}"]`);
     if (!deck || !sec) return;
-    deck.scrollTo({ left: Math.max(0, sec.offsetLeft - (drawer ? deck.clientWidth * 0.4 : 0)), behavior: 'smooth' });
+    deck.scrollTo({ left: Math.max(0, sec.offsetLeft - (drawer ? deck.clientWidth * 0.4 : 0)), behavior: reducedMotion() ? 'auto' : 'smooth' });
     setActiveTier(tier);
   };
   const nFilters = ['tier', 'prof', 'bond', 'changedOnly'].filter((k) => !!st.filters?.[k]).length + (String(st.filters?.query || '').trim() ? 1 : 0);
@@ -1042,7 +931,7 @@ function LoadoutScreen({ st, leaving = false }) {
       <${DeckBar} counts=${tierCounts} active=${activeTier} onJump=${jumpTier} diyOpen=${diyOpen} quick=${quick} onConfirm=${() => setQuick(null)} />`
       : html`<main class=${cx('lo-body', narrowDetail && 'is-detail')}>
       <section class="lo-roster">
-        <${Filters} m=${m} filters=${st.filters} bonds=${bonds} onFilters=${(filters) => loadoutStore.set({ filters })} />
+        <${Filters} m=${m} filters=${st.filters} bonds=${bonds} onFilters=${(filters) => loadoutStore.set({ filters })} onDeck=${() => setView('deck')} />
         <div class="lo-list" ref=${gridRef}>
           <${RosterHead} />
           <div class="lo-list__rows" role="list" aria-label=${t('干员列表')}>
@@ -1060,7 +949,7 @@ function LoadoutScreen({ st, leaving = false }) {
   </div>
   ${help ? html`<${DeckHelp} onClose=${() => setHelp(false)} />` : null}
   ${io ? html`<${Modal} open=${true} onClose=${() => setIo(null)} utility=${true} class="loadout-io-modal"
-      title=${ioDiy ? t(io.mode === 'export' ? '导出自选编队' : '导入自选编队')
+      title=${ioDiy ? (io.mode === 'export' ? t('导出自选编队') : t('导入自选编队'))
         : io.mode === 'export' ? (ioOwn ? t('导出干员持有') : t('导出干员调配')) : (ioOwn ? t('导入干员持有') : t('导入干员调配'))}
       micro=${ioOwn ? 'OPERATOR ROSTER' : ioDiy ? 'SELF-SELECT SQUAD' : 'OPERATOR LOADOUT'}
       actions=${io.mode === 'export'
@@ -1093,10 +982,12 @@ function LoadoutScreen({ st, leaving = false }) {
  * Whether the overlay must close because its context moved on: opened from the briefing and the match left INFO_CHECK
  * (the strategy draft needs the player), or opened from the lobby / room and a match started (its briefing takes over).
  * @param {{ open: boolean, from: string|null }} st @param {string|null} phase @param {boolean} inMatch @param {boolean} wasInMatch
+ * @param {boolean} [ready] this seat has pressed 准备 (closes a panel opened from prep)
  */
-export function shouldAutoClose(st, phase, inMatch, wasInMatch) {
+export function shouldAutoClose(st, phase, inMatch, wasInMatch, ready = false) {
   if (!st || !st.open) return false;
   if (st.from === 'briefing') return !!phase && phase !== PHASE.INFO_CHECK;
+  if (st.from === 'prep') return phase !== PHASE.PREP || !!ready;
   return inMatch && !wasInMatch;
 }
 
@@ -1105,11 +996,12 @@ export function LoadoutHost() {
   const st = useStore((s) => s, Object.is, loadoutStore);
   const phase = useStore((s) => s.match?.public?.phase || null);
   const inMatch = useStore((s) => !!s.room?.inMatch);
+  const ready = useStore((s) => !!s.match?.private?.ready);
   const wasInMatch = useRef(inMatch);
   useEffect(() => {
-    if (shouldAutoClose(st, phase, inMatch, wasInMatch.current)) closeLoadout();
+    if (shouldAutoClose(st, phase, inMatch, wasInMatch.current, ready)) closeLoadout();
     wasInMatch.current = inMatch;
-  }, [phase, inMatch, st.open]);
+  }, [phase, inMatch, st.open, ready]);
   useEffect(() => {
     if (st.open) document.documentElement.classList.add('sp-loadout-open');
     else document.documentElement.classList.remove('sp-loadout-open');
@@ -1134,7 +1026,7 @@ export function badgeCount(entries, getChess, ops = null, roster = null) {
 
 /**
  * Entry button (lobby / room / briefing).
- * @param {{ from: 'lobby'|'room'|'briefing', size?: string, variant?: string, class?: string, label?: string }} props
+ * @param {{ from: 'lobby'|'room'|'briefing'|'prep', size?: string, variant?: string, class?: string, label?: string }} props
  */
 export function LoadoutButton({ from, size = 'md', variant = 'secondary', class: cls, label = t('干员调配') }) {
   useData('local'); // the official preset icon (re-render once the local-art manifest arrives)

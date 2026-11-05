@@ -69,6 +69,6 @@ test('compact picker keeps skin names, series, selection semantics and full-labe
   assert.match(source, /class="lo-skin__group">\$\{x\.group\}/);
   assert.match(source, /role="radiogroup"/);
   assert.match(source, /role="radio" aria-checked/);
-  assert.match(source, /onClick=\$\{\(\) => choose\(x\.id\)\}/);
+  assert.match(source, /onClick=\$\{\(\) => chosen === x.id \? setPreview\(x.id\) : choose\(x.id\)\}/);
   assert.match(source, /onClick=\$\{\(\) => choose\(null\)\}/);
 });

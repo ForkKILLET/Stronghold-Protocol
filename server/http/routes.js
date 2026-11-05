@@ -9,7 +9,8 @@
 //     hash `content.vanilla`, the modded content sets in use `content.sets` and — only when there are some — how many
 //     unofficial plugins the server has, `content.plugins` (the title screen's count before any hello) — DESIGN §32 —,
 //     sockets, sessions,
-//     rooms, matches), never cached; `?traffic=1` adds the traffic counters (traffic.js: bytes by category since the
+//     rooms, matches; `versions: { enabled, default, hosts }` only when the server enables another official version than
+//     第二期下半 — DESIGN §35.23), never cached; `?traffic=1` adds the traffic counters (traffic.js: bytes by category since the
 //     start, WebSocket wire and payload bytes) for a loopback or private-network client only — the maintainer's
 //     decision of 2026-10-12: the figures are the host's, so any other client, also one a tunnel or proxy on this
 //     machine forwards, gets the plain report (net.js clientAddress, honouring TRUST_PROXY like the WebSocket limits);
@@ -31,7 +32,9 @@ const MAX_URL_LENGTH = 4096;
 function pluginCount(lobby) {
   let n;
   try { n = Number(lobby?.plugins?.unofficial?.()) || 0; } catch { n = 0; }
-  return n > 0 ? { plugins: n } : {};
+  let notices = false;
+  try { notices = lobby?.plugins?.hasNotices?.() === true; } catch { /* optional catalogue hint */ }
+  return { ...(n > 0 ? { plugins: n } : {}), ...(notices ? { notices: true } : {}) };
 }
 
 /** The content sets with gameplay plugins rooms hold now (DESIGN §32.6; 0 without any). */
@@ -42,9 +45,16 @@ function contentSets(lobby) {
 /**
  * The ordinary GET /healthz body. Local ?traffic=1 adds a fresh traffic snapshot separately.
  * @param {{ startedAt: number, network: import('../net.js').Network, registry: import('../net.js').SessionRegistry,
- *           lobby: import('../lobby.js').Lobby, traffic?: ReturnType<typeof import('./traffic.js').createTrafficCounter> }} health
+ *           lobby: import('../lobby.js').Lobby, content?: { cs: string } | null,
+ *           traffic?: ReturnType<typeof import('./traffic.js').createTrafficCounter>,
+ *           trusted?: any,
+ *           versions?: ReturnType<typeof import('../versions.js').createVersionSets> | null,
+ *           versionHosts?: { stats: () => object } | null }} health
+ *   content: the server's vanilla content (server/plugins/identity.js); versions / versionHosts: the official versions
+ *   and their match hosts (DESIGN §35.23)
+ * @param {boolean} [withTraffic]
  */
-export function healthReport({ startedAt, network, registry, lobby, content = null, trusted = null }, counters = lobby.stats(), build = buildTag()) {
+export function healthReport({ startedAt, network, registry, lobby, content = null, trusted = null, versions = null, versionHosts = null }, counters = lobby.stats(), build = buildTag()) {
   return {
     ok: true, version: PROTOCOL_VERSION, app: APP_VERSION, uptimeSec: Math.round((Date.now() - startedAt) / 1000),
     // the runtime the server is serving right now (public/js/ui/buildGuard.js): a page whose own build is
@@ -52,6 +62,8 @@ export function healthReport({ startedAt, network, registry, lobby, content = nu
     build,
     ...(content ? { content: { vanilla: content.cs, sets: contentSets(lobby), ...pluginCount(lobby) } } : {}),
     ...(trusted && Object.keys(trusted).length ? { plugins: trusted } : {}),
+    ...(versions?.nonDefault.length ? { versions: { enabled: [...versions.ids], default: versions.defaultId,
+      hosts: versionHosts?.stats() || { workers: 0, matches: 0, transport: 'process' } } } : {}),
     sockets: network.connectionCount, sessions: registry.size, ...counters,
   };
 }

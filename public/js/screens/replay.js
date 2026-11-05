@@ -1,3 +1,4 @@
+import {useReplayVersion} from '../ui/replayVersion.js';
 import {useEffect,useMemo,useRef,useState} from '../../vendor/hooks.module.js';
 import {html,Button,MicroLabel,Spinner} from '../ui/components.js';
 import {Select} from '../ui/select.js';
@@ -28,7 +29,8 @@ function Piece({piece}){
 }
 
 export function ReplayScreen({replay,selfId,onBack,visitor=false}){
- const ready=useData(...GAME_FILES);
+ const versionState=useReplayVersion(replay);
+ const ready=useData(...GAME_FILES)&&versionState.ready;
  const timeline=useMemo(()=>new ReplayTimeline(replay),[replay]);
  const [cursor,setCursor]=useState(Math.min(1,replay.duration)),[playing,setPlaying]=useState(false),[speed,setSpeed]=useState(1);
  const perspectives=replay.players.filter(p=>!replay.perspectives || replay.perspectives.includes(p.playerId));
@@ -52,6 +54,7 @@ export function ReplayScreen({replay,selfId,onBack,visitor=false}){
  const slots=priv?.shop?.rewardOffer?.slots || priv?.shop?.slots || [];
  return html`<div class="st st--playback" role="dialog" aria-modal="true" aria-label=${t('对局回放')}>
   <${PageHeader} onBack=${onBack} title=${t('对局回放')} micro="MATCH REPLAY" visitor=${visitor} />
+  ${versionState.error?html`<p class="st-note is-warn" role="alert">${versionState.error}</p>`:null}
   <div class="replay-toolbar">
    <label>${t('观看玩家')}<${Select} value=${playerId} options=${perspectives.map(p=>({value:p.playerId,label:p.name || p.playerId}))} onChange=${id=>{setPlayerId(id);setFieldId('auto');}} /></label>
    <label>${t('回合')}<${Select} value=${String(pub.round??0)} options=${timeline.rounds.map(r=>({value:String(r.round),label:t('第 {n} 回合',{n:r.round})}))} onChange=${round=>seek(timeline.rounds.find(r=>String(r.round)===round)?.at || 0)} /></label>

@@ -91,7 +91,7 @@ function InfoTab({ pub, priv, onChess, onBond, bandId = null, bandOwner = null, 
       </button>`) : html`<span class="t-dim">${t('本局没有禁用盟约')}</span>`}
     </div>
     ${banned.length ? html`<div class="ibanned">${banned.map((id) => html`<button key=${id} type="button" class="ibanned__one" onClick=${() => onChess(id)}>
-      <${UnitThumb} kind="chess" id=${id} size="sm" dim=${true} /></button>`)}</div>` : null}
+      <${UnitThumb} kind="chess" ownerId=${null} id=${id} size="sm" dim=${true} /></button>`)}</div>` : null}
     <${DiyBannedLine} model=${model} class="idiybanned" />
   </div>`;
 }

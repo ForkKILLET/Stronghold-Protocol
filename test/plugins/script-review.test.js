@@ -48,13 +48,13 @@ async function request(runtime, url) {
   return {handled,status,value:body && JSON.parse(body)};
 }
 // An outer async watchdog ensures a broken spawnSync cannot hang the test runner itself.
-function runComposition(dirs, ids) {
+function runComposition(dirs, ids, probeMs = 1000) {
   const source = `import { createPluginRegistry } from ${JSON.stringify(new URL('../../server/plugins/registry.js',import.meta.url).href)};
     import { buildContentSet } from ${JSON.stringify(new URL('../../server/plugins/contentSet.js',import.meta.url).href)};
     const registry = createPluginRegistry(${JSON.stringify(dirs)}, {scriptMode:'trusted',scriptHost:'127.0.0.1'});
     console.log(JSON.stringify(buildContentSet({registry,ids:${JSON.stringify(ids)}})));`;
   // Include real engine startup in the same ceiling as production. A 1 s ceiling could kill Node before setup ran.
-  const env = {...process.env, SP_SCRIPT_PROBE_MS: '5000'}; delete env.NODE_TEST_CONTEXT;
+  const env = {...process.env, SP_SCRIPT_PROBE_MS: String(probeMs)}; delete env.NODE_TEST_CONTEXT;
   const child = spawn(process.execPath,['--input-type=module','-e',source],{env,stdio:['ignore','pipe','pipe'],timeout:20000,killSignal:'SIGKILL'});
   let stdout = '', stderr = '';
   child.stdout.on('data',b => {stdout+=b;}); child.stderr.on('data',b => {stderr+=b;});
@@ -117,9 +117,17 @@ test('SIGTERM-catching setup hits the probe\'s SIGKILL ceiling, returns no set a
   }`;
   assert.equal(checkScript(source).sandboxable,true);
   f.put('loop',source);
-  const result = await runComposition(f.registry.contentDirs,['loop']);
-  assert.equal(result.cs,undefined);assert.equal(result.problems[0].code,'PLUGIN_SCRIPT_CHECK');
-  assert.match(result.problems[0].message,/5000 ms.*SIGKILL/);assertDead(file);
+  // The ceiling covers the probe's whole life: its start (Node, the SDK and the simulation modules — a quarter of a
+  // second on an idle machine, over 1 s on a busy CI runner or Windows) and then the setup. Only a setup that is
+  // running when SIGKILL comes tests the SIGTERM-catching case: if it never started (no pid written), the same
+  // composition runs again with a ceiling twice as long. Every run must still be refused at its own ceiling.
+  for (const ms of [1000,2000,4000,8000]) {
+    const result = await runComposition(f.registry.contentDirs,['loop'],ms);
+    assert.equal(result.cs,undefined);assert.equal(result.problems[0].code,'PLUGIN_SCRIPT_CHECK');
+    assert.match(result.problems[0].message,new RegExp(`${ms} ms.*SIGKILL`));
+    if (fs.existsSync(file)) break;
+  }
+  assert.ok(fs.existsSync(file),'the setup started within one of the ceilings');assertDead(file);
   assert.equal(SCRIPT_PROBE_TIMEOUT_MS,5000,'the default ceiling (no SP_SCRIPT_PROBE_MS in this process)');
 });
 

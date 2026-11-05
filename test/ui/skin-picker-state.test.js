@@ -37,7 +37,7 @@ function setup(t, { enabled = true, status = {}, catalogue = [{ id: SKIN, name: 
   updateSettings({ skinsEnabled: enabled });
   t.mock.method(data, 'status', (name) => status[name] || 'ready');
   t.mock.method(data, 'get', (name) => name === 'skins' ? { chars: { [CHAR]: catalogue } }
-    : name === 'assets' ? { chars: { [CHAR]: { skins: installed ? { [SKIN]: { spine: { front: { anims: { idle: 'Idle' } } } } } : {} } } } : null);
+    : name === 'assets' ? { chars: { [CHAR]: { skins: installed ? { [SKIN]: { spine: { front: { skel:'/skin.skel', anims: { idle: 'Idle' } } } } } : {} } } } : null);
 }
 
 test('enabling skins retains the section, explains missing deployment and keeps a way to turn skins off', (t) => {
@@ -77,20 +77,20 @@ test('operators without catalogue entries show an empty state instead of disappe
   assert.match(text(tree), /暂无可用皮肤/);
 });
 
-test('deployed outfits still select/clear by chess id; disabling preserves choices and stale choices show default', (t) => {
+test('deployed outfits select/clear by stable operator id; disabling preserves choices and stale choices show default', (t) => {
   setup(t, { installed: true });
   const tree = section(); assert.equal(tree.props['data-state'], 'ready');
   [...walk(tree)].find((v) => v.props?.['data-skin'] === SKIN).props.onClick();
-  assert.equal(skinsStore.get().entries[CHESS], SKIN);
+  assert.equal(skinsStore.get().entries[CHAR], SKIN);
   assert.equal([...walk(section())].find((v) => v.props?.['data-skin'] === SKIN).props['aria-checked'], 'true');
   button(section(), '关闭皮肤').props.onClick();
-  assert.equal(skinsStore.get().entries[CHESS], SKIN);
+  assert.equal(skinsStore.get().entries[CHAR], SKIN);
   updateSettings({ skinsEnabled: true });
-  skinsStore.set({ entries: { [CHESS]: 'not-deployed' } });
+  skinsStore.set({ entries: { [CHAR]: 'not-deployed' } });
   assert.equal([...walk(section())].find((v) => v.props?.['data-skin'] === '').props['aria-checked'], 'true');
-  assert.equal(skinsStore.get().entries[CHESS], 'not-deployed', 'unavailable preferences are retained');
+  assert.equal(skinsStore.get().entries[CHAR], 'not-deployed', 'unavailable preferences are retained');
   [...walk(section())].find((v) => v.props?.['data-skin'] === '').props.onClick();
-  assert.equal(skinsStore.get().entries[CHESS], undefined);
+  assert.equal(skinsStore.get().entries[CHAR], undefined);
 });
 
 test('loadout includes one picker and does not eagerly load the optional catalogue', () => {

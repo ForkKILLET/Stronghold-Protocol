@@ -7,7 +7,7 @@ import { data } from '../../public/js/data.js';
 import { sanitizeSettings } from '../../public/js/ui/gameLogic/settings.js';
 import { cleanSkins, freezeSkins, visibleSkin, SKIN_LIMITS } from '../../shared/skins.js';
 
-const CHESS = 'chess_char_1_01_a', SKIN = 'char_498_inside@kitchen#2';
+const CHESS = 'char_498_inside', SKIN = 'char_498_inside@kitchen#2';
 const read = (path) => readFileSync(new URL('../../' + path, import.meta.url), 'utf8');
 function syncEnv(enabled = false) {
   const target = createStore({ entries: { [CHESS]: SKIN }, sync: 'idle' });
@@ -18,7 +18,7 @@ function syncEnv(enabled = false) {
     on(t, fn) { handlers.set(t, fn); return () => handlers.delete(t); },
     async request(t, msg) { calls.push({ t, ...msg }); },
   };
-  const sync = installSkinsSync({ net, settings, target, timers: {
+  const sync = installSkinsSync({ net, settings, target, operatorsReady:async()=>new Set([CHESS]), timers: {
     setTimeout(fn) { const n = ++id; timers.set(n, fn); return n; },
     clearTimeout(n) { timers.delete(n); },
   } });
@@ -60,6 +60,7 @@ test('a late opt-in reply cannot overwrite a newer opt-out; rate-limited opt-out
   const replies = [];
   e.net.request = (type, body) => { e.calls.push(body); return new Promise((resolve, reject) => replies.push({ resolve, reject })); };
   const old = e.sync.flush();
+  await turn();
   e.settings.set({ skinsEnabled: false });
   assert.equal(e.calls.length, 2);
   assert.deepEqual(e.calls[1].skins, {});
@@ -73,7 +74,7 @@ test('a late opt-in reply cannot overwrite a newer opt-out; rate-limited opt-out
 });
 
 test('preference sanitising caps wire size, rejects prototype keys and filters non-base chess', () => {
-  const big = Object.fromEntries(Array.from({ length: 200 }, (_, i) => [`chess_${i}`, SKIN]));
+  const big = Object.fromEntries(Array.from({ length: SKIN_LIMITS.entries + 20 }, (_, i) => [`chess_${i}`, SKIN]));
   assert.equal(Object.keys(cleanSkins(big)).length, SKIN_LIMITS.entries);
   assert.deepEqual(cleanSkins(JSON.parse('{"__proto__":"char_x@s#1","constructor":"char_x@s#1","x":"bad/id"}')), {});
   const chess = { good: {}, hidden: { visible: false }, golden: { isGolden: true }, diy: { isDiy: true }, alias: { baseId: 'good' } };
@@ -85,9 +86,9 @@ test('picker offers only deployed models, uses operator ids and clears only one 
   const get = data.get; t.after(() => { data.get = get; });
   data.get = (name) => name === 'skins' ? { chars: { char_498_inside: [
     { id: SKIN, name: 'Outfit', group: 'Series' }, { id: 'missing', name: 'Missing' },
-  ] } } : { chars: { char_498_inside: { skins: { [SKIN]: { spine: { front: { anims: { idle: 'Idle' } } } } } } } };
-  assert.deepEqual(availableSkins('char_498_inside'), [{ id: SKIN, name: 'Outfit', group: 'Series' }]);
-  assert.deepEqual(availableSkins(CHESS), []);
+  ] } } : { chars: { char_498_inside: { skins: { [SKIN]: { spine: { front: { skel:'/skin.skel', anims: { idle: 'Idle' } } } } } } } };
+  assert.deepEqual(availableSkins('char_498_inside').filter(x=>!x.own).map(({id,name,group})=>({id,name,group})), [{ id: SKIN, name: 'Outfit', group: 'Series' }]);
+  assert.deepEqual(availableSkins('chess_char_1_01_a'), []);
   setSkin(CHESS, SKIN); setSkin('another', SKIN); clearSkin(CHESS);
   assert.equal(skinsStore.get().entries[CHESS], undefined);
   assert.equal(skinsStore.get().entries.another, SKIN);
@@ -100,10 +101,10 @@ test('picker/catalogue are lazy and both renderer paths honour the viewer settin
   assert.doesNotMatch(picker, /setInterval|room\.skin\.install/);
   assert.match(read('public/js/screens/loadout.js'), /<\$\{SkinSection\} chess=\$\{chess\}/);
   const app = read('public/js/render/app.js');
-  assert.match(app, /skin: si \? null : piece.skin \?\? null/);
+  assert.match(app, /skin: piece.skin \?\? null/);
   assert.doesNotMatch(app, /skinFor/);
   assert.match(app, /for \(const v of views.values\(\)\) v.refreshSkin\?\.\(\)/);
   const fallback = read('public/js/ui/fallbackField.js');
-  assert.match(fallback, /visibleSkin\(p.skin, st.settings\)/);
-  assert.match(fallback, /unitArt\(m\(\), info, st.settings\)/);
+  assert.match(fallback, /st.settings.skinsEnabled === true && ownerSkin/);
+  assert.match(fallback, /unitArt\(m\(\), info, \{[^}]*skinsEnabled: st.settings.skinsEnabled/);
 });

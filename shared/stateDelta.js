@@ -98,14 +98,16 @@ export class StateReceiver {
       return { message: null, resync };
     };
     if (!Number.isSafeInteger(seq) || seq <= 0) return fail();
+    const previous = this.states.get(kind);
+    if (previous?.seq === seq) return { message: null, resync: false };
+    // Full frames cannot rewind a channel any more than deltas can.
+    if (previous && seq < previous.seq) return fail();
     if (Object.hasOwn(frame, 'full')) {
       if (!record(frame.full) || frame.full.t !== kind) return fail();
       this.states.set(kind, { seq, view: frame.full });
       this.missing.delete(kind);
       return { message: frame.full, resync: false };
     }
-    const previous = this.states.get(kind);
-    if (previous?.seq === seq) return { message: null, resync: false }; // duplicate, never emit twice
     if (!previous || frame.base !== previous.seq || seq <= previous.seq) return fail();
     try {
       const view = applyStatePatch(previous.view, frame.patch);

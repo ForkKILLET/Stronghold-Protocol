@@ -21,7 +21,7 @@ export function updateManagementViewport(win) {
   const height = win.innerHeight || viewport?.height || 1080;
   const rem = parseFloat(style?.fontSize) || Math.max(40, Math.min(width / 19.2, height / 10.8, 240));
   const { unit, factor } = managementScale({ width, height, rem,
-    top: number('--sa-t'), right: number('--sa-r'), bottom: number('--sa-b'), left: number('--sa-l') });
+    top: number('--sa-t') + number('--fit-t'), right: number('--sa-r') + number('--fit-r'), bottom: number('--sa-b') + number('--fit-b'), left: number('--sa-l') + number('--fit-l') });
   root.style.setProperty('--sp-ui-unit', `${unit}px`);
   root.style.setProperty('--sp-ui-scale', String(factor));
   root.style.setProperty('--sp-vtop', `${viewport?.offsetTop || 0}px`);

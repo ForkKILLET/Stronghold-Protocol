@@ -15,6 +15,7 @@ function browserContracts() {
     name: 'stronghold-browser-contracts',
     enforce: 'pre',
     resolveId(source, importer) {
+      if (source.startsWith('node:')) this.error(`Node-only module cannot enter the client bundle: ${source}`);
       if (source.startsWith('/sim/')) return absolute(`server${source}`);
       if (source === '/vendor/three.module.js') return absolute('public/vendor/three.module.js');
       const resolved = source.startsWith('.') && importer

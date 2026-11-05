@@ -468,6 +468,9 @@
   box-shadow: 0 calc(.3 * var(--ui-unit, 1rem)) calc(.9 * var(--ui-unit, 1rem)) rgba(0, 0, 0, .65), 0 0 calc(.4 * var(--ui-unit, 1rem)) rgba(23, 249, 183, .06);
   animation: modal-in var(--t-slow) var(--ease-out);
 }
+/* Japanese never starts a line with a small kana or ー in a dialog, as in the room and on the hub (§35.18 review of the
+   text-fit fixes: 选择模拟协议's 「シミュレーシ|ョン」 on a phone at 特大 once its paragraph wraps `pretty`, lobby.css) */
+.modal__box:lang(ja) { line-break: strict; }
 .modal__box--red { --bk-c: var(--red-premium); --mstripe: var(--red); }
 .modal__box--amber { --bk-c: var(--amber); --mstripe: var(--amber); }
 .modal__box--orange { --bk-c: var(--orange-hi); --mstripe: var(--orange); }
@@ -1355,6 +1358,7 @@
 .crash__box h2 { font-size: calc(.3 * var(--utility-text, var(--t))); }
 
 /* ---- plugins (DESIGN §32 P1a): the room's tag 原版 / 插件 ×N (ui/pluginTag.js), its 插件 panel and the title's list (ui/pluginPanel.js) ---- */
+/* (min-height: the tag grows when 大 / 特大 outgrows its .3rem — §35.18 review) */
 .plugtag {
   display: inline-flex; align-items: center; gap: calc(.06 * var(--ui-unit, 1rem)); height: calc(.3 * var(--ui-unit, 1rem)); padding: 0 calc(.12 * var(--ui-unit, 1rem));
   border: 1px solid var(--line-2); background: rgba(0, 0, 0, .3); color: var(--text-lo);
@@ -1380,8 +1384,15 @@
 .plugpanel__reapply { display: flex; flex-wrap: wrap; align-items: center; gap: calc(.08 * var(--ui-unit, 1rem)) calc(.12 * var(--ui-unit, 1rem)); }
 .ui-slot { display: flex; flex-direction: column; gap: calc(.04 * var(--ui-unit, 1rem)); min-width: 0; }
 .ui-slot:empty { display: none; }
-.ui-slot__frame { width: 100%; border: 0; background: transparent; color-scheme: normal; }
-.gm__ui-slot { position: absolute; z-index: 6; right: calc(.16 * var(--ui-unit, 1rem)); bottom: calc(.7 * var(--ui-unit, 1rem)); width: calc(2.6 * var(--ui-unit, 1rem)); pointer-events: auto; }
+.ui-slot__frame { width: 100%; border: 0; background: transparent; color-scheme: dark; }
+.ui-slot__tabs { display: flex; flex-wrap: wrap; gap: calc(.02 * var(--ui-unit, 1rem)); }
+.ui-slot__tab {
+  flex: 1 1 auto; min-width: 0; max-width: 100%; padding: calc(.02 * var(--ui-unit, 1rem)) calc(.04 * var(--ui-unit, 1rem)); border: 1px solid var(--line-2);
+  background: rgba(0, 0, 0, .45); color: var(--text-md); font-size: calc(.11 * var(--utility-text, var(--t))); cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ui-slot__tab[aria-selected="true"] { color: var(--text-hi); border-color: var(--mint-700); }
+.gm__ui-slot { position: absolute; z-index: 6; right: .92rem; bottom: calc((var(--dock-hand-clear, 4.76) + .12) * 1rem); max-height: calc(100% - (var(--dock-hand-clear, 4.76) + 1.82) * 1rem); overflow-y: auto; width: 2.6rem; pointer-events: auto; }
 .plugpanel__reapply .set-hint { margin: 0; }
 /* gameplay plugins (DESIGN §32.6 P1c): the unofficial marks (tag, panel rows, UnofficialMark of the briefing / HUD / result),
    the room's plugin modes and this page's check of the room's content set */

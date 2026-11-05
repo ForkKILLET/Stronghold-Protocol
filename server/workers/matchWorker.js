@@ -30,7 +30,7 @@ const loadTimer = setInterval(() => {
 loadTimer.unref();
 const quiet = { info() {}, warn() {}, error() {}, debug() {} };
 const sentMetadata = new WeakMap();
-const PLAYER_META_KEYS = ['playerId', 'seat', 'name', 'isBot', 'left', 'connected'];
+const PLAYER_META_KEYS = ['playerId', 'seat', 'name', 'isBot', 'left', 'connected', 'alive', 'autoplay'];
 let sharedData = null;
 let Match, createRngFromState, captureMatch, restoreMatch, snapshotMatch;
 
@@ -48,7 +48,7 @@ const metaOf = (match) => ({
   lastResultMsg: match.lastResultMsg || null,
   ...(match.ended ? { public: match.publicView() } : {}),
   order: Array.isArray(match.order) ? match.order.map((p) => ({
-    playerId: p.playerId, seat: p.seat, name: p.name, isBot: !!p.isBot, left: !!p.left, connected: !!p.connected,
+    playerId: p.playerId, seat: p.seat, name: p.name, isBot: !!p.isBot, left: !!p.left, connected: !!p.connected, alive: !!p.alive, autoplay: !!p.autoplay,
   })) : [],
 });
 

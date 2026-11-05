@@ -214,7 +214,7 @@ export class BattleDeploy {
     if (occ && occ.alive && occ !== unit) return false;
     if (at && this.downOn(at[0], at[1], unit)) return false;
     const ps = this.getPlayer(unit.ownerId);
-    const cost = unit.base.cost;
+    const cost = unit.base.cost * unit.s.costMul;
     let paid = 0;
     if (!free) {
       if (!ps || ps.dp + 1e-9 < cost) return false;
@@ -239,7 +239,7 @@ export class BattleDeploy {
       if (this.time + 1e-9 < u.respawnAt) continue;
       // the DP first: an operator past its timer mostly waits for DP, and the tile checks scan every ally
       const ps = this.getPlayer(u.ownerId);
-      const cost = u.base.cost;
+      const cost = u.base.cost * u.s.costMul;
       if (!ps || ps.dp + 1e-9 < cost) continue;
       const [r, c] = this.restTile(u);
       const occ = this._occ[r * COLS + c];
@@ -263,13 +263,16 @@ export class BattleDeploy {
     const owner = timeout ? e.ownerId : this._ownerForTile([Math.round(e.y), Math.round(e.x)]) ?? e.ownerId;
     const pp = this._pp(owner) ?? this._pp(e.ownerId);
     if (pp) {
-      pp.leaked.push({ enemyKey: e.defId, mods: e.mods ?? null, lpr: e.lpr ?? 1, sourcePlayerId: e.sourcePlayerId ?? e.ownerId, tag: e.tag ?? null, counted: !!e.counted || e.isBoss, boss: e.isBoss || undefined, spawned: true });
+      const entry = { enemyKey: e.defId, mods: e.mods ?? null, lpr: e.lpr ?? 1, sourcePlayerId: e.sourcePlayerId ?? e.ownerId, tag: e.tag ?? null, counted: !!e.counted || e.isBoss, boss: e.isBoss || undefined, spawned: true };
+      // born while a 联防 field ran (spawns.js): the leaker never sent it in, so it costs nobody LP and raises no ×N —
+      // unite.js uniteSurvivors / spec.js uniteLeft filter it; every other reading keeps counting it as usual
+      if (e.uniteRuntime) entry.uniteRuntime = true;
+      pp.leaked.push(entry);
       if (e.counted || e.isBoss) pp.perfect = false;
     }
     if (e.counted) this.leakedCount++;
-    // the HUD capsule's leak counter (DESIGN §14): only the stage's own enemies (`inTotal`) — a leaked split child or
-    // summon still costs LP through `counted`/`leakedCount` and still breaks 完美作战, but it is no 漏掉 of the stage's
-    // own list, so the capsule's numerator does not move for it
+    // of the stage's own list, so the capsule's numerator does not move for it. On a 联防 field it is no LP charge either:
+    // such a leak carries `uniteRuntime` (spawns.js), and the 联防's billing reads that flag instead of this counter.
     if (e.inTotal) {
       this.leakedInTotal++;
       if (pp) pp.leakedInTotal++;

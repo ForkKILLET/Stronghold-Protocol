@@ -16,22 +16,44 @@ import { ProtocolScene } from '../ui/protocolScene.js';
 // screen is complete before data is generated. Rounds: solo 标准 = 9, everything else 14 (+R15
 // hidden core on 险境+), per research 00-INDEX §2. Battlefield pool (`modes[].stages`): 标准 always
 // plays 战场#01, 险境 draws one of 8, 绝境 / 终极 one of 7 (m01 excluded).
+// Official versions (DESIGN §35.23, M1; versions.js): with welcome.versions the top bar shows the version chip (ui/
+// versionPicker.js VersionSwitch — this browser's choice, its data loaded and checked by content.js), the title names a
+// version other than 第二期下半, 选择模拟协议 offers the difficulties of the version shown (its config's modes: 第一期 and
+// 第二期上半 have no 终极; the remembered difficulty, when it is not offered, shows as the server's fallback — the highest
+// offered below it — and stays remembered until the player picks one; the cards wait while the version loads), 创建同盟 /
+// 独立模拟 create the room in that version (room.create `version`), and the 成就统计 card counts the records of its season.
 // Texts go through t() (docs/I18N.md); the module-level tables hold msgids (N_) translated where they are shown, the
 // config.json mode texts come localized from data.js.
 
 import { RoomOptionsPage, RoomPacingControls } from '../ui/roomOptions.js';
+import { TestMark } from '../ui/testConsole.js';
 import { ResumeMatchButton } from '../ui/resumeMatch.js';
-import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
-import { html, Button, Icon, MicroLabel, TextField, Tooltip, DifficultyIcon, Modal } from '../ui/components.js';
+import { html, confirmDialog, Button, Icon, MicroLabel, Modal, PingPill, Spinner, DifficultyIcon, TextField, Tooltip } from '../ui/components.js';
+import { Sprite, Img } from '../ui/gameComponents.js';
+import { uiUrl } from '../ui/assetUrls.js';
+import { peekStatsRecords, trophyMedalOf, aggregateStats, recordsOfSeason } from '../ui/stats.js';
+import { levelProgress, levelOf } from './settle.js';
+import { OwnBackdrop, LobbyScene, LobbyMediaButton } from '../ui/lobbyMedia.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { openStats } from './stats.js';
+import { GuideButton, openGuide } from '../ui/guide.js';
+import { RadarScene, CreateArt, JoinArt } from '../ui/allyArt.js';
+import { AchievementDialog, useStatsOpen } from './stats.js';
+import { SettingsButton } from '../ui/settings.js';
+import { PwaInstallButton, detectFeatures, useMediaQuery, SHORT_SCREEN_QUERY } from '../ui/device.js';
 import { LoadoutButton } from './loadout.js';
 import { AchievementEntry } from '../ui/achievements.js';
 import { net, identity } from '../net.js';
 import { store, useStore, shallowEqual, loadPref, savePref } from '../store.js';
-import { getConfig, getMode, getStage, useData } from '../data.js';
+import { data, getConfig, getMode, getStage, useData } from '../data.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
+import { scriptOf } from '../../../shared/i18nPacks.js';
+import { NoticesButton } from '../ui/notices.js';
+import { VersionSwitch } from '../ui/versionPicker.js';
+import { contentSet, retryContentSet } from '../content.js';
+import { DEFAULT_VERSION, lobbyVersion, offeredDifficulties, fallbackDifficulty, seasonOf, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
 export const MODE_TEXT = {
@@ -177,9 +199,24 @@ export function recentRooms() {
 }
 
 /** @param {string} code */
-export function rememberRoom(code) {
+export function rememberRoom(code, test = false) {
   if (!CODE_RE.test(code)) return;
-  savePref('recentRooms', [code, ...recentRooms().filter((c) => c !== code)].slice(0, 4));
+  const recent = [code, ...recentRooms().filter((c) => c !== code)].slice(0, 4);
+  const marks = loadPref('recentTestRooms', []);
+  savePref('recentTestRooms', recent.filter(c => c === code ? test : Array.isArray(marks) && marks.includes(c)));
+  savePref('recentRooms', recent);
+}
+
+export async function joinKnown(type, key) {
+  try { return await net.request(type, { code: key }); } catch (err) {
+    if (err?.code !== ERR.TEST_CONFIRM) throw err;
+    const text = type === 'room.spectate'
+      ? t('这是测试房间，不计入任何记录。确认观战？')
+      : t('这是测试房间，不计入任何记录。确认加入？');
+    if (await confirmDialog({ title: t('测试'), text })) {
+      return net.request(type, { code: key, testAck: true });
+    }
+  }
 }
 
 const FALLBACK_TIPS = [
@@ -289,7 +326,7 @@ function ProtocolPage(props) {
 }
 
 /** Full secondary page with the fork's visual treatment and this branch's protocol. */
-export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{} }) {
+export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{}, difficulties = DIFFICULTIES, soloTime = null, loading = false }) {
   const info = difficultyInfo(roomMode, difficulty);
   return html`<main ref=${pageRef} class="screen protocol-screen" aria-label=${`${t(card.name)} · ${t('选择模拟协议')}`}>
     <${PageHeader} onBack=${onClose} backTitle=${t('返回大厅')}
@@ -305,13 +342,13 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
           <div class="proto-controls">
           <section class="prep-setting proto-difficulty" aria-label=${t('模拟难度')}><div class="prep-setting__title"><${Icon} name="rook" /><span>${t('模拟难度')}</span><${MicroLabel}>DIFFICULTY<//></div>
           <div class="proto-list" aria-label=${t('模拟难度')}>
-            ${DIFFICULTIES.map((d) => html`<${ProtoCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} disabled=${!!queue || !!busy} onSelect=${onDifficulty} />`)}
+            ${difficulties.map((d) => html`<${ProtoCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} disabled=${!!queue || !!busy} onSelect=${onDifficulty} />`)}
           </div>
           <section class="proto-details" aria-live="polite"><strong>${info.desc}</strong>
             <div class="proto-facts"><span>${t('共')} <b class="num">${info.rounds}</b> ${tc('rounds','回合')}${info.hidden?t(' + 隐秘核心'):''}</span><span>${info.stageNote}</span></div>
             <ul>${info.effects.map(e=>html`<li key=${e}>${e}</li>`)}</ul>
           </section></section>
-          <div class="proto-settings"><${RoomPacingControls} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${!!queue || !!busy} />
+          <div class="proto-settings"><${RoomPacingControls} soloControl=${soloTime ? html`<${Button} size="sm" variant="secondary" icon=${soloTime.on ? 'check' : null} role="switch" data-testid="solo-unlimited" aria-checked=${soloTime.on} disabled=${!!queue || !!busy} onClick=${() => soloTime.onToggle(!soloTime.on)}>${t('不限时')}<//>` : null} soloTimeLabel=${soloTime?.text} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${!!queue || !!busy} />
             ${roomMode!=='match'?html`<p class="proto-plugin-note">${t('玩法：原版规则。创建后，房主可在模拟配置中选择插件。')}</p>`:null}
           </div>
           </div>
@@ -319,7 +356,7 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
             ${queue ? html`<${MatchQueuePanel} queue=${queue} onCancel=${onCancel} />` : html`
               <p class="proto-hint">${!online ? t('正在连接服务器…') : roomMode === 'match' ? t('仅匹配真人 · 满四人后开始') : roomMode === 'solo' ? t('创建后即可开始模拟') : t('创建后可邀请好友或匹配队友')}</p>
               <${Button} class="proto-start" variant="primary" size="lg" loading=${!!busy}
-                disabled=${!online || !!busy || (roomMode==='coop' && !validPrepChoice(prepChoice))} onClick=${onStart}>
+                disabled=${!online || loading || !!busy || (roomMode==='coop' && !validPrepChoice(prepChoice))} onClick=${onStart}>
                 ${roomMode === 'solo' ? t('开始独立模拟') : roomMode === 'match' ? t('开始同盟匹配') : t('创建同盟')}
               <//>`}
           </div>
@@ -327,6 +364,168 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
       </div>
     </div>
   </main>`;
+}
+
+/** The 成就统计 label's badge (original drawing). */
+function AchBadge({ class: cls }) {
+  return html`<svg class=${cls} viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 3h14v12l-7 6-7-6zm4 5v2h2V8zm4 0v2h2V8zm-4.5 4.2a4.5 4.5 0 0 0 7 0l-1.3-1a3 3 0 0 1-4.4 0z" fill-rule="evenodd" /></svg>`;
+}
+
+/**
+ * 成就统计 on short screens (≤ 520 px tall, a phone in landscape), where the left column with the card gives way: a plate
+ * under S.W.E.E.P. and 干员调配 that opens the same window, so the lobby keeps its statistics entry there too [ASSUMED: a
+ * remake layout for small screens; css/screens/lobby.css shows it only then].
+ */
+function AchievementPlate({ onOpen }) {
+  return html`<button type="button" class="hub-plate hub-plate--ach" onClick=${onOpen} title=${t('成就统计（本机记录）')}>
+    <span class="hub-plate__glyph"><${AchBadge} /></span>
+    <span class="hub-plate__label">${t('成就统计')}</span>
+  </button>`;
+}
+
+/** A tile of the hub's left column (密钥加入). */
+function HubTile({ icon, label, en, onClick, class: cls = '' }) {
+  return html`<button type="button" class=${`hub-tile ${cls}`} onClick=${onClick}>
+    <span class="hub-tile__icon" aria-hidden="true"><${Icon} name=${icon} /></span>
+    <span class="hub-tile__text"><span class="hub-tile__label">${label}</span><span class="hub-tile__en">${en}</span></span>
+  </button>`;
+}
+
+/** Crossed blades in a hexagon: the S.W.E.E.P. plate's glyph (original drawing). */
+function SweepGlyph() {
+  return html`<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+    <path d="M16 2.5 27.7 9.2v13.6L16 29.5 4.3 22.8V9.2z" fill="none" stroke="currentColor" stroke-width="1.5" />
+    <path d="M9 9l12.5 12.5M23 9 10.5 21.5" stroke="currentColor" stroke-width="2.2" />
+    <path d="M19.2 23.8l4.6-4.6M8.2 19.2l4.6 4.6M21.6 21.6l2.2 2.2M10.4 21.6l-2.2 2.2" stroke="currentColor" stroke-width="1.8" />
+  </svg>`;
+}
+
+/** S.W.E.E.P.报告: a light plate with bracket marks; opens the report (screens/sweep.js). */
+function SweepPlate({ onClick }) {
+  return html`<button type="button" class="hub-plate hub-plate--sweep lobby-sweep" onClick=${onClick} title=${t('S.W.E.E.P.报告：盟约、策略与敌方资料')}>
+    <span class="hub-plate__glyph"><${SweepGlyph} /></span>
+    <span class="hub-plate__label">${t('S.W.E.E.P.报告')}</span>
+    <span class="hub-plate__tag">REPORT</span>
+  </button>`;
+}
+
+/**
+ * The event entry's backdrop: the official glow (`entry/entry_bkg_01`) and Rhodes Island hologram (`entry/entry_bkg_02`)
+ * over a dark field with a faint grid; without the art pack only the field and the grid.
+ */
+
+
+/** The radar rings behind the emblem (original drawing; the sweep stops under 减少动态效果). */
+
+
+/** The emblem (official `entry/season_logo`, the title's dot emblem without the art pack) in its radar, and the title. */
+function HubTitle() {
+  // a title in an alphabetic script (English …) is set like the title screen's: no wordmark above it, ": " between
+  const alphabetic = scriptOf(t('卫戍协议')) === 'alphabetic';
+  // another official version (DESIGN §35.23): its name under the title
+  const version = useStore(lobbyVersion);
+  return html`<div class="hub-center">
+    <div class="hub-center__mark"><${HubRadar} /><${Sprite} k="entry/season_logo" class="hub-center__logo" fallback=${html`<${Emblem} />`} /></div>
+    ${alphabetic ? null : html`<div class="hub-center__en">STRONGHOLD PROTOCOL <b>ALLIANCE</b></div>`}
+    <h1 class=${`hub-center__title${alphabetic ? ' hub-center__title--latin' : ''}`}>${t('卫戍协议')}<span>${alphabetic ? ': ' : '：'}</span><em>${t('盟约')}</em></h1>
+    ${version !== DEFAULT_VERSION ? html`<div class="hub-center__ver" data-testid="hub-version">· ${versionLabel(version)}</div>` : null}
+  </div>`;
+}
+
+/** File names of the official 选择模拟协议 pictures (assets `modeChoice/<name>_rhodes_island`). */
+const PROTOCOL_ART = { FUNNY: 'funny', NORMAL: 'normal', HARD: 'hard', ABYSS: 'abyss' };
+
+/** The selected difficulty's scene (ui/protocolScene.js): the official picture on the drawn grid, squares and cable. */
+function ProtocolArt({ difficulty }) {
+  useData('assets');
+  return html`<${ProtocolScene} difficulty=${difficulty} art=${uiUrl(data.get('assets'), `modeChoice/${PROTOCOL_ART[difficulty]}_rhodes_island`)} />`;
+}
+
+/** The ‹ + dotted rook plate at the top left of the full-screen dialogs: back to the hub (or the dialog below). */
+function BackPlate({ onClick, class: cls = '' }) {
+  return html`<button type="button" class=${`proto-back ${cls}`} onClick=${onClick} title=${t('返回')} aria-label=${t('返回')}>
+    <${Icon} name="chevronLeft" /><span class="proto-back__home"><${Icon} name="rook" /></span>
+  </button>`;
+}
+
+/**
+ * 选择模拟协议 (laid out after the event's second screen): full screen — the selected difficulty's official picture and
+ * brief at the left, the four difficulty cards down the right (the chosen one slides out with the 已选定 stamp), the hint
+ * and 开始独立模拟 below them (with the test-room box while the server runs in test mode). The project's Modal (focus
+ * trap, Esc, focus restored) styled to fill the screen. The lobby opens it for 独立模拟 only (a co-op room is created
+ * from 选择同盟方式 and its difficulty changed in the room); the room (screens/room.js) opens it with `action` / `hint`
+ * replacing the button's label and the hint (the host's 确认), or `readOnly` — the cards shown, not chosen, and no
+ * button (the other doctors: the host chooses).
+ */
+
+
+/**
+ * 选择同盟方式 (laid out after the event's screen after 同盟模拟, research 06 §3.2): full screen — a radar at the left with
+ * 玩法说明 under it, at the right the 创建同盟 card (creates the room at once at `difficulty`, the remembered one, which the
+ * host changes in the room; the test-room box under it while the server runs in test mode; AI teammates are added in the
+ * room) and the 加入同盟 card (the key field — the project's TextField — with 观战, the recent keys that only fill it,
+ * 加入同盟). The project's Modal styled to fill the screen. `short`: the screen is at most 520 px tall (the lobby's
+ * useMediaQuery(SHORT_SCREEN_QUERY)) — the key field, beside 观战 in a column about 300 px wide, is about 150 px there,
+ * so its placeholder is the field's name alone (同盟密钥) instead of the whole 输入同盟密钥 / 粘贴邀请链接, which ran under
+ * 观战 at 特大 in English and Japanese (§35.18's leftover); the line under the field still tells where a key comes from.
+ * On a taller screen the field's name stands in too wherever the whole sentence does not fit the field (TextField
+ * `placeholderShort`, by the field's width: English and Japanese at 特大 on every desktop, the default Chinese at 特大
+ * in a 1024 px window — it ended in an ellipsis there).
+ */
+export function AllianceSelect({ onClose, onCreate, difficulty = 'FUNNY', code, onCode, codeOk, online, busy, onJoin, onSpectate, recent, marks, focusKey,
+  testMode = false, asTest = false, onTest = () => {}, short = false }) {
+  const diffName = DIFFICULTY_NAMES[difficulty] ? t(DIFFICULTY_NAMES[difficulty]) : '';
+  return html`<${Modal} open=${true} onClose=${onClose} class="ally" veilClass="proto-veil">
+    <div class="ally__body">
+      <div class="proto__bg ally__bg" aria-hidden="true"></div>
+      <header class="proto-top">
+        <${BackPlate} onClick=${onClose} class="ally__back" />
+        <div class="proto-title">
+          <h2 class="modal__title">${t('选择同盟方式')}</h2>
+          <span class="proto-title__mode ally__mode"><${Icon} name="users" />${t('同盟模拟')}<i>ALLIANCE SIMULATION</i></span>
+        </div>
+      </header>
+      <div class="proto-body ally-body">
+        <section class="ally-stage">
+          <${RadarScene} />
+          <button type="button" class="ally-guide" onClick=${() => openGuide(0)}><span class="ally-guide__icon"><${Icon} name="book" /></span>${t('玩法说明')}</button>
+        </section>
+        <section class="ally-side">
+          <button type="button" class="ally-card ally-card--create ally-create" data-testid="alliance-create" data-difficulty=${difficulty}
+              disabled=${!online || busy === 'create'} aria-busy=${busy === 'create' ? 'true' : 'false'} onClick=${() => onCreate()}>
+            <span class="ally-card__art"><${CreateArt} /></span>
+            <span class="ally-card__bar"><span class="ally-card__icon">${busy === 'create' ? html`<${Spinner} size="sm" />` : html`<${Icon} name="plus" />`}</span><span class="ally-card__name">${t('创建同盟')}</span>
+              <small>${online ? t('难度：{name}（可在同盟内更改）', { name: diffName }) : t('正在连接服务器…')}</small></span>
+          </button>
+          ${testMode ? html`<label class="create-box__test ally-test" data-testid="create-test">
+            <input type="checkbox" checked=${asTest} onChange=${(e) => onTest(e.target.checked)} />
+            <span>${t('测试房间')}</span>
+            <em class="t-dim">${t('不计入战绩。房间会标明「测试」，只有房主能使用测试指令。')}</em>
+          </label>` : null}
+          <div class="ally-card ally-card--join ally-join join-row">
+            <span class="ally-card__art"><${JoinArt} /></span>
+            <div class="ally-key">
+              <${TextField} class="ally-key__field" size="key" icon="key" value=${code} transform=${normalizeCode} onInput=${onCode} onEnter=${() => onJoin()}
+                placeholder=${short ? t('同盟密钥') : t('输入同盟密钥 / 粘贴邀请链接')} placeholderShort=${t('同盟密钥')} ariaLabel=${t('同盟密钥')}
+                modalFocus=${!!focusKey} />
+              <button type="button" class="ally-key__spec join-spectate" disabled=${!codeOk || !online || busy === 'spectate'} onClick=${() => onSpectate()}
+                title=${t('以观战者身份进入：不占博士席位，只能观看（每个同盟最多 {MAX_SPECTATORS} 名，模拟进行中也可进入）', { MAX_SPECTATORS })}>
+                ${busy === 'spectate' ? html`<${Spinner} size="sm" />` : html`<${Icon} name="eye" />`}${t('观战')}</button>
+            </div>
+            <span class="ally-recent join-foot">
+              ${recent.length ? html`<span class="t-lo">${t('最近的同盟')}</span>
+                ${recent.map((c) => html`<button key=${c} type="button" class="code-chip num" title=${t('填入密钥（不会直接加入）')}
+                  onClick=${() => onCode(c)}>${c}${Array.isArray(marks) && marks.includes(c) ? html` <${TestMark} />` : null}</button>`)}`
+                : html`<span class="t-dim">${t('向同伴索取 {ROOM_CODE_LEN} 位同盟密钥，或直接打开邀请链接', { ROOM_CODE_LEN })}</span>`}
+            </span>
+            <button type="button" class="ally-card__bar ally-card__bar--join" disabled=${!codeOk || !online || busy === 'join'} onClick=${() => onJoin()}>
+              <span class="ally-card__icon"><${Icon} name="users" /></span>${t('加入同盟')}${busy === 'join' ? html`<${Spinner} size="sm" />` : null}
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  <//>`;
 }
 
 /** Lobby screen component. */
@@ -376,18 +575,41 @@ export function LobbyScreen() {
     });
     return () => { current = false; };
   }, [panel, sweepModule]);
+  // 「不限时」 for the next timed solo (DESIGN §35.23.10; default off). The room's 模拟设置 is the authority once the
+  // room exists; this pref is what the lobby card and the create message say before that.
+  const [soloFree, setSoloFree] = useState(() => loadPref('lobby.soloUnlimited', false) === true);
   const [code, setCode] = useState('');
+  const [asTest, setAsTest] = useState(false);
+  const testMode = useStore((s) => s.testMode === true);
   const [busy, setBusy] = useState(null);
   const [recent] = useState(recentRooms);
+  const marks = loadPref('recentTestRooms', []);
+  const [achOpen, setAchOpen] = useState(false);
+  const [coarse] = useState(() => detectFeatures().coarse);
+  const shortScreen = useMediaQuery(SHORT_SCREEN_QUERY);
   const alive = useRef(true);
   const inFlight = useRef(false); // synchronous guard against double clicks (state updates are async)
   useEffect(() => () => { alive.current = false; }, []);
 
   const online = conn.status === 'online';
   const codeOk = CODE_RE.test(code);
+  // official versions (DESIGN §35.23): the lobby's version, the difficulties it offers and the one shown — the remembered
+  // one, or the server's fallback when the version lacks it (the pref is only overwritten when the player picks)
+  const versions = useStore((s) => s.versions);
+  const version = useStore(lobbyVersion);
+  const versionLoading = useStore((c) => version !== DEFAULT_VERSION && (c.kind !== 'version' || c.version !== version || c.status !== 'ready'), Object.is, contentSet);
+  // its set failed to load or its check (the chip's 重试 sits under the modal): 选择模拟协议 says so and offers 重试 too
+  const versionFailed = useStore((c) => version !== DEFAULT_VERSION && c.kind === 'version' && c.version === version && c.status === 'failed', Object.is, contentSet);
+  const cfg = getConfig();
+  // null while that version's data is not on screen: the card states no time rule and the dialog hides the switch
+  const soloTimed = soloTimedOf(versionLoading ? null : cfg, version);
+  const solo = offeredDifficulties(versionLoading ? null : cfg, 'solo');
+  const coop = offeredDifficulties(versionLoading ? null : cfg, 'coop');
+  const shownSolo = fallbackDifficulty(solo, difficulty);
+  const shownCoop = fallbackDifficulty(coop, difficulty);
 
-  const pickMode = (m) => { setRoomMode(m); savePref('lobby.mode', m); };
   const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
+  const setSoloFreePref = (on) => { const next = on === true; setSoloFree(next); savePref('lobby.soloUnlimited', next); };
 
   const run = async (kind, fn) => {
     if (inFlight.current) return;
@@ -401,7 +623,7 @@ export function LobbyScreen() {
   };
   const create = () => {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
-    return run('create', () => net.request('room.create', { mode: roomMode, difficulty, prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
   };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
@@ -410,14 +632,14 @@ export function LobbyScreen() {
     // `undefined` — codeArg keeps an event target out of the key and falls back to the input field
     const k = codeArg(c, code);
     if (!k) { toast(t('同盟密钥为 {ROOM_CODE_LEN} 位字母或数字', { ROOM_CODE_LEN }), 'warn'); return; }
-    run('join', () => net.request('room.join', { code: k }));
+    run('join', () => joinKnown('room.join', k));
   };
   // a spectator seat: no player seat taken, nothing to do but watch (also a match already running)
   const spectate = (c = code) => {
     // same guard as join: `onClick=${spectate}` passes the click event, not a code
     const k = codeArg(c, code);
     if (!k) { toast(t('同盟密钥为 {ROOM_CODE_LEN} 位字母或数字', { ROOM_CODE_LEN }), 'warn'); return; }
-    run('spectate', () => net.request('room.spectate', { code: k }).catch((err) => {
+    run('spectate', () => joinKnown('room.spectate', k).catch((err) => {
       // Clearer than the bare ERR_TEXT: the usual cause is a code that is not the host's (a remembered one from an
       // earlier room, or another machine's) — the server can only answer "no such room".
       if (err?.code === ERR.ROOM_NOT_FOUND) {
@@ -439,17 +661,17 @@ export function LobbyScreen() {
   if (optionsOpen) return html`<${RoomOptionsPage} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${setPrepChoice}
     difficulty=${difficulty} onDifficultyChange=${pickDifficulty} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
   const card = MODE_CARDS.find((c) => c.id === roomMode) || MODE_CARDS[1];
-  const openMode = (mode) => { pickMode(mode); setPanel('protocol'); };
+  const openMode = (mode) => { setRoomMode(mode); savePref('lobby.mode', mode); setPanel('protocol'); };
   // Replace the lobby instead of covering an interactive lobby with a dialog/backdrop.
   if (panel === 'sweep') return sweepModule ? html`<${sweepModule.SweepReport} onClose=${() => setPanel(null)} />`
     : html`<${SweepLoadingPage} onClose=${() => setPanel(null)} />`;
-  if (panel === 'protocol') return html`<${ProtocolPage} card=${card} roomMode=${roomMode} difficulty=${difficulty} onDifficulty=${pickDifficulty}
+  if (panel === 'protocol') return html`<${ProtocolPage} card=${card} roomMode=${roomMode} difficulty=${roomMode === 'solo' ? shownSolo : shownCoop} onDifficulty=${pickDifficulty}
     online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
-    queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} />`;
+    difficulties=${roomMode === 'solo' ? solo : coop} loading=${versionLoading} soloTime=${roomMode === 'solo' && soloTimed ? { on: soloFree, onToggle: setSoloFreePref, text:t(soloTimeMsgid('brief',{timed:soloTimed,unlimited:soloFree})) } : null} queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} />`;
   return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
     <${HubBackdrop} bg=${bg} />
     <${PageHeader} onBack=${backToTitle} backTitle=${t('返回标题')} title=${t('开始模拟')} micro="OPERATIONS HUB" />
-    <div class="hub-recover"><${ResumeMatchButton} /></div>
+    <div class="hub-recover"><${VersionSwitch} /><${ResumeMatchButton} /></div>
     <main class="hub-stage screen__scroll">
       <div class="hub-center" aria-hidden="true">
         <div class="hub-center__mark"><${HubRadar} bg=${bg} /><${Emblem} /></div>

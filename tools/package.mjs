@@ -1,4 +1,8 @@
-#!/usr/bin/env node
+import { compareVersions, diffBases, manifestText, readBase, updateText } from './package-update.mjs';
+import {
+  APPLIED_FILE, MANIFEST_FILE, UPDATE_FILE, affectsRuntime, digestFile, inManifest, isSetupArt, listedArtFiles,
+  parseManifest, parseUpdate, pathProblem, removalProblem,
+} from '../server/update.js';
 // tools/package.mjs — the two player release zips (docs/DEPLOY.md §7; README「方式一」says which one to pick).
 //
 //   npm run package        → Stronghold-Protocol-v<version>.zip       full: what runs the game + the game art
@@ -21,7 +25,7 @@
 // THIRD-PARTY-NOTICES.md, README.md, CHANGELOG.md, the player and plugin author docs. `npm ci --omit=dev` in the
 // stage adds the production node_modules and (postinstall) public/vendor. The full zip adds the git-ignored art: the
 // files data/assets.json lists, public/fonts, and the local-client extraction (public/assets/local/,
-// data/local-assets.json) when present, including the 0.2.5 battlefield scenes under public/assets/local/scene/
+// data/local-assets.json) when present, including the battlefield scenes under public/assets/local/scene/
 // when this machine extracted them. Missing scenes are not an error: the board keeps the metal tiles, and the
 // summary says so. Nothing else on disk ships, so art the data no longer lists (焰狐龙梓兰, left out of
 // 自选 in 0.2.0, or files of an old mapping) never ships even when this machine still has it. FULL_ZIP_JP_VOICE (below)
@@ -30,6 +34,16 @@
 // Left out: test/ except test/helpers/battleHarness.js, the maintainer tools (build-data, golden, botbench, i18n, check-imports, this file …),
 // scripts/make-windows-bundle.mjs, the other docs (DESIGN, SIM, the research notes, docs/img …), public/dev/, handoff/,
 // .github/, types/, lint / editor / Docker files (Docker builds from a git clone).
+// Also left out, by the maintainer's decision of 2026-10-23 (§35.66): the external-AI / LLM integration. The explicit
+// list is LLM_RELEASE_EXCLUDE in server/match/llmRelease.js (re-exported below). A release tree gets
+// server/release-without-llm and the server then ignores external-AI settings. The #673 framework and the built-in
+// bots stay, including server/match/aiPlan.js and server/match/aiEconomy.js (no host ships with them).
+//   server/match/externalAI.js, server/match/externalConfig.js, server/match/aiDigest.js
+//   server/ai/transport.js, knowledge.js, playbook.js, strategy.js, strategy-community.js,
+//     community-candidates.js, cycle-candidates.js, cycles.js
+//   docs/AI-STRATEGY.md, docs/EXTERNAL_AI.md, docs/EXTERNAL_AI_ZH.md
+//   tools/ai/   (the example agent and its knowledge / context / plan / playbook tools)
+//   test/fixtures/llm-advisor.json
 //
 // Checks, all of them in --dry-run too (which writes nothing): the refusal list below; every relative import of a
 // shipped module and every `node <file>` of the player npm scripts resolves to a shipped file; a full zip has every file
@@ -50,21 +64,6 @@
 // The account name comes from the OS at run time (never written in the repository): SP_PACKAGE_SCAN_USER=0 skips it
 // (a name that is a common word), SP_PACKAGE_SCAN_NAMES=a,b adds more names to refuse.
 //
-// Every zip carries MANIFEST.json at its root (written after npm ci; server/update.js): the size and sha256 of each
-// shipped file except the art setup manages (public/assets/, public/fonts/, data/assets.json, data/local-assets.json) —
-// what npm run doctor and an update's boot step verify; the full, lite and update zips of one version list the same.
-//
-// --update builds the full stage as above (npm ci and all) in <out>/…-update/.full/, reads every base — an earlier
-// release's full zip or the folder it was extracted to (tools/package-update.mjs: older than this version, not a lite or
-// update zip, each version once) — and ships each file that is new or differs (size + sha256) from at least one base,
-// plus MANIFEST.json and UPDATE.json (the base versions, what ships, and `removed`: the files a base shipped that this
-// version does not, with the bytes each base had). The update stage gets the same checks (the refusal list, the
-// personal-info scan; it must hold exactly that) before it is zipped. --dry-run reads and checks the bases; the
-// comparison needs the built stage.
-//
-// --out defaults to <tmp>/stronghold-protocol-release and must be outside the repository. --no-install skips npm ci
-// (no node_modules, no public/vendor: a test build). Zipping needs `zip`, 7-Zip or a bsdtar `tar` (e.g. Windows 10+).
-
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -73,11 +72,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findSpecifiers } from './check-imports.mjs';
 import { writePackIndex } from './packs.mjs';
 
-import { compareVersions, diffBases, manifestText, readBase, updateText } from './package-update.mjs';
+// The one list of LLM paths a release must not contain, and the marker a release tree carries (§35.66).
 import {
-  APPLIED_FILE, MANIFEST_FILE, UPDATE_FILE, affectsRuntime, digestFile, inManifest, isSetupArt, listedArtFiles,
-  parseManifest, parseUpdate, pathProblem, removalProblem,
-} from '../server/update.js';
+  LLM_RELEASE_EXCLUDE, LLM_RELEASE_MARKER, LLM_RELEASE_MARKER_TEXT, isLlmReleasePath, omitLlmFromRelease,
+} from '../server/match/llmRelease.js';
+export { LLM_RELEASE_EXCLUDE, LLM_RELEASE_MARKER, LLM_RELEASE_MARKER_TEXT, isLlmReleasePath, omitLlmFromRelease };
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** The one folder inside both zips (DEPLOY §1.1: "解压后把里面的 Stronghold-Protocol 文件夹放到…"). */
@@ -87,7 +86,7 @@ export const FOLDER = 'Stronghold-Protocol';
 export const ROOT_FILES = ['package.json', 'package-lock.json', 'LICENSE', 'NOTICE.md', 'THIRD-PARTY-NOTICES.md', 'README.md', 'CHANGELOG.md'];
 /** The player docs. */
 export const PLAYER_DOCS = ['docs/PLAYING.md', 'docs/DEPLOY.md', 'docs/PLUGINS.md', 'docs/PLUGIN-GUIDE.md',
-  'docs/PLUGIN-DSL.md', 'docs/PLUGIN-API.md', 'docs/plugin-catalog.example.json'];
+  'docs/PLUGIN-DSL.md', 'docs/PLUGIN-API.md', 'docs/SKINS.md', 'docs/plugin-catalog.example.json'];
 /** The author harness has no test-only dependencies; the rest of test/ stays out. */
 export const AUTHOR_TEST_FILES = ['test/helpers/battleHarness.js'];
 /** Only these repository-owned plugin resources ship, even if an owner's plugin was accidentally tracked. */
@@ -103,7 +102,7 @@ export const PLAYER_TOOLS = ['tools/crop-board-atlas.mjs', 'tools/doctor.mjs', '
 export const PLAYER_TOOL_DIRS = ['tools/assets/', 'tools/local-extract/'];
 /** Whole runtime directories (their tracked files). */
 export const RUNTIME_DIRS = ['server/', 'shared/', 'data/', 'public/', 'packs/', 'schemas/'];
-/** Written into the stage, never taken from the checkout: the pack index of the shipped packs. */
+/** Written into the stage, never taken from the checkout: the pack index of the shipped packs, and the release marker. */
 export const GENERATED_PACK_INDEX = 'packs/index.json';
 /** Whether shipped files include a content pack (then the stage gets GENERATED_PACK_INDEX). @param {string[]} files */
 export const shipsPacks = (files) => files.some((f) => /^public\/i18n\/[^/]+\.json$/.test(f) || /^packs\/[^/]+\/pack\.json$/.test(f));
@@ -139,7 +138,7 @@ export const JP_VOICE_DIR = 'public/assets/audio/voice/jp/';
 export const FULL_ZIP_OPTIONAL_VOICE = true;
 /** Where those dubs lie (plan.mjs voiceAlt / nativeVoiceAlt). */
 export const OPTIONAL_VOICE_DIRS = Object.freeze(['public/assets/audio/voice/en/', 'public/assets/audio/voice/kr/', 'public/assets/audio/voice/native/']);
-/** Extracted official battlefield scenes (0.2.5 asset pack). Already ignored with public/assets/. */
+/** Extracted official battlefield scenes (public/assets/local/scene/). Already ignored with public/assets/. */
 const SCENE_ART_PREFIX = 'public/assets/local/scene/';
 /**
  * The official battle effects (tools/local-extract/fx.py, DESIGN §33: public/assets/local/fx/ and their file list
@@ -193,6 +192,8 @@ export function isJunk(rel) {
 export function isPlayerFile(rel) {
   const p = posixRel(rel);
   if (!p || isRefused(p) || isJunk(p) || p === 'data/local-assets.json' || p === 'data/local-fx.json' || p === GENERATED_PACK_INDEX) return false;
+  // The marker is generated into the stage. The LLM paths stay on dev even if a later allowlist would have taken them.
+  if (p === LLM_RELEASE_MARKER || isLlmReleasePath(p)) return false;
   if (NOT_TRACKED_SHIP.some((d) => p.startsWith(d))) return false;
   if (isPluginResource(p) || AUTHOR_TEST_FILES.includes(p)) return true;
   if (RUNTIME_DIRS.some((d) => p.startsWith(d)) || PLAYER_TOOL_DIRS.some((d) => p.startsWith(d))) return true;
@@ -280,7 +281,7 @@ export function manifestFiles(manifest) {
  * that nothing lists (left out); `held`: listed files the zip holds back on purpose — the JP voice dub when `jpVoice`
  * (FULL_ZIP_JP_VOICE) is off, the English / Korean / own-language dubs when `optionalVoice` (FULL_ZIP_OPTIONAL_VOICE)
  * is off: neither shipped nor missing, and never deleted by an update.
- * `scenes`: the files under public/assets/local/scene/ (the 0.2.5 battlefield scenes). They are also in `files`.
+ * `scenes`: the files under public/assets/local/scene/ (one folder per battlefield, plus the shared scene/tex). They are also in `files`.
  * A lite plan and a machine that has not extracted them return `scenes: []`; packaging still succeeds.
  */
 export function artPlan(root, { lite = false, jpVoice = FULL_ZIP_JP_VOICE, optionalVoice = FULL_ZIP_OPTIONAL_VOICE, fx = FULL_ZIP_FX } = {}) {
@@ -545,7 +546,7 @@ export function plan(root, opts = {}) {
   const art = artPlan(root, { lite, jpVoice: opts.jpVoice ?? FULL_ZIP_JP_VOICE, optionalVoice: opts.optionalVoice ?? FULL_ZIP_OPTIONAL_VOICE });
   const pkg = readJson(path.join(root, 'package.json')) || {};
   const lock = readJson(path.join(root, 'package-lock.json')) || {};
-  const generated = shipsPacks(keep) ? [GENERATED_PACK_INDEX] : [];
+  const generated = shipsPacks(keep) ? [GENERATED_PACK_INDEX, LLM_RELEASE_MARKER] : [LLM_RELEASE_MARKER];
   const clientBuild = isFile(path.join(root, 'public', 'build', 'index.html')) ? listTree(root, 'public/build') : [];
   const files = [...keep, ...art.files, ...clientBuild, ...generated];
   const problems = [];
@@ -608,12 +609,17 @@ export function formatSummary(p) {
     lines.push(`art: ${p.art.length} files, ${MB(p.bytes.art)} (data/assets.json, public/fonts${p.localArt ? ', public/assets/local + data/local-assets.json' : '; no local-client art here'})`);
     const sceneFiles = p.scenes?.files;
     if (sceneFiles?.length) {
-      lines.push(`battlefield scenes: ${sceneFiles.length} files, ${MB(p.scenes.bytes || 0)} (0.2.5 asset pack, public/assets/local/scene; the metal board is the fallback when a stage has none)`);
+      lines.push(`battlefield scenes: ${sceneFiles.length} files, ${MB(p.scenes.bytes || 0)} (public/assets/local/scene; the metal board is the fallback when a stage has none)`);
     } else if (p.scenes) {
       lines.push('battlefield scenes: none on this machine (the full bundle ships the metal board; fetch_scenes.py then extract.py --only scene before packaging to include the 11 official scenes)');
     }
   }
-  if (p.generated?.length) lines.push(`generated: ${p.generated.join(', ')} (the pack index of the shipped packs, for a static host)`);
+  if (p.generated?.length) {
+    const bits = [];
+    if (p.generated.includes(GENERATED_PACK_INDEX)) bits.push('the pack index of the shipped packs, for a static host');
+    if (p.generated.includes(LLM_RELEASE_MARKER)) bits.push('the release marker that keeps external AI off the package');
+    lines.push(`generated: ${p.generated.join(', ')} (${bits.join('; ')})`);
+  }
   lines.push(`production node_modules: ${MB(p.bytes.modules)} · public/vendor: ${MB(p.bytes.vendor)} (npm ci --omit=dev and its postinstall)`);
   lines.push(`uncompressed: ${MB(p.bytes.total)}; a 0.1.x whole-tree copy would add ${MB(p.bytes.leftOut)}`);
   const groups = Object.entries(p.dropped).sort((a, b) => b[1].bytes - a[1].bytes);
@@ -635,22 +641,33 @@ export function packageOutIsUnsafe(out, root = REPO) {
   return inside(r, o) || inside(o, r);
 }
 
+/** The first non-empty line of a tool's stderr: what it refused, before the usage hint tools print after it. */
+const errLine = (text) => String(text || '').trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean)[0] || '';
+
 /**
  * Zip `cwd`/`folder` (FOLDER unless named: the asset pack's folder) into `zipPath`: Info-ZIP `zip`, 7-Zip, else a bsdtar
  * `tar --format zip` (Windows 10+, macOS). bsdtar writes
  * the names in UTF-8 (flag bit 11) only when told: its default is the system code page, which loses a name it cannot
- * spell (卫戍 becomes ?? on Windows code page 1252) and leaves no UTF-8 copy for a reader.
+ * spell (卫戍 becomes ?? on Windows code page 1252) and leaves no UTF-8 copy for a reader. No third attempt without
+ * `--options`: that tar may write the zip with the names it could not spell, which no reader can undo.
+ *
+ * A tool that is installed but refuses this folder is not a missing tool, and the difference used to be invisible:
+ * both branches threw one sentence and dropped the tool's own words. The error now names every attempt with its exit
+ * status or errno and the line the tool printed (#840).
  */
 export function zipFolder(cwd, zipPath, folder = FOLDER) {
   // deflate everything: storing PNG / MP3 as they are made the full zip 8.5 MB larger and saved no real time
   // Capture diagnostics so an unavailable tool and a real archive failure are distinguishable.
   const options = { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 1024 * 1024 };
+  fs.rmSync(zipPath, { force: true });
   const z = spawnSync('zip', ['-q', '-r', '-X', zipPath, folder], options);
   if (!z.error && z.status === 0) return;
   // Some Windows system bsdtar builds crash on non-ASCII paths (0xC0000005). Prefer 7-Zip when available.
   const installed = process.platform === 'win32' ? path.join(process.env.ProgramFiles || 'C:\\Program Files', '7-Zip', '7z.exe') : null;
+  fs.rmSync(zipPath, { force: true });
   const s = spawnSync(installed && isFile(installed) ? installed : '7z', ['a', '-tzip', '-mm=Deflate', '-mcu=on', '-bd', '-y', zipPath, folder], options);
   if (!s.error && s.status === 0 && isFile(zipPath)) return;
+  fs.rmSync(zipPath, { force: true });
   const t = spawnSync('tar', ['-c', '--format', 'zip', '--options', 'zip:hdrcharset=UTF-8', '-f', zipPath, folder], options);
   if (t.error || t.status !== 0 || !isFile(zipPath)) {
     const diagnostic = (name, r) => `${name}: ${r.error?.message || `exit ${r.status ?? r.signal}`} ${String(r.stderr || '').trim()}`.trim();
@@ -658,9 +675,13 @@ export function zipFolder(cwd, zipPath, folder = FOLDER) {
   }
 }
 
-const isLib = (f) => f.startsWith('node_modules/') || f.startsWith('public/vendor/');
+const baseSkip = (rel) => rel === MANIFEST_FILE || rel === UPDATE_FILE || rel === APPLIED_FILE || (!isLib(rel) && (isRefused(rel) || isClutter(rel)));
+
 const META_FILES = new Set([MANIFEST_FILE, UPDATE_FILE]);
+
 const HASHES = /[0-9a-f]{64}/g;
+
+const isLib = (f) => f.startsWith('node_modules/') || f.startsWith('public/vendor/');
 
 /**
  * What is wrong with a stage before it is zipped: a file not planned, a planned one missing (node_modules and
@@ -688,11 +709,7 @@ export function stageProblems(stage, planned, { env = process.env, libsPlanned =
   return { staged, problems };
 }
 
-function digestOf(root, rel) {
-  const d = digestFile(path.join(root, rel));
-  if (!d) throw new Error(`cannot read ${path.join(root, rel)}`);
-  return d;
-}
+
 
 function copyInto(from, to, rel) {
   const src = path.join(from, rel);
@@ -749,7 +766,6 @@ const isClutter = (rel) => {
  * Never part of a base: the update files, and outside node_modules / public/vendor (npm's output, which the stage takes
  * as npm writes it) per-machine files (the refusal list) and OS clutter.
  */
-const baseSkip = (rel) => rel === MANIFEST_FILE || rel === UPDATE_FILE || rel === APPLIED_FILE || (!isLib(rel) && (isRefused(rel) || isClutter(rel)));
 
 /**
  * Read and check the bases of an update to `version`: each an earlier release's full zip or its extracted folder, older
@@ -757,99 +773,20 @@ const baseSkip = (rel) => rel === MANIFEST_FILE || rel === UPDATE_FILE || rel ==
  * @param {string[]} sources
  * @param {string} version
  */
-export function readBases(sources, version, { log = () => {} } = {}) {
-  const bases = [];
-  for (const src of sources) {
-    log(`reading base ${src} …`);
-    const b = readBase(src, { folder: FOLDER, skip: baseSkip });
-    if (b.update) throw new Error(`base ${src} is an update package: pass the earlier release's full zip`);
-    if (!b.art) throw new Error(`base ${src} has no game art (a lite zip?): pass the full zip, ${FOLDER}-v${b.version}.zip`);
-    if (compareVersions(b.version, version) >= 0) throw new Error(`base ${src} is v${b.version}, not older than v${version}`);
-    const twin = bases.find((x) => x.version === b.version);
-    if (twin) throw new Error(`two bases are v${b.version}: ${twin.source} and ${b.source}`);
-    bases.push(b);
-  }
-  return bases.sort((a, b) => compareVersions(a.version, b.version));
-}
+
 
 /**
  * The update zip: build the full stage (as `build` does) in <out>/<name>/.full/, compare every file with each base, copy
  * what is new or differs from at least one base into <out>/<name>/Stronghold-Protocol with MANIFEST.json and
  * UPDATE.json, check that stage and zip it as <name>.zip (<name> = Stronghold-Protocol-v<version>-update).
  */
-export function buildUpdate(root, p, bases, { out, install = true, force = false, keepStage = false, env = process.env, log = console.log } = {}) {
-  if (p.problems.length) throw new Error('refusing to build: the plan has problems (see the summary)');
-  if (p.lite) throw new Error('an update is compared from the full stage (no --lite)');
-  if (!bases.length) throw new Error('an update needs at least one base (--from)');
-  const dest = path.resolve(out);
-  if (packageOutIsUnsafe(dest, root)) throw new Error(`refusing to write into the repository or a parent of it: ${dest}`);
-  const name = `${FOLDER}-v${p.version}-update`;
-  const work = path.join(dest, name);
-  const full = path.join(work, '.full', FOLDER);
-  const stage = path.join(work, FOLDER);
-  const zipPath = path.join(dest, `${name}.zip`);
-  freshTargets([work, zipPath], force);
-  const staged = makeStage(root, p, full, { install, env, log });
-  log(`comparing ${staged.length} files with ${bases.map((b) => `v${b.version}`).join(', ')} …`);
-  const next = new Map();
-  for (const f of staged) if (f !== MANIFEST_FILE) next.set(f, digestOf(full, f));
-  // without npm ci the stage has no node_modules / public/vendor, and the update would delete the bases' copies
-  for (const lib of ['node_modules/', 'public/vendor/']) {
-    const inBase = bases.find((b) => [...b.files.keys()].some((f) => f.startsWith(lib)));
-    if (inBase && ![...next.keys()].some((f) => f.startsWith(lib))) {
-      throw new Error(`v${inBase.version} ships ${lib} but this build has none (--no-install?): an update built so would delete it from every install`);
-    }
-  }
-  // a path no update deletes (a per-machine name such as node_modules/x/.env.example) stays behind, named in the summary
-  // …nor a file this zip holds back on purpose (a voice dub with FULL_ZIP_JP_VOICE / FULL_ZIP_OPTIONAL_VOICE off): the manifest still lists it
-  const heldBack = new Set(p.held || []);
-  const diff = diffBases(next, bases, { removable: (rel) => !removalProblem(rel) && !heldBack.has(rel) });
-  for (const rel of diff.left) {
-    const bad = pathProblem(rel);
-    if (bad) throw new Error(`a base ships ${rel}, which is ${bad}`);
-  }
-  for (const rel of diff.ship) copyInto(full, stage, rel);
-  copyInto(full, stage, MANIFEST_FILE);
-  const update = { app: p.version, from: bases.map((b) => b.version), files: new Map(diff.ship.map((f) => [f, next.get(f)])), removed: diff.removed };
-  fs.writeFileSync(path.join(stage, UPDATE_FILE), updateText(update));
-  // what the player's server will read back
-  parseUpdate(fs.readFileSync(path.join(stage, UPDATE_FILE), 'utf8'));
-  parseManifest(fs.readFileSync(path.join(stage, MANIFEST_FILE), 'utf8'));
-  const { staged: held, problems } = stageProblems(stage, new Set([...diff.ship, MANIFEST_FILE, UPDATE_FILE]), { env, libsPlanned: true });
-  if (problems.length) throw new Error(`refusing to zip ${stage}:\n${problems.map((x) => `  ${x}`).join('\n')}`);
-  log(`zipping ${held.length} files (${MB(sumBytes(stage, held))}) → ${zipPath}`);
-  zipFolder(work, zipPath);
-  if (!keepStage) fs.rmSync(work, { recursive: true, force: true });
-  return {
-    zipPath, zipBytes: fileBytes(zipPath), files: held.length, diff, bytes: diff.ship.reduce((n, f) => n + next.get(f).size, 0),
-    stage: keepStage ? stage : null, full: keepStage ? full : null,
-  };
-}
+
 
 /** The bases as the summary lists them. */
-export function formatBases(bases) {
-  return bases.map((b) => `base: v${b.version} · ${b.files.size} files (${b.art} art) · ${b.source}\n`).join('');
-}
+
 
 /** What an update ships, by kind, and what it removes. */
-export function formatUpdate(r, version) {
-  const kinds = { 'code / data': 0, node_modules: 0, 'public/vendor': 0, art: 0, 'docs / scripts / tools': 0 };
-  for (const f of r.diff.ship) {
-    if (isSetupArt(f)) kinds.art++;
-    else if (f.startsWith('node_modules/')) kinds.node_modules++;
-    else if (f.startsWith('public/vendor/')) kinds['public/vendor']++;
-    else if (!affectsRuntime(f)) kinds['docs / scripts / tools']++;
-    else kinds['code / data']++;
-  }
-  const lines = [`update: v${version} over ${r.diff.perBase.map((b) => `v${b.version}`).join(', ')}`];
-  for (const b of r.diff.perBase) lines.push(`  vs v${b.version}: ${b.changed} changed, ${b.added} added, ${b.unchanged} unchanged, ${b.removed} removed`);
-  lines.push(`ships: ${r.diff.ship.length} files, ${MB(r.bytes)} — ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(', ')} (+ ${MANIFEST_FILE}, ${UPDATE_FILE})`);
-  const gone = r.diff.removed.map((x) => x.path);
-  lines.push(`removed: ${gone.length} file(s)${gone.length ? ` (${gone.slice(0, 8).join(', ')}${gone.length > 8 ? ' …' : ''})` : ''}`);
-  if (r.diff.caseOnly.length) lines.push(`not removed (a new file differs only in case): ${r.diff.caseOnly.join(', ')}`);
-  if (r.diff.left.length) lines.push(`not removed (an update never deletes these names): ${r.diff.left.join(', ')}`);
-  return lines.join('\n') + '\n';
-}
+
 
 const USAGE = 'usage: node tools/package.mjs [--lite | --update --from <base zip or folder>[,<…>]] [--dry-run [--list]] [--out <dir>] [--force] [--keep-stage] [--no-install] [--allow-dirty] [--allow-dev] [--root <dir>]';
 
@@ -932,13 +869,9 @@ function main(argv) {
 const invoked = (() => { try { return pathToFileURL(fs.realpathSync(process.argv[1] || '')).href; } catch { return null; } })();
 if (invoked === import.meta.url) process.exitCode = main(process.argv.slice(2));
 
-function freshTargets(targets, force) {
-  for (const t of targets) {
-    if (!fs.existsSync(t)) continue;
-    if (!force) throw new Error(`${t} already exists (--force replaces it)`);
-    fs.rmSync(t, { recursive: true, force: true });
-  }
-}
+
+
+
 
 function makeStage(root, p, stage, { install, env, log }) {
   const generated = new Set(p.generated || []);
@@ -948,6 +881,10 @@ function makeStage(root, p, stage, { install, env, log }) {
   if (generated.has(GENERATED_PACK_INDEX)) {
     const index = writePackIndex(stage, path.join(stage, GENERATED_PACK_INDEX));
     log(`${GENERATED_PACK_INDEX}: ${index.packs.map((x) => `${x.type} ${x.id}`).join(', ') || 'no pack'}`);
+  }
+  if ((p.generated || []).includes(LLM_RELEASE_MARKER)) {
+    fs.mkdirSync(path.dirname(path.join(stage, LLM_RELEASE_MARKER)), { recursive: true });
+    fs.writeFileSync(path.join(stage, LLM_RELEASE_MARKER), LLM_RELEASE_MARKER_TEXT);
   }
   if (install) {
     log('npm ci --omit=dev …');
@@ -967,4 +904,105 @@ function makeStage(root, p, stage, { install, env, log }) {
   const { staged, problems } = stageProblems(stage, new Set([...p.files, MANIFEST_FILE]), { env });
   if (problems.length) throw new Error(`refusing to zip ${stage}:\n${problems.map((x) => `  ${x}`).join('\n')}`);
   return staged;
+}
+
+function freshTargets(targets, force) {
+  for (const t of targets) {
+    if (!fs.existsSync(t)) continue;
+    if (!force) throw new Error(`${t} already exists (--force replaces it)`);
+    fs.rmSync(t, { recursive: true, force: true });
+  }
+}
+
+function digestOf(root, rel) {
+  const d = digestFile(path.join(root, rel));
+  if (!d) throw new Error(`cannot read ${path.join(root, rel)}`);
+  return d;
+}
+
+export function readBases(sources, version, { log = () => {} } = {}) {
+  const bases = [];
+  for (const src of sources) {
+    log(`reading base ${src} …`);
+    const b = readBase(src, { folder: FOLDER, skip: baseSkip });
+    if (b.update) throw new Error(`base ${src} is an update package: pass the earlier release's full zip`);
+    if (!b.art) throw new Error(`base ${src} has no game art (a lite zip?): pass the full zip, ${FOLDER}-v${b.version}.zip`);
+    if (compareVersions(b.version, version) >= 0) throw new Error(`base ${src} is v${b.version}, not older than v${version}`);
+    const twin = bases.find((x) => x.version === b.version);
+    if (twin) throw new Error(`two bases are v${b.version}: ${twin.source} and ${b.source}`);
+    bases.push(b);
+  }
+  return bases.sort((a, b) => compareVersions(a.version, b.version));
+}
+
+export function formatBases(bases) {
+  return bases.map((b) => `base: v${b.version} · ${b.files.size} files (${b.art} art) · ${b.source}\n`).join('');
+}
+
+export function buildUpdate(root, p, bases, { out, install = true, force = false, keepStage = false, env = process.env, log = console.log } = {}) {
+  if (p.problems.length) throw new Error('refusing to build: the plan has problems (see the summary)');
+  if (p.lite) throw new Error('an update is compared from the full stage (no --lite)');
+  if (!bases.length) throw new Error('an update needs at least one base (--from)');
+  const dest = path.resolve(out);
+  if (packageOutIsUnsafe(dest, root)) throw new Error(`refusing to write into the repository or a parent of it: ${dest}`);
+  const name = `${FOLDER}-v${p.version}-update`;
+  const work = path.join(dest, name);
+  const full = path.join(work, '.full', FOLDER);
+  const stage = path.join(work, FOLDER);
+  const zipPath = path.join(dest, `${name}.zip`);
+  freshTargets([work, zipPath], force);
+  const staged = makeStage(root, p, full, { install, env, log });
+  log(`comparing ${staged.length} files with ${bases.map((b) => `v${b.version}`).join(', ')} …`);
+  const next = new Map();
+  for (const f of staged) if (f !== MANIFEST_FILE) next.set(f, digestOf(full, f));
+  // without npm ci the stage has no node_modules / public/vendor, and the update would delete the bases' copies
+  for (const lib of ['node_modules/', 'public/vendor/']) {
+    const inBase = bases.find((b) => [...b.files.keys()].some((f) => f.startsWith(lib)));
+    if (inBase && ![...next.keys()].some((f) => f.startsWith(lib))) {
+      throw new Error(`v${inBase.version} ships ${lib} but this build has none (--no-install?): an update built so would delete it from every install`);
+    }
+  }
+  // a path no update deletes (a per-machine name such as node_modules/x/.env.example) stays behind, named in the summary
+  // …nor a file this zip holds back on purpose (a voice dub with FULL_ZIP_JP_VOICE / FULL_ZIP_OPTIONAL_VOICE off): the manifest still lists it
+  const heldBack = new Set(p.held || []);
+  const diff = diffBases(next, bases, { removable: (rel) => !removalProblem(rel) && !heldBack.has(rel) });
+  for (const rel of diff.left) {
+    const bad = pathProblem(rel);
+    if (bad) throw new Error(`a base ships ${rel}, which is ${bad}`);
+  }
+  for (const rel of diff.ship) copyInto(full, stage, rel);
+  copyInto(full, stage, MANIFEST_FILE);
+  const update = { app: p.version, from: bases.map((b) => b.version), files: new Map(diff.ship.map((f) => [f, next.get(f)])), removed: diff.removed };
+  fs.writeFileSync(path.join(stage, UPDATE_FILE), updateText(update));
+  // what the player's server will read back
+  parseUpdate(fs.readFileSync(path.join(stage, UPDATE_FILE), 'utf8'));
+  parseManifest(fs.readFileSync(path.join(stage, MANIFEST_FILE), 'utf8'));
+  const { staged: held, problems } = stageProblems(stage, new Set([...diff.ship, MANIFEST_FILE, UPDATE_FILE]), { env, libsPlanned: true });
+  if (problems.length) throw new Error(`refusing to zip ${stage}:\n${problems.map((x) => `  ${x}`).join('\n')}`);
+  log(`zipping ${held.length} files (${MB(sumBytes(stage, held))}) → ${zipPath}`);
+  zipFolder(work, zipPath);
+  if (!keepStage) fs.rmSync(work, { recursive: true, force: true });
+  return {
+    zipPath, zipBytes: fileBytes(zipPath), files: held.length, diff, bytes: diff.ship.reduce((n, f) => n + next.get(f).size, 0),
+    stage: keepStage ? stage : null, full: keepStage ? full : null,
+  };
+}
+
+export function formatUpdate(r, version) {
+  const kinds = { 'code / data': 0, node_modules: 0, 'public/vendor': 0, art: 0, 'docs / scripts / tools': 0 };
+  for (const f of r.diff.ship) {
+    if (isSetupArt(f)) kinds.art++;
+    else if (f.startsWith('node_modules/')) kinds.node_modules++;
+    else if (f.startsWith('public/vendor/')) kinds['public/vendor']++;
+    else if (!affectsRuntime(f)) kinds['docs / scripts / tools']++;
+    else kinds['code / data']++;
+  }
+  const lines = [`update: v${version} over ${r.diff.perBase.map((b) => `v${b.version}`).join(', ')}`];
+  for (const b of r.diff.perBase) lines.push(`  vs v${b.version}: ${b.changed} changed, ${b.added} added, ${b.unchanged} unchanged, ${b.removed} removed`);
+  lines.push(`ships: ${r.diff.ship.length} files, ${MB(r.bytes)} — ${Object.entries(kinds).map(([k, n]) => `${k} ${n}`).join(', ')} (+ ${MANIFEST_FILE}, ${UPDATE_FILE})`);
+  const gone = r.diff.removed.map((x) => x.path);
+  lines.push(`removed: ${gone.length} file(s)${gone.length ? ` (${gone.slice(0, 8).join(', ')}${gone.length > 8 ? ' …' : ''})` : ''}`);
+  if (r.diff.caseOnly.length) lines.push(`not removed (a new file differs only in case): ${r.diff.caseOnly.join(', ')}`);
+  if (r.diff.left.length) lines.push(`not removed (an update never deletes these names): ${r.diff.left.join(', ')}`);
+  return lines.join('\n') + '\n';
 }

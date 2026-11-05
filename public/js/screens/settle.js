@@ -12,11 +12,13 @@ import { store, useStore, emptyMatch } from '../store.js';
 import { audio } from '../audio.js';
 import { sentText } from '../ui/lang.js';
 import { reducedMotion } from '../ui/device.js';
-import { recordId, loadStats } from '../ui/stats.js';
+import { recordId, selfRowOf, loadStats, isModdedRecord, recordsOfSeason } from '../ui/stats.js';
 import { ResultView, resultBonds } from './result.js';
+import { shownVersion, seasonOf } from '../versions.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
+const int = (v) => Math.max(0, Math.round(Number(v) || 0));
 const pad2 = (n) => String(Math.max(0, Math.trunc(n) || 0)).padStart(2, '0');
 
 /** The radar intro and the page change after 下一步. */
@@ -282,7 +284,10 @@ function ModePill({ r }) {
   </span>`;
 }
 
-function SelfPage({ r, raw, self, gd, seed, onNext }) {
+function SelfPage({ r, res, raw, self, gd, seed, onNext }) {
+  const prog = levelProgress(loadStats().records, { id: recordId(res), gain: self.reward, rounds: self.roundsPassed,
+    trophies: self.trophies, counted: res?.test !== true && !res?.content && !Number.isInteger(raw?.aiTakeoverRound), rewards: gd.config?.rewards,
+    season: seasonOf(res?.version) });
   const cleared = rowCleared(raw, self, r.victory);
   const [leaving, setLeaving] = useState(false);
   const nextRef = useRef(null);
@@ -309,7 +314,7 @@ function SelfPage({ r, raw, self, gd, seed, onNext }) {
       <div class="smap__fx" aria-hidden="true"></div>
       <${Logo} />
       <div class="sself__band">${self.bandId ? html`<${BandIcon} bandId=${self.bandId} size="lg" />` : html`<${ResultAvatar} player=${self} self=${true} />`}<i aria-hidden="true"></i></div>
-      <div class="sself__mode"><${ModePill} r=${r} /></div>
+      <div class="sself__mode"><${ModePill} r=${r} />${res?.test ? html`<span class="modmark">${t('测试')}</span>` : null}</div>
       <h1 class="sself__title">${cleared ? t('模拟完成') : t('模拟中断')}</h1>
       <div class="sself__rounds"><span>${t('通过回合')}</span><b class="num">${rounds}</b></div>
       ${medals.length ? html`<div class="sself__medals">${medals.map((m, i) => html`<span key=${m.kind} class=${cx('smedal', `smedal--${m.kind}`, m.done ? 'is-done' : 'is-miss')} style=${`--i:${i}`}
@@ -323,6 +328,7 @@ function SelfPage({ r, raw, self, gd, seed, onNext }) {
           <span class="splate__gain"><small><${Icon} name="crown" />${t('获得奖杯')}</small><b class="num">${self.trophies}</b></span>
         </div>
       </div>
+      <${LevelStrip} prog=${prog} milestones=${gd.config?.rewards?.milestones || []} />
       <div class="sops">
         <div class="sops__row sops__row--1">${slots.slice(0, 5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i} player=${self} />`)}</div>
         <div class="sops__row sops__row--2">${slots.slice(5).map((u, i) => html`<${OpCard} key=${i} u=${u} gd=${gd} i=${i + 5} player=${self} />`)}</div>
@@ -400,7 +406,7 @@ function TeamPage({ r, res, gd, myId, at, onDetail, inactive = false }) {
           : html`<p class="steam__none">${t('暂无结算数据')}</p>`}
       </div>
       <div class="settle__barbg steam__barbg" aria-hidden="true"></div>
-      <div class="steam__outcome"><${ModePill} r=${r} /><b class="steam__title">${r.victory ? t('模拟完成') : t('模拟中断')}</b></div>
+      <div class="steam__outcome"><${ModePill} r=${r} />${res?.test ? html`<span class="modmark">${t('测试')}</span>` : null}<b class="steam__title">${r.victory ? t('模拟完成') : t('模拟中断')}</b></div>
       <div class="steam__rounds"><span>${t('同盟通过回合')}</span><b class="num">${rounds}</b></div>
       <div class="steam__when">
         <span class="steam__row"><${SvgPath} d=${CLOCK} />${fmtDuration(r.durationMs)}</span>
@@ -408,6 +414,7 @@ function TeamPage({ r, res, gd, myId, at, onDetail, inactive = false }) {
       </div>
       <div class="steam__actions">
         <${Button} variant="secondary" size="lg" icon="chart" class="steam__detail" onClick=${onDetail}>${t('数据详情')}<//>
+        <div class="ui-slot" data-ui-slot="result.tab" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{__html:''}}></div>
       </div>
     </div>
   </section>`;
@@ -447,10 +454,10 @@ export function SettleFlow({ res, pub = null, myId = null, backLabel, onBack }) 
       title=${detail ? t('数据详情') : t('结算')} micro=${detail ? 'SIMULATION REPORT' : 'SIMULATION RESULT'} />
     <div ref=${rootRef} class=${cx('screen', 'result', 'settle', `settle--${page}`)} data-testid="settle">
     ${page === 'intro' ? html`<${SettleIntro} players=${r.players} myId=${myId} lose=${lose} onDone=${() => setPage('self')} />` : null}
-    ${page === 'self' ? html`<${SelfPage} r=${r} raw=${rawSelf} self=${self} gd=${gd} seed=${res?.seed} onNext=${() => setPage('team')} />` : null}
+    ${page === 'self' ? html`<${SelfPage} r=${r} res=${res} raw=${rawSelf} self=${self} gd=${gd} seed=${res?.seed} onNext=${() => setPage('team')} />` : null}
     ${page === 'team' ? html`<${TeamPage} r=${r} res=${res} gd=${gd} myId=${myId} at=${ctx.at} onDetail=${() => setDetail(true)} inactive=${detail} />` : null}
     ${detail ? html`<div class="settle__detail" data-testid="settle-detail">
-      <${ResultView} res=${res} pub=${pub} myId=${myId} quiet=${true} /></div>` : null}
+      <${ResultView} res=${res} pub=${pub} myId=${myId} quiet=${true} slot=${false} /></div>` : null}
     </div>
   </div>`;
 }
@@ -463,4 +470,85 @@ export function ResultScreen() {
   const hasRoom = useStore((s) => !!s.room);
   const back = () => store.set({ match: emptyMatch() });
   return html`<${SettleFlow} res=${res} pub=${pub} myId=${myId} backLabel=${hasRoom ? t('返回同盟') : t('返回大厅')} onBack=${back} />`;
+}
+
+export function titleScale(width, height, textWidth, textHeight) {
+  return Math.min(1, width / (textWidth || 1), height / (textHeight || 1));
+}
+
+export function levelOf(total, milestones) {
+  const n = int(total);
+  let lv = 0;
+  let prev = 0;
+  for (const m of Array.isArray(milestones) ? milestones : []) {
+    if (!Number.isFinite(m?.tokens)) continue;
+    if (n < m.tokens) return { lv, into: n - prev, need: m.tokens - prev, max: false };
+    lv = Number.isFinite(m.level) ? m.level : lv + 1;
+    prev = m.tokens;
+  }
+  return { lv, into: 0, need: 0, max: true };
+}
+
+export function dayKey(ts, resetHour = 4) {
+  const d = new Date(ts - resetHour * 3600000);
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+export function dailyPointsFor(roundsPassed, table) {
+  const n = Number(roundsPassed) || 0;
+  const row = (Array.isArray(table) ? table : []).filter((r) => r && r.round <= n).pop();
+  return int(row?.dailyPoint);
+}
+
+export function levelProgress(records, { id = null, gain = 0, rounds = 0, trophies = 0, at: now = Date.now(), counted = true, rewards = null, season = null } = {}) {
+  // one season's records (DESIGN §35.23: 第一期 and 第二期 each have their own 卫戍认证 table — ui/stats.js recordsOfSeason)
+  records = recordsOfSeason(records, season);
+  const daily = rewards?.daily && rewards.daily.need > 0 ? rewards.daily : null;
+  const table = rewards?.baseByRoundsPassed;
+  const reset = Number.isFinite(daily?.resetHour) ? daily.resetHour : 4;
+  const days = new Map();
+  let total = 0;
+  let cups = 0;
+  for (const rec of Array.isArray(records) ? records : []) {
+    // a quit record had no settlement: nothing earned
+    // (a 测试 match never counts: its record is not kept, and an old or imported one marked test is skipped too)
+    if (!rec || rec.id === id || !Number.isFinite(rec.t) || rec.t > now || rec.end === 'quit' || rec.test === true || isModdedRecord(rec)) continue;
+    const row = selfRowOf(rec);
+    total += int(row?.reward);
+    cups += int(row?.trophies);
+    if (daily) { const k = dayKey(rec.t, reset); days.set(k, (days.get(k) || 0) + dailyPointsFor(row?.roundsPassed, table)); }
+  }
+  if (daily) for (const pts of days.values()) if (pts >= daily.need) total += int(daily.bonus);
+  const today = daily ? days.get(dayKey(now, reset)) || 0 : 0;
+  const pts = counted && daily ? dailyPointsFor(rounds, table) : 0;
+  const bonus = daily && today < daily.need && today + pts >= daily.need ? int(daily.bonus) : 0;
+  const g = counted ? int(gain) : 0;
+  return {
+    gain: g, bonus, before: total, after: total + g + bonus, trophies: cups + (counted ? int(trophies) : 0), counted,
+    daily: daily ? { name: daily.name, need: daily.need, today: Math.min(daily.need, today + pts) } : null,
+  };
+}
+
+function LevelStrip({ prog, milestones }) {
+  const gain = useCountUp(prog.gain, { ms: 650, delay: 300 });
+  const total = useCountUp(prog.after, { ms: 1300, delay: 700, from: prog.before });
+  const lv0 = levelOf(prog.before, milestones);
+  const lv = levelOf(total, milestones);
+  const d = prog.daily;
+  return html`<div class=${cx('slv', lv.max && 'is-max')} title=${t('等级：本机记录的官方对局累计获得的卫戍认证')}>
+    <span class="slv__lv"><${Sprite} k="settle/img_lv" class="slv__lvimg" fallback=${html`<small>LV.</small>`} /><b class="num">${lv.lv}</b></span>
+    <div class="slv__track">
+      ${lv.lv > lv0.lv ? html`<span class="slv__up"><${Sprite} k="settle/levelup" class="slv__flag" /><${Sprite} k="settle/img_lvup" fallback=${html`<b>LEVEL UP!</b>`} /></span>` : null}
+      ${lv.max ? html`<span class="slv__max"><${Sprite} k="settle/max_bg" class="slv__flag" /><${Sprite} k="settle/img_max" fallback=${html`<b>MAX</b>`} /></span>` : null}
+      <span class="slv__bar"><i style=${`width:${lv.max ? 100 : (lv.into / Math.max(1, lv.need)) * 100}%`}></i></span>
+      ${lv.max ? null : html`<span class="slv__exp num"><b>${lv.into}</b><${Sprite} k="settle/num_line" class="slv__slash" fallback="/" />${lv.need}</span>`}
+    </div>
+    <div class="slv__gains">
+      ${prog.counted ? html`
+        <span class="slv__gain"><${Sprite} k="settle/reward_normal_icon" class="slv__icon" />${t('获得卫戍认证 +{n}', { n: gain })}</span>
+        ${d ? html`<span class=${cx('slv__gain', 'slv__gain--daily', prog.bonus && 'is-done')} title=${t('每日防卫目标：{today}/{need}', { today: d.today, need: d.need })}>
+          <${Sprite} k="settle/reward_plus" class="slv__icon" />${t('每日防卫目标 +{n}', { n: prog.bonus })}<small class="num">${d.today}/${d.need}</small></span>` : null}`
+        : html`<span class="slv__gain slv__gain--off">${prog.test ? t('测试对局不计入等级') : t('非官方对局不计入等级')}</span>`}
+    </div>
+  </div>`;
 }

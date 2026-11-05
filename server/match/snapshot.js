@@ -1,4 +1,5 @@
 import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prepTime.js';
+import { operatorCharIds } from '../../shared/protocol.js';
 import { freezeSkins } from '../../shared/skins.js';
 // server/match/snapshot.js — checkpoints of a running match (Redis persistence, docs/DEPLOY.md「断点续玩」).
 //
@@ -180,6 +181,7 @@ function withProps(value, extra) {
  * order, pool, schedulers) or transient (clocks, view plumbing, timers, battle objects).
  */
 const MATCH_FIELDS = Object.freeze([
+  'version', 'test', 'testActions', 'testLog', 'testReplayable', 'aiTakeoverEnabled', 'soloUnlimited',
   'combatArchive', 'replayArchive', 'userMatchId', 'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
   'botRehearsal', 'clientCombat', 'verifyMode', 'headlessSliceMs', 'verifyStats', '_battleSeq', 'pausedMs',
   'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
@@ -190,7 +192,7 @@ const MATCH_FIELDS = Object.freeze([
 
 /** PlayerState fields of a checkpoint (bonds/deploy map are recomputed on restore). */
 const PLAYER_FIELDS = Object.freeze([
-  'userId', 'avatarId', 'publicId', 'playerId', 'seat', 'name', 'isBot', 'connected', 'left', 'autoplay', 'consoleRoundUses', 'consoleTotalUses', 'alive', 'lp', 'bandId', 'funds',
+  'aiTakeoverRound', 'userId', 'avatarId', 'publicId', 'playerId', 'seat', 'name', 'isBot', 'connected', 'left', 'autoplay', 'consoleRoundUses', 'consoleTotalUses', 'alive', 'lp', 'bandId', 'funds',
   'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'skins', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
   '_tempDue', 'board', 'layers', 'pendingLayerGains', 'bondCountBonus', 'effects', 'bounties', 'counters', 'round',
   'deployCapBonus', 'deployCapMin', 'deviceOverrides', 'tileOverrides', 'stats', 'eliminatedRound', 'lpAtFinal',
@@ -418,7 +420,7 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
     const stockEntries = ps.diyStock?.entries;
     ps.setNotOwned(ps.standIns || []);
     ps.setDiy(ps.diy || {});
-    ps.skins = freezeSkins(ps.isBot ? null : ps.skins, (id) => ps.gd.chess(id)); // old checkpoints: defaults
+    ps.skins = freezeSkins(ps.isBot ? null : ps.skins, (id) => ps.gd.chess(id), (id) => operatorCharIds(ps.gd.raw).has(id)); // old checkpoints: defaults
     ps.initDiyStock(new Set([...(m.disabledBonds || []), ...(m.staticInactiveBonds || [])]));
     if (stockEntries instanceof Map) for (const [id, saved] of stockEntries) {
       const entry = ps.diyStock.entries.get(id);

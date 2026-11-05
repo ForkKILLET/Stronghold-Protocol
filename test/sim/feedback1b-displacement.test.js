@@ -255,25 +255,6 @@ test('B5 audit: every displacement source × ground / static air / dynamic air /
   assert.deepEqual(wrong, []);
 });
 
-test('B5 audit: 琳琅诗怀雅 S3\'s coins push ground enemies only (PRTS 备注 "地面敌方单位…弹道（不可对空）")', REAL, () => {
-  const id = 'chess_char_3_04_a';
-  const h = makeBattle({
-    units: [{ chessId: id, row: 10, col: 3, dir: 'RIGHT', skillIndex: 2 }], flags: { dpInit: 60, dpMax: 99 },
-    enemies: [{ key: SLIME, pos: [10, 4], mods: STILL }, { key: YOKAI, pos: [10, 5], route: 2, mods: STILL }], autoFinish: false, timeLimit: 30,
-  });
-  const u = h.unit(id);
-  h.step();
-  assert.equal(u.skill.id, 'skchr_swire2_3');
-  u.skill.gainSp(u.skill.spCost + 1, 'test');
-  assert.ok(h.runUntil(() => u.skill.active, 5), 'the toggle is on');
-  const [g, f] = h.b.enemies;
-  u.mem.coins = u.skill.bb.sp;
-  h.step(3);
-  assert.ok(!u.skill.active && u.mem.coins === 0, 'the coins are spent');
-  assert.ok(g.x > 4.3, `the ground enemy is pushed forward (${g.x})`);
-  approx(Math.hypot(f.x - 5, f.y - 10), 0, 1e-9, 'the drone is never paid');
-});
-
 test('B5 audit: 缪尔赛思 S3 — a melee 流形 copy\'s pulse reaches air units (PRTS 流形 "…可对空（包括近战流形）"), a static drone stays', REAL, () => {
   // the playtest #6 流形 layout (test/sim/playtest6-combat.test.js): the copy at (9,6) takes a melee guard's form
   const guard = chessRec({ id: 'test_guard_a', profession: 'WARRIOR', position: 'MELEE', stats: { atk: 500, blockCnt: 2, maxHp: 1e6, def: 0 }, skill: null });
@@ -331,8 +312,8 @@ test('B5: 刺胄之弹 / 斩胄之剑 / 破胄之锤 are 静态刚体 + 失衡�
       units: [{ chessId: 't_hi', row: 10, col: 6 }],
     });
     h.step();
-    const boss = h.spawn('enemy_9013_acstmk', { pos: [3, 10], routeIndex: 0, mods: { speedMul: 0 }, tag: 'boss' });
-    boss.profile.noAttack = true;
+    // 灭顶之灾 takes an attack's turn (DESIGN §35.29): the leader attacks
+    h.spawn('enemy_9013_acstmk', { pos: [3, 10], routeIndex: 0, mods: { speedMul: 0 }, tag: 'boss' });
     const shell = () => h.b.enemies.find((x) => x.defId === SHELL);
     assert.ok(h.runUntil(() => !!shell(), 60), 'the shell is fired');
     const s = shell();

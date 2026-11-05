@@ -3,6 +3,8 @@ import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
 import { performance } from 'node:perf_hooks';
 
+export const defaultWorkerCount = (cpus = availableParallelism()) => Math.min(8, Math.max(1, cpus - 2));
+
 export function workerSettings(env = process.env, cpus = availableParallelism()) {
   const integer = (value, fallback, min, max) => {
     if (value == null || String(value).trim() === '') return fallback;
@@ -10,7 +12,7 @@ export function workerSettings(env = process.env, cpus = availableParallelism())
     return Number.isInteger(n) && n >= min && n <= max ? n : fallback;
   };
   return {
-    size: integer(env.SP_WORKERS, Math.min(8, Math.max(1, cpus - 2)), 0, 32),
+    size: integer(env.SP_WORKERS, defaultWorkerCount(cpus), 0, 32),
     maxQueue: integer(env.SP_WORKER_QUEUE, 256, 0, 10000),
     timeoutMs: integer(env.SP_WORKER_TIMEOUT_MS, 120000, 1, 3600000),
   };
@@ -19,7 +21,7 @@ export function workerSettings(env = process.env, cpus = availableParallelism())
 const failure = (code, message) => Object.assign(new Error(message), { code });
 
 export class SimulationPool {
-  constructor({ data, size = workerSettings().size, maxQueue = 256, timeoutMs = 120000,
+  constructor({ data, size = defaultWorkerCount(), maxQueue = 256, timeoutMs = 120000,
     workerUrl = new URL('./simulation.js', import.meta.url) } = {}) {
     if (!Number.isInteger(size) || size < 1 || size > 32) throw new RangeError('worker size must be 1..32');
     if (!Number.isInteger(maxQueue) || maxQueue < 0 || maxQueue > 10000) throw new RangeError('maxQueue must be 0..10000');
@@ -53,7 +55,7 @@ export class SimulationPool {
       enqueuedAt: performance.now(), flag: new Int32Array(new SharedArrayBuffer(4)), slot: null, timer: null };
     const handle = { promise, cancel: () => this._cancel(task) };
     if (this.closed || (this.queue.length >= this.maxQueue &&
-        this.slots.size >= this.size && ![...this.slots].some((s) => !s.task))) {
+        this.slots.size >= this.size && ![...this.slots].some((s) => !s.retired && !s.task))) {
       this.counters.rejected++;
       this._settle(task, failure(this.closed ? 'POOL_CLOSED' : 'POOL_FULL', 'simulation pool unavailable'));
       return handle;
@@ -200,4 +202,10 @@ export class SimulationPool {
     })]);
     await this.closing;
   }
+}
+
+/** Factory using this fork's CPU-budget default; SP_WORKERS=0 explicitly disables it. */
+export function createSimulationPool({ data, env = process.env, workerUrl } = {}) {
+  const { size, maxQueue, timeoutMs } = workerSettings(env);
+  return size === 0 ? null : new SimulationPool({ data, size, maxQueue, timeoutMs, workerUrl });
 }

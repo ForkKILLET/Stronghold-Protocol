@@ -16,7 +16,7 @@ import { t } from '../../../shared/i18n.js';
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** How long the round popup holds before it folds away (ms), and the fold. */
-export const ROUND_POPUP_MS = 2300;
+export const ROUND_POPUP_MS = 1700;
 const LEAVE_MS = 280;
 
 /** Two-digit round number as the plate shows it (00 before the first round). */
@@ -62,7 +62,7 @@ function PopArt({ kinds, tag }) {
  *   gain: the funds this round start paid (null = not known / not in the round: the coins without a number)
  *   left: rounds before the final assault (roundsToBoss) — the red strip on top
  */
-export function RoundPopup({ round, gain = null, left = null, onDone }) {
+export function RoundPopup({ round, gain = null, left = null, sub = null, watching = false, onDone }) {
   const leaving = useTimedLeave(ROUND_POPUP_MS, onDone);
   const n = Number.isFinite(gain) && gain > 0 ? Math.trunc(gain) : null;
   return html`<div class=${cx('mpop', 'mpop--round', leaving && 'is-leaving')} role="status" aria-live="polite"
@@ -74,7 +74,8 @@ export function RoundPopup({ round, gain = null, left = null, onDone }) {
         <span class="mpop__k">${t('回合')}</span>
         <span class="mpop__roll num"><b class="mpop__old">${roundDigits(round - 1)}</b><b class="mpop__new">${roundDigits(round)}</b></span>
       </div>
-      ${gain != null ? html`<div class="mpop__cell mpop__cell--gold">
+      ${sub ? html`<span class="mpop__sub">${sub}</span>` : null}
+      ${gain != null && !watching ? html`<div class="mpop__cell mpop__cell--gold">
         <span class="mpop__k">${t('获得')}</span>
         <span class="mpop__gain"><i class="mpop__flare" aria-hidden="true"></i><${CoinGlyph} class="mpop__coin" />${n ? html`<b class="mpop__plus num">+${n}</b>` : null}</span>
         ${n ? [0, 1, 2, 3, 4, 5, 6].map((i) => html`<i key=${i} class="mpop__spark" style=${`--i:${i}`} aria-hidden="true"></i>`) : null}
@@ -88,12 +89,12 @@ export function RoundPopup({ round, gain = null, left = null, onDone }) {
  * @param {{ tone?: 'mint'|'orange'|'red'|'gold', kinds?: string[], title: any, sub?: any, micro?: string, chev?: boolean,
  *   duration?: number, onDone?: Function }} props
  */
-export function PhasePopup({ tone = 'mint', kinds = ['bot'], title, sub = null, micro = '', chev = false, duration = 2200, onDone }) {
+export function PhasePopup({ tone = 'mint', kinds = ['bot'], faces = false, title, sub = null, micro = '', chev = false, duration = 2200, onDone }) {
   const leaving = useTimedLeave(duration, onDone);
   return html`<div class=${cx('mpop', 'mpop--phase', `mpop--${tone}`, chev && 'has-chev', leaving && 'is-leaving')} role="status" aria-live="polite"
       data-testid="phase-popup">
     <div class="mpop__panel">
-      <${PopArt} kinds=${kinds} tag=${micro} />
+      <${PopArt} kinds=${faces ? ['happy', 'worried'] : kinds} tag=${micro} />
       <div class="mpop__text">
         <span class="mpop__title">${title}</span>
         ${sub ? html`<span class="mpop__sub">${sub}</span>` : null}
@@ -120,3 +121,6 @@ export function phasePopupOf(phase, banner) {
   }
 }
 const pick = (b) => ({ title: b.title, sub: b.sub || null, micro: b.micro || '' });
+
+/** Original branch art needs no image warm-up. */
+export function preloadPopupArt() {}

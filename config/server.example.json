@@ -6,7 +6,8 @@
     "maxRooms": 1000,
     "maxRoomsPerAddr": 16,
     "maxMatchesPerAddr": 8,
-    "maxPendingConnections": 256
+    "maxPendingConnections": 256,
+    "maxOnline": 0
   },
   "reconnect": {
     "soloMs": 86400000,
@@ -41,5 +42,15 @@
   },
   "shutdown": {
     "timeoutMs": 60000
+  },
+  "versions": {
+    "enabled": "all",
+    "default": "act2autochess",
+    "maxHosts": 3
+  },
+  "rooms": {
+    "versionVoteMs": 60000,
+    "versionRetryMs": 5000,
+    "versionProposeGapMs": 300
   }
 }

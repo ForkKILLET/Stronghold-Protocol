@@ -43,9 +43,11 @@ export function installReplays(db,{perUser=REPLAY_DEFAULTS.perUser,maxBytes=REPL
    return JSON.parse(gunzipSync(row.body,{maxOutputLength:64*1024*1024+32}).toString());
   },
   body({id,matchId,gzip}){
-   const row=q('SELECT r.body FROM replays r JOIN user_replays u ON u.game_id=r.game_id WHERE u.user_id=? AND r.game_id=?').get(id,matchId);
+   const row=q(`SELECT r.body,coalesce(json_extract(s.payload,'$.frame.version'),json_extract(s.payload,'$.version')) AS version
+    FROM replays r JOIN user_replays u ON u.game_id=r.game_id JOIN results s ON s.game_id=u.game_id AND s.user_id=u.user_id
+    WHERE u.user_id=? AND r.game_id=?`).get(id,matchId);
    if(!row)return {error:'REPLAY_NOT_FOUND'};
-   return {body:gzip?row.body:gunzipSync(row.body,{maxOutputLength:64*1024*1024+32})};
+   return {version:row.version,body:gzip?row.body:gunzipSync(row.body,{maxOutputLength:64*1024*1024+32})};
   },
   pin({id,matchId,pinned}){
    // The storage Worker serializes all requests; transaction keeps quota check + update indivisible.

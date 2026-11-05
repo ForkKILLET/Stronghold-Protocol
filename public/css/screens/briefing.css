@@ -3,15 +3,20 @@
    shared with the band draft (js/ui/matchChrome.js StepHeader). Research 06 §4.1 / §11.6.
    The bond rows, the legend and the banned operators (.brief-bonds / .brief-legend / .brief-banned) are
    js/ui/matchInfo.js MatchInfo — also shown by the band draft's 本局信息 dialog (css/screens/draft.css .minfo-dlg).
+   PR #643 (the event's pre-game, video 6:29–7:51): one column of sections under grey header
+   bars, 已就绪 and the big 准备就绪 in the bottom-right corner; the header with the step on the left and the countdown on
+   the right. Original drawings only (CSS / inline SVG).
    ========================================================================================== */
 
 /* ---- shared pre-game backdrop + header ---- */
 .brief__bg {
   position: absolute; inset: 0; z-index: 0; pointer-events: none;
   background:
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, .018) 0 1px, transparent 1px 4px),
-    radial-gradient(90% 70% at 20% 30%, rgba(232, 90, 26, .07), transparent 60%),
-    radial-gradient(80% 70% at 85% 60%, rgba(78, 216, 175, .07), transparent 60%);
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .02) 0 1px, transparent 1px 4px),
+    radial-gradient(60% 50% at 8% 6%, rgba(160, 166, 170, .12), transparent 70%),
+    radial-gradient(40% 30% at 96% 4%, rgba(63, 230, 180, .16), transparent 70%),
+    radial-gradient(70% 60% at 90% 100%, rgba(120, 128, 132, .08), transparent 70%),
+    linear-gradient(180deg, #0c0e0e, #090a0a);
 }
 .stephead {
   position: relative; z-index: 2; flex: none;
@@ -33,7 +38,7 @@
 .brief-h::before { content: ''; width: calc(.06 * var(--ui-unit, 1rem)); height: calc(.2 * var(--ui-unit, 1rem)); background: var(--mint-500); align-self: center; }
 
 /* ---- briefing layout ---- */
-.brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-columns: calc(6.2 * var(--ui-unit, 1rem)) 1fr; gap: calc(.36 * var(--ui-unit, 1rem)); padding: calc(.3 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.1 * var(--ui-unit, 1rem)); }
+.brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); overflow: hidden; grid-template-columns: calc(6.2 * var(--ui-unit, 1rem)) 1fr; gap: calc(.36 * var(--ui-unit, 1rem)); padding: calc(.3 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.1 * var(--ui-unit, 1rem)); }
 /* a match with gameplay plugins (DESIGN §32.6): the unofficial mark under the step header */
 .brief__modmark { position: relative; z-index: 2; align-self: flex-start; margin: calc(.06 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) 0; }
 .brief__left { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-height: 0; min-width: 0; overflow: hidden; }
@@ -174,3 +179,74 @@
   .brief__right > .brief-reroll--vote { flex-direction: column; align-items: stretch; }
   .brief__right > .brief-reroll--vote > * { flex-shrink: 0; }
 }
+
+/* short landscape phones (≤ 520 CSS px tall) at a big 文字大小 (§35.51; §35.18's leftovers): the header's decorative
+   BRIEFING // INFO CHECK gives way (cut at its end and over COUNTDOWN at 大 / 特大), 玩法说明 keeps its book (its label was
+   cut 4–7 px at 特大; the name stays its title and accessible name) */
+@media (max-height: 520px) {
+  .stephead__micro { display: none; }
+  .stephead__guide .btn__label { display: none; }
+  /* 确认本局信息's step name takes two lines before it runs under 玩法说明 and COUNTDOWN (§35.56: English 「Confirm Match
+     Info」 and Korean 「이번 시뮬레이션 정보 확인」 at 大 / 特大 on 640–740 px phones); the header grows with it */
+  .brief .stephead { height: auto; min-height: 1.3rem; }
+  .brief .stephead__left, .brief .stephead__title { min-width: 0; }
+  .brief .stephead__name { min-width: 0; white-space: normal; text-wrap: balance; line-height: 1.1; }
+  .brief .stephead__name:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+  .brief .stephead__name:lang(ja) { line-break: strict; }
+}
+/* … and in a short desktop window (≤ 640 px tall: 1024×600) at 大 / 特大 (§35.51 review: the micro cut and over 玩法说明 there) */
+@media (max-height: 640px) {
+  :root[data-text="lg"] .stephead__micro, :root[data-text="xl"] .stephead__micro { display: none; }
+  /* 玩法说明 keeps its book there too (English 「How to Play」 ran past its button on the draft) */
+  :root[data-text="lg"] .stephead__guide .btn__label, :root[data-text="xl"] .stephead__guide .btn__label { display: none; }
+}
+
+/* the pre-game screens' motion (also css/screens/draft.css); none with reduced motion */
+.brief, .draft { --pg-ease: cubic-bezier(.16, .84, .3, 1); }
+@keyframes pg-fade { from { opacity: 0; } }
+@keyframes pg-out { to { opacity: 0; } }
+@keyframes pg-right { from { opacity: 0; transform: translateX(.36rem); } }
+@keyframes pg-left { from { opacity: 0; transform: translateX(-.36rem); } }
+@keyframes pg-rise { from { opacity: 0; transform: translateY(.22rem); } }
+@keyframes pg-pop { from { opacity: 0; transform: scale(.4); } }
+@keyframes pg-card { from { opacity: 0; transform: translateY(.16rem) scale(1.03); } }
+@keyframes pg-glow { 20% { box-shadow: 0 0 .5rem rgba(120, 255, 215, .9), 0 0 .12rem #b9ffe9; border-color: #b9ffe9; } }
+@keyframes pg-dots { to { width: 1.1em; } }
+
+/* ---- 开局转场 (the event's): the header drops in, the sections come in from the right one after another, the corner
+   controls rise ---- */
+.brief .stephead, .draft .stephead { animation: pg-fade 360ms var(--pg-ease) backwards; }
+.stephead__title { animation: pg-right 420ms var(--pg-ease) 120ms backwards; }
+.brief-sec { animation: pg-right 460ms var(--pg-ease) backwards; animation-delay: calc(160ms + var(--i, 0) * 80ms); }
+.brief-sec .brief-bonds__row > *, .brief-sec .brief-banned__grid > * { animation: pg-pop 340ms var(--pg-ease) backwards; animation-delay: calc(360ms + var(--i, 0) * 80ms); }
+.brief__foot .brief-ready, .brief__foot .brief-loadout { animation: pg-rise 420ms var(--pg-ease) 420ms backwards; }
+/* opens from its left edge by a transform (a scaleX from its left, held by the backwards fill until it starts): the
+   button takes taps only where it is drawn at that moment, and the corner's other controls stay put */
+.brief-go { transform-origin: left center; animation: brief-go-in 520ms var(--pg-ease) 480ms backwards; }
+@keyframes brief-go-in { 0% { opacity: 0; transform: scaleX(.08); filter: brightness(2.2); } 60% { opacity: 1; transform: none; filter: brightness(1.5); } }
+@media (prefers-reduced-motion: reduce) {
+  .brief .stephead, .draft .stephead, .stephead__title, .brief-sec, .brief-sec .brief-bonds__row > *, .brief-sec .brief-banned__grid > *,
+  .brief__foot .brief-ready, .brief__foot .brief-loadout, .brief-go, .brief-ready__pips i.on { animation: none; }
+}
+
+/* official versions (DESIGN §35.23): the version's tag beside the 非官方 mark */
+.brief__vertag { position: relative; z-index: 2; align-self: flex-start; margin: .06rem .5rem 0; }
+
+/* The shared enemy information also fits the fork's compact left column. */
+.brief-enemies { min-width:0; }
+.brief-enemies > .brief-h { flex-wrap:wrap; gap:calc(.06 * var(--ui-unit,1rem)); }
+.brief-enemies > .brief-h > span:first-of-type { white-space:nowrap; }
+.brief-enemies > .brief-h .micro { flex-basis:100%; font-size:calc(.1 * var(--utility-text,var(--t))); }
+.brief-enemy { display:grid; grid-template-columns:auto minmax(0,1fr); gap:calc(.16 * var(--ui-unit,1rem)); min-width:0; }
+.brief-enemy > .brief-boss { display:flex; flex-direction:column; gap:calc(.08 * var(--ui-unit,1rem)); padding:calc(.06 * var(--ui-unit,1rem)); border:0; background:none; }
+.brief-enemy .brief-boss__art { width:calc(1.4 * var(--ui-unit,1rem)); height:calc(1.4 * var(--ui-unit,1rem)); margin:0; overflow:hidden; }
+.brief-boss__img { width:100%; height:100%; object-fit:cover; }
+.brief-boss__tag { font-size:calc(.12 * var(--utility-text,var(--t))); color:var(--orange-hi); }
+.brief-enemy .brief-boss__text { min-width:0; }
+.brief-enemy .brief-boss__name { font-size:calc(.22 * var(--utility-text,var(--t))); }
+.brief-enemy .brief-factions { grid-column:1/-1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:calc(.1 * var(--ui-unit,1rem)); }
+.brief-enemy .brief-faction { min-width:0; }
+.brief-enemy .brief-stage { display:flex; align-items:center; flex-wrap:wrap; gap:calc(.08 * var(--ui-unit,1rem)); }
+
+.tooltip.brief-faction__tip { max-width: min(calc(4.8 * var(--ui-unit, 1rem)), calc(100vw - 16px)); font-size: max(calc(.15 * var(--utility-text, var(--t))), 10px); }
+.brief-faction__icon:focus-visible { outline: 1px solid var(--mint-500); outline-offset: 2px; }

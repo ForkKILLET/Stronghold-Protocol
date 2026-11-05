@@ -3,7 +3,7 @@ import {html,Button,AvatarFrame,Icon,Spinner,MicroLabel,DifficultyTag} from '../
 import {PageHeader} from '../ui/pageHeader.js';
 import {publicDoctorStore,doctorLink,ensureDoctorStyles} from '../ui/doctorLinks.js';
 import {userRequest} from '../ui/profile.js';
-import {useStore,selectRoute} from '../store.js';
+import {useStore,selectRoute,store} from '../store.js';
 import {data,useData} from '../data.js';
 import {makeLookups,BandIcon} from '../ui/gameComponents.js';
 import {profileAvatarUrl} from '../ui/assetUrls.js';
@@ -15,6 +15,7 @@ import {copyText} from '../ui/clipboard.js';
 import {toast} from '../ui/toasts.js';
 import {useDocClass} from '../ui/device.js';
 import {useLang} from '../ui/lang.js';
+import { DEFAULT_VERSION, shownVersion, versionLabel, sanitizeVersions } from '../versions.js';
 import {t,N_} from '../../../shared/i18n.js';
 
 const TABS=[['overview',N_('总览')],['achievements',N_('成就')],['bands',N_('策略')],['totals',N_('战斗累计')],['history',N_('对局记录')],['replays',N_('公开回放')]];
@@ -26,6 +27,7 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
  const [revision,refresh]=useState(0),[playback,setPlayback]=useState(null),[busy,setBusy]=useState(false);
  const live=useRef(true),flight=useRef(false),scope=useRef(0),box=useRef(null),playbackRef=useRef(null),initialReplay=useRef(replayId);playbackRef.current=playback;
  const inMatch=useStore(s=>selectRoute(s)==='game');
+ const currentVersion=useStore(shownVersion);
  const matchAtOpen=useRef(inMatch);
  useDocClass('sp-public-doctor-open');
  const close=()=>{if(standalone)location.assign(location.pathname);else publicDoctorStore.set({open:false});};
@@ -34,12 +36,12 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
  useEffect(()=>{live.current=true;return()=>{live.current=false;};},[]);
  useEffect(()=>{
   const controller=new AbortController();scope.current++;setLoading(true);setError(null);setPage(null);
-  userRequest('/api/doctors/'+publicId+'?section='+section,undefined,{signal:controller.signal})
-   .then(result=>{if(!controller.signal.aborted)setPage(result);})
+  userRequest('/api/doctors/'+publicId+'?section='+section+'&version='+encodeURIComponent(currentVersion),undefined,{signal:controller.signal})
+   .then(result=>{if(!controller.signal.aborted){if(standalone)store.set({versions:sanitizeVersions(result.versions)});setPage(result);}})
    .catch(e=>{if(!controller.signal.aborted)setError(e.userCode==='DOCTOR_NOT_FOUND'?t('未找到该博士档案'):t('档案读取失败，请稍后重试。'));})
    .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
   return()=>controller.abort();
- },[publicId,section,revision]);
+ },[publicId,section,revision,currentVersion]);
  const play=async matchId=>{
   if(flight.current||inMatch)return;flight.current=true;setBusy(true);
   try{
@@ -57,7 +59,7 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
  },[]);
  const more=async()=>{
   if(!page?.next||busy)return;const version=scope.current;setBusy(true);
-  try{const next=await userRequest('/api/doctors/'+publicId+'?section='+section+'&before='+page.next);if(live.current&&version===scope.current)setPage({...next,records:[...page.records,...next.records]});}
+  try{const next=await userRequest('/api/doctors/'+publicId+'?section='+section+'&before='+page.next+'&version='+encodeURIComponent(currentVersion));if(live.current&&version===scope.current)setPage({...next,records:[...page.records,...next.records]});}
   catch{if(live.current&&version===scope.current)toast(t('档案读取失败，请稍后重试。'),'warn');}
   finally{if(live.current)setBusy(false);}
  };
@@ -81,7 +83,7 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
      :tab==='achievements'?html`<section class="doctor-achievements">${ACHIEVEMENT_GROUPS.filter(([id])=>page.achievements.some(a=>a.group===id)).map(([id,label,icon])=>html`<div key=${id} class="ach-list"><h3 class="st-sec__h">${t(label)}</h3><div class="ach-marks ach-marks--list">${page.achievements.filter(a=>a.group===id).map(a=>html`<${AchievementMark} key=${a.id} a=${a} icon=${icon} />`)}</div></div>`)}</section>`
      :html`<section class="st-sec"><h3 class="st-sec__h"><span>${tab==='replays'?t('公开回放'):t('对局记录')}</span><${MicroLabel}>${tab==='replays'?'PUBLIC REPLAYS':'MATCH HISTORY'}<//></h3>
       ${page.records?.length?html`<div class="st-tablewrap"><table class="st-table st-table--history st-table--actions"><thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="st-round">${t('回合')}</th><th>${t('回放')}</th><th class="st-history-actions" aria-label=${t('对局操作')}></th></tr></thead>
-       <tbody>${page.records.map(row=>html`<tr key=${row.matchId}><td>${date(row.t)}</td><td><${DifficultyTag} difficulty=${row.difficulty} size="sm" /></td><td>${row.roomMode==='solo'?t('单人'):t('同盟')}</td><td><span class="st-band"><${BandIcon} bandId=${row.bandId} size="xs" />${gd.band(row.bandId)?.name || '—'}</span></td><td>${row.victory?t('胜'):t('负')}${row.modded?html`<em class="st-chip">${t('非官方')}</em>`:null}</td><td class="st-round num">${row.rounds}</td>
+       <tbody>${page.records.map(row=>html`<tr key=${row.matchId}><td>${date(row.t)}</td><td><${DifficultyTag} difficulty=${row.difficulty} size="sm" /></td><td>${row.roomMode==='solo'?t('单人'):t('同盟')}</td><td><span class="st-band">${(row.version || DEFAULT_VERSION)===currentVersion?html`<${BandIcon} bandId=${row.bandId} size="xs" />${gd.band(row.bandId)?.name || '—'}`:html`<em class="st-chip">${versionLabel(row.version || DEFAULT_VERSION)}</em>`}</span></td><td>${row.victory?t('胜'):t('负')}${row.modded?html`<em class="st-chip">${t('非官方')}</em>`:null}</td><td class="st-round num">${row.rounds}</td>
         <td><${ReplayStatus} available=${!!row.replay} shared=${!!row.replay} unavailableLabel=${t('未公开')} /></td>
         <td class="st-history-actions"><${HistoryMenu} rec=${{matchId:row.matchId,replay:{available:!!row.replay}}} readOnly=${true} busy=${busy} locked=${inMatch} onPlay=${()=>play(row.matchId)} /></td></tr>`)}</tbody></table></div>`:html`<p class="st-empty">${t('暂无公开记录')}</p>`}
       ${page.next?html`<div class="st-more"><${Button} variant="secondary" loading=${busy} onClick=${more}>${t('加载更早的对局')}<//></div>`:null}

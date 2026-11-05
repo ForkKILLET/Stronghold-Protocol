@@ -26,6 +26,12 @@ import { BackgroundClient } from '../workers/backgroundClient.js';
 //                cached for good — for this server's vanilla `cs` (its first 16 hex digits) and, from P1c (DESIGN §32.6),
 //                a content set with gameplay plugins a room uses or used lately (server/plugins/contentSets.js: the same
 //                shape with `vanilla: false`, its plugins, settings and modes)
+//     /cs/<cs16>/index.json, /cs/<cs16>/bounds/official.json of an official version this server enables (DESIGN §35.23,
+//                server/versions.js file): its manifest (`version`, data URLs under /data/versions/<slug>/) and its
+//                official-bounds snapshot, cached for good
+//     /data/versions/<slug>/<file>.json → another official version's data — only an enabled version's directory
+//                (versions.servedDirs(); the real path decides, in any spelling); `?v=` immutable like /data/. Every other
+//                path under data/versions/ is a 404, as before M1
 //     /cs/<cs16>/data/<file>.json, /cs/<cs16>/i18n/<lang>.json → a data or translation file that content set changed,
 //                its served bytes from memory (cached for good; every other file of the set is named by its plain
 //                /data/…?v=<8 hex> URL in the manifest)
@@ -97,12 +103,21 @@ const CS_FILE = /^\/cs\/([0-9a-f]{16})\/([A-Za-z0-9._\/-]{1,200})$/;
 
 /**
  * Create the static request handler.
- * @param {{ publicDir: string, dataDir: string, sharedDir: string, simDir?: string, packsDir?: string,
- *   packs?: ReturnType<typeof createPluginRegistry>, log?: object }} dirs
- *   packs: the server pack registry; runtime CDN and Vite behavior remain branch-owned.
+ * @param {{ publicDir: string, dataDir: string, sharedDir: string, simDir?: string, packsDir?: string, pluginsDir?: string,
+ *   packs?: ReturnType<typeof createPluginRegistry>, content?: import('../plugins/identity.js').VanillaContent | null,
+ *   log?: object,
+ *   visual?: ReturnType<typeof createVisualSets> | null,
+ *   contents?: ReturnType<typeof import('../plugins/contentSets.js').createContentSets> | null,
+ *   versions?: { file: (cs16: string, rel: string) => ({ body: Buffer, sha256: string, type: string } | null), servedDirs: () => string[] } | null }} dirs
+ *   packs: the server's plugin registry (default: one over publicDir, dataDir, packsDir and pluginsDir — ROOT/packs, and
+ *   the plugins/ folder beside packsDir); content: the vanilla content (default: computed from simDir, sharedDir and
+ *   dataDir on first use); visual: the visual sets (default: one over the registry — a registry of 0.2.0's shape has none:
+ *   /vs/ and /p/ answer 404); contents: the content sets with gameplay plugins (DESIGN §32.6; none: only the vanilla
+ *   set's /cs/ manifest); versions: the official versions this server enables (server/versions.js; none: /data/versions/ is
+ *   never served)
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, rawPath: string, query: string) => Promise<void>}
  */
-export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), pluginsDir = path.join(path.dirname(path.resolve(packsDir)), 'plugins'), packs = null, content = null, visual = null, contents = null, log = noopLog, cdnBase = '', dataCdnBase = '', wsUrl = '', resourcePackRoutes = [], clientBuild = true }) {
+export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = path.join(ROOT, 'server', 'sim'), packsDir = path.join(ROOT, 'packs'), pluginsDir = path.join(path.dirname(path.resolve(packsDir)), 'plugins'), packs = null, content = null, visual = null, contents = null, log = noopLog, cdnBase = '', dataCdnBase = '', wsUrl = '', resourcePackRoutes = [], clientBuild = true, versions = null }) {
   const registry = packs || createPluginRegistry({ publicDir, dataDir, packsDir, pluginsDir }, { log: /** @type {any} */ (log) });
   const cdn = typeof cdnBase === 'string' ? cdnBase : '';
   const builtIndex = path.join(publicDir, 'build', 'index.html');
@@ -129,6 +144,21 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
   const studioRealPath = async () => {
     if (studioReal === undefined) studioReal = await fsp.realpath(path.join(path.resolve(publicDir), 'studio')).catch(() => null);
     return studioReal;
+  };
+  // another official version's data (data/versions/<slug>/, DESIGN §35.22, §35.23): the release carries every version,
+  // but only the directories of the versions this server enables are served (versions.servedDirs()); the on-disk path
+  // decides (case-insensitive disks, Windows short names), as for the studio below
+  let versionsReal = null;
+  /** @type {string[] | null} the real paths of the served version directories */
+  let servedReal = null;
+  /** Is `abs` another version's data that may not be served (under data/versions/, outside every served directory)? */
+  const isVersionData = async (abs) => {
+    versionsReal ||= await fsp.realpath(path.join(path.resolve(dataDir), 'versions')).catch(() => null);
+    if (!versionsReal) return false;
+    const real = await fsp.realpath(abs).catch(() => null);
+    if (!real || !real.startsWith(versionsReal + path.sep)) return false;
+    servedReal ||= (await Promise.all((versions?.servedDirs() || []).map((d) => fsp.realpath(d).catch(() => null)))).filter((d) => typeof d === 'string');
+    return !servedReal.some((d) => real.startsWith(d + path.sep));
   };
   const shimBody = Buffer.from(DATA_SHIM_JS);
   const shimTag = `"shim-${shimBody.length.toString(16)}"`;
@@ -236,10 +266,12 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
     if (decoded.startsWith('/cs/')) {
       const c = vanillaContent();
       if (decoded !== `/cs/${csUrlPart(c.cs)}/index.json`) {
-        // a content set with gameplay plugins (DESIGN §32.6, server/plugins/contentSets.js): its manifest and its patched
-        // data files — a URL naming its content, so cached for good; 404 for a set this server does not keep
+        // an official version's manifest and bounds (DESIGN §35.23, server/versions.js), else a content set with gameplay
+        // plugins (DESIGN §32.6, server/plugins/contentSets.js): its manifest and its patched data files — a URL naming
+        // its content, so cached for good; 404 for a set this server does not keep
         const m = CS_FILE.exec(decoded);
-        const f = m && contents && !m[2].split('/').some((s) => s === '' || s === '.' || s === '..' || s.startsWith('.')) ? contents.file(m[1], m[2]) : null;
+        const safe = !!m && !m[2].split('/').some((s) => s === '' || s === '.' || s === '..' || s.startsWith('.'));
+        const f = safe && m ? (versions?.file(m[1], m[2]) || (contents ? contents.file(m[1], m[2]) : null)) : null;
         if (!f) { sendError(req, res, 404, '页面不存在 · Not found', decoded.length <= 200 ? decoded : ''); return; }
         await serveHashedBuffer(req, res, { body: f.body, hash: `cs-${m[1]}-${(f.sha256 || 'index').slice(0, 8)}`, type: f.type || MIME['.json'], cacheControl: IMMUTABLE_JSON, key: `cs:${decoded}`, cache: gzipCache });
         return;
@@ -346,6 +378,9 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
         const real = await fsp.realpath(absPath);
         if (mount.deny.has(path.basename(real).toLowerCase())) throw Object.assign(new Error('private'), { code: 'ENOENT' });
       }
+      if (mount.name === 'data' && segments.length > 1 && await isVersionData(absPath)) {
+        throw Object.assign(new Error('version data'), { code: 'ENOENT' });
+      }
     } catch (e) {
       if (e && e.code === 'ENOENT' && mount.name === 'data' && segments.length === 1 && LOCAL_ART_MANIFESTS.has(segments[0])) {
         // Optional local-client art (DESIGN §13): an install without it gets an empty manifest instead of a 404,
@@ -369,29 +404,32 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
       const real = studio ? await fsp.realpath(absPath).catch(() => null) : null;
       if (studio && (!real || real === studio || real.startsWith(studio + path.sep))) { sendError(req, res, 404, '页面不存在 · Not found', decoded.length <= 200 ? decoded : ''); return; }
     }
-    // assets CDN: the manifests are rewritten on the way out, so every client keeps requesting /data/assets.json
-    if (cdn && mount.name === 'data' && segments.length === 1 && CDN_MANIFESTS.has(segments[0].toLowerCase())) {
-      const cached = cdnCache.get(absPath);
-      let body = cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size
-        && cached.ctimeMs === stat.ctimeMs && cached.ino === stat.ino ? cached.body : null;
-      if (!body) {
+    // Local official-operator art is composed before cosmetic overlays; CDN rewriting uses the same background path.
+    const manifestName = mount.name === 'data' && segments.length === 1 ? segments[0].toLowerCase() : '';
+    const localFile = manifestName === 'assets.json' ? path.join(dataDir, 'local-assets.json') : null;
+    const localStat = localFile ? await fsp.stat(localFile).catch(() => null) : null;
+    if (CDN_MANIFESTS.has(manifestName) && (cdn || localStat)) {
+      const identity = JSON.stringify([absPath, cdn, ...[stat, localStat].map(s => s && [s.mtimeMs, s.size, s.ctimeMs, s.ino])]);
+      let encoded = cdnCache.get(absPath);
+      if (encoded?.identity !== identity) {
         try {
-          const identity = `${absPath}:${stat.mtimeMs}:${stat.size}:${stat.ctimeMs}:${stat.ino}`;
           let pending = cdnPending.get(identity);
           if (!pending) {
-            pending = manifestEncoder.request({ file: absPath, cdn }).then((bytes) => Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength))
+            pending = manifestEncoder.request({ file: absPath, cdn, localFile: localStat ? localFile : null, metadata: true })
+              .then(({ bytes, hash }) => ({ identity, hash, body: Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength) }))
               .finally(() => cdnPending.delete(identity));
             cdnPending.set(identity, pending);
           }
-          body = await pending;
-          cdnCache.set(absPath, { mtimeMs: stat.mtimeMs, size: stat.size, ctimeMs: stat.ctimeMs, ino: stat.ino, body });
+          encoded = await pending;
+          cdnCache.set(absPath, encoded);
         } catch (e) {
-          log.error(`[http] cannot rewrite ${segments[0]} for the CDN`, e);
+          log.error(`[http] cannot compose ${segments[0]}`, e);
           sendError(req, res, 500, '服务器内部错误 · Internal error');
           return;
         }
       }
-      serveBuffer(req, res, body, stat, MIME['.json'], 'no-cache', cdn);
+      const mtimeMs = Math.max(stat.mtimeMs, localStat?.mtimeMs || 0);
+      serveBuffer(req, res, encoded.body, { ...stat, mtimeMs, mtime: new Date(mtimeMs), etag: `"manifest-${encoded.hash}"` }, MIME['.json'], 'no-cache');
       return;
     }
     await serveFile(req, res, absPath, stat, mount.name, segments, query, gzipCache, log);
@@ -403,7 +441,7 @@ export function createStaticHandler({ publicDir, dataDir, sharedDir, simDir = pa
 
 function serveBuffer(req, res, body, stat, type, cacheControl, tag = '') {
   const isHead = req.method === 'HEAD';
-  const etag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}${tag ? '-' + Buffer.from(tag).toString('hex').slice(0, 12) : ''}"`;
+  const etag = stat.etag || `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}${tag ? '-' + Buffer.from(tag).toString('hex').slice(0, 12) : ''}"`;
   const headers = {
     'Content-Type': type,
     'Cache-Control': cacheControl,

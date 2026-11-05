@@ -2,7 +2,7 @@
 import {diffState} from '../../shared/stateDelta.js';
 import {buildBattleSpec} from '../sim/spec.js';
 import {captureCombatSpec,captureCombatEnd} from '../users/combatCapture.js';
-const ACTIONS=new Set(['g.buy','g.refresh','g.freeze','g.levelUp','g.sell','g.move','g.equip','g.art','g.destroy','g.reward','g.choice','g.band','g.bandSkip','g.ready','g.infoReady','g.autoplay','g.pause']);
+const ACTIONS=new Set(['g.buy','g.refresh','g.freeze','g.levelUp','g.sell','g.move','g.equip','g.art','g.destroy','g.reward','g.choice','g.band','g.bandSkip','g.ready','g.infoReady','g.autoplay','g.pause','g.unequip','g.morph','g.aiTakeover']);
 const clone=value=>JSON.parse(JSON.stringify(value));
 function archive(m){
  if(!m.replayMaxBytes)return null;
@@ -44,7 +44,7 @@ export function recordSpec(m,opts){
  try{
   const a=archive(m);if(!a)return;
   // Every actual field is recorded once, regardless of human connectivity or viewer changes.
-  const spec=buildBattleSpec({...opts,content:m.battleContent,cs:m.cs,vs:m.vs,
+  const spec=buildBattleSpec({...opts,content:m.battleContent,cs:m.cs,vs:m.vs,version:m.version || undefined,
    boss:opts.boss || (opts.sharedBoss?{poolHp:opts.sharedBoss.hp,poolMax:opts.sharedBoss.maxHp}:null)});
   const field={at:at(m,a),round:m.round,fieldId:spec.fieldId,kind:spec.kind,spec};
   const bytes=Buffer.byteLength(JSON.stringify(field));
@@ -70,6 +70,6 @@ export function finishReplay(m){
  for(const f of m.fields)recordEnd(m,f,f.result);
  a.finished=true;
  const {states:_states,bytes:_bytes,start:_start,finished:_finished,...body}=a;
- return {...body,duration:at(m,a),cs:m.cs,vs:m.vs,modded:m.requireCs,
+ return {...body,duration:at(m,a),cs:m.cs,vs:m.vs,modded:!!m.requireCs && !m.version,version:m.version || undefined, test:m.test === true,
   players:m.order.map(p=>({playerId:p.playerId,name:p.name,seat:p.seat,isBot:!!p.isBot})),modeId:m.modeId,difficulty:m.difficulty};
 }

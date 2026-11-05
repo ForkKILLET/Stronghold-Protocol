@@ -57,7 +57,7 @@ test('Damazti strategy remains stock-backed even when it grants the same item as
   for (let i = 0; i < 3; i++) assert.ok(p.acquireItem(id));
   p.bandId = 'band_damaztic'; p.recompute();
   for (const round of [5, 10, 15]) {
-    m.round = round; m.dispatch(p, 'onRoundStart', { round });
+    m.round = round; m.dispatch(p, 'onPrepStart', { round });
     assert.equal(m.itemPool.held(id), 3); checkInvariants(m);
   }
   const copy = () => [...p.hand, ...p.temp].find(x => x?.kind === 'item' && x.id === id);

@@ -21,6 +21,9 @@
 // field, uncapped and live — falling as the helpers kill them, rising when one splits or summons (the local 联防
 // replica's runner state().uniteLeft, else m.public players[].uniteLeft); the LP tower marks lp with −min(lpCapPerRound, N).
 // The same MissTag sits in the leakers' team rows (ui/teamPanel.js), its tooltip naming the teammate there (missTip).
+// Phase changes play a short scene over the capsule (capsuleFxKind: kettles at 回合开始, the robot meeting the enemy at
+// 作战 / 联防) with the official hudPanel/trans_* sprites, as the event's top bar does (video 7:55–8:41); [ASSUMED] the
+// placement, sizes and timings, estimated frame by frame from that footage.
 // 准备就绪 is refused while the temp overflow row (临时整备区) holds pieces: the reason shows under the button
 // (user playtest #3 item 3; the row's own label is ui/underframe.js TempRowNotice).
 
@@ -30,15 +33,18 @@ import { html, Button, Icon, PingPill, Countdown, Tooltip, MicroLabel, Difficult
 import { useShortcuts } from './settings.js';
 import { shortcutLabel } from './gameLogic.js';
 import { Sprite, LpTower, GIcon, LocalSprite } from './gameComponents.js';
-import { localAsset } from '../data.js';
+import { data, localAsset } from '../data.js';
+import { uiUrl } from './assetUrls.js';
+import { reducedMotion } from './device.js';
 import { serverNow } from '../store.js';
 import { isCombatPhase, isBossPhase, prepCapsuleLabel, bossFrac, bossPctText, fmtNum, shopBlockReason } from './gameLogic.js';
 import { overtimeState, overtimeDrainPerSec, remainAt } from './matchStatus.js';
 import { hotkeyLabelOf } from './settings.js';
-import { reducedMotion } from './device.js';
+
 import { PixBot } from './pixbots.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
-import { UnofficialMark } from './pluginTag.js';
+import { UnofficialMark, ruleLine } from './pluginTag.js';
+import { TestMark } from './testConsole.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -141,11 +147,11 @@ export function capsuleFxKind(phase, prev) {
  * Which capsule scene to play: a new one at every phase (or round) change; nothing on the first render (a reload or a
  * late join lands mid-phase) or with reduced motion. `seq` re-keys the capsule so its CSS motion restarts.
  */
-function useCapsuleFx(phase, round) {
+function useCapsuleFx(phase, round, held = false) {
   const ref = useRef({ key: null, phase: null, kind: null, seq: 0 });
   const s = ref.current;
   const key = `${phase}:${round}`;
-  if (s.key !== key) {
+  if (s.key !== key && !(held && s.key !== null)) {
     s.kind = s.key === null || reducedMotion() ? null : capsuleFxKind(phase, s.phase);
     s.key = key;
     s.phase = phase;
@@ -373,6 +379,17 @@ function CheckBtn({ sprite, cls, label, chev, shortcut, on, disabled, onClick, t
 }
 
 /**
+ * The top bar's faint deco type (official hudPanel/frame_deco_txt*; the same words as text without the art pack).
+ * Decoration only: aria-hidden, so a screen reader never reads it.
+ * @param {{ k: 'txt1'|'txt2'|'txt3', text: string, side: 'l'|'c'|'r' }} props
+ */
+function DecoType({ k, text, side }) {
+  return html`<span class=${`gtop__deco gtop__deco--${side}`} aria-hidden="true" data-deco=${k}>
+    <${Sprite} k=${`hudPanel/frame_deco_${k}`} class=${`gtop__decoimg gtop__decoimg--${k}`} fallback=${html`<span class="gtop__decotxt">${text}</span>`} />
+  </span>`;
+}
+
+/**
  * The red overtime (DOT) warning of a boss round (pure view of ui/matchStatus.js overtimeState).
  * @param {{ ot: ReturnType<typeof overtimeState> }} props
  */
@@ -427,16 +444,17 @@ export function PauseButton({ paused, requested = paused, votes = 0, required = 
  *   pen?:boolean, penAvail?:boolean, onPen?:(on:boolean)=>void, config?: any, frozenAt?: number|null,
  *   pause?: { show: boolean, paused: boolean, busy?: boolean, onToggle: () => void } | null,
  *   live?: { pending: number, unite: boolean, left?: number|null } | null,
- *   spectators?: any[]|null, myId?: any, isHost?: boolean, onRemoveSpectator?: ((playerId: any) => any)|null }} props
+ *   spectators?: any[]|null, myId?: any, isHost?: boolean, onRemoveSpectator?: ((playerId: any) => any)|null, held?: boolean }} props
  *   spectators: the room's spectator seats (room.state) — the 观战席 capsule beside the latency (SpectatorPill; the host removes)
  *   room: room.state — a match with gameplay plugins shows the small MOD mark beside the difficulty (DESIGN §32.6)
  *   frozenAt: the server time every clock shows while the solo match is paused (null = live)
  *   live: the own battle's pending LP loss (liveLp): the tower keeps the settled lp and adds a red −N tick, 联防中 during 联防;
  *     `left` (a leaker in 联防): its enemies still standing — the capsule's ×N tag
+ *   held: the HUD waits hidden under 协议启动！ — a phase change's capsule scene waits for it (useCapsuleFx)
  */
 export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, onReady, readyBusy, readyCount, playerCount, pen = false, penAvail = false, onPen = () => {},
   config = null, frozenAt = null, pause = null, live = null, spectator = false,
-  spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null }) {
+  spectators = null, myId = null, isHost = false, onRemoveSpectator = null, room = null, held = false }) {
   const phase = pub?.phase;
   const boss = isBossPhase(phase);
   const lp = boss && Number.isFinite(pub?.teamLp) ? pub.teamLp : Number.isFinite(priv?.lp) ? priv.lp : null;
@@ -457,7 +475,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
   const frozenSecs = Number.isFinite(frozenAt) ? remainAt(pub?.deadline, frozenAt) : null;
   const btn = checkButtons({ pen, penAvail, infoOpen: !!drawer });
   const shortcuts = useShortcuts();
-  const fx = useCapsuleFx(phase, pub?.round);
+  const fx = useCapsuleFx(phase, pub?.round, held);
   const onLeft = () => (pen ? onPen(false) : onDrawer('info'));
   const onRight = () => (pen ? onPen(false) : penAvail ? onPen(true) : null);
   return html`<header class=${cx('gtop', pen && 'is-pen')}>
@@ -469,7 +487,9 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
           <${SpectatorPill} spectators=${spectators} myId=${myId} isHost=${isHost} onRemove=${onRemoveSpectator} />
         </div>
         ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+        ${pub?.test ? html`<${TestMark} class="gtop__test" />` : null}
         <${UnofficialMark} room=${room} compact=${true} class="gtop__mod" />
+        ${ruleLine(room?.content?.rules) ? html`<span class="gtop__rules" data-testid="plugin-rules">${ruleLine(room?.content?.rules)}</span>` : null}
       </div>
     </div>
 

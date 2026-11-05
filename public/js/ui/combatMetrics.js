@@ -79,7 +79,7 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
       <button ref=${closeRef} type="button" class="combat-metrics__close" aria-label=${t('关闭作战统计')} onClick=${onClose}><${Icon} name="close" /></button>
     <div class="combat-metrics__tools">
       <div class="combat-metrics__scopes" role="group" aria-label=${t('统计范围')}>
-        ${[['battle', t('当前战斗')], ['match', t('本局累计')], ['round', t('逐回合')]].filter(([id])=>!historical || id!=='battle').map(([id, label]) => html`<button type="button" key=${id}
+        ${[['battle', t('当前战斗')], ['match', t('本局累计')], ['last', t('上一场战斗')], ['round', t('逐回合')]].filter(([id])=>!historical || id!=='battle' && id!=='last').map(([id, label]) => html`<button type="button" key=${id}
           aria-pressed=${scope === id} onClick=${() => setScope(id)}>${label}</button>`)}
       </div>
     ${scope === 'round' && html`<div class="combat-metrics__scopes combat-metrics__pages" role="group" aria-label=${t('回合记录')}>
@@ -102,7 +102,8 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
         const description = TYPES.map((type) => `${t(type.label)} ${number(r.types[type.id])}`).join('，');
         return html`<li key=${r.key} class="combat-metrics__row">
           <span class="combat-metrics__rank">${String(i + 1).padStart(2, '0')}</span>
-          <${UnitThumb} kind=${r.kind === 'token' ? 'token' : 'chess'} id=${r.defId} showTier=${false} size="sm" />
+          <${UnitThumb} kind=${r.kind === 'token' ? 'token' : 'chess'} id=${r.defId} ownerId=${r.ownerId}
+            rec=${r.picture?.charId ? { ...r.picture, name: r.name } : null} showTier=${false} size="sm" />
           <div class="combat-metrics__unit">
             <div class="combat-metrics__name"><b title=${r.name}>${r.name || r.defId}</b></div>
             <div class="combat-metrics__bar" role="img" aria-label=${description} title=${description}>

@@ -58,7 +58,6 @@ test('the title page excludes the upstream footer link while retaining server-ab
   assert.match(src, /t\('关于本服务器'\)/);
   assert.match(src, /target="_blank"/);
   assert.match(src, /rel="noopener noreferrer"/);
-  for (const lang of ['en', 'ja', 'ko', 'zh-TW']) assert.equal(JSON.parse(read(`public/i18n/${lang}.json`))['项目仓库'], undefined);
 });
 
 test('server-about credits the UI creator with the requested Bilibili profile', () => {

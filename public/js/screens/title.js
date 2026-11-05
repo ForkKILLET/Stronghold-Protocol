@@ -34,6 +34,7 @@ import { scriptOf } from '../../../shared/i18nPacks.js';
 import { PageHeader } from '../ui/pageHeader.js';
 import { ResourceLauncher } from '../ui/resourcePanel.js';
 import { installedCount } from '../content.js';
+import { NoticesButton } from '../ui/notices.js';
 import { sanitizeName, isValidName } from '../ui/playerName.js';
 
 export { stripLoneSurrogates, sanitizeName, isValidName } from '../ui/playerName.js';

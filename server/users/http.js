@@ -2,14 +2,16 @@ import {acceptsGzip} from '../http/files.js';
 import {sendJson} from '../http/common.js';
 import {sanitizeName,clientAddress,limitKeyOf,isLocalIp} from '../net.js';
 import {normalizeDoctorId,validVisibility} from '../../shared/publicProfiles.js';
+import {DEFAULT_VERSION,versionById} from '../../shared/versions.js';
 export const USER_COOKIE='sp_user';
 export function userToken(req){const values=String(req.headers.cookie||'').split(';').map(v=>v.trim()).filter(v=>v.startsWith(USER_COOKIE+'='));return values.length===1?values[0].slice(USER_COOKIE.length+1):null;}
 export function sameOrigin(req){
  if(req.headers['sec-fetch-site']==='cross-site')return false;
  try{return !req.headers.origin || new URL(req.headers.origin).host===req.headers.host;}catch{return false;}
 }
-export function createUserApi({users,registry,lobby,data,content,moderation,trustProxy,log,network}){
+export function createUserApi({users,registry,lobby,data,content,versions=null,moderation,trustProxy,log,network}){
  const limits=new Map();
+ const replayContent=result=>versions?versions.csOf(result.version || DEFAULT_VERSION):content?.cs;
  const json=(req,res,status,data)=>{res.setHeader('Cache-Control','no-store');sendJson(req,res,status,data);};
  const cookie=(req,res,token)=>{
   // TLS flag is emitted for direct TLS or the configured trusted proxy's https request.
@@ -45,13 +47,16 @@ export function createUserApi({users,registry,lobby,data,content,moderation,trus
      const gzip=acceptsGzip(req.headers['accept-encoding']);
      const result=await users.call('publicReplayBody',{publicId,matchId,gzip});
      if(result.error){json(req,res,404,result);return true;}
-     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':result.body.byteLength,'Vary':'Accept-Encoding',...(gzip?{'Content-Encoding':'gzip'}:{}),...(content?.cs?{'X-SP-Replay-Content':content.cs}:{})});
+     const cs=replayContent(result);
+     res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':result.body.byteLength,'Vary':'Accept-Encoding',...(gzip?{'Content-Encoding':'gzip'}:{}),...(cs?{'X-SP-Replay-Content':cs}:{})});
      res.end(result.body);return true;
     }
     const cursor=params.get('before'),before=cursor===null?null:Number(cursor),section=params.get('section')||'history';
+    const version=params.get('version') || DEFAULT_VERSION;
+    if(!versionById(version)){json(req,res,400,{error:'VERSION'});return true;}
     if((before!==null&&(!Number.isSafeInteger(before)||before<1))||!['history','replays'].includes(section)){json(req,res,400,{error:'CURSOR'});return true;}
-    const result=await users.call('publicDoctor',{publicId,before,section,modded:params.get('modded')==='1'});
-    json(req,res,result.error?404:200,result);return true;
+    const result=await users.call('publicDoctor',{publicId,before,section,version,modded:params.get('modded')==='1'});
+    json(req,res,result.error?404:200,result.error?result:{...result,versions:versions?.welcome()||null});return true;
    }
    const token=userToken(req);let user=token?await users.call('authenticate',{token}):null;
    if(pathname==='/api/user'&&req.method==='GET'){
@@ -84,7 +89,8 @@ export function createUserApi({users,registry,lobby,data,content,moderation,trus
     const gzip=acceptsGzip(req.headers['accept-encoding']);
     const result=await users.call('replayBody',{id:user.id,matchId,gzip});
     if(result.error){json(req,res,404,result);return true;}
-    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':result.body.byteLength,'Vary':'Accept-Encoding',...(gzip?{'Content-Encoding':'gzip'}:{}),...(content?.cs?{'X-SP-Replay-Content':content.cs}:{})});
+    const cs=replayContent(result);
+    res.writeHead(200,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','Content-Length':result.body.byteLength,'Vary':'Accept-Encoding',...(gzip?{'Content-Encoding':'gzip'}:{}),...(cs?{'X-SP-Replay-Content':cs}:{})});
     res.end(result.body);return true;
    }
    if(req.method!=='POST'){json(req,res,405,{error:'METHOD'});return true;}

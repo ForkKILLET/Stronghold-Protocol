@@ -15,6 +15,7 @@ import { store, useStore, emptyMatch, createStore, isSpectating } from '../store
 import { GIcon } from './gameComponents.js';
 import { recordQuit } from './stats.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
+import { TestMark } from './testConsole.js';
 
 /**
  * Exit dialog lines. 放弃模拟 ends the run on the server as 'abandoned' and returns to the
@@ -127,15 +128,20 @@ export function AwayOverlay({ onBack = () => {} }) {
 }
 
 /**
- * Pre-game step header.
- * @param {{ step: number, of: number, title: string, micro: string, pub: any, total?: number|null, onExit: Function }} props
+ * Pre-game step header (PR #643, the event's pre-game, video 6:29–7:51): exit over the ping | the difficulty, with
+ * `extra` beside it in one capsule (the draft's 本局信息) | "1/2 确认本局信息" ……… `status` (the draft's turn: 请选择策略 /
+ * X 正在选择策略… / 策略选择完成) | 玩法说明 and the countdown.
+ * @param {{ step: number, of: number, title: string, micro: string, pub: any, total?: number|null, onExit: Function,
+ *   extra?: any, status?: any }} props
  */
-export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
+export function StepHeader({ step, of, title, micro, pub, total, onExit, extra = null, status = null }) {
   return html`<${PageHeader} onBack=${onExit} backTitle=${t('离开')} title=${title} micro=${micro} />
   <header class="stephead stephead--context">
     <div class="stephead__progress num"><b>${step}</b><span>/${of}</span></div>
     <div class="stephead__right">
       ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}
+      ${extra}
+      ${status ? html`<div class="stephead__status">${status}</div>` : null}
       <${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />
       <${DraftPause} pub=${pub} standalone=${true} />
     </div>

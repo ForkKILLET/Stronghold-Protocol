@@ -9,7 +9,9 @@ import { PersonalizationSection } from './personalization.js';
 // `_meta.machineTranslated`) and the 快捷键 section that rebinds the in-match shortcuts (the key map:
 // ui/gameLogic/shortcuts.js; the community request 「快捷键可不可以自己设置」, the owner's decision of 2026-10-07) and
 // 问题反馈, which copies the diagnostics of this page for a bug report (diag.js: the error log, this browser, optionally
-// the battle on screen; nothing is uploaded). The lobby and the room open it from a 设置 button next to 玩法说明
+// the battle on screen; nothing is uploaded). 素材存储 asks the browser to keep this site's storage, where an imported asset
+// pack lives (assetCache.js), and 清理旧版本素材 deletes the imported copies this server's version no longer uses
+// (assetPack.js pruneImportedAssets; both the maintainer's requests of 2026-10-17). The lobby and the room open it from a 设置 button next to 玩法说明
 // (SettingsButton, GitHub #238); the title screen and the match have their own gear.
 // 外观插件 (DESIGN §32 P1a, the design study's §7.5): a switch for each cosmetic plugin of scope `personal` the server's
 // catalogue lists (content.js) — kept in this browser (`sp.pref.cosmetics`), never sent, seen by this player alone and
@@ -22,32 +24,42 @@ import { PersonalizationSection } from './personalization.js';
 // settings only inflate the glyphs inside fixed boxes (and page zoom is off: index.html's viewport, ui/device.js).
 // Only font-size declarations read `--t`, so the board, the HUD bands the prep camera keeps clear and the detail
 // card's side do not move — the field is sized from the host element's clientWidth (render/app.js).
+// 异形屏适配 (ui/screenFit.js): imported here, ahead of main.js's first render, so the stored offsets are on at boot.
 
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Modal, Button, Icon, MicroLabel } from './components.js';
+import { html, Modal, Button, Icon, MicroLabel, Tooltip, confirmDialog } from './components.js';
 import { createStore, useStore, loadPref, savePref, store } from '../store.js';
 import { sanitizeSettings, DEFAULT_SHORTCUTS, sanitizeShortcuts, shortcutLabel, VOICE_LANGS, TEXT_SIZES } from './gameLogic.js';
 import { GIcon } from './gameComponents.js';
+import { settingsStore } from './settingsStore.js';
+export { settingsStore } from './settingsStore.js';
 import { audio } from '../audio.js';
-import { detectFeatures } from './device.js';
+import { detectFeatures, isIOS } from './device.js';
 import { ResourceRow } from './resourcePanel.js';
 import { FRAME_RATES } from '../frameRate.js';
 import { LangToggle, machineTranslationNote } from './lang.js';
-import { t, tc, N_ } from '../../../shared/i18n.js';
+import { t, tc, tParts, N_ } from '../../../shared/i18n.js';
 import { errorCount, currentBattle, diagnosticsText, ISSUE_TRACKERS } from '../diag.js';
 import { copyText } from './clipboard.js';
-import { catalog, loadCatalog, cosmeticPlugins, installedCount, personal, personalApplied, personalSet, pluginName, setPersonalPlugin } from '../content.js';
+import { catalog, loadCatalog, cosmeticPlugins, installedCount, isPersonalCosmetic, personal, personalApplied, personalSet, pluginName, setPersonalPlugin } from '../content.js';
+import { resolveThemeVars, themeVarsOf } from '../../../shared/plugins/theme.js';
 import { setUiPlugin, uiPluginEntries, uiPlugins } from './uiPlugins.js';
 import { UI_LIMITS } from '../../../shared/plugins/ui.js';
 import { toast, describeError } from './toasts.js';
 import { pluginMicro } from './pluginTag.js';
+// 皮肤 (docs/SKINS.md): the global display rule the 显示其他玩家的皮肤 switch follows. ui/skins.js costs nothing new here:
+// it is already on the boot path (main.js → screens/loadout.js / ui/loadoutSync.js) and imports only store.js and
+// data.js, both of which settings.js reaches through content.js — no cycle, no asset store (it must NOT load assets.js:
+// test/ui/plugins.e2e.test.js pins that a server without plugins never fetches it).
+import { hasAnySkinChoices } from './skins.js';
 import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
+import { ScreenFitSection } from './screenFit.js';
+import { cosmetics } from '../cosmetics.js';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 
 /** Settings store: volumes, voices, damageNumbers, officialDamageNumbers, ammoCount, deploymentZoom, quality, textSize, fpsLimit and preload options. Shortcuts persist separately. */
-export const settingsStore = createStore(sanitizeSettings(loadPref('settings', null)));
 export const shortcutsStore = createStore(sanitizeShortcuts(loadPref('shortcuts', DEFAULT_SHORTCUTS)));
 
 /**
@@ -110,7 +122,8 @@ function Toggle({ label, micro, value, onChange }) {
   </div>`;
 }
 
-const QUALITY = [['high', N_('高')], ['medium', N_('中')], ['low', N_('低')]];
+/** Display order only: 低 / 中 / 高, the same direction as 官方特效 关 / 精简 / 完整. Stored values stay high | medium | low. */
+const QUALITY = [['low', N_('低')], ['medium', N_('中')], ['high', N_('高')]];
 /**
  * 官方特效 (0.3.0, render/vfx): the official battle effects the server's owner extracted from their own client (the
  * server serves them: every player of that server sees the owner's extraction) — normal attacks, projectiles, hits,
@@ -193,18 +206,32 @@ function CosmeticSection() {
   const cat = useStore((s) => s, Object.is, catalog);
   const ids = useStore((s) => s.ids, Object.is, personal);
   const installed = useStore(installedCount);
+  const s = useSettings();
   useEffect(() => { if (installed) loadCatalog({ force: true }); }, [installed]);
-  const list = installed ? cosmeticPlugins(cat.plugins, 'personal') : [];
+  const entries = installed ? cosmeticPlugins(cat.plugins, 'personal') : [];
+  const list = entries.filter(isPersonalCosmetic);
+  // The 显示其他玩家的皮肤 switch is on screen with or without a PERSONAL plugin — an appearance can also come from a
+  // set the player is not in (a watched match's cosmetics are the watcher's own layers), and a switch that appears only
+  // when the catalogue happens to have loaded would look like a bug. It follows the same GLOBAL rule the 皮肤 section
+  // does (ui/skins.js hasAnySkinChoices: at least one operator of the composed manifest has a wear-able skin), so a
+  // session with no such appearance draws nothing here — an installation without a cosmetic layer keeps exactly the
+  // settings it had before this feature, the switch included (test/ui/plugins.e2e.test.js asserts the section is absent
+  // on a server without plugins). The list below is NOT gated: it is where a switched-off plugin is switched back on.
   if (!list.length) return null;
-  const set = personalSet(ids, list.filter((p) => typeof p.vs === 'string'));
+  const set = personalSet(ids, entries);
   const applied = new Set(set.order);
   const auto = new Set(set.auto);
+  const winners = resolveThemeVars(set.order.map((id) => {
+    const p = entries.find((x) => x.id === id);
+    return { id, vars: themeVarsOf(p) };
+  }));
   const flip = (id, on) => { const r = setPersonalPlugin(id, on); if ('error' in r) toast(describeError(r.error), 'warn'); };
   return html`<section class="set-plugins" aria-labelledby="set-plugins-title" data-testid="personal-plugins">
     <div class="set-keys__head">
       <span class="set-row__label" id="set-plugins-title">${t('外观插件')}<${MicroLabel}>COSMETIC PLUGINS<//></span>
     </div>
     <p class="set-hint">${t('只改变你自己看到的画面和声音，不影响其他博士，也不影响战斗；插件为非官方制作。')}</p>
+    ${winners.map((w) => html`<p key=${w.name} class="set-hint set-theme-win">${t('{token} 由「{name}」生效', { token: w.name, name: pluginName(list.find((p) => p.id === w.pluginId) || { id: w.pluginId }) })}</p>`)}
     ${list.map((p) => {
       // on: applied (chosen, or 「自动」: another one needs it) — or chosen but left out now (a conflict): switch it off
       const skipped = set.skipped.includes(p.id);
@@ -218,6 +245,21 @@ function CosmeticSection() {
       </div>`;
     })}
   </section>`;
+}
+
+/**
+ * 设置「显示其他玩家的皮肤」 (docs/SKINS.md): whether this browser draws the appearance another player chose
+ * (`UnitInfo.skin`, published by the match — `Match.publicView().players[].skins`).
+ *
+ * Pure client preference, never sent: turning it off makes every OTHER seat's piece draw the operator's own model,
+ * 干员调配 its own choice alone. The asymmetry is deliberate and documented — their screen keeps showing their skin, so
+ * a co-op's players may see different models for the same piece. On by default: the appearance is what its owner chose
+ * it for, and this is the switch for a player who prefers the official model of everyone else.
+ * @param {{ value: boolean, onSet: (v: boolean) => void }} props
+ */
+function OtherSkinsRow({ value, onSet }) {
+  return html`<${Toggle} label=${t('显示其他玩家的皮肤')} micro="OTHER SKINS"
+    value=${value} onChange=${(v) => onSet(v)} />`;
 }
 
 /**
@@ -258,6 +300,13 @@ function UiPluginSection() {
  * Settings modal.
  * @param {{ open: boolean, onClose: Function }} props
  */
+/**
+ * 素材存储: the 导入素材包 dialog asks for persistent storage once, as an import ends (ui/assetImport.js); this button asks
+ * again whenever the player wants, and the line under it says what the browser answers now (navigator.storage.persisted).
+ * Chrome and Edge decide silently from their own signals, Firefox asks the player; neither answer outlives a manual clear
+ * of the site's data. StorageManager exists only in a secure context: on plain http to a LAN IP the line says so and
+ * there is no button. Laid out like 问题反馈 below it.
+ */
 export function SettingsModal({ open, onClose }) {
   const s = useSettings();
   const [tested, setTested] = useState(false);
@@ -271,8 +320,10 @@ export function SettingsModal({ open, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     let live = true;
-    fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok); }, () => {});
-    return () => { live = false; };
+    const update = () => fxAvailable(null).then((ok) => { if (live) setFxOk(!!ok || Object.values(cosmetics.apply({}).fx || {}).some(e => Object.keys(e.config?.flipbooks || {}).length || e.index)); }, () => {});
+    update();
+    const off = cosmetics.subscribe(update);
+    return () => { live = false; off(); };
   }, [open]);
   const fxTier = resolveOfficialFx(s.officialFx, true);
   return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem" utility=${true} class="settings-modal"
@@ -310,17 +361,27 @@ export function SettingsModal({ open, onClose }) {
       <${Toggle} label=${t('显示伤害数字')} micro="DAMAGE NUMBERS" value=${s.damageNumbers} onChange=${(v) => updateSettings({ damageNumbers: v })} />
       <${Toggle} label=${t('官方伤害数字')} micro="OFFICIAL NUMBERS" value=${s.officialDamageNumbers} onChange=${(v) => updateSettings({ officialDamageNumbers: v })} />
       <p class="set-hint">${t('只显示达到官方暴击条件的红色数字。关闭时仍显示每一次命中。')}</p>
-      <${Toggle} label=${t('弹药数量')} micro="AMMO COUNT" value=${s.ammoCount} onChange=${(v) => updateSettings({ ammoCount: v })} />
-      <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）。官方界面没有这个数字。')}</p>
+      <${Toggle} label=${t('显示弹药与能量数量')} micro="AMMO & ENERGY" value=${s.ammoEnergyCount} onChange=${(v) => updateSettings({ ammoEnergyCount: v })} />
+      <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）；秘术师的血条下方显示储存的攻击能量 / 上限（如 2/3）。官方界面没有这些数字。')}</p>
       <${Toggle} label=${t('部署时镜头缩放')} micro="DEPLOYMENT ZOOM" value=${s.deploymentZoom} onChange=${(v) => updateSettings({ deploymentZoom: v })} />
       <p class="set-hint">${t('放置或移动干员、装备时临时收起商店并放大棋盘，结束后恢复。默认关闭，不影响手动收起商店。')}</p>
       <${ResourceRow} enabled=${s.preload} onChange=${(v) => updateSettings({ preload: v })} />
       <${Toggle} label=${t('启用皮肤')} micro="SKINS" value=${s.skinsEnabled} onChange=${(v) => updateSettings({ skinsEnabled: v })} />
       <p class="set-hint">${t('开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。')}</p>
+      <${OtherSkinsRow} value=${s.otherSkins !== false} onSet=${v => updateSettings({otherSkins:v})} />
       <div class="set-row"><span class="set-row__label"><${Icon} name="keyboard" />${t('快捷键')}<${MicroLabel}>SHORTCUTS<//></span>
         <${Button} variant="secondary" icon="edit" onClick=${() => setShortcutOpen(true)}>${t('修改快捷键')}<//></div>
-      <${Toggle} label=${t('秘术师能量')} micro="STORED ENERGY" value=${s.mysticEnergy} onChange=${(v) => updateSettings({ mysticEnergy: v })} />
-      <p class="set-hint">${t('在秘术师的血条下方显示储存的攻击能量 / 上限（如 2/3）。官方用干员身上的特效表示，没有这个数字。')}</p>
+      <${Toggle} label=${t('盟约效果剩余时间')} micro="BOND TIMERS" value=${s.bondTimers} onChange=${(v) => updateSettings({ bondTimers: v })} />
+      <p class="set-hint">${t('在选中单位的详情中显示叙拉古、萨尔贡效果的剩余时间；萨尔贡显示层数与下一层到期时间。官方界面没有这些数字。')}</p>
+      <${Toggle} label=${t('全屏时保持屏幕常亮')} micro="SCREEN WAKE LOCK" value=${s.fullscreenWakeLock} onChange=${(v) => updateSettings({ fullscreenWakeLock: v })} />
+      <p class="set-hint" data-testid="wake-lock-hint">${tParts(isIOS()
+        ? N_('全屏期间始终保持屏幕常亮（{support}）；iOS低电量模式下可能不生效。')
+        : N_('全屏期间始终保持屏幕常亮（{support}）。'), {
+        support: html`<${Tooltip} tap=${true} id="wake-lock-requirements" placement="bottom"
+          text=${t('需要 HTTPS 或可信的本地地址（如 localhost），浏览器支持 Screen Wake Lock API，且页面保持在前台。系统设置仍可能限制生效。')}>
+          <button type="button" class="set-hint__help" aria-describedby="wake-lock-requirements">${t('需要环境支持')}<${Icon} name="info" /></button>
+        <//>`,
+      })}</p>
       <div class="set-row">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
         <div class="set-seg" role="radiogroup">
@@ -344,6 +405,7 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint set-textsize-note">${t('调整界面文字大小，棋盘保持原比例。')}</p>
+      <${ScreenFitSection} />
       <${CosmeticSection} />
       <${UiPluginSection} />
       <${DiagSection} />

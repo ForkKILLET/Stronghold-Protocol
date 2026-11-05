@@ -591,7 +591,8 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
 /* The fitter also selects these cards when a medium-height window cannot keep the nameplate readable. */
 .room-screen--coop .seats.seats--compact { grid-template-columns:repeat(var(--room-compact-columns,4),minmax(0,1fr)); grid-template-rows:none; grid-auto-rows:max-content; flex:1 1 0; min-height:0; overflow-y:auto; overscroll-behavior:contain; align-content:start; align-content:safe center; }
 .room-screen .seats--solo.seats--compact { grid-template-columns:minmax(0,240px) minmax(0,480px); }
-.room-screen .seats--compact .rseat { display:grid; grid-template-columns:min(54px,var(--room-seat-width,48px)) minmax(0,1fr); grid-template-rows:28px auto; }
+.rseat__compact-state { display:none; }
+.room-screen .seats--compact .rseat { display:grid; grid-template-columns:clamp(44px,var(--room-seat-width,48px),54px) minmax(0,1fr); grid-template-rows:28px auto; }
 .room-screen .seats--compact .rseat__strip { grid-column:1/-1; grid-row:1; }
 .room-screen .seats--compact .rseat__art { grid-column:1; grid-row:2; }
 .room-screen .seats--compact .rseat__plate { grid-column:2; grid-row:2; height:auto; min-height:0; margin:0; padding:6px; display:flex; flex-direction:column; justify-content:center; gap:6px; }
@@ -603,7 +604,8 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
 .room-screen .seats--compact .rseat__invite small { display:none; }
 .room-screen .seats--compact .rseat__invite b { font-size:12px; }
 .room-screen .seats--compact .rseat__plus { width:28px; height:28px; }
-.room-screen .seats--compact .rseat .rseat__state { bottom:4px; gap:2px; font-size:10px; }
+.room-screen .seats--compact .rseat .rseat__state { display:none; }
+.room-screen .seats--compact .rseat__compact-state { display:block; margin-top:4px; font-size:10px; line-height:1.2; color:var(--mint-400); white-space:nowrap; }
 .room-screen .seats--compact .rseat__box { width:12px; height:12px; border-width:1px; }
 @media (pointer:coarse) {
  .room-screen .seats--compact .rseat { grid-template-rows:36px auto; }
@@ -621,10 +623,10 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
    Do not constrain app-root or .gm: combat retains its existing projection and rem. */
 :is(.screen:not(.gm), .lo, .st:not(.st--replay), .guide) {
   box-sizing:border-box; width:auto; padding:0;
-  top:calc(var(--sp-vtop,0px) + var(--sa-t,0px));
-  left:calc(var(--sp-vleft,0px) + var(--sa-l,0px));
-  right:var(--sa-r,0px); bottom:auto;
-  height:calc(min(100dvh, var(--sp-vh,1dvh) * 100) - var(--sa-t,0px) - var(--sa-b,0px));
+  top:calc(var(--sp-vtop,0px) + var(--sa-t,0px) + var(--fit-t,0px));
+  left:calc(var(--sp-vleft,0px) + var(--sa-l,0px) + var(--fit-l,0px));
+  right:calc(var(--sa-r,0px) + var(--fit-r,0px)); bottom:auto;
+  height:calc(min(100dvh, var(--sp-vh,1dvh) * 100) - var(--sa-t,0px) - var(--sa-b,0px) - var(--fit-t,0px) - var(--fit-b,0px));
 }
 .modal--utility { top:var(--sp-vtop,0px); left:var(--sp-vleft,0px); }
 .protocol-screen .proto { padding:0; }

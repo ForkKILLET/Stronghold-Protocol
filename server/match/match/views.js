@@ -5,6 +5,7 @@
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
 import { PHASE, GEO } from '../../../shared/constants.js';
+import { TEST_PUBLIC_LOG } from '../../../shared/testMode.js';
 import { boardOrder, pieceDir } from '../board.js';
 import { bondList, offBondCounts } from '../bondsMeta.js';
 import { cardView } from '../choices.js';
@@ -13,6 +14,14 @@ import { timelineAt } from '../fields.js';
 import { bossFieldPlacement } from '../finalAssault.js';
 import { battleProgress } from '../../sim/spec.js';
 import { equippedItemProgress, itemProgress } from '../itemProgress.js';
+
+/** Milliseconds since the match started. A stamp before the start, or a bad stamp, is 0. The stored log keeps the epoch. */
+function auditClock(at, startedAt) {
+  const stamp = Number(at);
+  const start = Number(startedAt);
+  if (!Number.isFinite(stamp) || !Number.isFinite(start)) return 0;
+  return Math.max(0, stamp - start);
+}
 
 /** A reported capsule numerator clamped to its denominator, else null (unknown — never a fabricated 0). */
 const finiteOrNull = (v, cap = Infinity) => {
@@ -77,6 +86,10 @@ export class MatchViews {
       battleSpeed: this.gameSpeed,
       prepDuration: this.prepTime(),
       stageId: this.stageId,
+      // a non-default official version's match (DESIGN §35.23): its registry id, so a page that never saw the room (a
+      // reload after it closed: the lobby's result replay) reads the frames with that version's data; absent for the
+      // default, whose frames stay byte-identical
+      ...(this.version ? { version: this.version } : {}),
       setupRevision: this.setupRevision,
       rerollVote: this.setupVote ? {
         id: this.setupVote.id,
@@ -109,6 +122,7 @@ export class MatchViews {
         ...(ps.avatarId?{avatarId:ps.avatarId}:{}),
         ...(ps.publicId?{publicId:ps.publicId}:{}),
         isBot: ps.isBot,
+        ...(Number.isInteger(ps.aiTakeoverRound) ? { aiTakeoverRound: ps.aiTakeoverRound } : {}),
         connected: ps.isBot || (ps.connected && !ps.left),
         alive: ps.alive,
         lp: Math.max(0, ps.lp),
@@ -140,6 +154,7 @@ export class MatchViews {
         return v;
       }),
     };
+    if (this.offers.length) v.offers = this.offerViews();
     if (this.teamLp != null) v.teamLp = Math.max(0, Math.round(this.teamLp));
     // 最终攻势 / 隐秘核心: when the overtime drain starts (ms epoch; `deadline` is the level's 120 s countdown)
     if ((this.phase === PHASE.FINAL_ASSAULT || this.phase === PHASE.HIDDEN_CORE) && this.overtimeAt) v.overtimeAt = this.overtimeAt;
@@ -168,6 +183,21 @@ export class MatchViews {
     if (this.phase === PHASE.SETTLE && this.uniteResultView) {
       const ur = this.uniteResultView;
       v.uniteResult = { through: ur.through, helpers: ur.helpers.slice(), leakers: ur.leakers.slice(), losses: { ...ur.losses } };
+    }
+    // Test match (DESIGN §34.8). Omitted entirely when the flag is off, so a normal m.public stays identical.
+    if (this.test === true) {
+      v.test = true;
+      v.testActions = this.testActions | 0;
+      v.testTimers = this.testTimers !== false;
+      const log = Array.isArray(this.testLog) ? this.testLog : [];
+      v.testLog = log.slice(-TEST_PUBLIC_LOG).map((e) => ({
+        seq: e.seq, playerId: e.playerId, cmd: e.cmd, args: e.args,
+        // The stored row keeps the scheduler epoch. The dock clock is time since this match started.
+        at: auditClock(e.at, this.startedAt),
+        ok: e.ok === true,
+        ...(e.code ? { code: e.code } : {}),
+        ...(e.detail ? { detail: e.detail } : {}),
+      }));
     }
     return v;
   }
@@ -296,6 +326,7 @@ export class MatchViews {
       // DESIGN §16: the skill / module THIS player's operator fights with (the scout's detail card shows it, like the
       // sim's UnitInfo in a shared field); moduleId only for an elite; 0.2.2 its potential (below 6) and 练度
       const lo = piece.kind === 'chess' && chess ? ps.loadoutFor(chess) : null;
+      const diy = this._diyInfo(ps, piece);
       units.push({
         id: piece.uid, uid: piece.uid, kind: piece.kind === 'token' ? 'token' : 'op', side: 'ally', ownerId: ps.playerId, defId: piece.id,
         area: 'board',
@@ -303,7 +334,7 @@ export class MatchViews {
         spine: assets.spine || (rec && rec.charId) || piece.id, avatar: assets.avatar || (rec && rec.charId) || piece.id,
         // 皮肤 (docs/SKINS.md): built per player (ownerId above), so a scouted teammate's board shows THEIR skin.
         // baseId first: setSkins stores base chess ids only, and a scouted board can field the merged (golden) piece
-        skin: piece.kind === 'chess' && !ps.fieldsStandIn(piece.id) ? (ps.skins?.[chess?.baseId || piece.id] || ps.skins?.[piece.id]) : undefined,
+
         x: c, y: r, dir: pieceDir(piece), facing: pieceDir(piece) === 'LEFT' ? -1 : 1, maxHp: rec && rec.stats && Number.isFinite(rec.stats.maxHp) ? rec.stats.maxHp : 1,
         skillIndex: lo && Number.isInteger(lo.skillIndex) ? lo.skillIndex : undefined,
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
@@ -311,7 +342,10 @@ export class MatchViews {
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
         itemProgress: equippedItemProgress(ps, piece),
         standInFor: rec && rec.standInFor ? rec.standInFor : undefined,
-        diy: this._diyInfo(ps, piece),
+        diy,
+        // 皮肤 (docs/SKINS.md): built per player (the owner of the scouted board), so a teammate's piece shows THEIR
+        // appearance; a 自选 slot fights as its pick's operator, which is the key it wears too
+        skin: ps.skinFor(rec, diy ? diy.charId : null) || undefined,
         ...cultivationInfo(lo),
       });
     }
@@ -365,6 +399,7 @@ export class MatchViews {
       const body = standIn || rec;
       const assets = (body && body.assets) || {};
       const lo = piece.kind === 'chess' && rec ? ps.loadoutFor(rec) : null;
+      const diy = this._diyInfo(ps, piece);
       units.push({
         id: piece.uid, uid: piece.uid, kind: piece.kind === 'token' ? 'token' : piece.kind === 'item' ? 'item' : 'op',
         side: 'ally', ownerId: ps.playerId, defId: piece.id, area,
@@ -377,7 +412,9 @@ export class MatchViews {
         itemProgress: equippedItemProgress(ps, piece),
         progress: piece.kind === 'item' ? itemProgress(ps, piece) : undefined,
         standInFor: standIn && standIn.standInFor ? standIn.standInFor : undefined,
-        diy: this._diyInfo(ps, piece),
+        diy,
+        // 皮肤 (docs/SKINS.md): the scouted player's own appearance (see the prep view above)
+        skin: ps.skinFor(rec, diy ? diy.charId : null) || undefined,
         ...cultivationInfo(lo),
       });
     };

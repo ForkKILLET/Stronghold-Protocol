@@ -7,6 +7,7 @@
 import { ERR, PHASE } from '../../../shared/constants.js';
 import { freeSlot } from '../board.js';
 import { OK, fail } from './common.js';
+import { isMutationCell } from '../../sim/content/support/index.js';
 
 export class PlayerPrep {
   _gate({ allowWhenReady = false } = {}) {
@@ -45,8 +46,19 @@ export class PlayerPrep {
     slot.sold = true;
     this.offers.shift();
     if (price > 0) this.spend(price);
-    if (slot.kind === 'item') this.acquireItem(slot.id, { source: 'reward', displayed: true });
-    else this.acquireChess(slot.id, { source: 'reward' });
+    if (slot.kind === 'item') {
+      const gained = this.acquireItem(slot.id, { source: 'reward', displayed: true });
+      // #677: maintainer decision 2026-10-17 (official play memory): one Cathy cell per player/match.
+      // [ASSUMED] Only a successful pick from this source counts; Quintus's grant is independent.
+      if (gained && offer.source === 'band:band_cathy' && isMutationCell(slot.id, this.gd.raw)) {
+        this.counters['band:cathy:cellTaken'] = 1;
+        // [ASSUMED] Remove the cell from queued Cathy offers too, retaining their other choices without rerolling.
+        for (const pending of this.offers) if (pending.source === 'band:band_cathy') {
+          pending.slots = pending.slots.filter((s) => s.id !== slot.id);
+        }
+        this.offers = this.offers.filter((pending) => pending.slots.length);
+      }
+    } else this.acquireChess(slot.id, { source: 'reward' });
     this._afterSpend(price, 'reward');
     this.recompute();
     return OK;

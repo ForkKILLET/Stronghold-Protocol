@@ -4,6 +4,7 @@ import { Component, h, options } from '../../public/vendor/preact.module.js';
 import { portraitUrl } from '../../public/js/assets.js';
 import { chessPortraitUrl } from '../../public/js/ui/assetUrls.js';
 import { OperatorPortrait, portraitSkin } from '../../public/js/ui/operatorPortrait.js';
+import { OperatorImage } from '../../public/js/ui/gameComponents.js';
 import { cardPortraitUrl, cardPortraitSkins, seatPortrait } from '../../public/js/ui/seatArt.js';
 import { AvatarPickerView, AvatarVariantsView } from '../../public/js/ui/opPicker.js';
 import { ResultPortrait } from '../../public/js/ui/resultAvatar.js';
@@ -72,6 +73,24 @@ test('live portrait changes use subscribed state and a failed skin request has a
   assert.equal(view.props.fallback.props.class, 'art');
   settingsStore.set({ skinsEnabled: false });
   assert.equal(render(OperatorPortrait, { m, chess: elite }).props.src, '/assets/elite.png');
+});
+
+test('operator thumbnails use canonical skin keys and the same viewer opt-in as portraits', (t) => {
+  const state = store.get(), prefs = settingsStore.get(), skins = skinsStore.get();
+  t.after(() => { store.set(state); settingsStore.set(prefs); skinsStore.set(skins); });
+  const manifest = { chars: { [charId]: { avatar: '/assets/base-avatar.png', skins: {
+    [skin]: { avatar: '/assets/summer-avatar.png' },
+    [mateSkin]: { avatar: '/assets/winter-avatar.png' },
+  } } } };
+  t.mock.method(data, 'get', () => manifest);
+  store.set({ me: { playerId: 'me' }, match: { public: { players: [{ playerId: 'mate', skins: { [charId]: mateSkin } }] } } });
+  skinsStore.set({ entries: { [charId]: skin } }); settingsStore.set({ skinsEnabled: true, otherSkins: true });
+  assert.equal(render(OperatorImage, { chess }).props.src, '/assets/summer-avatar.png');
+  assert.equal(render(OperatorImage, { chess, ownerId: 'mate' }).props.src, '/assets/winter-avatar.png');
+  settingsStore.set({ skinsEnabled: false });
+  assert.equal(render(OperatorImage, { chess }).props.src, '/assets/base-avatar.png');
+  settingsStore.set({ skinsEnabled: true, otherSkins: false });
+  assert.equal(render(OperatorImage, { chess, ownerId: 'mate' }).props.src, '/assets/base-avatar.png');
 });
 
 test('DIY portraits use the selected slot and owner; replacing the operator cannot apply a different operator skin', () => {

@@ -25,11 +25,21 @@ export const BUILD_INPUTS = Object.freeze(['public/index.html', 'public/js', 'pu
 /** Names the static server never serves: dot files (`.DS_Store`, `.main.js.swp`) and editor backups (`main.js~`). */
 const isIgnoredBuildName = (name) => name.startsWith('.') || name.endsWith('~');
 
+/**
+ * Trees under BUILD_INPUTS the browser is served only in part: the official versions' data (DESIGN §35.22, §35.23) — a
+ * child of data/versions/ counts only when this process serves it (`servedVersionDirs`: the enabled versions'
+ * directories, server/versions.js), so rebuilding a version the server does not offer is no new build.
+ */
+const VERSIONS_BUILD_DIR = 'data/versions';
+
 /** @type {{ tag: string|null }|null} */
 let buildCache = null;
 
-/** Every file under `abs` (or `abs` itself), as `[relative path, size, mtimeMs]`, sorted by path. Missing → []. */
-function buildEntries(abs, rel, out) {
+/**
+ * Every file under `abs` (or `abs` itself), as `[relative path, size, mtimeMs]`, sorted by path. Missing → [].
+ * @param {string} abs @param {string} rel @param {any[]} out @param {Set<string>} served the served data/versions children
+ */
+function buildEntries(abs, rel, out, served) {
   let stat;
   try { stat = fs.statSync(abs); } catch { return; }
   if (stat.isFile()) { out.push([rel, stat.size, stat.mtimeMs]); return; }
@@ -40,17 +50,24 @@ function buildEntries(abs, rel, out) {
     if (isIgnoredBuildName(d.name)) continue;
     const child = path.join(abs, d.name);
     const childRel = rel ? `${rel}/${d.name}` : d.name;
-    if (d.isDirectory()) buildEntries(child, childRel, out);
+    if (d.isDirectory()) {
+      if (rel === VERSIONS_BUILD_DIR && !served.has(childRel)) continue;
+      buildEntries(child, childRel, out, served);
+    }
     else if (d.isFile()) { try { const s = fs.statSync(child); out.push([childRel, s.size, s.mtimeMs]); } catch { /* ignore */ } }
   }
 }
 
 /** Short hash of the served browser runtime (size + mtime of every BUILD_INPUTS file); null when nothing is readable. */
-export function computeBuildTag(root = ROOT, { clientBuild = true } = {}) {
+export function computeBuildTag(root = ROOT, { clientBuild = true, servedVersionDirs = [] } = {}) {
   const out = [];
   const inputs = clientBuild && fs.existsSync(path.join(root, 'public/build/index.html'))
     ? ['public/build', 'public/resource-sw.js', 'public/js/resources', 'shared/media.js', 'shared/i18n.js', 'shared/i18nPacks.js', 'shared/resourcePaths.js', 'shared/resourcePackRoutes.js', 'public/js/battle', 'public/js/asset-cdn.js', 'shared/plugins', 'server/sim'] : BUILD_INPUTS;
-  for (const rel of inputs) buildEntries(path.join(root, rel), rel, out);
+
+  const versionsAbs = path.join(root, ...VERSIONS_BUILD_DIR.split('/'));
+  const served = new Set(servedVersionDirs.map((d) => path.relative(versionsAbs, path.resolve(d)))
+    .filter((r) => r && !r.startsWith('..') && !path.isAbsolute(r) && !r.includes(path.sep)).map((r) => `${VERSIONS_BUILD_DIR}/${r}`));
+  for (const rel of [...inputs, ...served]) buildEntries(path.join(root, rel), rel, out, served);
   if (!out.length) return null;
   out.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   const h = createHash('sha1');
@@ -63,6 +80,7 @@ export function computeBuildTag(root = ROOT, { clientBuild = true } = {}) {
  * process is actually serving, every update restarts the server (DEPLOY.md), and re-reading the tree on a timer would
  * let a half-finished deploy — or a file that changed while the process kept running — move the tag under a page.
  * @param {string} [root] used by the first call only (tests)
+ * @param {{ servedVersionDirs?: string[] }} [opts] used by the first call only (computeBuildTag)
  */
 export function buildTag(root = ROOT, options = {}) {
   if (buildCache === null) buildCache = { tag: computeBuildTag(root, options) };

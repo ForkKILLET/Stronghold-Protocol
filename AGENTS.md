@@ -1,6 +1,10 @@
 # 合并上游时的仓库约定
 
+- 2026-11-05 本机测试必须避免全机 OOM。devops 会话记录曾有 Paseo 子 Node 占用约 22.1 GiB RAM / 18.4 GiB swap，导致 Paseo 整组停止，具体测试命令无法由日志确定。以后所有本机重型测试、golden、浏览器和构建都通过 `npm run check:local -- <command> ...`，独立 systemd scope 固定 MemoryHigh=6G、MemoryMax=8G、MemorySwapMax=512M、OOMPolicy=kill，Node 堆上限 2 GiB；默认低于 10 GiB MemAvailable 不启动；定向检查可显式 --small 收窄到 MemoryHigh=3G/MemoryMax=4G/SwapMax=256M/1 GiB 堆，要求至少 6 GiB 可用内存。共享锁只允许一项重任务。npm test 在本机 Linux 自动进入该隔离并串行跑测试；golden 显式 --jobs 1。禁止与全量/浏览器/构建叠跑、禁止裸 node --test 自动发现 helpers；不能因超限而去掉限额或自动增大预算。超限结果须作为测试失败排查，不将中断报告算通过；按文件定向复验并保留已完成证据，避免重复长跑。此条替代下文旧“本地固定 --test-concurrency=2”的约定，CI 分片保持原设置。见 docs/LOCAL_TESTING.md。
+
 - 2026-11-05 用户确认迁移为直接同步 sganggs 主线，首次代码对齐固定标签 `v0.3.3`（`f07b8965061bbc311ad7aa815879b09264a1e47d`），不混入 `dev` 的 0.3.4 提交。直接上游为 `upstream`，xinhai 保留为参考 `xinhai`，本服源码推送与部署继续使用 `fork/main`。保留真实合并历史及现有后端、Worker、账户/回放、预载/CDN、界面和已记录规则取舍；新的主线版本身份需贯通内容 Host、完整 Match Worker、账户结算、回放和同版本恢复。此决定替代下文“当前目标为 v0.3.0／以 xinhai 为直接上游”的历史目标，历史合并记录本身不改写。详见 docs/MERGE_MAINLINE_2026-11-05.md。
+
+- 2026-11-05 多版本适配沿用本服完整 Match Worker：AI 接替先在所属对局完成席位变更，再转移连接/账户资料；保留原经营状态和重连身份。版本贯通检查点、结算、服务器按版本汇总和完整回放，历史内容缺失不退回默认玩法。普通皮肤按 charId、DIY 按槽位，缩略图/立绘共用 viewer opt-in。版本及 AI 接替入口放在房间配置页，避免短横屏底栏继续增高；局外自动单位、手动界面比例与边缘适配分别保持单一所有权。保留旧 SfxLimiter，静态音效参数不表示已启用主线播放器。验证 test/migration-versions.test.js、test/users/versions.test.js、双浏览器 mobile-management/account-replays 及打包模拟比对。
 
 - 2026-11-03 本分支实现主线 #915：局内本局信息的盟约标签、确认页和策略信息页的盟约圆盘可直接查看原有 BondPopup。MatchBondDialog 复用卡片内容并进入现有焦点栈，Esc／遮罩只关闭当前详情并恢复入口焦点，阶段变化同步卸载；不增加独立盟约数据或改变禁用规则。局内沿用 popupView 的玩家、成员与实时层数，进入成员详情时收起遮挡面板；准备页成员仅展示，不生成无行为按钮。验证 match-bond-info.e2e.test.js 的 Chrome／Firefox、手机尺寸及观战归属。
 
@@ -312,10 +316,10 @@
 依赖有变化时先运行 `npm ci`。在仓库根目录运行：
 
 ```sh
-npm run build
-node --test test/vite.test.js test/metrics.test.js test/build.test.js test/ui/buildGuard.test.js test/cdn.test.js test/resources/common.test.js test/resources/index.test.js test/resources/manifest.test.js test/resources/store.test.js
-node --test test/lobby.test.js test/workers.test.js test/memory-lifecycle.test.js test/announcements.test.js test/persist.test.js test/persist-worker.test.js test/windows-bundle.test.js test/doctor.test.js test/version.test.js
-npm run golden
+npm run check:local -- npm run build
+npm run check:local -- node --test --test-concurrency=1 test/vite.test.js test/metrics.test.js test/build.test.js test/ui/buildGuard.test.js test/cdn.test.js test/resources/common.test.js test/resources/index.test.js test/resources/manifest.test.js test/resources/store.test.js
+npm run check:local -- node --test --test-concurrency=1 test/lobby.test.js test/workers.test.js test/memory-lifecycle.test.js test/announcements.test.js test/persist.test.js test/persist-worker.test.js test/windows-bundle.test.js test/doctor.test.js test/version.test.js
+npm run check:local -- node tools/golden.mjs --jobs 1
 npm test
 git diff --check
 ```
@@ -367,9 +371,13 @@ rooms) and a deterministic battle sim shared by the server and the browser. It a
 3. The reference for the part you touch: [docs/SIM.md](docs/SIM.md) (battle engine API, hooks, test harness),
    [docs/META.md](docs/META.md) (match flow, shop, protocol), [docs/DATA.md](docs/DATA.md) (generated data),
    [docs/I18N.md](docs/I18N.md) (interface strings), `server/sim/content/kits/README.md` (operator kits).
+4. Before editing battle simulation code, read [server/sim/AGENTS.md](server/sim/AGENTS.md) for a short settlement API usage guide.
+5. [docs/CI.md](docs/CI.md) — the CI jobs, the test-sharding contract (`ci-shards.json`), how to re-weigh it, the
+   timeout policy, and the ways a CI measurement lies.
 
 ## Hard rules
 
+- **Formatting.** Use two spaces for JavaScript indentation; do not introduce Tab indentation.
 - **Official first.** Rules come from the official data tables (`.cache/gamedata/excel/` after setup) and
   [PRTS](https://prts.wiki/). A detail no source settles is implemented the simplest way and marked `[ASSUMED]` in the
   code and the PR. Deliberate deviations from the official mode are the maintainer's decision only.

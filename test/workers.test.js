@@ -8,7 +8,7 @@ import { startServer } from '../server/index.js';
 import { TestClient } from './helpers/wsClient.js';
 import { DATA, makeMatch } from './match/harness.js';
 import { PHASE } from '../shared/constants.js';
-import { createBattleFromSpec, resultDigest, compactResult } from '../server/sim/spec.js';
+import { buildBattleSpec, createBattleFromSpec, resultDigest, compactResult } from '../server/sim/spec.js';
 import { HeadlessJob, runHeadless } from '../server/match/fields.js';
 import { RealScheduler } from '../server/match/scheduler.js';
 import { createRehearsal, planLayout, REHEARSAL_VARIANTS, LAYOUT_PARAMS } from '../server/match/bot.js';
@@ -278,7 +278,7 @@ test('AI candidate scores select the identical plan and leave board / economy un
   m.workerPool = pool; // manually exercise input capture on the same virtual fixture
   const remote = createRehearsal(m, ps, chosen, plans);
   assert.equal(snapshot(), before);
-  const result = await pool.submit('rehearsal', remote.workerPayload).promise;
+  const result = await pool.submit('rehearsal', { specs: remote.inputs.map((input) => buildBattleSpec(input)), playerId: ps.playerId, cap: remote.cap, limits: remote.limits }).promise;
   assert.equal(result.bestIndex, local.plans.indexOf(local.best));
   assert.equal(snapshot(), before);
 });

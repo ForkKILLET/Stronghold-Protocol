@@ -1,3 +1,4 @@
+import { VERSIONS, DEFAULT_VERSION } from '../shared/versions.js';
 import {REPLAY_DEFAULTS} from './users/replays.js';
 // Operator settings only. No gameplay data, credentials, global env mutation or hot reload.
 import fs from 'node:fs';
@@ -14,6 +15,7 @@ const limit=integer(0,1_000_000),duration=integer(1,7*86400_000);
 const workerDefaults=()=>workerSettings({});
 // JSON path, existing startServer option, env name, default, validator. Keep defaults owned by upstream modules.
 export const SERVER_FIELDS=Object.freeze([
+ ['limits.maxOnline','maxOnline','SP_MAX_ONLINE',NET_DEFAULTS.maxOnline,limit],
  ['limits.maxConnections','maxConnections','SP_MAX_CONNECTIONS',NET_DEFAULTS.maxConnections,limit],
  ['limits.maxPendingConnections','maxPendingConnections','SP_MAX_PENDING_CONNECTIONS',NET_DEFAULTS.maxPendingConnections,limit],
  ['limits.maxConnectionsPerAddr','maxConnectionsPerAddr','SP_MAX_CONNECTIONS_PER_ADDR',NET_DEFAULTS.maxConnectionsPerAddr,limit],
@@ -43,6 +45,12 @@ export const SERVER_FIELDS=Object.freeze([
  ['workers.timeoutMs','workerTimeoutMs','SP_WORKER_TIMEOUT_MS',()=>workerDefaults().timeoutMs,integer(1,3600_000)],
  ['replays.perUser','replayLimit','SP_REPLAY_LIMIT',REPLAY_DEFAULTS.perUser,integer(0,100)],
  ['replays.maxBytes','replayMaxBytes','SP_REPLAY_MAX_BYTES',REPLAY_DEFAULTS.maxBytes,integer(65536,64*1024*1024)],
+ ['versions.enabled','enabledVersions','SP_VERSIONS','all',v=>v==='all'||(Array.isArray(v)&&v.length>0&&v.every(id=>VERSIONS.some(e=>e.id===id))),v=>v.trim()==='all'?'all':v.split(',').map(x=>x.trim())],
+ ['versions.default','defaultVersion','SP_VERSION_DEFAULT',DEFAULT_VERSION,v=>VERSIONS.some(e=>e.id===v),v=>v.trim()],
+ ['versions.maxHosts','maxVersionHosts','SP_MAX_VERSION_HOSTS',VERSIONS.length-1,integer(0,32)],
+ ['rooms.versionVoteMs','versionVoteMs','SP_VERSION_VOTE_MS',LOBBY_DEFAULTS.versionVoteMs,duration],
+ ['rooms.versionRetryMs','versionRetryMs','SP_VERSION_RETRY_MS',LOBBY_DEFAULTS.versionRetryMs,duration],
+ ['rooms.versionProposeGapMs','versionProposeGapMs','SP_VERSION_PROPOSE_GAP_MS',LOBBY_DEFAULTS.versionProposeGapMs,duration],
  ['shutdown.timeoutMs','shutdownTimeoutMs','SP_SHUTDOWN_TIMEOUT_MS',60_000,integer(1000,300_000)],
 ].map(Object.freeze));
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
@@ -82,14 +90,15 @@ export function resolveServerConfig(options={}, {env=process.env,root=ROOT,log=n
    validateServerConfig(doc);loaded=true;
   }catch(error){if(error.code!=='ENOENT'||explicit)throw error;}
  }
+ options={...options,...(options.versions?.enabled!==undefined?{enabledVersions:options.versions.enabled}:{}),...(options.versions?.default!==undefined?{defaultVersion:options.versions.default}:{}),...(options.versions?.maxHosts!==undefined?{maxVersionHosts:options.versions.maxHosts}:{})};
  const resolved={...options},values={},sources={};
- for(const [key,option,envKey,fallback,valid] of SERVER_FIELDS){
+ for(const [key,option,envKey,fallback,valid,parse=Number] of SERVER_FIELDS){
   const [group,name]=key.split('.');
   let value=typeof fallback==='function'?fallback():fallback,source='default';
   if(Object.hasOwn(doc[group]||{},name)){value=doc[group][name];source='file';}
   const raw=env[envKey];
   if(raw!=null&&String(raw).trim()!==''){
-   const parsed=Number(raw);
+   const parsed=parse(String(raw));
    if(valid(parsed)){value=parsed;source=`env:${envKey}`;}
    else if(envKey.startsWith('SP_MAX_'))log?.warn?.(`[http] ${envKey}=${String(raw).slice(0,80)} ignored: a non-negative integer is required (docs/DEPLOY.md §3.4)`);
    else log?.warn?.(`[config] ${envKey} ignored: invalid value`);
@@ -101,6 +110,7 @@ export function resolveServerConfig(options={}, {env=process.env,root=ROOT,log=n
   resolved[option]=value;
   (values[group]??={})[name]=value;sources[key]=source;
  }
+ resolved.versions={enabled:resolved.enabledVersions,default:resolved.defaultVersion,maxHosts:resolved.maxVersionHosts};
  if(resolved.roomWorkers>resolved.workers)throw new RangeError('roomWorkers cannot exceed workers');
  for(const group of Object.values(values))Object.freeze(group);
  return{options:resolved,config:Object.freeze({file:loaded?file:null,values:Object.freeze(values),sources:Object.freeze(sources)})};

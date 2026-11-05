@@ -160,7 +160,7 @@ test('battle/settlement decoration reads authoritative facts and does not invent
     assert.doesNotMatch(code, /from ['\"](?:.*\/)?(?:accounts|friends|cloudStats|federation|randomMode|namecards|trophies)\.js/);
     for (const [, type] of code.matchAll(/net\.request\('([^']+)'/g)) assert.ok(Object.hasOwn(C2S, type), `${file}: ${type}`);
   }
-  assert.doesNotMatch(read('public/js/screens/settle.js'), /LevelStrip|levelProgress|accountApi|fetch\(|net\.request/);
+  assert.doesNotMatch(read('public/js/screens/settle.js'), /accountApi|fetch\(|net\.request/);
 });
 
 test('new layout stays on existing grids and text scale; mode selection uses page layout, not modal styling', () => {

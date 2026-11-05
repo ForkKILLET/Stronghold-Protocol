@@ -1,4 +1,4 @@
-// 机变 draft overlay (research 06 §4.4 / §11.5): family title | description over "倒计时结束仍未选定将自动分配",
+// 机变 draft overlay (research 06 §4.4 / §11.5): family title | description over "倒计时结束后仍未选定将自动分配",
 // whose turn ("当前轮到你决策" / name over "正在决策…") with countdown — the pick order as ✓ / ••• on the team panel's
 // portraits (spMarks) — and a 3×2 grid (solo: 3 cards) of cards in the official layout (the official 悬赏 / 机密商店 / 战术 screenshots): a
 // framed icon at the top-left with the bold name beside it (tags under the name), the effect text across the card under
@@ -9,7 +9,7 @@
 // playtest #6 item 6: at 756×366 it used to sit below a large centred icon, clipped away). Picking takes two taps, like
 // buying in the shop (user playtest #4 item 2 — extra enemies, items and tactics were picked by a slip of the finger;
 // research 09 §5 EventOnFirstClick → EventOnConfirm): the first tap on an available card selects it (it lifts with a
-// gold frame and a 确认选择 · 再次点击 strip; the header shows 确认选择), a second tap on the same card — or 确认选择 —
+// white frame and a ☑ 确认选择 · 再次点击 strip; the header shows 确认选择), a second tap on the same card — or 确认选择 —
 // sends g.choice; a tap on another card moves the selection, a tap elsewhere or Esc drops it. Cards are buttons (Tab /
 // Enter work the same way). While the pick is in flight the card shows a "选择中" strip with a sweeping bar (never a
 // spinner over its text — user playtest #3 item 9), dropped as soon as the pick shows in m.public (spBusy itself resets
@@ -197,6 +197,14 @@ export function spMarks(sp, { solo }) {
 }
 
 /**
+ * The pick order as the team panel shows it during a shared draft (the official 悬赏决策: ✓ beside who has picked, •••
+ * beside who is deciding): playerId → 'done' | 'turn'. Empty for solo and personal picks.
+ * @param {any} sp normalizeSp(...) @param {{ solo: boolean }} o
+ * @returns {Map<string, 'done'|'turn'>}
+ */
+
+
+/**
  * The overlay's view (pure: no hooks — test/ui renders it as a function).
  * @param {{ pub:any, sp:any, myId:string, solo:boolean, personal?:boolean, busyIdx?:number|null, total?:number|null, armed?:number|null,
  *   onTap?:(idx:number)=>void, onConfirm?:()=>void, onDisarm?:()=>void,
@@ -281,7 +289,7 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
             ${card.soldOut && !taker ? html`<span class="spcard__busy" role="status">${t('库存不足')}</span>` : null}
             ${r.tier ? html`<${TierChip} tier=${r.tier} size="md" class="spcard__tier" />` : null}
             ${taker ? html`<span class="spcard__taker" title=${t('{name} 已选择', { name: taker.name })}><${PlayerAvatar} player=${taker} size="sm" /></span>` : null}
-            ${isArmed ? html`<span class="spcard__confirm" role="status"><b>${t('确认选择')}</b><small>${t('再次点击')}</small></span>` : null}
+            ${isArmed ? html`<span class="spcard__confirm" role="status"><span class="spcard__cbox"><${Icon} name="check" /></span><b>${t('确认选择')}</b><small>${t('再次点击')}</small></span>` : null}
             ${busy ? html`<span class="spcard__busy" role="status">${t('选择中')}</span>` : null}
           </button>`;
         })}

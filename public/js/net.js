@@ -45,6 +45,8 @@ export const RESTART_GRACE_MS = 60000;
 export const HELLO_TIMEOUT_MS = 8000;
 export const PING_INTERVAL_MS = 4000;
 export const DEAD_AFTER_MS = 15000;
+/** Minimum gap between two `state.resync` requests: a gap in one channel is answered by the full frame of the next one. */
+export const RESYNC_GAP_MS = 1000;
 export const BACKOFF = Object.freeze({ base: 500, factor: 2, max: 10000, jitter: 0.2 });
 
 /** Client-side error codes (in addition to shared ERR codes). */
@@ -184,6 +186,11 @@ export class Net {
     this._lastRx = 0;
     this._unansweredSince = null; // time of the oldest ping sent since the last inbound frame
     this._clockSamples = [];   // [{ offset, rtt }]
+    // State-delta decoding (shared/stateDelta.js): only ever fed frames a server chose to send this client after its
+    // hello named STATE_DELTA_VERSION. A missed frame blocks that channel, and one resync request per RESYNC_GAP_MS
+    // asks for a full one — the server answers it like a repeated hello (and throttles it the same way).
+    this._stateRoom = null;
+    this._resyncAt = 0;        // epoch ms of the last resync request we sent
   }
 
   // ---- events ----------------------------------------------------------------------------------
@@ -418,6 +425,10 @@ export class Net {
     this._clearTimer('_helloTimer', 'clearTimeout');
     this._helloRid = null;
     this._helloSentName = null;
+    // A new socket is a new negotiation (server/net.js onHelloMsg re-baselines per connection): the sequences the old
+    // one used mean nothing here, so a stale baseline must never make the first full frame of the new one look old.
+    this._stateRoom = null;
+    this._resyncAt = 0;
   }
 
   _clearTimer(field, fn) {
@@ -621,6 +632,19 @@ export class Net {
 
   // ---- incoming --------------------------------------------------------------------------------
 
+  /**
+   * Ask the server for one full state frame (the answer to a gap in the delta stream). Rate-limited: one request per
+   * RESYNC_GAP_MS covers every channel, because the server re-sends the whole room state at once. Silent while offline —
+   * the next welcome resyncs anyway.
+   */
+  requestResync() {
+    const now = this.now();
+    if (now - this._resyncAt < RESYNC_GAP_MS) return;
+    this._resyncAt = now;
+    try { this.request('state.resync').catch(() => { /* the next full frame fixes it, or the room resyncs */ }); }
+    catch { /* offline: the reconnect resyncs the room from scratch */ }
+  }
+
   _onMessage(data) {
     this._lastRx = this.now();
     this._unansweredSince = null;
@@ -638,7 +662,8 @@ export class Net {
       if (!this._states.missing.size) this._clearTimer('_stateResyncTimer', 'clearTimeout');
       if (!decoded.message) return;
       msg = decoded.message;
-    } else if (msg.t === 'room.closed' || msg.t === 'm.result') {
+    } else if (msg.t === 'room.closed' || msg.t === 'm.result' || (msg.t === 'room.state' && msg.code !== this._stateRoom)) {
+      this._stateRoom = msg.t === 'room.state' ? msg.code : null;
       this._states.reset();
       this._clearTimer('_stateResyncTimer', 'clearTimeout');
     }

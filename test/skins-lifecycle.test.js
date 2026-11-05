@@ -15,6 +15,7 @@ import { MatchWorkerPool } from '../server/workers/matchPool.js';
 import { visibleSkin } from '../shared/skins.js';
 
 const INSIDE = 'chess_char_1_01_a';
+const INSIDE_CHAR = 'char_498_inside';
 const INSIDE_GOLDEN = 'chess_char_1_01_b';
 const SKIN_ID = 'char_498_inside@kitchen#2';
 const DIY_SLOT = 'chess_char_5_diy1_a', DIY_SKIN = 'char_112_siege@striker#2';
@@ -25,11 +26,11 @@ test('base/golden skins survive two checkpoints, while old checkpoints restore d
   t.after(() => a.m.dispose()); a.start();
   a.m.setSkins('p_0', { [INSIDE]: SKIN_ID });
   const cp = snapshotMatch(a.m);
-  assert.equal(cp.players[0].skins[INSIDE], SKIN_ID);
+  assert.equal(cp.players[0].skins[INSIDE_CHAR], SKIN_ID);
   const b = makeMatch({ mode: 'solo', humans: 1, bots: 0, fake: true });
   t.after(() => b.m.dispose());
   assert.equal(restoreMatch(b.m, cp, { createRngFromState, log: quiet }), true);
-  assert.equal(b.ps('p_0').skins[INSIDE], SKIN_ID);
+  assert.equal(b.ps('p_0').skins[INSIDE_CHAR], SKIN_ID);
   assert.equal(Object.isFrozen(b.ps('p_0').skins), true);
   assert.deepEqual(snapshotMatch(b.m).players[0].skins, cp.players[0].skins);
   delete cp.players[0].skins;
@@ -57,7 +58,7 @@ for (const remote of [false, true]) {
     assert.equal(lobby.matchJoin(a, { mode: 'coop', difficulty: 'NORMAL' }).ok, true);
     const ticket = a.matchQueue;
     assert.equal(lobby.skins(a, { skins: { [INSIDE]: SKIN_ID, [DIY_SLOT]: DIY_SKIN } }).ok, true);
-    assert.equal(ticket.players[0].skins[INSIDE], SKIN_ID, 'queued seat gets the latest preference');
+    assert.equal(ticket.players[0].skins[INSIDE_CHAR], SKIN_ID, 'queued seat gets the latest preference');
     assert.equal(ticket.players[0].skins[DIY_SLOT], DIY_SKIN);
     lobby.removeQueueReferences(ticket);
     assert.equal((await lobby.startQueuedMatch(ticket, [
@@ -66,11 +67,11 @@ for (const remote of [false, true]) {
     assert.equal(b.roomCode, null, 'external teammate is not a member of the owner room');
     assert.equal((await lobby.skins(b, { skins: { [INSIDE]: 'char_498_inside@winter#1' } })).ok, true);
     const cp = remote ? await room.match.snapshot() : snapshotMatch(room.match);
-    assert.equal(cp.players.find(p => p.playerId === b.playerId).skins[INSIDE], 'char_498_inside@winter#1');
+    assert.equal(cp.players.find(p => p.playerId === b.playerId).skins[INSIDE_CHAR], 'char_498_inside@winter#1');
     const pub = room.match.publicView();
-    assert.equal(pub.players.find(p => p.playerId === a.playerId).skins[INSIDE], SKIN_ID);
+    assert.equal(pub.players.find(p => p.playerId === a.playerId).skins[INSIDE_CHAR], SKIN_ID);
     assert.equal(pub.players.find(p => p.playerId === a.playerId).skins[DIY_SLOT], DIY_SKIN);
-    assert.equal(visibleSkin(pub.players[0].skins[INSIDE], { skinsEnabled: false }), null);
+    assert.equal(visibleSkin(pub.players[0].skins[INSIDE_CHAR], { skinsEnabled: false }), null);
     let doc = snapshotServer({ ...first, matchDocs: new Map([[room.code, cp]]) });
     if (remote) { await room.match.dispose(); pool.release(room.code, room.match); }
     for (const round of [1, 2]) {
@@ -79,21 +80,21 @@ for (const remote of [false, true]) {
       const stats = initial.ready ? await initial.ready : initial;
       assert.equal(stats.matches, 1, `restore ${round}`);
       const backA = next.registry.byToken(a.token), backB = next.registry.byToken(b.token);
-      assert.equal(backA.skins[INSIDE], SKIN_ID);
+      assert.equal(backA.skins[INSIDE_CHAR], SKIN_ID);
       assert.equal(backA.skins[DIY_SLOT], DIY_SKIN);
-      assert.equal(backB.skins[INSIDE], 'char_498_inside@winter#1');
+      assert.equal(backB.skins[INSIDE_CHAR], 'char_498_inside@winter#1');
       assert.equal(backB.roomCode, null);
       const ctx = next.lobby.activeMatchOf(backB);
       assert.ok(ctx?.match, 'external teammate reconnects to the same match container');
       const restored = remote ? await ctx.match.snapshot() : snapshotMatch(ctx.match);
-      assert.equal(restored.players.find(p => p.playerId === b.playerId).skins[INSIDE], 'char_498_inside@winter#1');
+      assert.equal(restored.players.find(p => p.playerId === b.playerId).skins[INSIDE_CHAR], 'char_498_inside@winter#1');
       assert.equal(restored.players.find(p => p.playerId === a.playerId).skins[DIY_SLOT], DIY_SKIN);
       // Opting out clears only the owner's published cosmetics, never the other player's state.
       if (round === 2) {
         assert.equal((await next.lobby.skins(backA, { skins: {} })).ok, true);
         const after = remote ? await ctx.match.snapshot() : snapshotMatch(ctx.match);
         assert.deepEqual(after.players.find(p => p.playerId === a.playerId).skins, {});
-        assert.equal(after.players.find(p => p.playerId === b.playerId).skins[INSIDE], 'char_498_inside@winter#1');
+        assert.equal(after.players.find(p => p.playerId === b.playerId).skins[INSIDE_CHAR], 'char_498_inside@winter#1');
       }
       doc = snapshotServer({ ...next, matchDocs: new Map([[room.code, restored]]) });
       if (remote) { await ctx.match.dispose(); pool.release(room.code, ctx.match); }
@@ -121,12 +122,13 @@ describe('skins lifecycle: lobby wiring', () => {
     const registry = { all: () => [], byId: () => null };
     const quietLog = { info() {}, warn() {}, error() {} };
     const lobby = new Lobby({ registry, getData: () => DATA, log: quietLog });
-    const session = { playerId: 'p1', name: 'Player 1', connected: true, skins: { [INSIDE]: SKIN_ID }, loadout: null };
+    const session = { playerId: 'p1', name: 'Player 1', connected: true, skins: { [INSIDE_CHAR]: SKIN_ID }, loadout: null };
     const seat = lobby.humanSeat(0, session);
-    assert.deepEqual(seat.skins, { [INSIDE]: SKIN_ID }, 'humanSeat must preserve skins from session');
+    assert.deepEqual(seat.skins, { [INSIDE_CHAR]: SKIN_ID }, 'humanSeat must preserve skins from session');
 
     const room = {
       code: 'TEST',
+      version: 'act2autochess',
       hostId: 'p1',
       mode: 'solo',
       difficulty: 'NORMAL',
@@ -150,7 +152,7 @@ describe('skins lifecycle: lobby wiring', () => {
     lobby.startMatch(room);
 
     assert.ok(passedSeats, 'seats should be passed to Match');
-    assert.equal(passedSeats[0].skins?.[INSIDE], SKIN_ID, 'seats[0].skins should be retained in startMatch');
+    assert.equal(passedSeats[0].skins?.[INSIDE_CHAR], SKIN_ID, 'seats[0].skins should be retained in startMatch');
   });
 });
 
@@ -161,7 +163,7 @@ describe('skins lifecycle: PlayerState and Match', () => {
       seats: [{ seat: 0, playerId: 'p_0', name: 'P0', isBot: false, connected: true, skins: { [INSIDE]: SKIN_ID } }],
     });
     const ps = h.ps('p_0');
-    assert.equal(ps.skins[INSIDE], SKIN_ID, 'ps.skins should be initialized from seat.skins');
+    assert.equal(ps.skins[INSIDE_CHAR], SKIN_ID, 'ps.skins should be initialized from seat.skins');
 
     // Place a base piece
     const pBase = ps.newPiece('chess', INSIDE);
@@ -227,11 +229,11 @@ describe('skins lifecycle: PlayerState and Match', () => {
     h.m.markPrivate = () => { privateMarked = true; };
 
     h.m.setSkins('p_0', { [INSIDE]: SKIN_ID });
-    assert.equal(ps.skins[INSIDE], SKIN_ID, 'ps.skins updated');
+    assert.equal(ps.skins[INSIDE_CHAR], SKIN_ID, 'ps.skins updated');
     assert.ok(privateMarked, 'markPrivate was called');
 
     const pv = h.m.publicView();
-    assert.equal(pv.players[0].skins?.[INSIDE], SKIN_ID, 'publicView carries updated skins');
+    assert.equal(pv.players[0].skins?.[INSIDE_CHAR], SKIN_ID, 'publicView carries updated skins');
   });
 });
 

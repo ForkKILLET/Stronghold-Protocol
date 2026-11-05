@@ -43,6 +43,7 @@ export function roundsOf(rec) {
  */
 export function countsTowardStats(rec) {
   if (!isObj(rec)) return false;
+  if (rec.test === true || Number.isInteger(selfRowOf(rec)?.aiTakeoverRound)) return false;
   if (rec.end !== 'quit') return true;
   const self = selfRowOf(rec);
   if (!self) return false;
@@ -60,9 +61,9 @@ export function usedBondIdsOf(player) {
 export function strategyBadgeIds(records, bands) {
   const clears = new Map();
   for (const rec of Array.isArray(records) ? records : []) {
-    if (!rec || rec.end === 'quit' || rec.difficulty === 'TRAINING' || rec.modeId === 'mode_training_1') continue;
+    if (!rec || rec.test === true || rec.end === 'quit' || rec.difficulty === 'TRAINING' || rec.modeId === 'mode_training_1') continue;
     const self = selfRowOf(rec);
-    if (!self?.bandId || !selfWon(rec, self)) continue;
+    if (!self?.bandId || Number.isInteger(self.aiTakeoverRound) || !selfWon(rec, self)) continue;
     clears.set(self.bandId, (clears.get(self.bandId) || 0) + 1);
   }
   return Object.values(bands || {}).filter((band) => Number.isInteger(band.victorCount) && band.victorCount > 0
@@ -82,10 +83,11 @@ export function strategyBadgeIds(records, bands) {
  */
 export function aggregateStats(records, { modded: withModded = false } = {}) {
   const all = Array.isArray(records) ? records : [];
-  const official = withModded ? all : all.filter((r) => !isModdedRecord(r));
-  const rs = official.filter(countsTowardStats);
+  const eligible = all.filter(countsTowardStats);
+  const official = withModded ? eligible : eligible.filter((r) => !isModdedRecord(r));
+  const rs = official;
   const out = {
-    total: all.length, count: rs.length, excluded: official.length - rs.length, modded: all.length - official.length, wins: 0,
+    total: all.length, count: rs.length, excluded: all.length - eligible.length, test: all.filter(r => r.test === true).length, modded: eligible.length - official.length, wins: 0,
     rounds: { total: 0, max: 0 },
     duration: { totalMs: 0 },
     hidden: { reached: 0, cleared: 0 },

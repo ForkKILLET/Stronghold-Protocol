@@ -170,6 +170,7 @@ test('HTTP public reads need no account or cookie; writes remain authenticated, 
  const account=await call('/api/user'),user=account.data.user,cookie=account.headers.get('set-cookie').split(';')[0];
  const publicUrl='/api/doctors/'+formatDoctorId(user.publicId).toLowerCase();
  const anonymous=await call(publicUrl);assert.equal(anonymous.status,200);assert.equal(anonymous.headers.get('set-cookie'),null);assert.equal(anonymous.headers.get('cache-control'),'no-store');
+ assert.deepEqual(anonymous.data.versions,server.versions.welcome(),'standalone archives receive the same official content identities as WS clients');
  assert.equal(JSON.stringify(anonymous.data).includes(user.id),false);
  assert.equal((await call('/api/user/visibility',{body:{visibility:{trophies:true}}})).status,401);
  assert.equal((await call('/api/user/visibility',{cookie,origin:'https://elsewhere.invalid',body:{visibility:{trophies:true}}})).status,403);
@@ -182,6 +183,7 @@ test('HTTP public reads need no account or cookie; writes remain authenticated, 
  assert.equal((await call(publicUrl,{body:{visibility:{history:true}}})).status,405);
  assert.equal((await call('/api/doctors/0000-0000-0000')).status,404);
  assert.equal((await call(publicUrl+'?before=-1')).status,400);
+ assert.equal((await call(publicUrl+'?version=unknown')).status,400);
  assert.equal((await call('/api/user/replay/share',{cookie,body:{matchId:'g1',shared:false}})).status,200);
  assert.equal((await call(publicUrl+'/replay?matchId=g1')).status,404);
 });

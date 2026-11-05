@@ -11,6 +11,7 @@ const sizes=[
   {width:760,height:360}, {width:761,height:360}, {width:844,height:390,safe:true},
   {width:960,height:432}, {width:740,height:360,text:'xl'}, {width:844,height:300},
   {width:640,height:360,text:'xl'},
+  {width:740,height:360,text:'sm',ui:75,fit:12},
 ];
 for(const [engine,executablePath] of [
   ['chrome',process.env.CHROME_PATH||'/run/current-system/sw/bin/google-chrome-stable'],
@@ -35,6 +36,9 @@ for(const [engine,executablePath] of [
    await page.setViewport({width:c.width,height:c.height,...(engine==='chrome'?{isMobile:true,hasTouch:true,isLandscape:true,deviceScaleFactor:1}:{})});
    await page.evaluate(c=>{
     const root=document.documentElement;root.dataset.text=c.text||'md';
+    root.toggleAttribute('data-fit',!!c.fit);
+    for(const side of ['l','r','t','b'])root.style.setProperty(`--fit-${side}`,`${c.fit||0}px`);
+    root.style.setProperty('--sp-ui',String((c.ui||100)/100));
     for(const [key,value] of Object.entries({'--sa-l':c.safe?'44px':'0px','--sa-r':c.safe?'44px':'0px','--sa-b':c.safe?'21px':'0px'}))root.style.setProperty(key,value);
     dispatchEvent(new Event('resize'));
     window.__SP__?.store.patch('presence',{online:999});
@@ -60,19 +64,21 @@ for(const [engine,executablePath] of [
      const grid=root.querySelector('.draft-grid');
      return {root:box(root),header:box(header),controls,foot:foot&&box(foot),rootScroll:[root.scrollWidth-root.clientWidth,root.scrollHeight-root.clientHeight],scroll,
       gridOverflow:grid?grid.scrollWidth-grid.clientWidth:0,rem:getComputedStyle(document.documentElement).fontSize,
+      cards:[...root.querySelectorAll('.rseat__art')].map(box),
       document:[document.documentElement.scrollWidth-innerWidth,document.documentElement.scrollHeight-innerHeight]};
     });
     measurements.push({name,config:c,...m});const label=JSON.stringify({name,...c});
     assert.ok(m.document.every(v=>v<=1),label+' document overflow');
     assert.ok(m.rootScroll.every(v=>v<=2),label+' page overflow');
-    assert.ok(Math.abs(m.root.x-(c.safe?44:0))<=1,label+' left safe area');
-    assert.ok(Math.abs(m.root.right-(c.width-(c.safe?44:0)))<=1,label+' right safe area');
-    assert.ok(m.root.bottom<=c.height-(c.safe?21:0)+1,label+' bottom safe area');
+    assert.ok(Math.abs(m.root.x-(c.safe?44:0)-(c.fit||0))<=1,label+' left safe area');
+    assert.ok(Math.abs(m.root.right-(c.width-(c.safe?44:0)-(c.fit||0)))<=1,label+' right safe area');
+    assert.ok(m.root.bottom<=c.height-(c.safe?21:0)-(c.fit||0)+1,label+' bottom safe area');
     if(c.height<=560){
      assert.ok(m.header.h<=54,label+' single-row header');
      for(const control of m.controls)assert.ok(Math.abs(control.y+control.h/2-(m.header.y+26))<=1,label+' shared controls and title occupy one row');
     }
-    if(c.width<1000)assert.equal(m.rem,'40px',label+' gameplay rem stays unchanged');
+    if(c.width<1000)assert.equal(parseFloat(m.rem),40*(c.ui||100)/100,label+' only the manual preference changes gameplay rem');
+    for(const card of m.cards){assert.ok(card.w>=43,label+' room portraits stay readable');assert.ok(Math.abs(card.h/card.w-2)<.1,label+' portrait keeps 1:2 ratio');}
     assert.ok(m.gridOverflow<=2,label+' strategy grid must not scroll sideways');
     if(m.foot)assert.ok(m.foot.y>=m.header.bottom-1&&m.foot.bottom<=m.root.bottom+1,label+' primary actions stay visible');
     for(let i=0;i<m.controls.length;i++){
@@ -81,13 +87,22 @@ for(const [engine,executablePath] of [
     }
     const key=JSON.stringify(c);
     if(snapshots.has(key))assert.ok(Math.abs(m.header.h-snapshots.get(key))<1,label+' header height changed between pages');else snapshots.set(key,m.header.h);
-    if((c.width===740&&!c.text)||c.safe||c.width===1366)await page.screenshot({path:new URL(`${name}-${c.width}${c.safe?'-safe':''}.png`,out).pathname});
+    if((c.width===740&&!c.text)||c.safe||c.width===1366||c.fit)await page.screenshot({path:new URL(`${name}-${c.width}${c.safe?'-safe':''}${c.fit?'-fit':''}.png`,out).pathname});
    }
   };
   await resize(sizes[0]);await page.goto(server.url,{waitUntil:'domcontentloaded'});
   await page.evaluate(()=>{const event=new Event('beforeinstallprompt',{cancelable:true});event.prompt=async()=>({outcome:'dismissed'});dispatchEvent(event);});
   await page.waitForSelector('.title-login input');await page.type('.title-login input','手机布局验证');await click('.title-login .btn--primary');
   await capture('lobby','.lobby-hub');await resize(sizes[2]);
+  await click('.lobby-hub .settings-btn');await page.waitForSelector('.settings-modal');
+  await text('小','.set-textsize button');
+  await page.$eval('[data-testid="ui-size-range"]',e=>{e.value='75';e.dispatchEvent(new Event('change',{bubbles:true}));});
+  await page.waitForFunction(()=>document.documentElement.style.getPropertyValue('--sp-ui')==='0.75');
+  await page.$eval('[data-testid="fit-l"]',e=>{e.value='56';e.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.waitForFunction(()=>document.documentElement.style.getPropertyValue('--fit-l')==='12px');
+  await page.screenshot({path:new URL('settings-manual-fit.png',out).pathname});
+  await page.$eval('.set-fit__reset',e=>e.click());await text('中','.set-textsize button');
+  await page.keyboard.press('Escape');await page.waitForSelector('.settings-modal',{hidden:true});
   await page.evaluate(()=>[...document.querySelectorAll('.hub-entry')].find(e=>e.textContent.includes('创建同盟')).click());
   await capture('create','.protocol-screen');await resize(sizes[2]);
   const language=async code=>{
@@ -114,6 +129,12 @@ for(const [engine,executablePath] of [
    await page.waitForFunction(n=>document.querySelectorAll('.rseat:not(.rseat--empty)').length===n,{},i+2);
   }
   await capture('full-room','.room-screen',[sizes[1],sizes[2],sizes[5],sizes[7],sizes[8]]);
+  await resize(sizes[2]);await text('调整配置');await click('[data-testid="room-version"]');
+  await page.waitForSelector('[data-testid="version-picker"]');await click('button.verpick__pick[data-version="act1autochess"]');
+  await page.waitForFunction(()=>window.__SP__.store.get().room?.version==='act1autochess');
+  await page.waitForSelector('.room-screen .room-config-summary button:not(:disabled)');
+  await capture('historical-room','.room-screen',[sizes[2],sizes[10]]);
+  assert.ok(await page.$eval('.room-config-summary',e=>e.textContent.includes('第一期下半')),'the active historical version remains visible after the toast');
   await resize(sizes[2]);await text('立即开始');await capture('brief','.brief',[sizes[1],sizes[2],sizes[5],sizes[7]]);
   await resize(sizes[2]);await text('准备就绪');await capture('draft','.draft',[sizes[1],sizes[2],sizes[5],sizes[7]]);
   assert.deepEqual(errors,[]);

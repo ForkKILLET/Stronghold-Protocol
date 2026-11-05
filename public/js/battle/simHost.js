@@ -1,5 +1,5 @@
 // C4 simulation hosts (DESIGN §32.11). The clock belongs to runner.js. Only the vanilla host has a Battle on the page.
-import { loadBrowserSim } from './simLoader.js';
+import { loadBrowserSim, checkOperatorTraitRuntime } from './simLoader.js';
 import { unitStatsEntry } from '../../../shared/protocol.js';
 
 /** [ASSUMED] 2 s per RPC, including construction and forceEnd (both can execute plugin hooks). */
@@ -105,7 +105,8 @@ export class WorkerSimHost {
     content ||= await this.contentFor?.(cs);
     if (!content || content.cs !== cs || !content.data) throw failure('PLUGIN_WORKER_FAILED', 'no checked content set');
     this.cs = cs;
-    const ready = await this.rpc('load', [{ ...content, cs }], this.loadTimeoutMs);
+    const traitRuntimeVerified = await checkOperatorTraitRuntime(content.data);
+    const ready = await this.rpc('load', [{ ...content, cs, traitRuntimeVerified }], this.loadTimeoutMs);
     if (ready.install) await this.rpc('install');
     return this;
   }
@@ -116,7 +117,18 @@ export class WorkerSimHost {
     this.meter = packet.meter;
     return packet;
   }
-  async start(spec) { this.spec = spec; this.accept(await this.rpc('start', [spec])); return this; }
+  async start(spec) {
+    this.spec = spec;
+    // A reused worker still has the previous battle's events and stat RPCs. Drop them after `start` returns so a
+    // step that was already in flight cannot append onto the new battle, and ignore stat replies from the old one.
+    this.statsGeneration = (this.statsGeneration || 0) + 1;
+    this.statsPending.clear();
+    const packet = await this.rpc('start', [spec]);
+    this.events.length = 0;
+    this.statsCache.clear();
+    this.accept(packet);
+    return this;
+  }
   async step(n, opts) { return this.accept(await this.rpc('step', [n, opts])); }
   progress() { return this.packet.progress; }
   uniteLeft() { return this.packet.left; }
@@ -124,7 +136,12 @@ export class WorkerSimHost {
   unitStats(id) {
     if (!this.stopped && !this.statsPending.has(id)) {
       this.statsPending.add(id);
-      this.rpc('unitStats', [id]).then(v => this.statsCache.set(id, v), () => {}).finally(() => this.statsPending.delete(id));
+      const generation = this.statsGeneration || 0;
+      this.rpc('unitStats', [id]).then(v => {
+        if (generation === (this.statsGeneration || 0)) this.statsCache.set(id, v);
+      }, () => {}).finally(() => {
+        if (generation === (this.statsGeneration || 0)) this.statsPending.delete(id);
+      });
     }
     return this.statsCache.get(id) || null;
   }

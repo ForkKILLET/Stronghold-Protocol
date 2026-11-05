@@ -1,3 +1,4 @@
+// Fork-specific UI and persistence contracts; mainline additions are covered alongside this file.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

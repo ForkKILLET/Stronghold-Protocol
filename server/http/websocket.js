@@ -22,17 +22,20 @@ const perNetwork = (n) => Number.isFinite(n) && n > 0 ? String(n) : 'unlimited';
 
 /**
  * permessage-deflate (RFC 7692) for the JSON text frames. A message from 1 KB up (m.public, m.private, b.start, welcome
- * …) is compressed on its own — no context is kept from one message to the next (`serverNoContextTakeover`) — with a
- * 2 KB window and zlib memLevel 7, so a connection holds about 72 KB of zlib state; smaller frames (pong, ok) go out
- * as they are. Measured on a solo session (rounds 3–5, the server's own counters, traffic.js): 173 KB of payload →
- * 60 KB on the wire; replaying a session's frames with larger windows gained nothing on these messages. Browsers
- * negotiate it by themselves; a client that offers none gets plain frames. The inflated size of a client frame still
- * counts against WS_MAX_PAYLOAD.
+ * …) is compressed with an 8 KB window (serverMaxWindowBits 13) and zlib memLevel 7, and the window is KEPT from one
+ * message to the next (context takeover, the ws default: the extension's `server_no_context_takeover` is not
+ * negotiated) — the views repeat most of their keys and values (bonds, players, shop), so a frame costs a fraction of
+ * its standalone deflate. A 4-player match's frames (3,339 KiB of payload, 1,127 frames, one client's stream, measured
+ * over a real ws round trip): 809 KiB on the wire with per-message deflate and a 2 KB window, 284 KiB with the context
+ * kept — a window of 15 would reach about 160 KiB at about 140 KiB more zlib state per connection, so 13 is the balance
+ * (about 105 KiB of zlib state per connection); smaller frames (pong, ok) go out as they are. A connection that
+ * negotiates no extension, or one that caps the server window below ours, gets plain frames. Context takeover is
+ * negotiated per connection and reset with it: a client that offers `server_no_context_takeover` keeps getting
+ * standalone messages.
  */
 export const WS_DEFLATE = Object.freeze({
   threshold: 1024,
-  serverNoContextTakeover: true,
-  serverMaxWindowBits: 11,
+  serverMaxWindowBits: 13,
   zlibDeflateOptions: Object.freeze({ memLevel: 7 }),
 });
 
@@ -52,20 +55,25 @@ export function narrowDeflateOffer(header) {
   });
 }
 
+/** A per-network cap, as printed on boot ('unlimited' for 0). */
+
 /**
  * The session stack of one server.
  * @param {{ MatchClass?: Function, seedFn?: () => number, [option: string]: any }} opts startServer() options
  * @param {{ data: object, log: object, content?: { cs: string } | null,
  *   plugins?: ReturnType<typeof import('../plugins/roomSets.js').createRoomSets> | null,
- *   hosts?: ReturnType<typeof import('../match/host/index.js').createMatchHosts> | null }} deps the game data the lobby's
+ *   hosts?: ReturnType<typeof import('../match/host/index.js').createMatchHosts> | null,
+ *   simPool?: ReturnType<typeof import('../workers/roomPool.js').createRoomWorkerPool> | null,
+ *   versions?: ReturnType<typeof import('../versions.js').createVersionSets> | null,
+ *   versionHosts?: ReturnType<typeof import('../match/host/index.js').createMatchHosts> | null }} deps the game data the lobby's
  *   matches use, the logger, the vanilla content (server/plugins/identity.js: welcome / room.state content, BattleSpec
  *   cs), the room sets a room's host chooses from (room.setPlugins: visual and content sets), the match hosts a room with
- *   gameplay plugins plays in (DESIGN §32.6)
+ *   gameplay plugins plays in (DESIGN §32.6), the official versions and their match hosts (DESIGN §35.23)
  * @returns {{ registry: SessionRegistry, lobby: Lobby, network: Network }}
  */
-export function createSessionStack(opts, { data, log, workerPool, matchWorkerPool = null, content = null, plugins = null, hosts = null }) {
-  const netOptions = netOptionsFrom(opts);
-  const lobbyOptions = lobbyOptionsFrom(opts);
+export function createSessionStack(opts, { data, log, workerPool, matchWorkerPool = null, content = null, plugins = null, hosts = null, versions = null, versionHosts = null, simPool = null }) {
+  const netOptions = netOptionsFrom(opts, log);
+  const lobbyOptions = lobbyOptionsFrom(opts, log);
   // Limit overrides (docs/DEPLOY.md §3.4): an explicit startServer option wins, then the environment, then the code
   // default. `0` means unlimited for the per-network caps; an unparsable value warns and keeps the default (a typo
   // must not silently remove a protection).
@@ -76,8 +84,8 @@ export function createSessionStack(opts, { data, log, workerPool, matchWorkerPoo
     [netOptions, 'maxConnections', 'SP_MAX_CONNECTIONS', NET_DEFAULTS.maxConnections],
     [netOptions, 'maxConnectionsPerAddr', 'SP_MAX_CONNECTIONS_PER_ADDR', NET_DEFAULTS.maxConnectionsPerAddr],
   ];
-  for (const [target, key, env, fallback] of envLimits) {
-    if (target[key] == null) target[key] = parseEnvLimit(process.env[env], fallback, env, log);
+  for (const [target, key, _env, fallback] of envLimits) {
+    if (target[key] == null) target[key] = fallback;
   }
   netOptions.maxPendingConnections ??= NET_DEFAULTS.maxPendingConnections;
   log.info(`[http] limits: rooms ${lobbyOptions.maxRooms} (${perNetwork(lobbyOptions.maxRoomsPerAddr)}/network), matches ${perNetwork(lobbyOptions.maxMatchesPerAddr)}/network, online ${netOptions.maxConnections}, sockets ${perNetwork(netOptions.maxConnectionsPerAddr)}/network, pending ${netOptions.maxPendingConnections}`);
@@ -86,9 +94,10 @@ export function createSessionStack(opts, { data, log, workerPool, matchWorkerPoo
     maxSessions: opts.maxSessions ?? NET_DEFAULTS.maxSessions });
   const lobby = new Lobby({
     registry, log, MatchClass: opts.MatchClass, getData: () => data, seedFn: opts.seedFn, options: lobbyOptions,
-    workerPool, matchWorkerPool, content, plugins, hosts, nameModeration: opts.nameModeration,
+    workerPool, matchWorkerPool, content, plugins, hosts, versions, versionHosts, simPool, nameModeration: opts.nameModeration,
   });
   const network = new Network({ registry, handler: lobby, log, options: netOptions, nameModeration: opts.nameModeration });
+  lobby.network = network;
   return { registry, lobby, network };
 }
 
@@ -111,6 +120,27 @@ function meterSocket(ws, req, traffic) {
   ws.once('close', () => traffic.wsClose(socket));
 }
 
+/** The options of a frame that must go out uncompressed. */
+const PLAIN = Object.freeze({ compress: false });
+
+/**
+ * Keep `WS_DEFLATE.threshold` true now that the window is kept.
+ * ws applies its own threshold only when the extension negotiated `*_no_context_takeover` (sender.js: the check sits
+ * behind that parameter) — with context takeover every message it is handed is compressed, so a pong or an `ok` would
+ * be too. The decision is made here instead, on the UTF-8 byte length of text frames, and only for the small ones:
+ * `compress: false` leaves the frame plain and the server's deflate window untouched.
+ */
+function applySendThreshold(ws) {
+  const send = ws.send;
+  ws.send = function sendWithThreshold(data, options, callback) {
+    if (typeof options === 'function') { callback = options; options = null; }
+    if (typeof data === 'string' && Buffer.byteLength(data, 'utf8') < WS_DEFLATE.threshold) {
+      return send.call(this, data, options ? { ...options, compress: false } : PLAIN, callback);
+    }
+    return send.call(this, data, options, callback);
+  };
+}
+
 /**
  * Serve the WebSocket endpoint /ws on `server` (its 'upgrade' event).
  * @param {import('node:http').Server} server
@@ -119,7 +149,7 @@ function meterSocket(ws, req, traffic) {
  */
 export function attachWebSocket(server, { network, log, wsCompression = parseWsCompression(process.env.SP_WS_COMPRESSION), announcements = null, traffic = null, users = null }) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: WS_MAX_PAYLOAD, perMessageDeflate: wsCompression ? { ...WS_DEFLATE, clientNoContextTakeover: true } : false, clientTracking: false });
-  wss.on('connection', (ws, req) => { if (traffic) meterSocket(ws, req, traffic); network.handleConnection(ws, req); if (announcements) { announcements.refresh(); send(ws, announcements.message()); send(ws, announcements.message('popup')); } });
+  wss.on('connection', (ws, req) => { applySendThreshold(ws); if (traffic) meterSocket(ws, req, traffic); network.handleConnection(ws, req); if (announcements) { announcements.refresh(); send(ws, announcements.message()); send(ws, announcements.message('popup')); } });
   wss.on('error', (e) => log.error('[ws] server error', e));
 
   server.on('upgrade', async (req, socket, head) => {

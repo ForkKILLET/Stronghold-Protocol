@@ -4,6 +4,7 @@ import {html,Spinner} from '../ui/components.js';
 import {settingsStore} from '../ui/settings.js';
 import {prepCameraFor} from '../ui/gameLogic/camera.js';
 import {data} from '../data.js';
+import {DEFAULT_VERSION} from '../../../shared/versions.js';
 import {t} from '../../../shared/i18n.js';
 
 export function ReplayCanvas({timeline,state,time,playerId,field,onBuffering}){
@@ -19,7 +20,7 @@ export function ReplayCanvas({timeline,state,time,playerId,field,onBuffering}){
    view.pushSnapshot({...snap,t:'b.snap',gt:snap.t});
   };
   (async()=>{
-   const [{createFieldView},{createAssets},{InPageSimHost,WorkerSimHost},{loadContentSet,hasScriptConsent}]=await Promise.all([
+   const [{createFieldView},{createAssets},{InPageSimHost,WorkerSimHost},{loadContentSet,hasScriptConsent,contentFor}]=await Promise.all([
     import('../render/app.js'),import('../assets.js'),import('../battle/simHost.js'),import('../content.js')]);
    if(!alive)return;
    const assets=createAssets();assets.seed(data.getRaw('assets'));
@@ -32,6 +33,10 @@ export function ReplayCanvas({timeline,state,time,playerId,field,onBuffering}){
      content={cs:pack.cs,data:Object.fromEntries(pack.values),bounds:pack.bounds,scripts:pack.scripts,hashInput:pack.index,nativeVerified:pack.nativeVerified};
     }catch{simError=t('回放所需的插件内容不可用，仍可查看经营记录。');}
    }else if(replay.cs&&replay.currentCs!==replay.cs)simError=t('战斗规则版本已变化，仍可查看经营记录。');
+   else if(replay.version&&replay.version!==DEFAULT_VERSION){
+    content=await contentFor(replay.cs);
+    if(content?.version!==replay.version)simError=t('回放所需的版本内容不可用，仍可查看经营记录。');
+   }
    const source=content?{get:n=>content.data[n] || data.get(n),lookup:(n,id)=>content.data[n]?.[id] || data.lookup(n,id)}:data;
    const options={data:source,assets,signal:controller.signal,settings:settingsStore.get(),padding:()=>({top:16,bottom:16,left:16,right:16}),hud:()=>({top:0,bottom:0})};
    try{

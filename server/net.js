@@ -44,11 +44,11 @@ import { cleanPlayerCard } from '../shared/playerCard.js';
 //   onDisconnect(session)                  the session's socket closed (session kept for the reconnect window)
 //   onExpire(session)                      the session was purged (disconnected longer than the window)
 
+import { prepareStateFrame, negotiateStateDelta, resetStateDelta, setStateDeltaRoom } from './stateTransport.js';
 import { randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { NetDiagnostics, socketDiagnostics } from './netDiagnostics.js';
-import { negotiateStateDelta, prepareStateFrame, resetStateDelta } from './stateTransport.js';
 import { C2S, validateC2S } from '../shared/protocol.js';
 import { ERR, ERR_TEXT, NAME_MAX_LEN, PROTOCOL_VERSION } from '../shared/constants.js';
 
@@ -67,6 +67,7 @@ export const NET_DEFAULTS = Object.freeze({
   maxPendingConnections: 256,  // unauthenticated/closing sockets, independent of the online cap
   maxConnectionsPerAddr: 64,    // concurrent sockets per client network key (0 = unlimited); see clientAddress
   maxSessions: 20_000,          // registry cap; oldest idle sessions are evicted first
+  maxOnline: 0,                 // authenticated players admitted at once (0 = unlimited); a resume is never refused
   heavyPerSec: 2,               // refill of the bucket for resend-heavy intents (HEAVY_TYPES)
   heavyBurst: 6,
   trustProxy: 'auto',           // forwarding headers: 'auto' = from loopback/private peers only, true = always, false = never
@@ -76,11 +77,18 @@ export const NET_DEFAULTS = Object.freeze({
  * Intents that also draw from the per-connection heavy bucket: g.watch (its reply is a large state resend, m.field),
  * room.loadout (a ≤ 160-entry map and ≤ 256 operator settings validated against the game data; the client debounces its
  * edits), room.ownership
- * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way) and room.spectate
- * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate).
- * state.resync requests a full match recovery; it also uses the lobby's per-session resync coalescing.
+ * (a ≤ 160-id list, the same way), room.diy (≤ 8 自选 picks checked against the data, the same way), room.spectate
+ * (taking a spectator seat in a running match resends its state like a watcher's g.watch — server/lobby.js spectate) and
+ * room.setPlugins (a new visual set: every member downloads its art manifest — server/plugins/visualSet.js).
+ * room.skins (docs/SKINS.md) is a small `{ [charId]: skinId }` map, sent on every edit of the appearance; a changed map
+ * re-broadcasts room.state to a waiting room (its seat cards wear it: room.state seats[].skins). room.card (名片干员, PR
+ * #643 split 6): every accepted change re-broadcasts room.state to the room. room.rerollSetup (重刷本局): with one human a
+ * start completes at once and clears that seat's 30 s cooldown, and each reroll rebuilds the opening and resends m.public
+ * to every connection (server/match/match/setupVote.js, DESIGN §35.47). Any seated player may start it (#860).
+ * room.proposeVersion (DESIGN §35.23) stays host-proposed: an accepted proposal by a lone human switches the room's
+ * version — every page then downloads that version's data.
  */
-export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.skins', 'room.card', 'room.ownership', 'room.diy', 'room.spectate', 'state.resync', 'room.setPlugins']);
+export const HEAVY_TYPES = new Set(['g.watch', 'room.loadout', 'room.ownership', 'room.diy', 'room.spectate', 'room.setPlugins', 'room.skins', 'room.card', 'room.rerollSetup', 'room.proposeVersion', 'state.resync']);
 
 /** Close codes (see header). */
 export const CLOSE = Object.freeze({ REPLACED: 4001, HELLO_TIMEOUT: 4002, SERVER_FULL: 4003, POLICY: 1008, SHUTDOWN: 1001 });
@@ -149,6 +157,12 @@ export class Session {
     this.notOwned = null;
     /** @type {Readonly<Record<string, { charId: string, skillIndex: number, uniEquipId: string|null }>> | null} checked 自选 picks (lobby-owned, 0.2.0 自选编队) */
     this.diy = null;
+    /** @type {Readonly<Record<string, string>> | null} chosen operator skins (lobby-owned, docs/SKINS.md): keyed by
+     * charId; PUBLIC, unlike the loadout (a teammate sees your skin through Match.publicView().players[].skins) */
+    this.skins = null;
+    /** @type {string | null} 名片干员 (lobby-owned, PR #643 split 6): the charId whose portrait fills this player's seat card in
+     * the waiting room; PUBLIC (room.state seats[].card), cosmetic */
+    this.card = null;
     /** @type {string} client address of the latest connection (logging) */
     this.addr = '?';
     /** @type {string | null} per-network limit key of the latest connection (null = not limited), see clientAddress */
@@ -372,18 +386,23 @@ export const isDroppable = (msg) => !!msg && msg.t === 'b.snap';
  * Encode and send one message to a socket. Never throws.
  * @param {import('ws').WebSocket | null | undefined} ws
  * @param {object} msg
- * @param {string | null} [encoded] trusted encoding of this exact message, supplied by the match
+ * @param {string | null} [encoded] bytes a caller already produced; must be this message when it is a state kind
  * @returns {boolean}
  */
 export function send(ws, msg, encoded = null) {
-  const data = encoded ?? encode(msg);
-  if (data == null) return false;
   if (!ws || ws.readyState !== WS_OPEN) return false;
+  let frame, data;
   try {
-    const frame = prepareStateFrame(ws, msg, data);
-    const queued = sendRaw(ws, frame.data, { droppable: isDroppable(msg) });
+    const bytes = encoded ?? encode(msg);
+    if (bytes == null) return false;
+    frame = prepareStateFrame(ws, msg, bytes);
+    data = frame.usable ? frame.data : encode(msg);
+  } catch { return false; }
+  if (data == null) return false;
+  try {
+    const queued = sendRaw(ws, data, { droppable: isDroppable(msg) });
     if (queued) {
-      frame.commit();
+      if (frame.usable) frame.commit();
       if (msg.t === 'm.result' || msg.t === 'room.closed') resetStateDelta(ws);
     }
     return queued;
@@ -398,6 +417,7 @@ export function send(ws, msg, encoded = null) {
  */
 export function sendSession(session, msg, encoded = null) {
   if (!session || !session.connected) return false;
+  setStateDeltaRoom(session.ws, session.roomCode ?? null);
   return send(session.ws, msg, encoded);
 }
 
@@ -721,6 +741,7 @@ export class Network {
       }
     } finally {
       this._fanoutRunning = false;
+      if (this.closed) { this._fanout.length = 0; this._heartbeatPending = false; }
       if (!this.closed && this._fanout.length) {
         this._fanoutImmediate = setImmediate(() => this._pumpFanout());
         this._fanoutImmediate.unref?.();
@@ -848,6 +869,11 @@ export class Network {
     if (!conn.session) { this.reply(conn, errorMsg(ERR.BAD_MSG, rid, 'hello required')); return; }
     if (HEAVY_TYPES.has(msg.t) && !conn.heavy.take(now)) { this.reply(conn, errorMsg(ERR.RATE, rid, `${msg.t} too often`)); return; }
 
+    // A client that missed a delta asks for a full frame (shared/stateDelta.js StateReceiver). Dropping the baseline is
+    // the point: the next frame of every state channel is then a full one, which is what restores the client. The state
+    // itself is resent by the same resync a repeated hello runs (the lobby throttles it with resyncMinGapMs).
+    if (msg.t === 'state.resync') resetStateDelta(conn.ws);
+
     let res;
     try {
       // client-side combat reports (b.progress / b.result, DESIGN §14) belong to the running match like 'g.*' intents:
@@ -962,6 +988,17 @@ export class Network {
         resumed = true;
         if (session.ws && session.ws !== conn.ws) this.detachReplaced(session.ws);
       } else {
+        // The online cap (SP_MAX_ONLINE) decides *new players only*: a token that still resolves resumed above and never
+        // reaches this check, so a full server does not lock out the people already playing. "A resume is never refused"
+        // holds at this layer alone — the socket cap (maxConnections, checked at the upgrade in
+        // server/http/websocket.js, answering 503 before a socket exists) still applies, and the `noReplace` / claimAt
+        // decision above still answers SESSION_IN_USE for a token whose session is live on another socket. This check is
+        // what the player sees as 服务器已满 (ERR.SERVER_FULL).
+        if (this.opts.maxOnline > 0 && this.onlineCount >= this.opts.maxOnline) {
+          this.reply(conn, errorMsg(ERR.SERVER_FULL, rid, 'server full (online cap)'));
+          try { conn.ws.close(CLOSE.POLICY, 'server full'); } catch { /* ignore */ }
+          return;
+        }
         session = this.registry.create(name);
         if (!session) { this.reply(conn, errorMsg(ERR.INTERNAL, rid, 'server full')); return; }
       }
@@ -976,11 +1013,12 @@ export class Network {
     session.lastSeen = now;
     session.addr = conn.ip;
     session.limitKey = conn.key;
-    negotiateStateDelta(conn.ws, msg.stateDelta);
+    negotiateStateDelta(conn.ws, msg.stateDelta ?? msg.delta);
 
     let extra = null;
     try { extra = this.handler.welcomeInfo?.() ?? null; } catch (e) { this.log.error('[net] welcomeInfo crashed', e); }
     const welcome = { ...(extra && typeof extra === 'object' ? extra : null), t: 'welcome', playerId: session.playerId, token: session.token, name: session.name, serverNow: now, version: PROTOCOL_VERSION, resumed, online: this.onlineCount };
+    if (session.aiTakeoverFrom) { welcome.takeoverFrom = session.aiTakeoverFrom; session.aiTakeoverFrom = null; }
     if (validRid(rid)) welcome.rid = rid;
     this.reply(conn, welcome);
     try {
@@ -1039,9 +1077,7 @@ export class Network {
         if (!conn.alive) { conn.ws.terminate(); return; }
         conn.alive = false;
         conn.ws.ping();
-      } catch (e) {
-        this.log.debug?.('[net] heartbeat error', e?.message);
-      }
+      } catch (e) { this.log.debug?.('[net] heartbeat error', e?.message); }
     }, 'heartbeat');
   }
 
@@ -1071,6 +1107,7 @@ export class Network {
     if (this._fanoutImmediate !== null) clearImmediate(this._fanoutImmediate);
     this._fanoutImmediate = null;
     this._fanout.length = 0;
+    this._heartbeatPending = false;
     this.diagnostics.close();
     clearInterval(this.heartbeatTimer);
     clearInterval(this.sweepTimer);

@@ -8,7 +8,8 @@
 // 默认 clears the choice and an outfit button selects an existing model (ui/skins.js availableSkins).
 
 import { t } from '../../../shared/i18n.js';
-import { html, MicroLabel, Button } from './components.js';
+import { useState } from '../../vendor/hooks.module.js';
+import { html, MicroLabel, Button, Modal } from './components.js';
 import { useStore, shallowEqual } from '../store.js';
 import { data, useData } from '../data.js';
 import { useSettings, updateSettings } from './settings.js';
@@ -45,6 +46,7 @@ export function SkinSection({ chess, selectedSkin, onSelectSkin }) {
 }
 
 function EnabledSkinSection({ chess, selectedSkin, onSelectSkin }) {
+  const [preview, setPreview] = useState(null);
   const s = useStore((v) => v, shallowEqual, skinsStore);
   const ready = useData('skins', 'assets');
   // Two ids, and they are not interchangeable: the CHOICE is stored per chess (like the loadout, and that is the
@@ -52,16 +54,17 @@ function EnabledSkinSection({ chess, selectedSkin, onSelectSkin }) {
   const chessId = chess && (chess.baseId || chess.chessId);
   const charId = chess && chess.charId;
   if (!chessId || !charId) return null;
-  const list = availableSkins(charId);
+  const list = availableSkins(charId).filter(x => !x.own && x.playable);
+  const previewRow = list.find(x => x.id === preview);
   const missing = ['skins', 'assets'].filter((name) => data.status(name) === 'missing');
   const state = !ready ? 'loading' : missing.length ? 'missing' : list.length ? 'ready' : 'empty';
   // Keep an unavailable saved choice for a later deployment, while accurately showing the current default fallback.
-  const selection = onSelectSkin ? selectedSkin : s.entries[chessId];
+  const selection = onSelectSkin ? selectedSkin : s.entries[chess.isDiy ? chessId : charId] || s.entries[chessId];
   const chosen = list.some((x) => x.id === selection) ? selection : null;
   const choose = (skin) => {
     if (onSelectSkin) onSelectSkin(skin);
-    else if (skin) setSkin(chessId, skin);
-    else clearSkin(chessId);
+    else if (skin) setSkin(chess.isDiy ? chessId : charId, skin);
+    else clearSkin(chess.isDiy ? chessId : charId);
   };
 
   return html`<section class="lo-sec lo-sec--skin" data-testid="skin-section" data-state=${state}>
@@ -82,11 +85,11 @@ function EnabledSkinSection({ chess, selectedSkin, onSelectSkin }) {
         <span class="lo-skin__text"><b class="lo-skin__name">${t('默认')}</b><span class="lo-skin__group">DEFAULT</span></span>
       </button>
       ${list.map((x) => {
-        const art = skinAvatar(charId, x.id);
+        const art = x.portrait || skinAvatar(charId, x.id);
         return html`<button key=${x.id} type="button" role="radio" aria-checked=${chosen === x.id ? 'true' : 'false'}
             data-skin=${x.id} class=${cx('lo-skin', chosen === x.id && 'is-on')}
             title=${[x.name, x.group].filter(Boolean).join(' · ')}
-            onClick=${() => choose(x.id)}>
+            onClick=${() => chosen === x.id ? setPreview(x.id) : choose(x.id)}>
           <span class="lo-skin__art">
             ${art ? html`<img src=${art} alt="" loading="lazy" referrerpolicy="no-referrer" />` : html`<span class="lo-skin__art--none"></span>`}
           </span>
@@ -97,5 +100,13 @@ function EnabledSkinSection({ chess, selectedSkin, onSelectSkin }) {
         </button>`;
       })}
     </div>`}
+    <${Modal} open=${!!previewRow} title=${previewRow?.name || t('外观预览')} micro="SKIN PREVIEW" onClose=${() => setPreview(null)} width="min(92vw, 900px)">
+      <${SkinPreview} art=${previewRow?.illust || previewRow?.portrait || previewRow?.avatar} name=${previewRow?.name || ''} />
+    <//>
   </section>`;
+}
+
+export function SkinPreview({ art = null, name = '' }) {
+  if (!art) return null;
+  return html`<div class="lo-skin-preview"><img src=${art} alt=${name} /></div>`;
 }

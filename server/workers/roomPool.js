@@ -2,10 +2,10 @@
 //
 // The WebSocket and Match object remain on the main thread in this first phase. A room's battle/rehearsal work is
 // pinned to one lane instead of contending in one global simulation queue.
-import { SimulationPool } from './pool.js';
+import { SimulationPool, workerSettings } from './pool.js';
 
 export class RoomWorkerPool {
-  constructor({ data, lanes = 1, totalWorkers = 1, maxQueue = 256, timeoutMs = 120000 } = {}) {
+  constructor({ data, lanes = 1, totalWorkers = 1, maxQueue = 256, timeoutMs = 120000, workerUrl } = {}) {
     if (!Number.isInteger(lanes) || lanes < 1 || lanes > 32) throw new RangeError('room worker lanes must be 1..32');
     if (!Number.isInteger(totalWorkers) || totalWorkers < lanes || totalWorkers > 32) {
       throw new RangeError('room worker total must be between lanes and 32');
@@ -18,6 +18,7 @@ export class RoomWorkerPool {
         size: Math.max(1, Math.ceil((totalWorkers - i) / lanes)),
         maxQueue,
         timeoutMs,
+        ...(workerUrl ? { workerUrl } : {}),
       }),
     }));
     this.assignments = new Map();
@@ -33,6 +34,17 @@ export class RoomWorkerPool {
     lane.rooms.add(id);
     this.assignments.set(id, lane.id);
     return lane.pool;
+  }
+
+  has(key) { return this.assignments.has(String(key || '')); }
+
+  /** Unpinned callers share one of the existing lanes, never allocate another pool. */
+  submit(type, payload, options) {
+    const lane = this.lanes.reduce((a, b) => {
+      const x = a.pool.stats(), y = b.pool.stats();
+      return y.busy + y.queued < x.busy + x.queued ? b : a;
+    });
+    return lane.pool.submit(type, payload, options);
   }
 
   release(key) {
@@ -62,4 +74,12 @@ export class RoomWorkerPool {
     this.closed = true;
     await Promise.all(this.lanes.map((lane) => lane.pool.close()));
   }
+}
+
+export function createRoomWorkerPool({ data, env = process.env, workerUrl } = {}) {
+  const { size, maxQueue, timeoutMs } = workerSettings(env);
+  if (!size) return null;
+  const requested = Number(env.SP_ROOM_WORKERS || 1);
+  const lanes = Math.min(size, Number.isInteger(requested) && requested > 0 ? requested : 1);
+  return new RoomWorkerPool({ data, totalWorkers: size, lanes, maxQueue, timeoutMs, workerUrl });
 }

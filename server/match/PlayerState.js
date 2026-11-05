@@ -1,3 +1,4 @@
+import { operatorCharIds } from '../../shared/protocol.js';
 import { freezeSkins } from '../../shared/skins.js';
 // server/match/PlayerState.js — authoritative per-player state + every prep intent handler (DESIGN §6.2).
 //
@@ -139,7 +140,7 @@ import { PlayerDiy, DiyStock } from './player/diy.js';
 export class PlayerState {
   /**
    * @param {import('./Match.js').Match} m owning match
-   * @param {{ seat: number, playerId: string, name: string, isBot: boolean, connected: boolean, loadout?: any, notOwned?: any, diy?: any }} seat
+   * @param {{ seat: number, playerId: string, name: string, isBot: boolean, connected: boolean, loadout?: any, notOwned?: any, diy?: any, skins?: any }} seat
    */
   constructor(m, seat) {
     this.m = m;
@@ -173,7 +174,7 @@ export class PlayerState {
     /** 皮肤 (docs/SKINS.md): frozen { [chessId]: skinId }, {} = every chess on its default model. Unlike the
      * loadout these are PUBLIC (a teammate sees your skin), so they travel in Match.publicView(). */
     // Match dirty sets are constructed AFTER its PlayerStates. Initial preferences must not notify yet.
-    this.skins = freezeSkins(this.isBot ? null : seat.skins, (id) => this.gd.chess(id));
+    this.skins = freezeSkins(this.isBot ? null : seat.skins, (id) => this.gd.chess(id), (id) => operatorCharIds(this.gd.raw).has(id));
     /**
      * 补位 (0.2.0): the base chess ids this player fields as their stand-ins — the seat's not-owned list when the match
      * started, re-checked against this match's data; frozen, sorted; [] = every operator owned (bots always)
@@ -193,7 +194,12 @@ export class PlayerState {
     this.diyStock = new DiyStock();
     /** slotted slots without stock: every bond of the operator is switched off this match */
     this.diyBanned = Object.freeze([]);
-    if (!this.isBot && seat.diy) this.setDiy(seat.diy);
+    // A modded room's content list (Match.diyKitted) is what the lobby already accepted. Without it setDiy
+    // keeps the vanilla kit list and drops a plugin operator with no error (checkDiyPicks is lenient).
+    // Bots never slot 自选; they read the human's composed records once this succeeds (bot.js chessRec).
+    if (!this.isBot && seat.diy) this.setDiy(seat.diy, this.m.diyKitted ? { kitted: this.m.diyKitted } : undefined);
+    /** 皮肤 (docs/SKINS.md): frozen `{ [charId]: skinId }`, {} = every operator on its default model. Unlike the
+     * loadout these are PUBLIC (a teammate sees your skin), so they travel in Match.publicView().players[]. */
     this.shop = { level: 1, upgradePrice: this.gd.upgradeBase(1) ?? 0, slots: [], frozen: false, freeRefreshes: 0 };
     /** reward offers queue (merge rewards, special refreshes): { tier, source, label, slots: [{ kind, id, price, sold }] } */
     this.offers = [];
@@ -229,7 +235,7 @@ export class PlayerState {
      * @type {null | { id: string, round: number, sourceItemId: string, cards: any[] }}
      */
     this.personalChoice = null;
-    /** free-form counters for content (ctx.counter / setCounter) */
+    /** free-form match-long content counters (ctx.counter / setCounter), including band:cathy:cellTaken (#677) */
     this.counters = {};
     /** per-round counters (reset at round start) */
     this.round = { refreshes: 0, buys: 0, sells: 0, spent: 0, gainedChess: 0, arts: 0 };

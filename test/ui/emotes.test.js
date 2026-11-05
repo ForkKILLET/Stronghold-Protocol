@@ -210,8 +210,8 @@ print(json.dumps({
   });
 
   const manifest = tryJson('data/local-assets.json');
-  test('the extracted manifest lists all 36 pictures under their picId', { skip: !manifest && 'no data/local-assets.json' }, () => {
-    for (const e of EMOTE_CATALOG) {
+  test('each extracted emote theme lists its pictures under their picId (partial --only extraction is allowed)', { skip: !Object.keys(manifest?.groups || {}).some(g => g.startsWith('emoticon/')) && 'emotes not extracted' }, () => {
+    for (const e of EMOTE_CATALOG.filter(e => manifest.groups[emoteArtGroup(e.id)])) {
       const entry = manifest.groups[emoteArtGroup(e.id)]?.[e.picId];
       assert.ok(entry, `${e.id} → ${e.picId}`);
       assert.equal(entry.path, emoteArtPath(e.id));
@@ -219,10 +219,11 @@ print(json.dumps({
       assert.equal(entry.kind, 'Sprite');
     }
     for (const t of EMOTE_THEMES) {
+      if (!manifest.groups[`emoticon/${t.dir}`]) continue;
       const names = Object.keys(manifest.groups[`emoticon/${t.dir}`]);
       assert.deepEqual(names.sort(), t.emotes.map((e) => e.picId).sort(), `${t.dir}: only the battle sprites`);
     }
-    for (const n of ['emoji_bubble_bkg', 'emoji_bkg', 'emoji_cell_bkg', 'emoji_btn', 'emoji_btn_disable']) assert.ok(manifest.groups['ui/battle']?.[n], n);
+    if (manifest.groups['ui/battle']) for (const n of ['emoji_bubble_bkg', 'emoji_bkg', 'emoji_cell_bkg', 'emoji_btn', 'emoji_btn_disable']) assert.ok(manifest.groups['ui/battle'][n], n);
   });
 
   test('the listed pictures exist on disk', { skip: (!manifest || !existsSync(path.join(ROOT, 'public/assets/local/emoticon'))) && 'no extracted art' }, () => {

@@ -29,18 +29,22 @@ import { visibleSkin } from '../../../shared/skins.js';
 import { tileKey, hasFlag, UF, penPlacement, PEN, fieldTile, ownStandIn, ownDiyRecord } from './gameLogic.js';
 import { t } from '../../../shared/i18n.js';
 import { pieceItemProgress, progressLabel } from '../itemProgress.js';
+import { ownerSkin } from './skins.js';
 
 const DRAG_PX = 6;
 const DMG_TTL = 900;
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** Avatar URL for a UnitInfo `avatar` asset id (chars / E2 / tokens / enemies). */
-function unitArt(m, info, settings) {
+export function unitArt(m, info, appearance = {}, settings = appearance) {
   const id = info?.avatar || info?.defId;
   if (!m || !id) return null;
   if (info.side === 'enemy' || String(id).startsWith('enemy_')) return enemyIconUrl(m, id);
   if (String(id).startsWith('token_')) return tokenAvatarUrl(m, id);
-  return avatarUrl(m, id, { skin: visibleSkin(info.skin, settings) });
+  // Same golden rule as chessAvatarUrl: a character-key avatar uses avatarE2 on a golden piece.
+  const charId = info.diy?.charId || info.spine || String(id).replace(/_[12]$/, '');
+  const skin = settings?.skinsEnabled === true && ownerSkin(charId, { ...appearance, ownerId: info.ownerId ?? null, skin: info.skin });
+  return chessAvatarUrl(m, { charId, isGolden: !!info.golden, assets: { avatar: id } }, { skin });
 }
 
 /** Look of the stage tile (row, col) on the fallback board (stage coordinates). */
@@ -104,7 +108,7 @@ export function createFallbackView(host, opts = {}) {
     mode: 'prep', priv: null, editable: false, canPlace: null,
     field: null, units: new Map(), snapUnits: new Map(), highlight: new Map(), hlGroups: new Map(), held: new Map(), dirs: new Map(),
     drag: null, hoverTarget: null, floats: [], settings: { damageNumbers: true, officialDamageNumbers: false, ...(opts.settings || {}) },
-    size: { w: 0, h: 0 }, destroyed: false, pen: [],
+    size: { w: 0, h: 0 }, destroyed: false, pen: [], myId: null, players: [],
   };
 
   const emit = (type, payload) => {
@@ -159,12 +163,10 @@ export function createFallbackView(host, opts = {}) {
     if (p.kind === 'item') return itemIconUrl(mm, lookup('items', p.id));
     if (p.kind === 'token') return tokenAvatarUrl(mm, p.id);
     const chess = lookup('chess', p.id);
-    const si = ownSi(chess);
-    const replacement = si || ownDiy(chess);
-    const rec = replacement || chess;
-    const skin = si ? null : visibleSkin(p.skin, st.settings);
-    return (skin ? avatarUrl(mm, rec?.assets?.avatar || rec?.charId, { skin }) : null)
-      || chessAvatarUrl(mm, replacement || chess);
+    const body = ownSi(chess) || ownDiy(chess) || chess;
+    const skin = st.settings.skinsEnabled === true && ownerSkin(body?.charId, { ownerId: st.priv?.playerId ?? st.myId, skin: p.skin,
+      myId: st.myId, players: st.players, otherSkins: st.settings.otherSkins });
+    return chessAvatarUrl(mm, body, { skin });
   }
   /** 0.2.0 补位: the player's own piece of a chess it does not own is its stand-in, bench and board alike (render/app.js pieceInfo) */
   function ownSi(chess) {
@@ -293,7 +295,7 @@ export function createFallbackView(host, opts = {}) {
     const py = (st.rect.r1 - y + 0.5) * L.tile;
     const enemy = info.side === 'enemy';
     const size = info.boss ? L.tile * 1.3 : L.tile * 0.86;
-    const src = unitArt(m(), info, st.settings);
+    const src = unitArt(m(), info, { myId: st.myId, players: st.players, otherSkins: st.settings.otherSkins, skinsEnabled: st.settings.skinsEnabled });
     const dead = anim === 4;
     const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp) * 100)) : 0;
     const spPct = spMax > 0 ? Math.max(0, Math.min(100, (sp / spMax) * 100)) : 0;
@@ -510,6 +512,7 @@ export function createFallbackView(host, opts = {}) {
       schedule();
     },
     highlightTiles(tiles, style) {
+      if (st.destroyed) return false;
       if (!tiles || !style) { st.highlight.clear(); st.hlGroups.clear(); schedule(); return; }
       if (typeof style === 'object' && style.group) {
         // a named group (direction wheel / selected unit range): replaced as a whole, drawn as a range tile
@@ -531,6 +534,8 @@ export function createFallbackView(host, opts = {}) {
       schedule();
     },
     setSettings(s) { st.settings = { ...st.settings, ...(s || {}) }; schedule(); },
+    setMe(id) { st.myId = id; schedule(); },
+    setSkins(players) { st.players = players || []; schedule(); },
     on(type, fn) {
       if (typeof fn !== 'function') return () => {};
       if (!listeners.has(type)) listeners.set(type, new Set());

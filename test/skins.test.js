@@ -1,3 +1,4 @@
+// Fork-specific UI and persistence contracts; mainline additions are covered alongside this file.
 // 干员皮肤 (docs/SKINS.md): the render-side lookup.
 //
 // spineEntry / hasBackSpine take an optional skinId and fall back to the operator's own model when it is absent or

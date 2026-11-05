@@ -74,7 +74,11 @@
 // the server — and so is every spec naming a content while the page does not know the original one's cs. For a room's
 // content set the simulation is loaded on that set's data (content.js contentFor; the next spec of another content
 // loads it again — one at a time), and a b.result names the content the battle was simulated on (`cs`, its
-// simulation's; a vanilla room's sends none, as before).
+// simulation's; a vanilla room's sends none, as before). An official version's set (DESIGN §35.23: content.js
+// loadVersionSet, `version` on simContent) is a content set like any other here, except that it runs on this page's own
+// Battle (its data only, no script) instead of the plugin Worker, so 作战统计 works as on the original content.
+// A plugin set keeps one Worker for that content: `load` once, then `start` each round. `clear` parks it. It stops
+// when the content set changes, the page leaves the room, the Worker fails, or the runner is disposed.
 //
 // createBattleRunner(deps) builds an instance with injectable net / store / clock / frame scheduler / sim loader
 // (test/match/runner.test.js and test/match/runner-pending.test.js drive it under Node).
@@ -87,6 +91,7 @@ import { loadCombatHistory, saveCombatHistory } from './combatHistory.js';
 import { spectateEffects } from './observe.js';
 import { recordError, setBattleSource } from '../diag.js';
 import { loadBrowserSim } from './simLoader.js';
+import { data as gameData } from '../data.js';
 import { InPageSimHost, WorkerSimHost } from './simHost.js';
 import { trackCombat, combineCombat } from './metrics.js';
 import { t } from '../../../shared/i18n.js';
@@ -171,7 +176,7 @@ export function createBattleRunner(deps) {
   const clearIv = deps.clearInterval || ((h) => globalThis.clearInterval(h));
   const doc = deps.doc !== undefined ? deps.doc : (typeof document !== 'undefined' ? document : null);
   // `content` (DESIGN §32.6): `{ cs, data }` of a room's content set → the sim on it; null → the original content
-  const loadSim = deps.loadSim || ((content) => (content ? loadBrowserSim({ data: content.data, cs: content.cs, bounds: content.bounds ?? null, scripts:content.scripts || [], hashInput:content.hashInput, nativeVerified:content.nativeVerified }) : loadBrowserSim()));
+  const loadSim = deps.loadSim || ((content) => (content ? loadBrowserSim({ data: content.data, cs: content.cs, bounds: content.bounds ?? null, scripts:content.scripts || [], hashInput:content.hashInput, nativeVerified:content.nativeVerified }) : loadBrowserSim({ reuse: deps.reuseSimData || ((n) => gameData.getRaw(n)), reuseOwner: deps.reuseSimOwner || (() => gameData.contentId()) })));
   const logger = deps.logger || SIM_LOGGER;
   // the content sets (DESIGN §32.6): the room's set the page holds (content.js) and the server's original one
   const contentFor = deps.contentFor || appContentFor;
@@ -196,18 +201,44 @@ export function createBattleRunner(deps) {
   let storage = deps.storage;
   if (storage === undefined) { try { storage = typeof window !== 'undefined' ? window.localStorage : null; } catch { storage = null; } }
   const combatHistory = new Map(); // compact snapshots of locally simulated battles in this match
+  const combatOrder = new Map();
+  let combatSeq = 0;
   const rememberCombat = (e) => {
     if (!e.combatMetrics) return;
     const record = { ...e.combatMetrics(), v:1,battleId:e.battleId,round:e.spec.round,fieldId:e.fieldId,cs:e.spec.cs || null,
       complete:!!(e.done && e.battle?.finished && !e.failed) };
-    if (!(combatHistory.get(e.battleId)?.seconds > record.seconds)) combatHistory.set(e.battleId, record);
+    if (!(combatHistory.get(e.battleId)?.seconds > record.seconds)) { combatHistory.set(e.battleId, record); combatOrder.set(e.battleId, ++combatSeq); }
     saveCombatHistory(storage, historyKey, combatHistory, {matchId: historyMatchId});
     const playerId=store?.get?.()?.me?.playerId;
     if(historyMatchId && playerId && e.members.includes(playerId)) emit('combat',{matchId:historyMatchId,
       record:{...record,owners:[playerId],rows:record.rows.filter(row=>row.ownerId===playerId)}});
   };
+  const forgetCombat = () => { combatHistory.clear(); combatOrder.clear(); combatSeq = 0; };
   /** @type {Map<string, any>} battleId → entry of a b.start still being prepared (prepare(); `battle` null until built) */
   const pending = new Map();
+  /** One idle remote host for the content set it loaded. In-page hosts are not parked. */
+  let parked = null;
+  /** Entries clear() removed that still hold a pending or undelivered b.result. */
+  const retained = [];
+  function releaseParked() {
+    if (!parked) return;
+    const host = parked.host;
+    parked = null;
+    try { host.stop(); } catch { /* already stopped */ }
+  }
+  function takeParked(cs) {
+    if (!parked) return null;
+    if (parked.cs !== cs || parked.host.stopped) { releaseParked(); return null; }
+    const host = parked.host;
+    parked = null;
+    return host;
+  }
+  /** Park one healthy remote host. A second idle host for the same set is stopped (two live fields already have their own). */
+  function parkHost(host, cs) {
+    if (!host?.remote || host.stopped || !cs) { try { host?.stop(); } catch { /* ignore */ } return; }
+    if (parked && parked.host !== host) releaseParked();
+    parked = { host, cs };
+  }
   let cur = null;              // entry on screen
   let simP = null;
   /** the content set simP was loaded for (null: the original content) */
@@ -254,11 +285,14 @@ export function createBattleRunner(deps) {
   function ensureSim(cs = null) {
     const vanilla = vanillaCs();
     const want = typeof cs === 'string' && vanilla != null && cs !== vanilla ? cs : null;
+    if (parked && parked.cs !== want) releaseParked();
     if (simP && simCs === want) return simP;
     simCs = want;
     const p = (want ? contentFor(want).then((content) => {
       if (!content || content.cs !== want) throw new Error(`the content set ${want.slice(0, 8)} is not loaded on this page`);
-      return deps.loadSim ? loadSim(content) : { content, cs: want, remote: true };
+      // a gameplay plugin set runs in the plugin Worker; an official version's set (DESIGN §35.23: data only, no script)
+      // runs on this page like the original content — 作战统计 included
+      return deps.loadSim || content.version ? loadSim(content) : { content, cs: want, remote: true };
     }) : loadSim(null)).catch((err) => { if (simP === p) { simP = null; simCs = null; } throw err; });
     simP = p;
     return p;
@@ -540,7 +574,7 @@ export function createBattleRunner(deps) {
     const send = (tries) => {
       let req;
       try { req = net.request('b.result', msg, { timeout: 15000 }); } catch (err) { req = Promise.reject(err); }
-      return Promise.resolve(req).then(() => { e.delivery = 'delivered'; }, (err) => {
+      return Promise.resolve(req).then(() => { e.delivery = 'delivered'; dropRetained(e); }, (err) => {
         const code = err && err.code;
         if (code === 'TIMEOUT' && tries > 0) return send(tries - 1);
         if (LOST_RESULT_CODES.includes(code)) {
@@ -548,6 +582,7 @@ export function createBattleRunner(deps) {
           console.warn(`[runner] b.result not delivered (${code}) — sent again when the session resumes`);
         } else {
           e.delivery = 'delivered';
+          dropRetained(e);
           console.warn('[runner] b.result refused', code);
           recordError('runner', code, 'b.result refused');
         }
@@ -557,9 +592,15 @@ export function createBattleRunner(deps) {
     send(1);
   }
 
-  /** The session is back: every result lost with the socket goes out again. */
+  function dropRetained(e) {
+    const i = retained.indexOf(e);
+    if (i >= 0) retained.splice(i, 1);
+  }
+
+  /** The session is back: every result lost with the socket goes out again, including one clear() already dropped. */
   function redeliver() {
     for (const e of entries.values()) if (e.delivery === 'undelivered') deliver(e);
+    for (const e of [...retained]) if (e.delivery === 'undelivered') deliver(e);
   }
 
   /** Solo pause (m.public.paused): freeze / resume every local battle clock. */
@@ -610,6 +651,7 @@ export function createBattleRunner(deps) {
     const authority = e.authoritative;
     e.failed = true; e.authoritative = false; e.done = true;
     e.host?.stop();
+    if (parked && parked.host === e.host) parked = null;
     stats.errors++;
     recordError('runner', err, 'plugin worker stopped');
     const text = t('插件卡死，本场由服务器接管');
@@ -775,12 +817,20 @@ export function createBattleRunner(deps) {
       if (!csAccepted(e.spec.cs)) e.authoritative = false;
       let battle;
       try {
-        e.host = deps.createHost ? deps.createHost(sim, err => failWorker(e, err)) : sim.remote
-          ? new WorkerSimHost({ onFailure: err => failWorker(e, err), timeoutMs: deps.workerTimeoutMs })
-          : new InPageSimHost();
+        const reused = sim.remote ? takeParked(sim.cs) : null;
+        if (reused) {
+          reused.onFailure = (err) => failWorker(e, err);
+          e.host = reused;
+        } else {
+          e.host = deps.createHost ? deps.createHost(sim, err => failWorker(e, err)) : sim.remote
+            ? new WorkerSimHost({ onFailure: err => failWorker(e, err), timeoutMs: deps.workerTimeoutMs })
+            : new InPageSimHost();
+        }
         if (e.host.remote) {
-          await e.host.load(sim.cs, sim.content);
-          if (!wanted()) return;
+          if (!reused) {
+            await e.host.load(sim.cs, sim.content);
+            if (!wanted()) return;
+          }
           await e.host.start(e.spec);
         } else { e.host.sim = sim; e.host.start(e.spec, { logger }); }
         battle = e.host.battle;
@@ -821,7 +871,8 @@ export function createBattleRunner(deps) {
     } catch (err) {
       if (e.host?.remote) failWorker(e, err); else throw err;
     } finally {
-      if (entries.get(e.battleId) !== e) e.host?.stop();
+      // A host parked by clear() is still the next round's worker. Anything else this prepare no longer owns stops.
+      if (entries.get(e.battleId) !== e && parked?.host !== e.host) e.host?.stop();
       if (pending.get(e.battleId) === e) pending.delete(e.battleId);
       if (loading === e) { loading = null; publishState(); }
     }
@@ -871,23 +922,41 @@ export function createBattleRunner(deps) {
   /**
    * Drop every battle (a new round's prep, the match ended, the player left). Each dropped battle keeps its last
    * combat snapshot in combatHistory for the panel's match totals; `keepMetrics` false (a new match) starts over.
+   * A healthy plugin Worker stays parked for the next round of the same content set. Results not yet delivered stay
+   * in `retained` so a later resume can send them.
    */
   function clear({ keepMetrics = false } = {}) {
     ++startSeq;
     loading = null;
     for (const e of entries.values()) {
       // never drop an unreported authoritative result (the round already moved on: the server has its own).
-      // A Worker battle is ended by stopping its host below, not by forceEnd on the page-side stub.
+      // An in-page battle forceEnds here. A Worker battle is not forceEnded: the server takes an unfinished one,
+      // and a finished one's result is retained below.
       if (!e.host?.remote && e.authoritative && !e.resultSent && e.battle && !e.battle.finished) { try { e.battle.forceEnd('forced'); } catch { /* ignore */ } }
       rememberCombat(e);
     }
     // a battle still being prepared too: its preparation finds itself gone and stops (prepare). Snapshot first:
     // host.stop() drops the in-page Battle the meter reads.
     for (const e of pending.values()) rememberCombat(e);
-    for (const e of [...entries.values(), ...pending.values()]) e.host?.stop();
+    const dropped = [...entries.values(), ...pending.values()];
+    for (const e of dropped) {
+      if (e.result && (e.delivery === 'pending' || e.delivery === 'undelivered')) retained.push(e);
+    }
+    let keep = null;
+    for (const e of dropped) {
+      const host = e.host;
+      if (!host) continue;
+      // Only a host that already started a battle is reusable. One still inside load stays with prepare's finally.
+      if (host.remote && !host.stopped && !e.failed && e.battle && (e.sim?.cs || host.cs) && keep == null) {
+        keep = e;
+        continue;
+      }
+      try { host.stop(); } catch { /* already stopped */ }
+    }
+    if (keep) parkHost(keep.host, keep.sim?.cs || keep.host.cs);
     pending.clear();
     entries.clear();
-    if (!keepMetrics) combatHistory.clear();
+    if (!keepMetrics) forgetCombat();
     cur = null;
     lastPool = null;
     if (rafH != null) { caf(rafH); rafH = null; }
@@ -917,12 +986,12 @@ export function createBattleRunner(deps) {
       // Save old entries under their old match key before switching caches; never mix matches on a resync.
       if (resetMetrics || changedHistory) {
         if (entries.size || pending.size) clear({ keepMetrics: true });
-        combatHistory.clear();
+        forgetCombat();
       }
       if (changedHistory) {
         historyKey = pub.combatHistoryKey;
         historyMatchId = pub.matchId || null;
-        for (const [id, record] of loadCombatHistory(storage, historyKey)) combatHistory.set(id, record);
+        for (const [id, record] of loadCombatHistory(storage, historyKey)) { combatHistory.set(id, record); combatOrder.set(id, ++combatSeq); }
       }
       if (!pub) { historyKey = null; historyMatchId = null; }
       lastRound = round;
@@ -934,9 +1003,11 @@ export function createBattleRunner(deps) {
       if (!phase || ['PREP', 'ROUND_START', 'SP_DRAFT', 'RESULT', 'LOBBY', 'INFO_CHECK', 'BAND_DRAFT', 'BATTLE_CHECK'].includes(phase)) {
         if (entries.size || pending.size) clear({ keepMetrics: !resetMetrics });
       }
+      // Leaving the room drops the parked Worker even when RESULT already cleared the entries.
+      if (!pub || phase === 'LOBBY') releaseParked();
       // warm the simulation up as soon as a match runs (the first b.start then starts at once) — on the room's content set
-      // when it plays one (DESIGN §32.6)
-      const roomCs = s && s.room && s.room.content && s.room.content.vanilla === false ? s.room.content.cs : null;
+      // when it plays one (DESIGN §32.6), or its official version's (§35.23)
+      const roomCs = s && s.room && s.room.content && (s.room.content.vanilla === false || typeof s.room.version === 'string') ? s.room.content.cs : null;
       if (phase && phase !== 'LOBBY' && (!simP || simCs !== (roomCs || null))) ensureSim(roomCs).catch(() => {});
     }));
   }
@@ -964,6 +1035,25 @@ export function createBattleRunner(deps) {
         const e = ownerId == null ? cur : localEntries.filter((entry) => entry.members.includes(ownerId))
           .sort((a, b) => b.seq - a.seq)[0];
         return combineCombat(e?.combatMetrics ? [e.combatMetrics()] : [], ownerId);
+      }
+      if (scope === 'last') {
+        // 上一场战斗: the most recent battle that ended — a battle still on screen at RESULT keeps precedence over the
+        // snapshots an earlier round's prep remembered; a running battle is 当前战斗, never 上一场.
+        const own = (entry) => ownerId == null || entry.members.includes(ownerId);
+        const ended = localEntries.filter((entry) => entry.combatMetrics && own(entry) && entry.battle?.finished)
+          .sort((a, b) => b.seq - a.seq)[0];
+        if (ended?.combatMetrics) return combineCombat([ended.combatMetrics()], ownerId);
+        let best = null;
+        let bestOrder = -1;
+        for (const [id, record] of combatHistory) {
+          if (localEntries.some((entry) => entry.battleId === id)) continue;
+          // A watched (spectated / evicted replica) snapshot does not list the own player: it is skipped here instead
+          // of winning the order race and leaving the row list empty.
+          if (ownerId != null && !(record.owners || []).includes(ownerId)) continue;
+          const order = combatOrder.get(id) ?? 0;
+          if (order > bestOrder) { bestOrder = order; best = record; }
+        }
+        return combineCombat(best ? [best] : [], ownerId);
       }
       const records = new Map(combatHistory);
       for (const e of localEntries) if (e.combatMetrics) {
@@ -1027,7 +1117,11 @@ export function createBattleRunner(deps) {
     _frame: frame,
     _pump: pump,
     onStart, onPool, onEnd, clear, ensureSim, redeliver, setPaused,
-    dispose() { clear(); for (const off of offs) { try { off?.(); } catch { /* ignore */ } } },
+    dispose() {
+      clear();
+      releaseParked();
+      for (const off of offs) { try { off?.(); } catch { /* ignore */ } }
+    },
   };
 }
 

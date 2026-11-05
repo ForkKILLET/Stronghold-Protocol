@@ -36,11 +36,17 @@ for (const legacy of [false, true]) test(`0.2.5 boss partners and sides survive 
     }
     b.m.round = b.m.gd.hiddenRound;
     b.m._planBossWaves();
-    assert.deepEqual(b.m.bossPairs, expected, 'Hidden Core retains the restored pairing');
+    a.m.round = a.m.gd.hiddenRound;
+    a.m._planBossWaves();
+    const hidden = structuredClone(a.m.bossPairs);
+    assert.deepEqual(b.m.bossPairs, hidden, 'Hidden Core redraw is deterministic after restore (#845)');
+    assert.notDeepEqual(hidden, expected, 'the first Hidden Core plan makes its own draw');
     b.ps('p_1').alive = false;
     b.ps('p_1').left = true;
     b.m._planBossWaves();
-    assert.deepEqual(b.m.bossPairs, [['p_0', 'p_2'], ['p_3']], 'the intact pair keeps its partners/sides');
+    const intact = hidden.find(pair => !pair.includes('p_1'));
+    assert.ok(b.m.bossPairs.some(pair => JSON.stringify(pair) === JSON.stringify(intact)), 'the intact Hidden Core pair keeps its partners/sides');
+    assert.deepEqual(b.m.bossPairs.flat().sort(), ['p_0', 'p_2', 'p_3']);
   } finally { a.m.dispose(); b.m.dispose(); }
 });
 

@@ -15,6 +15,13 @@
   color: var(--text-hi);
   animation: lo-in 200ms var(--ease-out) backwards;
   overscroll-behavior: contain;
+  /* The list/detail geometry of this screen, shared with the 自选编队 picker's own body (screens/diy.js draws the same
+     detail panel): the detail column and the panel's horizontal padding both change at 1100 px, and the two drifted
+     apart while those numbers were written in both places (the picker kept a `1.2fr / 1fr` split and .3rem padding, so
+     the same `.lo-dhead` — shared CSS, sized in rem against theme.css's fluid root — wrapped differently up there). */
+  --lo-detail-w: 7rem;
+  --lo-gap-x: .22rem;
+  --lo-pad-x: .3rem;
 }
 @keyframes lo-in { from { opacity: 0; } }
 .lo__bg {
@@ -165,6 +172,9 @@
   --tc: var(--tier-1);
   position: relative; min-width: 0; padding: max(calc(.05 * var(--ui-unit, 1rem)), 4px) calc(.1 * var(--ui-unit, 1rem)) max(calc(.05 * var(--ui-unit, 1rem)), 4px) calc(.07 * var(--ui-unit, 1rem));
   background: rgba(255, 255, 255, .025); border: 1px solid var(--line); border-left: 3px solid var(--tc);
+  /* the whole row picks its operator (RosterRow onRowClick) — the pointer says so, and `touch-action` keeps a tap from
+     waiting on the double-tap delay; the row's own controls keep their cursor (`.lo-select select`, `.lo-q`) */
+  cursor: pointer; touch-action: manipulation;
   transition: background var(--t-fast), border-color var(--t-fast);
 }
 .lo-card--t1 { --tc: var(--tier-1); } .lo-card--t2 { --tc: var(--tier-2); } .lo-card--t3 { --tc: var(--tier-3); }
@@ -194,7 +204,7 @@
   position: relative; flex: none; display: grid; place-items: center; width: var(--q); height: var(--q); padding: 0;
   font: inherit; color: var(--text-lo); background: none; border: 0; cursor: pointer; touch-action: manipulation;
 }
-.lo-q--empty { border: 1px dashed rgba(255, 255, 255, .07); cursor: default; }
+.lo-q--empty { border: 1px dashed rgba(255, 255, 255, .07); }
 .lo-q:not(.is-on):not(.lo-q--empty) { opacity: .62; }
 .lo-q:not(.is-on):not(.lo-q--empty):hover { opacity: 1; }
 .lo-q__type { position: absolute; left: 0; bottom: 0; padding: 0 2px; font-size: max(calc(.11 * var(--utility-text, var(--t))), 8px); line-height: 1.3; color: var(--text-hi); background: rgba(0, 0, 0, .7); pointer-events: none; }

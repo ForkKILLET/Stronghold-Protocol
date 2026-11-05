@@ -10,7 +10,7 @@ import { PHASE, GEO } from '../../../shared/constants.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { creditedKillsOf } from '../../sim/spec.js';
 import { buildBossWave, bountySpawns } from '../waves.js';
-import { pairPlayers, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
+import { pairPlayers, bossPairSalt, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS } from './common.js';
 
@@ -43,10 +43,7 @@ export class MatchBoss {
     if (!alive.length) { this.finish({ victory: false, reason: 'eliminated' }); return; }
     this.phase = hidden ? PHASE.HIDDEN_CORE : PHASE.FINAL_ASSAULT;
     this.lastResults = new Map();
-    if (!hidden) {
-      this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
-      for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
-    }
+    if (!hidden) this._openTeamLp();
     const bossId = hidden ? this.hiddenBossId : this.bossId;
     // BOSS_HIT tickers ("对敌方领袖造成的伤害超过20% / 50% / 80%"): the player's damage to THIS leader over its pool —
     // the pool's own per-player tally, one pool per boss round. stats.bossDamage (the result's 领袖伤害) adds up both
@@ -68,7 +65,8 @@ export class MatchBoss {
       },
     });
     this.bossPool = pool;
-    const groups = pairPlayers(alive, createRng(deriveSeed(this.seed, 'boss-pairs')), this.bossPairs);
+    // the round's plan (_planBossWaves: the Hidden Core's own draw, GitHub #845); a departure since keeps intact pairs
+    const groups = pairPlayers(alive, createRng(deriveSeed(this.seed, bossPairSalt(this.gd, this.round))), this.bossPairs);
     this.bossPairs = groups.map(g => g.map(p => p.playerId));
     const reuse = this.bossWaves && this.bossWaves.length === groups.length && this.bossWaves.every((w, i) => w.players.join() === groups[i].map((p) => p.playerId).join());
     this.fields = groups.map((g, i) => {
@@ -85,7 +83,9 @@ export class MatchBoss {
         const input = ps.battleInput({ side: j === 0 ? 'L' : 'R', colOffset: j === 0 ? 0 : 8 });
         input.lpForBoss = this.teamLp;
         // `side` + `routes`: the player's half of a pair field (spawn-list edits for one player, e.g. 鸭爵's swap)
-        const ev = { input, kind: hidden ? 'hidden' : 'boss', round: this.round, spawns, routes: wave.routes, side: g.length > 1 ? (j === 0 ? 'L' : 'R') : null };
+        // `waveSpawns`: the field's wave before the bounties (a copy; 鸭爵's shared draw, GitHub #839)
+        const waveSpawns = wave.spawns.map((s) => ({ ...s, mods: s.mods ? { ...s.mods } : undefined }));
+        const ev = { input, kind: hidden ? 'hidden' : 'boss', round: this.round, spawns, waveSpawns, routes: wave.routes, side: g.length > 1 ? (j === 0 ? 'L' : 'R') : null };
         this.dispatch(ps, 'onBattleStart', ev);
         return ev.input && typeof ev.input === 'object' ? ev.input : input;
       });
@@ -138,6 +138,18 @@ export class MatchBoss {
       onDone: (runner) => this._finalDone(runner, hidden),
     });
     this.runner.start();
+  }
+
+  /**
+   * Merged team LP at the moment a Final Assault first opens. The Hidden Core keeps whatever is left;
+   * it does not call this again. A test jump straight into the hidden round calls it once when the
+   * assault that would have opened the pool was skipped. [ASSUMED] that sum is the alive players'
+   * current LP, not a leftover after a fight that did not happen.
+   */
+  _openTeamLp() {
+    const alive = this.alivePlayers();
+    this.teamLp = alive.reduce((s, p) => s + Math.max(0, p.lp), 0);
+    for (const ps of alive) ps.lpAtFinal = Math.max(0, ps.lp);
   }
 
   _startFinalClient(hidden) {

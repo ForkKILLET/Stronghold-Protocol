@@ -9,6 +9,7 @@
    3. touch: every small control gets an invisible ≥ 44 px hit area (::before, no layout change); on short touch
       screens (phones) the most used controls also grow visually
    4. reduced motion extras; fullscreen button
+   5. 异形屏适配: the player's own edge insets (设置, js/ui/screenFit.js)
    ========================================================================================== */
 
 :root {
@@ -57,12 +58,12 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
    control, no layout change. Only controls that do not use ::before themselves are listed. */
 :where(.sp-coarse) :where(.tapx, .gtop__exit, .gtop__iconbtn, .enemybtn, .readybtn, .gm__gear, .fsbtn, .ewheel__btn, .ewheel__nav,
   .toolbtn, .funds__collapse, .team__btn, .effect, .bslot .bond, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
-  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button) {
+  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button, .set-fit__step) {
   position: relative;
 }
 .sp-coarse :is(.tapx, .gtop__exit, .gtop__iconbtn, .enemybtn, .readybtn, .gm__gear, .fsbtn, .ewheel__btn, .ewheel__nav,
   .toolbtn, .funds__collapse, .team__btn, .effect, .bslot .bond, .vswitch__arrow, .edrawer__close, .dpanel__close, .bpop__close,
-  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button)::before {
+  .modal__close, .uf__btn, .chud__back, .tabs__tab, .btn, .pill-btn, .title-guide, .stephead__guide, .set-toggle, .set-seg button, .set-fit__step)::before {
   content: '';
   position: absolute; left: 50%; top: 50%; z-index: 0;
   width: max(100%, var(--tap-min)); height: max(100%, var(--tap-min));
@@ -82,12 +83,12 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
 /* Phones in landscape (short touch screens: 1rem ≈ 40 px here): the most used controls grow a little so they are
    comfortable to hit and to read, without changing the official layout. */
 @media (max-height: 600px) and (pointer: coarse), (max-height: 600px) and (any-pointer: coarse) {
-  .readybtn { height: max(.56rem, 34px); }
+  .readybtn { height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); }
   .toolbtn { min-height: max(.5rem, 30px); }
-  .gm__gear { width: max(.56rem, 34px); height: max(.56rem, 34px); }
+  .gm__gear { width: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); }
   /* ⚙ / 📖 / ⛶ keep their desktop proportion (half the button) instead of an 11 px glyph in the grown button */
   .gm__corner .gm__gear .icon { width: max(.28rem, 17px); height: max(.28rem, 17px); }
-  .gtop__exit { min-width: max(.56rem, 34px); min-height: max(.56rem, 34px); }
+  .gtop__exit { min-width: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); min-height: max(.56rem, 32px, calc(34px * var(--sp-ui, 1))); }
   .gtop__iconbtn.has-sprite, .enemybtn.has-sprite { height: max(.46rem, 26px); width: calc(max(.46rem, 26px) * 35 / 29); }
   .gtop__iconbtn.has-sprite.is-wide, .enemybtn.has-sprite.is-wide { width: calc(max(.46rem, 26px) * 61 / 29); }
   .gtop__iconbtn:not(.has-sprite), .enemybtn:not(.has-sprite) { height: max(.46rem, 26px); min-width: max(.46rem, 26px); }
@@ -96,7 +97,7 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .set-toggle, .set-seg button { height: max(.38rem, 30px); }
   /* a taller range input whose visible track stays thin: transparent borders are part of the hit area */
   .set-range { height: 30px; border: 11px solid transparent; border-left-width: 0; border-right-width: 0; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--line-2); }
-  .field--lg .field__box { height: max(.68rem, 40px); }
+  .field--lg .field__box { height: max(.68rem, 32px, calc(40px * var(--sp-ui, 1))); }
 }
 
 /* ---- 4. misc ------------------------------------------------------------------------------------------------------ */
@@ -134,26 +135,43 @@ html:not(.sp-in-match) .toast-host { margin-top: var(--sa-t); }
   .gm.is-collapsed { --corner-rows: 1; }
   .gm.is-collapsed .gm__corner { flex-wrap: nowrap; width: auto; }
 }
+/* … but not under the 机变 overlay, which starts at the corner's wrapped width (§35.51) */
+@media (max-width: 767px) {
+  .gm.is-collapsed.has-sp .gm__corner { flex-wrap: wrap-reverse; width: max(32px, calc(72px * var(--sp-ui, 1)), calc(3 * .56rem + .2rem)); }
+}
+@media (max-width: 767px) and (pointer: coarse), (max-width: 767px) and (any-pointer: coarse) {
+  .gm.is-collapsed.has-sp .gm__corner { width: max(32px, calc(96px * var(--sp-ui, 1)), calc(3 * max(.56rem, 32px, calc(34px * var(--sp-ui, 1))) + .2rem)); }
+}
 
-/* Short landscape phones (≤ 460 CSS px tall, 1rem = 40 px): the lobby's two columns are compressed so the
-   创建同盟 button and the join panel stay on screen without scrolling. The detail card's header is shorter (no
-   romanised name, a shorter portrait) so the operator's own effect (特质) under it stays in view even in the short card
-   docked above the shop bar (user playtest #3 item 8). */
+/* Short landscape phones (≤ 460 CSS px tall, 1rem = 40 px): the detail card's header is shorter (no romanised name,
+   a shorter portrait) so the operator's own effect (特质) under it stays in view even in the short card docked above
+   the shop bar (user playtest #3 item 8). The lobby's own short-phone rules are in screens/lobby.css. */
 @media (max-height: 460px) {
   .dhead__art { height: 1.66rem; }
   .dhead__en { display: none; }
-  .lobby-body { padding-top: .2rem; padding-bottom: .2rem; gap: .36rem; }
-  .mode-cards { margin-bottom: .2rem; }
-  .mode-card { min-height: 0; gap: .12rem; padding: .22rem .26rem .2rem; }
-  .mode-card__icon { width: .66rem; height: .66rem; }
-  .mode-card__name { font-size: calc(.4 * var(--t)); }
-  .mode-card__points, .diff-card__effects, .tips, .create-box__hint { display: none; }
-  .diff-list { gap: .1rem; }
-  .diff-card { padding-top: .12rem; padding-bottom: .12rem; }
-  .create-box { margin-top: .18rem; }
-  .create-box .btn--xl { height: .8rem; }
 }
 
 .rotate-hint__pwa { pointer-events: auto; margin-top: 6px; }
 .rotate-hint__pwa[hidden] { display: none; }
 .rotate-hint__fullscreen[hidden] { display: none; }
+
+/* ---- 5. 异形屏适配 (设置, ui/screenFit.js) ------------------------------------------------------------------------
+   The player's own insets for a screen whose cutout / curved edge the browser does not report (or reports wrongly in
+   fullscreen): the battle screen becomes the inset box — every .screen is absolute inset 0, so it lands inside, and the board is
+   sized from its host — and the layout root 1rem is computed from that box (theme.css's rule with the insets taken
+   off). Only while <html data-fit> is set: with all four at 0 nothing here applies. The bands outside show the page
+   background; fixed overlays (dialogs, toasts) still use the whole screen. */
+html[data-fit] {
+  font-size: calc(clamp(40px, min(calc((100vw - var(--fit-l, 0px) - var(--fit-r, 0px)) / 19.2), calc((100vh - var(--fit-t, 0px) - var(--fit-b, 0px)) / 10.8)), 240px) * var(--sp-ui, 1));
+  font-size: calc(clamp(40px, min(calc((100vw - var(--fit-l, 0px) - var(--fit-r, 0px)) / 19.2), calc((100svh - var(--fit-t, 0px) - var(--fit-b, 0px)) / 10.8)), 240px) * var(--sp-ui, 1));
+}
+/* the screens' own box (theme.css .app-root: fixed, inset 0) only; utility-mobile.css owns management surfaces separately */
+html[data-fit] .gm {
+  left: var(--fit-l, 0px); right: var(--fit-r, 0px); top: var(--fit-t, 0px); bottom: var(--fit-b, 0px);
+}
+.set-fit { display: flex; flex-direction: column; gap: .06rem; }
+.set-fit__row { grid-template-columns: minmax(0, 1.5rem) auto minmax(.8rem, 1fr) auto minmax(.36rem, auto); gap: .1rem; }
+.set-fit__row.is-disabled { opacity: .5; } /* 界面大小 at 文字大小 中 and above (ui/screenFit.js) */
+.set-fit__step { flex: none; width: .4rem; min-width: 28px; height: .34rem; min-height: 26px; padding: 0; border: 1px solid var(--line-2); background: rgba(0, 0, 0, .3);
+  color: var(--text-hi); font-size: calc(.2 * var(--t)); line-height: 1; cursor: pointer; }
+.set-fit__step:disabled { opacity: .35; cursor: default; }

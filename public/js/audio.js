@@ -33,9 +33,8 @@
 //   한국어 `audio.voiceKr` and the operator's own-language dub `audio.voiceNative` (settings 语音语言, the 本土语言
 //   switch and the per-operator override; not tied to the interface language). A line the chosen tree or the host
 //   lacks falls back to the Chinese file of the same name (voiceLine).
-// - Battle SFX from `b.ev` tuples (`handleBattleEvents`): at most MAX_VOICES concurrent unit sounds, at most
-//   MAX_PER_URL overlapping copies of one sound (the official banks' maxSoundAllowed 2), a per-unit cooldown and a
-//   per-URL minimum gap (SfxLimiter), so a 60-unit fight stays listenable. A `['skill', id, 1]` that arrives before its
+// - Battle SFX retain the fork limiter and field-owned cancellation, with bounded URL and per-unit cooldowns.
+//   A `['skill', id, 1]` that arrives before its
 //   unit is known is held and played once the unit is tracked (`pendingSkill`): a unit that casts inside its own deploy
 //   tick emits that first cue before its `['spawn', unitInfo]`, and dropping it left the one cast silent while every
 //   later one played (GitHub PR #292 by @LimitlessHPPK).
@@ -84,9 +83,12 @@ import { PHASE } from '../../shared/constants.js';
 import { mediaUrl } from './media.js';
 
 const MAX_VOICES = 8;
+// [ASSUMED] Remake anti-spam intervals, retained at high game speeds; not official audio pool parameters (#680).
 const UNIT_COOLDOWN_MS = 160;
 const URL_GAP_MS = 45;
 const MAX_PER_URL = 2;
+// [ASSUMED] Bound decoding/delayed attack requests independently of playing voices (#680 review). Stalled URLs
+// keep one decode subscriber across field changes; only the latest request per bank/unit waits for that decode.
 /**
  * 漏怪: the original Arknights exit alarm (`sfx.battle.leak`, `battle/b_ui/b_ui_alarmenter`) runs **1.44 s**, and the
  * official bank is a one-shot: `battle.ON_ENEMY_REACHED_EXIT` carries `maxSoundAllowed: 1` with `popOldest: true` on the
@@ -99,6 +101,16 @@ const LEAK_SFX_GAP_MS = 1500;
 const BUFFER_CACHE = 180;
 /** Decoded-PCM budget of the buffer cache beside its entry count: a voice line decodes to 0.4–1.3 MB (see _buffer). */
 const BUFFER_BYTES = 64 * 1024 * 1024;
+/**
+ * An idle buffer above this much PCM is a music track (≈ 44 s of 48 kHz stereo; a voice line is 0.4–1.3 MB): when the
+ * budget is over, such tracks leave first, before the LRU walk would flush the small sounds older than them (_trimBuffers).
+ * [ASSUMED] The line (a quarter of the budget) is a remake choice, no official counterpart.
+ */
+const BIG_BUFFER = BUFFER_BYTES / 4;
+/** Decoded PCM bytes of an AudioBuffer (float32 per channel). */
+const pcmBytes = (buf) => (buf?.length || 0) * (buf?.numberOfChannels || 1) * 4;
+/** The URL scheme of the player's own lobby track (setLobbyTrack): never fetched, the bytes come from this browser. */
+export const LOCAL_BGM = 'local-bgm:';
 const XFADE_S = 1;
 const FADE_S = 0.8;
 /** Voice: shortest gap between two lines, and the crossfade of a higher-priority line taking the channel (official 0.1 s). */
@@ -419,8 +431,7 @@ export class SfxLimiter {
     this.maxVoices = o.maxVoices ?? MAX_VOICES;
     this.unitCooldownMs = o.unitCooldownMs ?? UNIT_COOLDOWN_MS;
     this.urlGapMs = o.urlGapMs ?? URL_GAP_MS;
-    // the official battle banks (attack, impact, heal, born, dead…) allow at most 2 overlapping copies of a sound
-    // (audio_data maxSoundAllowed 2): a heal / impact heard on every tick of a crowd never piles up
+    // [ASSUMED] Legacy fallback for sounds without official pool metadata (and prep landing voices).
     this.maxPerUrl = o.maxPerUrl ?? MAX_PER_URL;
     this.active = 0;
     this.lastByUnit = new Map();
@@ -434,21 +445,27 @@ export class SfxLimiter {
    * @param {string|number|null} unitKey e.g. `${unitId}:atk`
    * @param {string} url
    */
-  tryAcquire(now, unitKey, url) {
+  tryAcquire(now, unitKey, url, maxPerUrl = this.maxPerUrl) {
     if (this.active >= this.maxVoices) return false;
-    if ((this.activeByUrl.get(url) || 0) >= this.maxPerUrl) return false;
-    if (unitKey != null) {
-      const t = this.lastByUnit.get(unitKey);
-      if (t != null && now - t < this.unitCooldownMs) return false;
-    }
-    const u = this.lastByUrl.get(url);
-    if (u != null && now - u < this.urlGapMs) return false;
+    if ((this.activeByUrl.get(url) || 0) >= maxPerUrl) return false;
+    if (!this.gapsAllow(now, unitKey, url)) return false;
     if (unitKey != null) this.lastByUnit.set(unitKey, now);
     this.lastByUrl.set(url, now);
     if (this.lastByUnit.size > 600) this.lastByUnit.clear();
     if (this.lastByUrl.size > 400) this.lastByUrl.clear();
     this.active += 1;
     this.activeByUrl.set(url, (this.activeByUrl.get(url) || 0) + 1);
+    return true;
+  }
+
+  /** Read-only gap check before a pool takes over its oldest instance. */
+  gapsAllow(now, unitKey, url) {
+    if (unitKey != null) {
+      const t = this.lastByUnit.get(unitKey);
+      if (t != null && now - t < this.unitCooldownMs) return false;
+    }
+    const u = this.lastByUrl.get(url);
+    if (u != null && now - u < this.urlGapMs) return false;
     return true;
   }
 
@@ -598,6 +615,9 @@ export class AudioManager {
     this.bgmToken = 0;
     this.bgmKey = null;       // last requested key, including an asynchronous track that is still loading
     this.lobbyMusic = null;   // browser-local streaming file { url, paused }; never part of the asset manifest
+    this.bgmStarting = null;  // { url, token } of the loop _startBgm is loading (kept by _trimBuffers while the token holds)
+    this.lobbyTrack = null;   // 自定义大厅音乐: { id, read } of the player's own file (setLobbyTrack), else null
+    this.onLobbyTrackFailed = null; // called when that file would not decode (the official track plays instead)
     this.units = new Map();   // battle unit id → defId
     this.pendingSkill = new Map(); // unit id → the 'skill' tuple that arrived before the unit was known (see _track)
     this.lastAttacker = new Map(); // target id → { def, at, skillIndex, skillActive } of the hostile attack aimed at it (its impact sound,
@@ -771,7 +791,7 @@ export class AudioManager {
 
   _lobbyTrack(key) {
     return key === 'lobby' && this.lobbyMusic ? { loop: this.lobbyMusic.url, local: true }
-      : resolveBgm(this.getManifest(), key);
+      : this._bgmTrack(key);
   }
 
   /** Stream the file through the existing BGM gain instead of decoding a long song into the SFX buffer cache. */
@@ -859,35 +879,41 @@ export class AudioManager {
     }
     const p = (async () => {
       try {
-        // Extension-less URL first so download managers leave the BGM alone; a host without /media/ still works.
-        const media = mediaUrl(url);
-        let res = await fetch(media);
-        if (media !== url && !isAudioResponse(res)) {
-          // Drop the unusable response (404, or a 200 that is really index.html) before trying the original URL.
-          try { await res.body?.cancel?.(); } catch { /* the fallback request matters more than draining this one */ }
-          res = await fetch(url);
+        let ab;
+        if (url.startsWith(LOCAL_BGM)) {
+          // 自定义大厅音乐: the bytes of the player's own file (setLobbyTrack), never a request
+          const own = this.lobbyTrack;
+          if (!own || url !== LOCAL_BGM + own.id) return null;
+          ab = await own.read();
+        } else {
+          // Extension-less URL first so download managers leave the BGM alone; a host without /media/ still works.
+          const media = mediaUrl(url);
+          let res = await fetch(media);
+          if (media !== url && !isAudioResponse(res)) {
+            // Drop the unusable response (404, or a 200 that is really index.html) before trying the original URL.
+            try { await res.body?.cancel?.(); } catch { /* the fallback request matters more than draining this one */ }
+            res = await fetch(url);
+          }
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          ab = await res.arrayBuffer();
         }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const ab = await res.arrayBuffer();
-        const buf = await new Promise((resolve) => {
-          try {
-            const r = this.ctx.decodeAudioData(ab, resolve, () => resolve(null));
-            if (r && typeof r.then === 'function') r.then(resolve, () => resolve(null));
-          } catch { resolve(null); }
-        });
-        if (!buf) this._failed(url);
+        const buf = await this.decodeBytes(ab);
+        if (!buf && !url.startsWith(LOCAL_BGM)) this._failed(url);
         return buf;
       } catch (err) {
         this._warn(url, err);
-        this._failed(url);
+        if (!url.startsWith(LOCAL_BGM)) this._failed(url);
         return null;
       }
     })();
     this.buffers.set(url, p);
     p.then((buf) => {
-      if (!buf) return;
+      // a decode that finishes after its entry left the cache (evicted while loading, or the player's own track
+      // replaced or switched off meanwhile — setLobbyTrack) records nothing: bufBytes only ever counts entries of
+      // `buffers`, so the budget of _trimBuffers can never keep a size it has no entry to evict (#814 review)
+      if (!buf || this.buffers.get(url) !== p) return;
       try {
-        this.bufBytes.set(url, (buf.length || 0) * (buf.numberOfChannels || 1) * 4);
+        this.bufBytes.set(url, pcmBytes(buf));
         this._trimBuffers();
       } catch { /* ignore */ }
     }, () => {});
@@ -896,20 +922,63 @@ export class AudioManager {
   }
 
   /**
+   * Decode audio bytes in this manager's context (null before the first gesture, or when the bytes do not decode).
+   * ui/lobbyMedia.js checks the player's own music with it, and hands the result to setLobbyTrack (no second decode).
+   * @param {ArrayBuffer} ab @returns {Promise<AudioBuffer|null>}
+   */
+  decodeBytes(ab) {
+    const ctx = this.ctx;
+    if (!ctx) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      try {
+        const r = ctx.decodeAudioData(ab, resolve, () => resolve(null));
+        if (r && typeof r.then === 'function') r.then(resolve, () => resolve(null));
+      } catch { resolve(null); }
+    });
+  }
+
+  /** The loops the music needs now: the playing one, and the one being started (the latest playBgm's). */
+  _bgmInUse() {
+    const urls = new Set();
+    if (this.bgm?.loopUrl) urls.add(this.bgm.loopUrl);
+    if (this.bgmStarting && this.bgmStarting.token === this.bgmToken) urls.add(this.bgmStarting.url);
+    return urls;
+  }
+
+  /**
    * Evict least-recently-used buffers until both the entry count and the decoded-PCM budget hold. The count alone is
    * not enough once voice lines are in the cache: 180 of them are ~100 MB of PCM (a voice decodes to 0.4–1.3 MB).
+   * The loop that plays or is being started is never evicted. It counts, but the other sounds always keep at least half
+   * the budget: one track alone can be past it (the official 190.9 s m_bat_kazimierz2_2_loop is ~73 MB of PCM at
+   * 48 kHz stereo, the player's own lobby music up to ~140 MB), and before, such a track flushed every sound and then
+   * itself on each start, as `bgm` is still null while it loads (#814 review) [ASSUMED: the half]. Over the budget,
+   * idle tracks (BIG_BUFFER) leave first, then the LRU walk.
    */
   _trimBuffers() {
+    const keep = this._bgmInUse();
     let bytes = 0;
-    for (const n of this.bufBytes.values()) bytes += n;
-    if (this.buffers.size <= BUFFER_CACHE && bytes <= BUFFER_BYTES) return;
-    for (const url of [...this.buffers.keys()]) {
-      if (this.buffers.size <= BUFFER_CACHE && bytes <= BUFFER_BYTES) break;
-      // never evict the playing BGM (a voice keeps its own reference to its buffer)
-      if (this.bgm && url === this.bgm.loopUrl) continue;
+    let kept = 0;
+    for (const [url, n] of [...this.bufBytes]) {
+      if (!this.buffers.has(url)) { this.bufBytes.delete(url); continue; } // never a size without its entry (see _buffer)
+      if (keep.has(url)) kept += n; else bytes += n;
+    }
+    const limit = Math.max(BUFFER_BYTES - kept, BUFFER_BYTES / 2);
+    if (this.buffers.size <= BUFFER_CACHE && bytes <= limit) return;
+    const drop = (url) => {
       bytes -= this.bufBytes.get(url) || 0;
       this.buffers.delete(url);
       this.bufBytes.delete(url);
+    };
+    if (bytes > limit) {
+      for (const url of [...this.buffers.keys()]) {
+        if (bytes <= limit) break;
+        if (!keep.has(url) && (this.bufBytes.get(url) || 0) > BIG_BUFFER) drop(url);
+      }
+    }
+    for (const url of [...this.buffers.keys()]) {
+      if (this.buffers.size <= BUFFER_CACHE && bytes <= limit) break;
+      // never evict the music in use (a voice keeps its own reference to its buffer)
+      if (!keep.has(url)) drop(url);
     }
   }
 
@@ -960,12 +1029,52 @@ export class AudioManager {
     if (this.lastBgmKey != null) this.playBgm(this.lastBgmKey);
   }
 
+  /**
+   * 自定义大厅音乐 (ui/lobbyMedia.js): the player's own file in place of the lobby's track, wherever bgmKeyFor answers
+   * 'lobby' (title, lobby, room, briefing, draft, 协议启动, result) — through the same BGM gain, fades and volume. `own` = { id, read }
+   * (`read` resolves the file's bytes, decoded here: nothing is fetched), or null for the manifest's track again. The
+   * screen's track changes at once. `decoded`: the AudioBuffer the file's check already made in this context
+   * (decodeBytes), cached as the track instead of a second decode; like any idle track it leaves the cache first when
+   * no lobby screen plays it (_trimBuffers).
+   * @param {{ id: string, read: () => Promise<ArrayBuffer>, decoded?: AudioBuffer | null } | null} own
+   */
+  setLobbyTrack(own) {
+    const prev = this.lobbyTrack;
+    this.lobbyTrack = own && typeof own.read === 'function' && own.id ? { id: String(own.id), read: own.read } : null;
+    if (prev && prev.id !== this.lobbyTrack?.id) { this.buffers.delete(LOCAL_BGM + prev.id); this.bufBytes.delete(LOCAL_BGM + prev.id); }
+    const url = this.lobbyTrack ? LOCAL_BGM + this.lobbyTrack.id : null;
+    if (url && own.decoded && this.ctx && !this.buffers.has(url) && pcmBytes(own.decoded) > 0) {
+      this.buffers.set(url, Promise.resolve(own.decoded));
+      this.bufBytes.set(url, pcmBytes(own.decoded));
+    }
+    this.refreshBgm();
+    this._trimBuffers();
+  }
+
+  /** The track of a BGM key: the player's own lobby music (setLobbyTrack), else the manifest's (resolveBgm). */
+  _bgmTrack(key) {
+    if (key === 'lobby' && this.lobbyTrack) return { intro: null, loop: LOCAL_BGM + this.lobbyTrack.id };
+    return resolveBgm(this.getManifest(), key);
+  }
+
   async _startBgm(key, track, token) {
+    // kept by _trimBuffers while it loads (before the first await: a cache miss below trims at once)
+    this.bgmStarting = { url: track.loop, token };
     const [intro, loop] = await Promise.all([track.intro ? this._buffer(track.intro) : null, this._buffer(track.loop)]);
     if (token !== this.bgmToken || !this.ctx) return;
+    // the player's own lobby track that would not load (its file gone or no longer decodable): the official track, and
+    // ui/lobbyMedia.js is told (onLobbyTrackFailed) so the switch shows it off
+    if (!loop && this.lobbyTrack && track.loop === LOCAL_BGM + this.lobbyTrack.id) {
+      this.buffers.delete(track.loop);
+      this.lobbyTrack = null;
+      try { this.onLobbyTrackFailed?.(); } catch { /* ignore */ }
+      const official = this._bgmTrack(key);
+      if (official) this._startBgm(key, official, token);
+      return;
+    }
     // a cosmetic plugin's track that would not load: the track the manifest names now (its entry fell back)
     if ((!loop && this.fellBack.has(track.loop)) || (track.intro && !intro && this.fellBack.has(track.intro))) {
-      const again = resolveBgm(this.getManifest(), key);
+      const again = this._bgmTrack(key);
       if (again && (again.loop !== track.loop || again.intro !== track.intro)) { this._startBgm(key, again, token); return; }
     }
     if (!loop) return;
@@ -1086,11 +1195,11 @@ export class AudioManager {
 
   /**
    * @param {string} url
-   * @param {{ volume?: number, rate?: number, limited?: boolean, unitKey?: string | null, again?: (() => unknown) | null }} [o]
+   * @param {{ volume?: number, rate?: number, limited?: boolean, unitKey?: string | null, again?: (() => unknown) | null, pool?: any }} [o]
    *   again: the sound's URL picked from the manifest again — played instead once when this one was a cosmetic plugin's
    *   file that would not load (its entry fell back: see the header)
    */
-  _play(url, { volume = 1, rate = 1, limited = false, unitKey = null, again = null } = {}) {
+  _play(url, { volume = 1, rate = 1, limited = false, unitKey = null, again = null, pool = null } = {}) {
     if (!this.ctx || !url || this.volumes.muted || this.volumes.sfx <= 0) return;
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     if (limited) { if (!this.limiter.tryAcquire(now, unitKey, url)) return; }
@@ -1378,7 +1487,7 @@ export class AudioManager {
     if (!u || typeof u !== 'object' || u.id == null) return;
     // UnitInfo.spine is the model id (charId / tokenId / enemyId) — the key of sfx.units; kind/defId pick the
     // official class sounds (operator vs summon vs device). `skillActive` follows the ['skill', id, 1] / 0 events.
-    this.units.set(u.id, { def: u.spine || u.defId, defId: u.defId ?? null, kind: u.kind ?? null, side: u.side, boss: !!u.boss,
+    this.units.set(u.id, { def: u.spine || u.defId, voice: u.voice || u.spine || u.defId, defId: u.defId ?? null, kind: u.kind ?? null, side: u.side, boss: !!u.boss,
       skillIndex: Number.isInteger(u.skillIndex) ? u.skillIndex : null, skillActive: !!u.skillActive });
     // a cast that arrived before this unit was known (handleBattleEvents): it sounds now, once
     const held = this.pendingSkill.get(u.id);
@@ -1530,7 +1639,7 @@ export class AudioManager {
             // 作战中N: the equipped skill's own slot (0-based; 作战中4 is the fallback of a 4th slot)
             if (unitSoundClass(u) === 'char') {
               const n = Number.isInteger(u.skillIndex) ? Math.min(4, u.skillIndex + 1) : 1;
-              this.voice(u.def, `skill${n}`, { unitKey: e[1] });
+              this.voice(u.voice, `skill${n}`, { unitKey: e[1] });
             }
           } else {
             // The unit is not tracked yet. The sim emits the cast of a deployment that fires inside its own first tick
@@ -1549,7 +1658,7 @@ export class AudioManager {
         } else if (kind === 'engage') {
           // 行动开始: the first attack a unit makes on an enemy (the sim's ENGAGE, official ENCOUNTER_ENEMY, 3 s apart)
           const u = this.units.get(e[1]);
-          if (u && unitSoundClass(u) === 'char') this.voice(u.def, 'faceEnemy', { unitKey: e[1] });
+          if (u && unitSoundClass(u) === 'char') this.voice(u.voice, 'faceEnemy', { unitKey: e[1] });
         } else if (kind === 'die') {
           const u = this.units.get(e[1]);
           if (!u) continue;
@@ -1582,8 +1691,8 @@ export class AudioManager {
           if (unitSoundClass(u) === 'char') {
             if (!this.startVoiceDone) {
               this.startVoiceDone = true;
-              if (!this.voice(u.def, 'start')) this.voice(u.def, 'place', { unitKey: e[1] });
-            } else this.voice(u.def, 'place', { unitKey: e[1] });
+              if (!this.voice(u.voice, 'start')) this.voice(u.voice, 'place', { unitKey: e[1] });
+            } else this.voice(u.voice, 'place', { unitKey: e[1] });
           }
           if (!url) continue;
           const own = url === m?.audio?.sfx?.units?.[u.def]?.born;

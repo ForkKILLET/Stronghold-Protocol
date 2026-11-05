@@ -153,9 +153,14 @@ describe('animation-role resolver (research 07 §5.4)', () => {
       const { bad, seen } = walk(/^Skill_?0*[1-9](?:$|_)/i, (a, id) => !id.startsWith('enemies.') || !!a.skills);
       assert.ok(seen >= 10, `models with numbered skill clips (${seen})`);
       assert.deepEqual(bad, []);
+      // 盐风主教昆图斯: each slot (data/enemies.json skills[]) plays its official ability's clip (PREFAB_SPINE_ROLES, from
+      // the prefab enm_pfb_18.ab — not "Skill_n = slot n−1"): Tidewater* Skill_02, Rockfall* Skill_01, SummonTentac* Skill_03, Doom Skill_04
       const q = manifest.enemies.enemy_1521_dslily.spine.anims;
-      assert.deepEqual(Object.values(q.skills).map((c) => c.loop), ['Skill_01', 'Skill_02', 'Skill_03', 'Skill_04']);
-      assert.equal(q.skill.loop, 'Skill_01', 'the primary clip is unchanged');
+      assert.deepEqual(Object.values(q.skills).map((c) => c.loop), ['Skill_02', 'Skill_01', 'Skill_03', 'Skill_02', 'Skill_01', 'Skill_03', 'Skill_02', 'Skill_01', 'Skill_03', 'Skill_04']);
+      assert.equal(q.skill.loop, 'Skill_02', 'the primary clip: slot 0 (大潮)');
+      // 假想敌：胄 (both records share the model): 死亡集群 (slot 1, prefabKey "2") plays Skill_3, not Skill_2
+      for (const id of ['enemy_9013_acstmk', 'enemy_9013_acstmk_2']) assert.deepEqual(Object.values(manifest.enemies[id].spine.anims.skills).map((c) => c.loop), ['Skill_1', 'Skill_3', 'Revive'], id);
+      assert.deepEqual(Object.values(manifest.enemies.enemy_9032_aclionk.spine.anims.skills).map((c) => c.loop), ['Skill_1', 'Skill_2', 'Skill_2', 'Skill_1', 'Skill_3']);
       // operators keep their pool's indices (宴's fix, PREFAB_SPINE_ROLES / DESIGN §25.22.9, stays as it was)
       const utage = manifest.chars.char_337_utage.spine.front.anims;
       assert.deepEqual(Object.keys(utage.skills).sort(), ['0', '1']);
@@ -861,7 +866,8 @@ describe('generated manifest data/assets.json', () => {
       // pixi-spine finds the atlas by swapping the extension of the skel URL
       assert.equal(s.skel.replace(/\.skel$/, '.atlas'), s.atlas, s.skel);
       let done = false;
-      const atlas = new base.TextureAtlas(readFileSync(join(PUBLIC, s.atlas), 'utf8'), (page, cb) => {
+      const atlasText = readFileSync(join(PUBLIC, s.atlas), 'utf8');
+      const atlas = new base.TextureAtlas(atlasText, (page, cb) => {
         const size = pngSize(readFileSync(join(PUBLIC, dir, page)));
         assert.ok(size, `${s.atlas}: page ${page}`);
         const bt = new core.BaseTexture(null, { width: size.width, height: size.height });
@@ -871,7 +877,9 @@ describe('generated manifest data/assets.json', () => {
       }, () => { done = true; });
       assert.ok(done, `${s.atlas} parsed`);
       assert.deepEqual(atlas.pages.map((p) => `${dir}/${p.name}`), s.textures, s.atlas);
-      for (const p of atlas.pages) assert.ok(p.width > 0 && p.height > 0 && !!p.pma === s.pma, `${s.atlas} page ${p.name} size/pma`);
+      // The client reads local atlas page flags, including legacy premultiplied extractions. New web metadata stays exact.
+      const expectedPma = s.local ? atlasInfo(atlasText).hasPma : s.pma;
+      for (const p of atlas.pages) assert.ok(p.width > 0 && p.height > 0 && !!p.pma === expectedPma, `${s.atlas} page ${p.name} size/pma`);
       const data = new r38.SkeletonBinary(new r38.AtlasAttachmentLoader(atlas)).readSkeletonData(new Uint8Array(readFileSync(join(PUBLIC, s.skel))));
       const skel = new r38.Skeleton(data);
       const state = new r38.AnimationState(new r38.AnimationStateData(data));

@@ -6,6 +6,8 @@ import { Img, RichText, GIcon } from '../ui/gameComponents.js';
 import { bondIconUrl, bandIconUrl, enemyIconUrl, factionIconUrl, chessAvatarUrl } from '../ui/assetUrls.js';
 import { attackInterval, fmtNum } from '../ui/gameLogic.js';
 import { abilityRows } from '../ui/abilityLines.js';
+import { contentSet, pageVersion, retryContentSet } from '../content.js';
+import { DEFAULT_VERSION, shownVersion } from '../versions.js';
 import { data, useData } from '../data.js';
 import { useStore, loadPref, savePref } from '../store.js';
 import { loadoutStore, openLoadout } from '../ui/loadoutSync.js';
@@ -45,15 +47,16 @@ const CUTS = {
 };
 
 /** Letter grade of one stat ('—' when the enemy has none: no attack, no movement). @param {string} key @param {any} v */
-export function enemyGrade(key, v) {
-  const spec = CUTS[key];
+export function enemyGrade(key, v, levels = data.get('factions')?.handbookLevels) {
   const n = Number(v);
-  if (!spec || v == null || !Number.isFinite(n)) return '—';
-  const low = !Array.isArray(spec) && spec.low;
-  const cuts = Array.isArray(spec) ? spec : spec.cuts;
-  let g = 0;
-  for (let i = 0; i < cuts.length; i++) if (low ? n <= cuts[i] : n >= cuts[i]) g = i + 1;
-  return GRADES[g];
+  if (v == null || !Number.isFinite(n) || !Array.isArray(levels)) return '—';
+  for (const l of levels) {
+    const band = l?.[key];
+    if (!Array.isArray(band)) continue;
+    const [lo, hi] = band;
+    if (n >= lo && (hi == null || n < hi)) return l.level;
+  }
+  return '—';
 }
 
 /**
