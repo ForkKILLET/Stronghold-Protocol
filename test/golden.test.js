@@ -10,7 +10,8 @@ import { availableParallelism } from 'node:os';
 import { FAMILY_NAMES, scenariosOf, computeDigests, loadGolden, storedDigests, compareFamily, formatDiffs } from '../tools/golden.mjs';
 
 const FULL = process.env.GOLDEN_FULL === '1';
-const JOBS = Math.max(1, Number(process.env.GOLDEN_JOBS) || Math.min(4, Math.max(1, availableParallelism() - 1)));
+const JOBS = process.env.SP_LOCAL_CHECK === '1' ? 1
+  : Math.max(1, Number(process.env.GOLDEN_JOBS) || Math.min(4, Math.max(1, availableParallelism() - 1)));
 
 let digests = null;
 // ≈ 7 s (fast) / 20 s (full) with 4 worker threads here; the timeout only stops a hang (a step that never returns)

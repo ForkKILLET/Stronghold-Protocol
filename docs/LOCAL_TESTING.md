@@ -13,6 +13,8 @@ SP_E2E=1 SP_E2E_BUILD=1 npm run check:local -- node --test --test-concurrency=1 
 
 必须顺序执行这些命令。不要同时跑全量测试、golden、浏览器与构建；不要用没有文件列表的 `node --test`，它会执行 helpers 和 fixtures。测试范围优先由实际修改和失败文件确定，已有通过的长跑不因换一轮对话而重复执行。
 
+`test/golden.test.js` 和历史版本 golden 子进程在本机限额环境中固定单 Worker；即使设置 `GOLDEN_JOBS` 也不会扩大本机并发。直接运行工具仍须显式传 `--jobs 1`，CI 保留原设置。
+
 `tools/local-check.sh` 不需要 sudo，要求 Linux、当前用户的 systemd manager、flock 和有效的 XDG_RUNTIME_DIR。无法建立隔离时直接失败，不回退到无限额执行。
 
 | 限制 | 默认值 |
@@ -26,6 +28,8 @@ SP_E2E=1 SP_E2E_BUILD=1 npm run check:local -- node --test --test-concurrency=1 
 | 本机测试文件并行 | 1 |
 
 所有工作树共用 `/run/user/<uid>/stronghold-protocol-check.lock`，防止本仓库的重任务叠跑。进程进入 `sp-local-check-*.scope`，离开 Paseo/编辑器的进程组；OOMPolicy=kill 使 scope 内的 OOM 终止该任务组。不要移除限制来重试超限测试；先检查泄漏、报告缓冲、Worker 数量或夹具规模。
+
+浏览器也可能触及 `TasksMax=256`（`pthread_create` / `Target closed`，但 memory.events 没有 OOM）。先减少浏览器实例，使用隔离账户上下文；软件渲染可设 `LP_NUM_THREADS=2` 并通过 `taskset` 收窄到允许的两个 CPU。保持原线程和内存上限，不靠扩大预算掩盖失败。
 
 CI 仍按既有分片策略运行；本机不要通过设置 CI 环境变量绕过隔离。跨平台功能测试本身仍保留 Linux/Windows 支持，这个本机保护入口只针对 Linux。
 

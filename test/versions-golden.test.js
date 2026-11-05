@@ -60,7 +60,7 @@ for (const version of VERSIONS.filter((v) => v.dir)) {
   });
 
   test(`${version.id}: a representative golden reproduces in a worker with that version's data`, () => {
-    const result = spawnSync(process.execPath, ['tools/golden.mjs', '--version', version.id, '--family', 'bonds', '--only', 'bond-raidShip-high', '--jobs', '2'], { cwd: root, encoding: 'utf8', timeout: 120000 });
+    const result = spawnSync(process.execPath, ['tools/golden.mjs', '--version', version.id, '--family', 'bonds', '--only', 'bond-raidShip-high', '--jobs', process.env.SP_LOCAL_CHECK === '1' ? '1' : '2'], { cwd: root, encoding: 'utf8', timeout: 120000 });
     assert.equal(result.status, 0, result.error?.message || result.stderr || result.stdout);
     assert.match(result.stdout, /1 scenarios match/);
   });
