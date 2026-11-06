@@ -44,7 +44,7 @@ import { prepChoiceMultiplier } from '../ui/prepTime.js';
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
-  html, Button, Icon, MicroLabel, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, Spinner, TextField, doctorNo, PingPill, Modal, confirmDialog,
+  html, Button, Icon, MicroLabel, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, TextField, doctorNo, PingPill, Modal, confirmDialog,
 } from '../ui/components.js';
 import { toast, toastError } from '../ui/toasts.js';
 import { TestMark } from '../ui/testConsole.js';
@@ -401,21 +401,11 @@ function GearGlyph() {
 }
 
 /**
- * The big button of the bottom right (开始模拟 / 准备就绪 / 已就绪 / 观战中), styled like 选择模拟协议's. A disabled reason goes in
- * the project's Tooltip around it (review of PR #813: a native title never shows on touch).
+ * Member readiness shares the host's standard room action button. Disabled reasons stay in the surrounding Tooltip.
  */
 function GoButton({ label, onClick, disabled, loading = false, ready = null, icon = null }) {
-  return html`<button type="button" class=${`proto-start rs-go${ready ? ' is-ready' : ''}`} disabled=${disabled} onClick=${onClick}
-      aria-busy=${loading ? 'true' : 'false'}>
-    ${ready != null
-      ? html`<span class="rs-go__box" aria-hidden="true">${ready ? html`<${Icon} name="check" />` : null}</span>`
-      : icon
-        // (a spectator's 观战中: its eye in the mark's place, so the label keeps the width — §35.18 review)
-        ? html`<span class="rs-go__icon" aria-hidden="true"><${Icon} name=${icon} /></span>`
-        : html`<span class="proto-start__mark" aria-hidden="true"><span class="proto-start__rook"><i>[</i><${Icon} name="rook" /><i>]</i></span><small>STRONGHOLD<br />PROTOCOL</small></span>`}
-    <span class="proto-start__label">${loading ? html`<${Spinner} size="sm" />` : null}${label}</span>
-    <span class="proto-start__deco" aria-hidden="true"></span>
-  </button>`;
+  return html`<${Button} class="rs-go" variant="primary" size="xl" icon=${icon || 'check'}
+    active=${!!ready} disabled=${disabled} loading=${loading} onClick=${onClick}>${label}<//>`;
 }
 
 /** How long a version proposal refused as too frequent (RATE) waits before it is sent once more [ASSUMED]. */

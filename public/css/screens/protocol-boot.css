@@ -70,6 +70,7 @@
 .pboot__title { left: 0; right: 0; top: calc(705 * var(--px)); margin: 0; text-align: center; font-size: calc(66 * var(--px)); font-weight: 900;
   letter-spacing: .04em; color: var(--teal); text-shadow: 0 0 calc(18 * var(--px)) rgba(63, 214, 180, .45); animation: pboot-title 420ms 1200ms cubic-bezier(.2, .8, .2, 1) both; }
 .pboot__sub { left: calc(782 * var(--px)); top: calc(838 * var(--px)); width: calc(356 * var(--px)); height: calc(30 * var(--px)); display: grid; place-items: center;
+  box-sizing: border-box; padding: 0; line-height: 1; white-space: nowrap;
   background: var(--teal); color: var(--teal-deep); font-family: var(--font-display); font-size: calc(20 * var(--px)); letter-spacing: .08em;
   animation: pboot-in 200ms 1300ms both; }
 .pboot__conn { right: calc(165 * var(--px)); top: calc(995 * var(--px)); font-size: calc(26 * var(--px)); color: rgba(63, 214, 180, .7); animation: pboot-in 200ms 1900ms both; }

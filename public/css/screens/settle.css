@@ -317,7 +317,7 @@ span.settle__nexticon .icon { width: .34rem; height: .34rem; }
 .tcard__ticon { width: .5rem; height: .5rem; object-fit: contain; color: #4af2c4; filter: drop-shadow(0 0 .06rem rgba(40, 230, 180, .7)); }
 .tcard__title b { font-size: calc(.36 * var(--t)); font-weight: 900; font-style: italic; color: #4af2c4; text-shadow: 0 0 .1rem rgba(20, 200, 150, .6), 0 .02rem 0 #04140f; white-space: nowrap; }
 .tcard__rounds { position: absolute; left: .42rem; right: .42rem; top: 4.52rem; height: .58rem; z-index: 1; display: flex; align-items: center; justify-content: center; gap: .14rem;
-  border-radius: .29rem; background: rgba(8, 44, 36, .86); box-shadow: inset 0 0 0 1px rgba(74, 242, 196, .3); }
+  border-radius: 0; background: rgba(8, 44, 36, .86); box-shadow: inset 0 0 0 1px rgba(74, 242, 196, .3); }
 .tcard__rounds span { font-size: calc(.22 * var(--t)); color: #d4e6e1; white-space: nowrap; }
 .tcard__rounds b { font-family: var(--font-display); font-size: calc(.4 * var(--t)); font-weight: 600; color: #4af2c4; line-height: 1; }
 .tcard.is-fail .tcard__rounds { background: rgba(54, 10, 8, .86); box-shadow: inset 0 0 0 1px rgba(255, 90, 80, .32); }
@@ -342,7 +342,7 @@ span.settle__nexticon .icon { width: .34rem; height: .34rem; }
   box-shadow: 0 0 0 2px #4af2c4, 0 0 .2rem rgba(40, 230, 180, .4); }
 .tcard.is-self .tcard__plate::before { content: ''; position: absolute; left: -.26rem; top: 50%; margin-top: -.09rem; border: .09rem solid transparent; border-left: .13rem solid #4af2c4; }
 .tcard__chips { height: .5rem; margin-top: .12rem; display: flex; justify-content: center; gap: .3rem; }
-.tchip { min-width: .98rem; height: .48rem; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: .06rem; padding: 0 .14rem; border-radius: .24rem;
+.tchip { min-width: .98rem; height: .48rem; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: .06rem; padding: 0 .14rem; border-radius: 0;
   background: #1a1f1e; box-shadow: inset 0 0 0 2px rgba(220, 230, 226, .22); color: #e2e8e6; font-size: calc(.2 * var(--t)); }
 .tchip .icon { width: .22rem; height: .22rem; }
 .tchip__cup { width: .21rem; height: .25rem; }
@@ -364,7 +364,7 @@ span.settle__nexticon .icon { width: .34rem; height: .34rem; }
 .steam__rounds b { position: relative; font-family: var(--font-display); font-size: calc(.8 * var(--t)); font-weight: 600; line-height: 1; color: #4af2c4; text-shadow: 0 0 .16rem rgba(30, 240, 180, .45); }
 .steam.is-lose .steam__rounds b { color: #ff574a; text-shadow: 0 0 .16rem rgba(255, 60, 50, .4); }
 .steam__when { position: absolute; left: 6.5rem; top: 9.36rem; width: 4.9rem; display: flex; flex-direction: column; gap: .16rem; }
-.steam__row { position: relative; isolation: isolate; height: .48rem; display: flex; align-items: center; gap: .14rem; padding: 0 .16rem; border-radius: .24rem;
+.steam__row { position: relative; isolation: isolate; height: .48rem; display: flex; align-items: center; gap: .14rem; padding: 0 .16rem; border-radius: 0;
   background: linear-gradient(90deg, rgba(220, 230, 226, .1), rgba(220, 230, 226, .02)); font-size: calc(.25 * var(--t)); color: #dfe6e3; white-space: nowrap; }
 .steam__rowbg { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: fill; }
 .steam__ico { width: .28rem; height: .28rem; object-fit: contain; }
