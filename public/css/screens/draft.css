@@ -30,27 +30,20 @@
 .dorder.is-cur { border-color: var(--gold); background: linear-gradient(90deg, rgba(255, 198, 0, .12), rgba(12, 15, 14, .82)); box-shadow: 0 0 calc(.2 * var(--ui-unit, 1rem)) rgba(255, 198, 0, .15); }
 .dorder.is-done { border-color: var(--mint-800); }
 .dorder.is-self .dorder__name { color: var(--mint-400); }
-.draft-order__tip { margin-top: auto; font-size: calc(.13 * var(--utility-text, var(--utility-text, var(--t)))); line-height: 1.6; color: var(--text-dim); }
 
 /* Compact pre-merge order list; the roster scrolls independently above communication. */
 .draft-order { grid-column:1; min-width:0; overflow:visible; }
 .draft-order > .brief-h { flex:none; }
 .draft-order__rows { flex:1; min-height:0; display:flex; flex-direction:column; gap:calc(.1 * var(--ui-unit,1rem)); overflow:auto; padding:2px; }
 .draft-order__rows .dorder { flex:none; }
-.draft-order__tip { flex:none; margin:0; }
 .dorder__name > span:not(.dorder__ai) { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .dorder__box { padding:0; background:none; color:inherit; font:inherit; }
 button.dorder__box { cursor:pointer; }
 button.dorder__box:hover { border-color:var(--mint-400); }
 
-/* the bracket between the order and the wall */
-.draft__link { grid-column: 2; position: relative; pointer-events: none; transition: opacity 200ms; }
-.draft__link::before { content: ''; position: absolute; right: calc(.14 * var(--ui-unit, 1rem)); top: 34%; bottom: 34%; width: calc(.12 * var(--ui-unit, 1rem)); border: 1px solid rgba(255, 255, 255, .22); border-left: 0; }
-.draft__link::after { content: ''; position: absolute; left: calc(.12 * var(--ui-unit, 1rem)); right: calc(.26 * var(--ui-unit, 1rem)); top: 50%; height: calc(.05 * var(--ui-unit, 1rem)); transform: translateY(-50%);
-  background: linear-gradient(90deg, var(--mint-400) calc(.05 * var(--ui-unit, 1rem)), rgba(255, 255, 255, .5) calc(.05 * var(--ui-unit, 1rem)) calc(100% - calc(.05 * var(--ui-unit, 1rem))), var(--mint-400) calc(100% - calc(.05 * var(--ui-unit, 1rem)))); }
-
 /* ---- the wall of strategies ---- */
 .draft-grid {
+  grid-column: 3; /* Track 2 is the unobstructed gutter beside the roster. */
   display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(1.45 * var(--ui-unit, 1rem)), 1fr)); grid-auto-rows: min-content; gap: calc(.12 * var(--ui-unit, 1rem));
   min-height: 0; overflow: auto; padding: calc(.04 * var(--ui-unit, 1rem)) calc(.08 * var(--ui-unit, 1rem)) calc(.04 * var(--ui-unit, 1rem)) calc(.04 * var(--ui-unit, 1rem)); align-content: start;
 }
@@ -157,47 +150,9 @@ button.dorder__box:hover { border-color:var(--mint-400); }
 .draft-done__desc { grid-column: 1 / -1; grid-row: 3; margin: calc(.2 * var(--ui-unit, 1rem)) 0 0; padding: 0 calc(.3 * var(--ui-unit, 1rem)); font-size: calc(.24 * var(--utility-text, var(--t))); line-height: 1.55; color: #eef2f2; }
 .draft-done .draft-detail__status { grid-column: 1 / -1; grid-row: 4; justify-content: flex-end; }
 
-/* ---- the header's turn line ---- */
-.dturn { display: flex; align-items: center; gap: calc(.16 * var(--ui-unit, 1rem)); }
-.dturn__txt { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.3; }
-.dturn__txt b { font-size: calc(.28 * var(--utility-text, var(--t))); color: #f2f4f4; }
-.dturn__txt span { font-size: calc(.24 * var(--utility-text, var(--t))); color: #d4d8d8; }
-.dturn__glass { width: calc(.46 * var(--ui-unit, 1rem)); height: calc(.46 * var(--ui-unit, 1rem)); color: #eceeee; animation: dturn-glass 2.4s ease-in-out infinite; }
-@keyframes dturn-glass { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(180deg); } }
-.dturn.is-turn { flex-direction: column; align-items: flex-end; gap: calc(.06 * var(--ui-unit, 1rem)); animation: pg-right 380ms var(--pg-ease) backwards; }
-.dturn__go { display: flex; align-items: center; gap: calc(.16 * var(--ui-unit, 1rem)); }
-.dturn__go b { white-space: nowrap; font-size: min(calc(.4 * var(--utility-text, var(--t))), calc(.5 * var(--ui-unit, 1rem))); /* a larger 文字大小 wrapped it over the header on phones */ font-weight: 900; letter-spacing: .06em; color: var(--mint-400); text-shadow: 0 0 calc(.14 * var(--ui-unit, 1rem)) rgba(23, 249, 183, .4); }
-.dturn__finger { width: calc(.42 * var(--ui-unit, 1rem)); height: calc(.42 * var(--ui-unit, 1rem)); color: var(--mint-400); object-fit: contain; animation: dturn-finger 1s ease-in-out infinite; }
-@keyframes dturn-finger { 50% { transform: translateX(calc(.05 * var(--ui-unit, 1rem))); } }
-/* the header's row at every size (§35.51 review): the left part (离开, the mode capsule with 本局信息, 2/2) keeps its width,
-   the right part takes the rest and the status line wraps in it, balanced, instead of running over 2/2 (English 「Choose
-   Your Strategy」 at 中 – 特大 on phones — where it wraps, ≤ 520 px —, over 选择策略 in 1024–1280 px windows at 大 / 特大); the capsule grows with its
-   tag (「绝境模拟」 cut at 特大 in a 1024×600 window); Korean breaks between words */
-.draft .stephead__left { flex: none; }
-.draft .stephead__right { flex: 1 1 0; justify-content: flex-end; }
-.draft .stephead__status, .draft .dturn, .draft .dturn__go, .draft .dturn__txt { min-width: 0; }
-.draft .stephead__mode.has-extra { height: auto; min-height: calc(.52 * var(--ui-unit, 1rem)); }
-.draft .dturn__go b { text-align: right; }
-/* the header grows rather than cut its status (two lines in English at 特大 on a 640 px phone) and 跳过选择 sizes to its
-   text (cut at 特大 in a 1024×600 window) */
-.draft .stephead { height: auto; min-height: calc(1.3 * var(--ui-unit, 1rem)); }
-.draft .draft-skip { height: auto; min-height: calc(.44 * var(--ui-unit, 1rem)); padding-top: 2px; padding-bottom: 2px; line-height: 1.25; }
-.dturn:lang(ko), .draft-order__tip:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
-/* … and while the status shows, the step's name gives way to it in windows up to 640 px tall (1024×600), as on short
-   screens, and at 大 / 特大 in any window (the 2/2 stays). §35.56: chosen by window width (up to 1440 px) it was hidden
-   for nothing at 小 / 中 in laptop windows — the layout scales with the window — and still ran under the status at 大 /
-   特大 in wider ones (English 「Choose Your Strategy」 over 「Choose Strategy」 at 1600×900 and 1920×1080) */
-@media (max-height: 640px) {
-  .draft.has-status .stephead__name { display: none; }
-}
-:root[data-text="lg"] .draft.has-status .stephead__name, :root[data-text="xl"] .draft.has-status .stephead__name { display: none; }
-/* 玩法说明 keeps its label inside its button: the button does not shrink (English 「How to Play」 ran past it into the
-   countdown at 大 / 特大 in 1600–1920 px windows) */
-.draft .stephead__guide { flex: none; }
-
 @media (prefers-reduced-motion: reduce) {
   .draft-order, .dorder, .dorder.is-cur::before, .dorder.is-flash .dorder__box, .dorder.is-flash .dorder__check, .dband, .dband.is-sel::before, .dband__taken,
-  .draft-detail, .draft-detail__body, .draft-done, .dturn.is-turn, .dturn__glass, .dturn__finger { animation: none; }
+  .draft-detail, .draft-detail__body, .draft-done { animation: none; }
   .dorder.is-flash::after, .draft-done::after { display: none; }
 }
 
@@ -280,29 +235,22 @@ button.dorder__box:hover { border-color:var(--mint-400); }
 
 /* One layout for default selection, previews, confirmed picks and teammate browsing. */
 .draft-detail { --draft-action-gap:calc(.18 * var(--ui-unit,1rem)); grid-column:4; min-width:0; gap:calc(.1 * var(--ui-unit,1rem)); padding:var(--draft-action-gap); }
-.draft-detail__btns { gap:var(--draft-action-gap); }
+.draft-detail__btns { --draft-action-height:max(32px,calc(.6 * var(--ui-unit,1rem))); gap:var(--draft-action-gap); }
 .draft-detail__body { flex:1; align-items:stretch; overflow:auto; }
 .draft-detail__art { flex:none; align-self:center; width:calc(1.6 * var(--ui-unit,1rem)); height:calc(1.6 * var(--ui-unit,1rem)); }
 .draft-detail__eff { flex:none; overflow:visible; }
 .draft-detail__actions { align-self:stretch; padding:0; }
 .draft-detail__status { box-sizing:border-box; height:2.8em; margin:0; overflow:auto; font-size:calc(.16 * var(--utility-text,var(--t))); }
-.draft-detail__btns .btn--lg { height:calc(.6 * var(--ui-unit,1rem)); min-height:32px; padding:4px 6px; font-size:max(11px,calc(.2 * var(--utility-text,var(--t)))); }
-.dturn, .dturn.is-turn { flex-direction:row; align-items:center; }
-.dturn__go b, .dturn__txt b, .dturn__txt span { font-size:calc(.24 * var(--utility-text,var(--t))); }
-.dturn__txt { max-width:calc(3.2 * var(--ui-unit,1rem)); }
-.dturn__txt b { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.draft-detail__btns .btn--lg { height:var(--draft-action-height); min-height:32px; padding:4px 6px; font-size:max(11px,calc(.2 * var(--utility-text,var(--t)))); }
+.draft-detail__btns .draft-info { flex:0 0 var(--draft-action-height); width:var(--draft-action-height); min-width:0; padding:0; }
 
 .draft-detail__overview { display:flex; flex-direction:column; gap:calc(.08 * var(--ui-unit,1rem)); }
-.draft-tip__compact { display:none; }
 .draft-communication { align-self:stretch; width:100%; }
 @media (max-height:560px) {
  .draft-order { gap:4px; }
  .draft-order__deco { display:none; }
  .draft-order__rows { gap:4px; padding-block:2px; }
  .dorder { height:calc(.72 * var(--ui-unit,1rem)); }
- .draft-tip__full { display:none; }
- .draft-tip__compact { display:block; }
- .draft-order__tip { font-size:10px; line-height:1.3; }
  .draft-detail__overview { display:grid; grid-template-columns:calc(.9 * var(--ui-unit,1rem)) minmax(0,1fr); gap:4px; align-items:center; }
  .draft-detail__overview .draft-detail__art { grid-column:1; grid-row:1 / span 2; width:calc(.9 * var(--ui-unit,1rem)); height:calc(.9 * var(--ui-unit,1rem)); }
  .draft-detail__overview .draft-detail__hp { grid-column:2; font-size:10px; white-space:nowrap; gap:4px; }

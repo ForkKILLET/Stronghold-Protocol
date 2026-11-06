@@ -72,8 +72,8 @@ test('shared navigation, latency width, overlay return and pre-game pause surviv
   await page.setViewport({width:1366,height:768});
   for(let i=0;i<3;i++){await page.waitForFunction(n=>document.querySelectorAll('.rseat:not(.rseat--empty)').length===n,{},i+1);await page.evaluate(()=>[...document.querySelectorAll('.rseat__actions button')].find(e=>e.textContent.includes('添加 AI')&&!e.disabled).click());}
   await page.waitForFunction(()=>document.querySelectorAll('.rseat:not(.rseat--empty)').length===4);
-  await text('立即开始');await header('.brief');await click('.stephead .pausebtn');await page.waitForSelector('[data-testid=paused]');await text('继续作战');await page.waitForSelector('[data-testid=paused]',{hidden:true});
-  await text('准备就绪');await header('.draft');await text('确认选择');await page.waitForSelector('.gm',{timeout:30000});
+  await text('立即开始');await page.waitForSelector('.brief .preparation-hud');assert.equal(await page.$('.brief .app-header'),null);await click('.stephead .pausebtn');await page.waitForSelector('[data-testid=paused]');await text('继续作战');await page.waitForSelector('[data-testid=paused]',{hidden:true});
+  await text('准备就绪');await page.waitForSelector('.draft .preparation-hud');assert.equal(await page.$('.draft .app-header'),null);await text('确认选择');await page.waitForSelector('.gm',{timeout:30000});
   assert.equal(await page.$('.gm .app-header'),null,'combat keeps its own HUD');assert.ok(await page.$('.gm .gtop'));
   assert.deepEqual(errors,[]);
  } finally {await browser?.close();await server.close();}

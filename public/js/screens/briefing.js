@@ -5,9 +5,8 @@ import { useGameData, Img, RichText } from '../ui/gameComponents.js';
 import { StepHeader, ExitModal } from '../ui/matchChrome.js';
 import { MatchInfo, matchInfoModel, MatchBondDialog } from '../ui/matchInfo.js';
 import { LoadoutButton } from './loadout.js';
-import { UnofficialMark, VersionTag } from '../ui/pluginTag.js';
 import { SetupReroll } from '../ui/setupReroll.js';
-import { CommunicationDock, CommunicationActivity } from '../ui/communication.js';
+import { PreparationTools } from '../ui/preparationTools.js';
 import { PreparationReady } from '../ui/preparationReady.js';
 import { actions } from '../ui/gameActions.js';
 import { factionTypes, sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
@@ -23,8 +22,6 @@ export function BriefingScreen() {
   const priv = useStore((s) => s.match.private);
   const myId = useStore((s) => s.me.playerId);
   const solo = useStore((s) => s.room?.mode === 'solo') || String(pub?.modeId || '').includes('single');
-  // gameplay plugins (DESIGN §32.6): the briefing says the match is unofficial
-  const room = useStore((s) => s.room);
   const gd = useGameData();
   const [exit, setExit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -58,7 +55,6 @@ export function BriefingScreen() {
     <div class="brief__bg" aria-hidden="true"></div>
     <${StepHeader} step=${1} of=${2} title=${t('确认本局信息')} micro="BRIEFING // INFO CHECK" pub=${pub}
       total=${phaseTotalSeconds(pub, gd.config)} onExit=${() => setExit(true)} />
-    <${UnofficialMark} room=${room} class="brief__modmark" /><${VersionTag} room=${room} class="brief__vertag" />
     <main class="brief__main">
       <section class="brief__left">
         <div class="brief__intel">
@@ -89,7 +85,7 @@ export function BriefingScreen() {
           </div>`) : html`<p class="t-dim">${t('本局没有特训敌人')}</p>`}
         </div>
         </div>
-        <div class="brief-communication"><${CommunicationActivity} players=${players} emotesOnly=${true} /><${CommunicationDock} disabled=${!me} /></div>
+        <div class="brief-communication"><${PreparationTools} players=${players} disabled=${!me} /></div>
       </section>
       <section class="brief__right">
         <div class="brief__bonds"><${MatchInfo} model=${info} onBond=${setBondId} /></div>

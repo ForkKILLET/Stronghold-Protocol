@@ -1,5 +1,4 @@
 import { DraftPause } from './draftPause.js';
-import { PageHeader } from './pageHeader.js';
 // Chrome shared by every in-match screen: the step header of the pre-game screens (exit + ping +
 // difficulty | "1/2 确认本局信息" | countdown) and the exit flow (confirm with 暂离 / 放弃, AI 托管 overlay).
 //
@@ -7,7 +6,8 @@ import { PageHeader } from './pageHeader.js';
 // off. 放弃模拟: g.leave (room.leave when no match remains), back to the lobby.
 
 import { useState } from '../../vendor/hooks.module.js';
-import { html, Button, Modal, DifficultyTag, Countdown, MicroLabel } from './components.js';
+import { html, Button, Modal, DifficultyTag, Countdown, MicroLabel, PingPill } from './components.js';
+import { UnofficialMark, VersionTag } from './pluginTag.js';
 import { actions } from './gameActions.js';
 import { toastError } from './toasts.js';
 import { net } from '../net.js';
@@ -128,18 +128,30 @@ export function AwayOverlay({ onBack = () => {} }) {
 }
 
 /**
- * Shared preparation header: phase at left, optional information / turn status centred,
- * and the same difficulty, countdown and pause controls at right in both steps.
- * @param {{ step: number, of: number, title: string, micro: string, pub: any, total?: number|null, onExit: Function,
- *   extra?: any, status?: any }} props
+ * Preparation uses the battle HUD's navigation and controls in one band. The middle
+ * owns step / title; neither turn changes nor dialogs move the corners.
+ * @param {{ step: number, of: number, title: string, micro: string, pub: any, total?: number|null, onExit: Function }} props
  */
-export function StepHeader({ step, of, title, micro, pub, total, onExit, extra = null, status = null }) {
-  return html`<${PageHeader} onBack=${onExit} backTitle=${t('离开')} title=${title} micro=${micro} />
-  <header class="stephead stephead--context">
-    <div class="stephead__progress num"><b>${step}</b><span>/${of}</span></div>
-    <div class="stephead__middle">${extra}${status ? html`<div class="stephead__status">${status}</div>` : null}</div>
+export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
+  const conn = useStore(s => s.connection);
+  const room = useStore(s => s.room);
+  return html`<header class="stephead preparation-hud" aria-label=${title} data-testid="preparation-hud">
+    <div class="gtop__left">
+      <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label=${t('离开')} title=${t('离开 / 暂离')} class="gtop__exit tapx" />
+      <div class="gtop__meta">
+        <${PingPill} ms=${conn.ping} online=${conn.status === 'online'} />
+        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+        ${pub?.test ? html`<${TestMark} class="gtop__test" />` : null}
+        <div class="preparation-hud__rules"><${UnofficialMark} room=${room} compact=${true} /><${VersionTag} room=${room} compact=${true} /></div>
+      </div>
+    </div>
+    <div class="stephead__middle">
+      <div class="preparation-hud__heading gtop__frame" title=${micro}>
+        <span class="stephead__progress num"><b>${step}</b><span>/${of}</span></span>
+        <h1 class="stephead__name">${title}</h1>
+      </div>
+    </div>
     <div class="stephead__right">
-      ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}
       <${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />
       <${DraftPause} pub=${pub} standalone=${true} />
     </div>

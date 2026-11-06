@@ -144,7 +144,7 @@ for(const engine of ['chrome','firefox'])test(`${engine}: preparation layout and
    await click(`[data-band="${alternative}"]`);await page.mouse.move(0,0);await settle();unchanged(initial,await grid());
    await click('[data-band="band_bldsk"]');await page.mouse.move(0,0);await settle();unchanged(initial,await grid());
    assert.equal(await page.$('.dband__selmark'),null);
-   const actions=await page.$$eval('.draft-detail__btns .btn',es=>es.map(e=>{const r=e.getBoundingClientRect();return{y:r.y,h:r.height};}));assert.equal(actions.length,2);assert.ok(Math.abs(actions[0].y-actions[1].y)<1,'skip and confirm share a row');
+   const actions=await page.$$eval('.draft-detail__btns .btn',es=>es.map(e=>{const r=e.getBoundingClientRect();return{y:r.y,h:r.height};}));assert.equal(actions.length,3);assert.ok(actions.every(a=>Math.abs(a.y-actions[0].y)<1),'information, skip and confirm share a row');
   }
   await resize(1440,900);await page.mouse.move(0,0);await settle();
   const headerAfter=await page.$eval('.stephead',e=>{const r=e.getBoundingClientRect();return{height:r.height,pauseX:e.querySelector('.draft-pause').getBoundingClientRect().x};});

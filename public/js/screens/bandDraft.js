@@ -1,4 +1,4 @@
-import { CommunicationDock, CommunicationActivity } from '../ui/communication.js';
+import { PreparationTools } from '../ui/preparationTools.js';
 // BAND_DRAFT: compact pre-merge order rows (number, doctor avatar, state and strategy).
 // The default strategy, previews, confirmed picks and teammate browsing share a fixed grid/detail layout.
 // Picked/previewed teammate strategies can be inspected without changing our authoritative pick;
@@ -25,7 +25,7 @@ import { onBootArt, preloadBootArt } from '../ui/protocolBoot.js';
 import { reducedMotion } from '../ui/device.js';
 import { aggregateStats, peekStatsRecords, strategyBadgeIds } from '../ui/stats.js';
 import { modeOffBonds, bandOffBonds, bandOffLine } from '../ui/gameLogic.js';
-import { t, tParts, tName } from '../../../shared/i18n.js';
+import { t, tParts } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -113,21 +113,6 @@ export function autoPickBand(sel, { bands, taken, myPick = null, defaultId = DEF
   const has = (id) => !!(taken && typeof taken.has === 'function' && taken.has(id));
   if (sel && !has(sel) && list.some((b) => b.bandId === sel)) return sel;
   return timeoutBand(list, taken, defaultId);
-}
-
-/**
- * The tip under the co-op draft order: the one skip, the turn clock and what a turn that runs out assigns me (the
- * highlighted band while free — autoPickBand). Untimed drafts (a single human) name no clock.
- * @param {{ timed: boolean, turnSeconds?: number|null, autoName?: string|null, selected?: boolean }} o
- *   selected: the auto pick is the highlighted band (not the default standing in for a band a teammate holds)
- */
-export function draftTip({ timed, turnSeconds = null, autoName = null, selected = true }) {
-  const skip = t('联合模拟在选择策略时可以进行一次跳过');
-  if (!timed) return t('{skip}；本局不限时', { skip });
-  const clock = Number(turnSeconds) > 0 ? t('每位博士有 {n} 秒', { n: Math.round(turnSeconds) }) : t('每位博士限时决策');
-  if (!autoName) return t('{skip}；{clock}', { skip, clock });
-  return selected ? t('{skip}；{clock}，超时将自动选择当前选中的「{autoName}」', { skip, clock, autoName })
-    : t('{skip}；{clock}，超时将自动选择「{autoName}」', { skip, clock, autoName });
 }
 
 /**
@@ -263,7 +248,7 @@ export function BandDraftScreen({ held = null } = {}) {
   // alike (the maintainer's decision of 2026-10-21, as in PR #643; [ASSUMED] for solo, see the header). The sprites are
   // fetched early (a room entered, the match screen, this screen's mount); a turn whose art is still loading plays the
   // band as soon as it arrives — never blocking input — up to TURN_BANNER_LATE_MS after the turn began, past which the
-  // header's 请选择策略 says it alone.
+  // highlighted order row still identifies the current doctor.
   useEffect(() => { preloadBootArt(); }, []);
   const [turnBanner, setTurnBanner] = useState(0);
   useEffect(() => {
@@ -284,7 +269,6 @@ export function BandDraftScreen({ held = null } = {}) {
   // one countdown (user playtest #4 item 4): the current turn's — m.public.deadline
   const clock = solo ? null : draftClock(pub);
   // the highlighted band is what a turn that runs out takes (Match.timeoutBand): report every change before my pick
-  const timed = !solo && !!pub?.draft && !pub.draft.untimed;
   const focusSent = useRef(null);
   useEffect(() => {
     // (a spectator seat — community report #26 — is in no draft order: it never reports)
@@ -292,10 +276,6 @@ export function BandDraftScreen({ held = null } = {}) {
     focusSent.current = sel;
     act('g.bandFocus', { bandId: sel }, { sfx: false, quiet: true });
   }, [sel, solo, myPick]);
-
-  // what a timeout gives me: the highlighted band while free, else the default (never 队友已选 — match/phases.js timeoutBand)
-  const autoId = autoPickBand(sel, { bands, taken, myPick, defaultId });
-  const autoName = (autoId && gd.band(autoId)?.name) || gd.band(defaultId)?.name || tName('华法琳');
 
   const band = sel ? gd.band(sel) : null;
   const selTaken = !!band && taken.has(band.bandId);
@@ -316,15 +296,12 @@ export function BandDraftScreen({ held = null } = {}) {
   const turnName = players.find((p) => p.playerId === draft.turnPid)?.name;
   useTicker(clock ? 250 : 0);
   const turnSecs = clock ? secondsLeft(clock.deadline) : null;
-  const turnLen = Number(pub?.draft?.turnSeconds) > 0 ? Math.round(pub.draft.turnSeconds) : null;
   // 本局信息: the briefing's blocks (built only while the dialog is open) and the draft's state under it
   const info = infoOpen ? matchInfoModel(pub, { bonds: gd.list('bonds'), chess: gd.chess, mode, priv, diyData: { chess: data.get('chess'), backups: data.get('backups') } }) : null;
   const infoStatus = infoOpen ? draftInfoStatus({ myPick, pickName: myPick ? gd.band(myPick)?.name : null, myTurn, turnName, secs: turnSecs,
     waiting: !solo && !draft.done }) : null;
 
-  // 名片干员 art of the order rows (as on the room's seat cards: the doctor's pick, else one chosen by the player id), in
-  // this browser's records (up to the stats store's size): read once, after the screen and its entry are up, not while
-  // it mounts
+  // Read local strategy victories after the entry animation; order rows use doctor avatars.
   const [local, setLocal] = useState(NO_RECORDS);
   useEffect(() => {
     const later = globalThis.requestIdleCallback ? (fn) => globalThis.requestIdleCallback(fn, { timeout: 1200 }) : (fn) => setTimeout(fn, 300);
@@ -332,31 +309,18 @@ export function BandDraftScreen({ held = null } = {}) {
     const id = later(() => setLocal(draftRecords(peekStatsRecords(), data.get('bands'))));
     return () => cancel(id);
   }, []);
-  // what the right side shows: 已选定策略 after my pick, else the detail pane once opened, else only the wall
   const allPicked = !!draft.done || (draft.order.length > 0 && draft.order.every((pid) => draft.picks.has(pid)));
   // Every draft state keeps the same three columns, including after our confirmed pick.
   const view = 'detail';
   const shownBand = peek ? gd.band(peek) : band;
   const rows = solo ? players.filter((p) => p.playerId === myId) : draft.order.map((pid) => players.find((p) => p.playerId === pid)).filter(Boolean);
 
-  const head = allPicked ? html`<div class="dturn is-done"><span class="dturn__txt"><b>${t('策略选择完成')}</b><span>${t('正在进入模拟…')}</span></span><${Icon} name="hourglass" class="dturn__glass" /></div>`
-    : myTurn ? html`<div class="dturn is-turn">
-        <span class="dturn__go"><${Sprite} k="bandChoose/youturn_finger" class="dturn__finger" fallback=${html`<${Icon} name="chevronLeft" class="dturn__finger" />`} />
-          <b>${t('请选择策略')}</b></span>
-
-      </div>`
-    : turnName ? html`<div class="dturn"><span class="dturn__txt"><b>${turnName}</b><span>${t('正在选择策略…')}</span></span><${Icon} name="hourglass" class="dturn__glass" /></div>`
-    : null;
-
   // held after the draft (the server is already in BATTLE_CHECK): only to look at — 离开, 本局信息 and the 🔍 boxes would
   // open dialogs the match screen tears down a moment later
-  return html`<div class=${cx('screen draft', `draft--${view}`, held && 'is-held', head && 'has-status')} inert=${held ? true : undefined} aria-busy=${held ? 'true' : undefined}>
+  return html`<div class=${cx('screen draft', `draft--${view}`, held && 'is-held')} inert=${held ? true : undefined} aria-busy=${held ? 'true' : undefined}>
     <div class="brief__bg" aria-hidden="true"></div>
     <${StepHeader} step=${2} of=${2} title=${t('选择策略')} micro="STRATEGY // BAND CHECK" pub=${clock ? { ...pub, deadline: clock.deadline } : { ...pub, deadline: 0 }}
-      total=${clock ? clock.total : null} onExit=${() => setExit(true)}
-      extra=${html`<${Button} variant="secondary" size="sm" icon="search" class="stephead__info" data-testid="match-info-open" aria-haspopup="dialog" onClick=${() => setInfoOpen(true)}
-        title=${t('本局信息')}>${t('本局信息')}<//>`}
-      status=${head} />
+      total=${clock ? clock.total : null} onExit=${() => setExit(true)} />
     <main class="draft__main">
       <aside class="draft-order">
         <h3 class="brief-h"><span>${solo ? t('独立模拟') : t('决策顺序')}</span><${MicroLabel}>${solo ? 'FREE PICK' : 'RANDOM ORDER'}<//></h3>
@@ -368,13 +332,8 @@ export function BandDraftScreen({ held = null } = {}) {
               preview=${draft.focus.get(p.playerId)} solo=${solo} gd=${gd} onPeek=${peekBand} />`;
           })}
         </div>
-        ${!solo ? html`<p class="draft-order__tip" data-testid="draft-tip" title=${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}>
-          <span class="draft-tip__full">${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}</span>
-          <span class="draft-tip__compact">${myPick ? t('等待其他博士') : timed ? t('超时选择「{name}」', { name: autoName }) : t('不限时选择')}</span>
-        </p>` : null}
-        <div class="draft-communication"><${CommunicationActivity} players=${players} emotesOnly=${true} /><${CommunicationDock} disabled=${!draft.order.includes(myId)} /></div>
+        <div class="draft-communication"><${PreparationTools} players=${players} disabled=${!draft.order.includes(myId)} /></div>
       </aside>
-      <i class="draft__link" aria-hidden="true"></i>
 
         <section class="draft-grid" role="listbox" aria-label=${t('策略')}>
           ${bands.map((b, i) => {
@@ -416,6 +375,8 @@ export function BandDraftScreen({ held = null } = {}) {
                 : selTaken ? t('队友已选，请选择其他策略') : !inOrder ? t('观战中') : !myTurn && turnName ? t('{turnName} 正在决策…', { turnName }) : '\u00a0'}
             </p>
             <div class="draft-detail__btns">
+              <${Button} variant="secondary" size="lg" square=${true} icon="search" class="draft-info" data-testid="match-info-open"
+                aria-haspopup="dialog" onClick=${() => setInfoOpen(true)} aria-label=${t('本局信息')} title=${t('本局信息')} />
               ${!solo ? html`<${Button} variant="secondary" size="lg" icon="chevronRight" class="draft-skip" disabled=${!canSkip || !!busy}
                 loading=${busy === 'skip'} title=${skipsLeft > 0 ? t('跳过本轮，稍后再选') : t('跳过次数已用完')} onClick=${skip}>${t('跳过')}<//>` : null}
               <${Button} variant="primary" size="lg" icon="check" class="draft-confirm" disabled=${!!myPick || !!peek || !myTurn || !band || selTaken}

@@ -60,14 +60,8 @@
 .st .doctor-identity { grid-column:1; }
 .st .doctor-top > .st-top__right { grid-column:2; }
 .st .doctor-tabs { grid-column:1/-1; }
-.stephead.stephead--context { min-height:50px; height:auto; padding:6px 24px; grid-template-columns:minmax(0,1fr) auto; }
 .stephead__progress { display:flex; align-items:baseline; gap:4px; font-size:max(16px,calc(.22 * var(--t))); color:var(--text-lo); }
 .stephead__progress b { color:var(--mint-400); font-size:max(22px,calc(.3 * var(--t))); }
-.stephead--context .stephead__right { gap:16px; min-width:0; }
-.stephead--context .stephead__right .dtag { flex:none; }
-.stephead--context .stephead__right .countdown { flex:none; width:auto; }
-.stephead--context .stephead__right .countdown--untimed { width:32px; }
-.stephead--context .draft-pause { position:static; display:flex; z-index:auto; }
 .result-page > .result, .st--replay > .result { position:relative; inset:auto; flex:1; width:100%; height:auto; min-height:0; }
 .lobby-hub .hub-center { container-type:size; min-height:220px; }
 /* Older engines ignore container-type/units; keep a bounded viewport-size fallback. */
@@ -103,8 +97,6 @@
  .app-header__heading h1 { font-size:max(26px,calc(.34 * var(--utility-text,var(--t)))); }
  .app-header__status .ping { padding-inline:5px; }
  .app-header__status .online-count .ping__unit { font-size:10px; }
- .stephead.stephead--context { padding:8px 12px; }
- .stephead--context .stephead__right { gap:10px; }
 }
 @media (max-width:400px) {
  .app-header .app-back { width:28px; padding:6px; font-size:0; gap:0; }
@@ -152,18 +144,52 @@
  .app-header__language { grid-area:language; justify-self:end; width:104px; }
  .app-header__language .game-select { height:32px; min-height:32px; }
  .app-header--title .app-header__heading { display:none; }
- .stephead.stephead--context { min-height:30px; padding:3px 12px; }
  .stephead__progress { font-size:14px; }
  .stephead__progress b { font-size:20px; }
- .stephead--context .stephead__right { gap:10px; }
- .stephead--context .pausebtn { height:28px; width:28px; }
 }
 @media (max-width:600px) { .utility-modal.hub-dialog { width:calc(100vw - 16px); } }
 @media (prefers-reduced-motion:reduce) { .app-header__heading, .room-options__frame, .st-body { animation:none; } }
 
-/* Preparation keeps identical left / centre / right slots across both steps. */
-.stephead.stephead--context { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); }
-.stephead__middle { display:flex; align-items:center; justify-content:center; gap:calc(.18 * var(--ui-unit,1rem)); min-width:0; }
-.stephead--context .stephead__info { display:inline-flex; align-items:center; gap:calc(.06 * var(--ui-unit,1rem)); min-height:32px; padding:4px 8px; border:1px solid var(--line-2); background:var(--bg-1); color:var(--mint-400); font-size:max(11px,calc(.16 * var(--utility-text,var(--t)))); cursor:pointer; }
-.stephead--context .stephead__info:hover { border-color:var(--mint-500); background:var(--mint-a10); }
-.stephead--context .stephead__right { justify-self:end; }
+/* Preparation adopts the battle HUD. Keep one band and fixed corner slots in both steps.
+   These lengths deliberately follow the battle HUD's rem, not the management scale. */
+.stephead.preparation-hud {
+ --ui-unit:1rem; --utility-text:var(--t);
+ height:auto; min-height:0; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+ padding:.2rem .3rem .12rem .26rem; gap:.2rem; align-items:center;
+}
+.preparation-hud .gtop__left { min-width:0; }
+.preparation-hud .gtop__meta { min-width:0; }
+.preparation-hud__rules { display:flex; align-items:center; gap:6px; }
+.preparation-hud__rules:empty { display:none; }
+.preparation-hud .stephead__middle { display:flex; align-items:center; justify-content:center; gap:.18rem; min-width:0; max-width:65vw; }
+.preparation-hud__heading { gap:.12rem; flex:0 1 auto; min-width:0; }
+.preparation-hud .stephead__name { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; margin:0; font-size:max(20px,calc(.28 * var(--t))); font-weight:900; letter-spacing:.06em; white-space:nowrap; }
+.preparation-hud .stephead__progress { flex:none; font-size:max(14px,calc(.2 * var(--t))); }
+.preparation-hud .stephead__progress b { font-size:max(24px,calc(.34 * var(--t))); }
+.preparation-hud .stephead__right { justify-self:end; gap:.16rem; flex:none; min-width:0; }
+.preparation-hud .countdown { --cd-h:.64rem; flex:none; width:auto; }
+.preparation-hud .countdown--untimed { width:32px; }
+.preparation-hud .draft-pause { position:static; display:flex; z-index:auto; }
+
+/* Chat takes its own row while open. Closed, the trigger joins the four battle tools.
+   The whole corner stays in the left column's flow, above no interactive content. */
+.preparation-tools { --ui-unit:1rem; --utility-text:var(--t); --corner-button-size:max(.56rem,36px); position:relative; display:grid; grid-template-columns:auto minmax(0,1fr); align-items:end; gap:max(.1rem,8px); max-width:100%; }
+.brief__left { overflow:visible; }
+.preparation-tools > .communication-dock.is-open { grid-column:1/-1; }
+.preparation-tools__actions { display:flex; align-items:center; gap:max(.1rem,8px); min-width:0; }
+.preparation-tools .gm__gear { flex:none; box-sizing:border-box; width:var(--corner-button-size); height:var(--corner-button-size); min-height:var(--corner-button-size); min-width:0; padding:0; background:rgba(8,11,10,.85); color:var(--text-lo); border:1px solid var(--line-2); }
+.preparation-tools .gm__gear .icon { width:max(.28rem,18px); height:max(.28rem,18px); }
+.preparation-tools .gm__gear:hover:not(:disabled) { color:var(--mint-400); border-color:var(--mint-700); }
+.preparation-tools .gm__gear:disabled { opacity:.4; cursor:default; }
+.preparation-tools .ewheel__btn.is-communication { height:var(--corner-button-size); min-height:var(--corner-button-size); }
+.preparation-tools > .communication-activity { position:absolute; left:0; bottom:calc(100% + 4px); z-index:35; display:flex; flex-direction:row; align-items:center; padding:4px; }
+.preparation-tools .communication-activity .ebubble { width:36px; height:32px; flex:none; }
+
+@media (max-width:1100px) {
+ .stephead.preparation-hud { padding:8px 12px; gap:8px; }
+ .preparation-hud .stephead__middle { gap:8px; }
+ .preparation-hud__heading { padding-inline:10px; gap:6px; }
+ .preparation-hud .stephead__name { font-size:max(16px,calc(.24 * var(--t))); }
+ .preparation-tools { gap:6px; }
+ .preparation-tools__actions { gap:6px; flex-wrap:wrap; }
+}

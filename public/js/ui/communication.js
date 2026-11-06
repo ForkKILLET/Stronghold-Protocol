@@ -36,7 +36,7 @@ export function CommunicationDock({room=false,disabled=false}) {
     return;
    }
    const bounds=screen?.getBoundingClientRect();
-   const header=screen?.querySelector('.app-header')?.getBoundingClientRect();
+   const header=screen?.querySelector('.app-header, .preparation-hud')?.getBoundingClientRect();
    const viewTop=viewport?.offsetTop||0,viewLeft=viewport?.offsetLeft||0;
    const bottom=viewTop+(viewport?.height||innerHeight)-8;
    const top=Math.max(viewTop+8,Math.min((header?.bottom??viewTop)+8,bottom-64));
