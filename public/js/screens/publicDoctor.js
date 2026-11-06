@@ -71,7 +71,7 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
   <header class="st-top doctor-top"><div class="doctor-identity"><${AvatarFrame} name=${doctor?.name || t('博士')} size="md" src=${profileAvatarUrl(data.get('assets'),doctor?.avatarId)} />
    <div><h2>${doctor?.name || t('博士')}</h2><span class="doctor-number num">${formatDoctorId(publicId)}</span></div><span class="doctor-public-tag">${preview?t('公开预览'):t('只读档案')}</span></div>
    <div class="st-top__right"><${Button} variant="secondary" size="sm" icon="copy" disabled=${!doctor} onClick=${async()=>{const ok=await copyText(doctorLink(publicId));toast(ok?t('已复制档案链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制档案链接')}<//>
-    <${Button} variant="ghost" size="sm" icon="refresh" disabled=${loading} onClick=${()=>refresh(n=>n+1)}>${t('刷新')}<//></div>
+    <${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>refresh(n=>n+1)}>${t('刷新')}<//></div>
    <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${TABS.map(([id,label])=>html`<button type="button" role="tab" key=${id} data-tab=${id} aria-selected=${tab===id} class=${`st-tab${tab===id?' is-on':''}`} onClick=${()=>setTab(id)}>${t(label)}</button>`)}</nav>
   </header>
   <p class="st-note"><${Icon} name="info" />${preview?t('这里与其他玩家看到的公开档案相同，不包含本机记录。'):t('仅展示该博士允许公开的服务器数据。')}</p>

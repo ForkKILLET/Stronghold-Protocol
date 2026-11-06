@@ -252,7 +252,7 @@ export function HistoryMenu({rec,busy,locked,onPlay,onOpen,view=false,readOnly=f
   const setOpen=value=>{setOpenState(value);onOpenChange?.(value);};
   useEffect(()=>()=>onOpenChange?.(false),[onOpenChange]);
   const available=!!rec.replay?.available;
-  return html`<${Button} class="st-history-menu-trigger" size="sm" square=${true} variant="ghost" icon="dots" aria-label=${t('对局操作')} disabled=${!available&&!view} onClick=${()=>setOpen(true)} />
+  return html`<${Button} class="st-history-menu-trigger" size="sm" square=${true} variant="secondary" icon="dots" aria-label=${t('对局操作')} disabled=${!available&&!view} onClick=${()=>setOpen(true)} />
     <${Modal} open=${open} title=${t('对局操作')} micro="MATCH ACTIONS" utility=${true} onClose=${()=>setOpen(false)}>
       ${available&&!readOnly?html`<p class="profile-note">${!allowSharing?t('回放公开总开关已关闭，此回放不会对外提供。'):rec.replay.shared?t('此回放已公开，可通过链接观看。'):t('此回放仅本人可见。')}</p>`:null}
       <div class="doctor-replay-menu">
@@ -261,7 +261,7 @@ export function HistoryMenu({rec,busy,locked,onPlay,onOpen,view=false,readOnly=f
        ${available&&!readOnly?html`<${Button} variant="secondary" icon="pin" aria-pressed=${rec.replay.pinned} disabled=${busy||(!rec.replay.pinned&&quota?.pinned>=quota?.pinLimit)} onClick=${()=>onPin(rec)}>${rec.replay.pinned?t('取消固定'):t('固定')}<//>
        ${publicId?html`<${Button} variant="secondary" icon="eye" disabled=${busy} onClick=${()=>onShare(rec)}>${rec.replay.shared?t('设为私密'):t('设为公开')}<//>
         <${Button} variant="secondary" icon="copy" disabled=${!allowSharing||!rec.replay.shared} onClick=${async()=>{const ok=await copyText(doctorLink(publicId,rec.matchId));toast(ok?t('已复制回放链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制回放链接')}<//>
-        ${!allowSharing?html`<${Button} variant="ghost" icon="settings" onClick=${()=>{setOpen(false);if(onPrivacy)onPrivacy();else profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}`:null}`:null}</div>
+        ${!allowSharing?html`<${Button} variant="secondary" icon="settings" onClick=${()=>{setOpen(false);if(onPrivacy)onPrivacy();else profileStore.set({tab:'privacy'});}}>${t('公开设置')}<//>`:null}`:null}`:null}</div>
       ${available&&!readOnly?html`<p class="profile-note">${t('公开不会自动固定回放；若需长期分享，请先固定。')}</p>`:null}
     <//>`;
 }
@@ -511,7 +511,7 @@ function StatsScreen({ tab }) {
     <header class="st-top doctor-top">
 
       <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><h2>${profile.user?.name || identityName() || t('博士')}</h2>${profile.user?.publicId?html`<span class="doctor-number num">${formatDoctorId(profile.user.publicId)}</span>`:null}<span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
-      ${profile.enabled?html`<${Button} variant="ghost" size="sm" icon="edit" onClick=${()=>statsStore.set({tab:'profile'})}>${t('编辑资料')}<//>`:null}</div>
+      ${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="edit" onClick=${()=>statsStore.set({tab:'profile'})}>${t('编辑资料')}<//>`:null}</div>
       <div class="st-top__right">${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>fetchAccount()}>${t('刷新')}<//>`:null}</div>
       <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${tabs.map(x=>html`<button key=${x.id} type="button" role="tab" aria-selected=${x.id===tab} data-tab=${x.id} class=${cx('st-tab',x.id===tab&&'is-on')} onClick=${()=>statsStore.set({tab:x.id})}>${t(x.name)}</button>`)}</nav>
     </header>
@@ -531,7 +531,7 @@ function StatsScreen({ tab }) {
         : tab==='privacy'&&profile.user ? html`<${ProfileVisibility} user=${profile.user} />`
         : tab==='manage' ? html`<div class="doctor-management">${profile.enabled?html`<${ProfileRecovery} />`:null}
           <section><h3 class="st-sec__h">${t('此设备的记录')}</h3><p class="profile-note">${t('导入、导出和清空只影响此设备，不修改已保存的档案战绩。')}</p>
-          <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="ghost" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
+          <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="danger" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
           <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
         : tab==='history' ? html`<${History} records=${filteredRecords} deviceOnly=${deviceOnly} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
         : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`

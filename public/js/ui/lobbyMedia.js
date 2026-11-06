@@ -488,7 +488,7 @@ function MediaRow({ slot, title, micro, file, on, busy, accept, chooseText, offi
       <${Button} size="sm" icon="plus" loading=${busy === slot} disabled=${!!busy && busy !== slot} onClick=${() => input.current?.click()}>${chooseText}<//>
       ${file ? html`<button type="button" class=${`set-toggle${on ? ' is-on' : ''}`} role="switch" aria-checked=${on ? 'true' : 'false'}
           data-testid=${`media-${slot}-on`} onClick=${() => setMediaOn(slot, !on)}><i></i><span>${on ? tc('toggle', '开启') : tc('toggle', '关闭')}</span></button>` : null}
-      ${file ? html`<${Button} size="sm" variant="ghost" icon="close" data-testid=${`media-${slot}-remove`} onClick=${() => removeMedia(slot)}>${t('删除')}<//>` : null}
+      ${file ? html`<${Button} size="sm" variant="secondary" icon="close" data-testid=${`media-${slot}-remove`} onClick=${() => removeMedia(slot)}>${t('删除')}<//>` : null}
     </div>
   </section>`;
 }
@@ -499,7 +499,7 @@ export function LobbyMediaDialog({ onClose }) {
   useEffect(() => { loadSavedMedia(); }, []);
   const dim = Math.round(s.prefs.dim * 100);
   return html`<${Modal} open=${true} class="lmedia" micro="LOBBY BACKDROP & MUSIC" title=${t('大厅背景与音乐')} width="min(8.6rem, 96vw)"
-      onClose=${onClose} actions=${html`<${Button} variant="ghost" onClick=${onClose} data-autofocus="">${t('完成')}<//>`}>
+      onClose=${onClose} actions=${html`<${Button} variant="secondary" onClick=${onClose} data-autofocus="">${t('完成')}<//>`}>
     <${SceneRow} scene=${s.prefs.scene} />
     <${MediaRow} slot="backdrop" title=${t('大厅背景')} micro="BACKDROP" file=${s.backdrop} on=${s.prefs.backdrop} busy=${s.busy}
       accept="image/png,image/jpeg,image/webp,image/gif,image/avif,video/mp4,video/webm" chooseText=${t('选择图片或视频')} officialText=${t('默认背景')} />

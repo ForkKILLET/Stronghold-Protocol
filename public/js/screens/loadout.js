@@ -245,7 +245,7 @@ function Detail({ m, chess, golden, entries, ops = {}, onChange, onOps, onReset,
         <span class="lo-dhead__bonds">${(chess.bonds || []).map((b) => html`<span key=${b} class="lo-bond">
           <${Img} src=${bondIconUrl(m, b)} class="lo-bond__icon" fallback=${html`<i class="lo-bond__dot"></i>`} />${data.lookup('bonds', b)?.name || b}</span>`)}</span>
       </div>
-      <${Button} variant="ghost" size="sm" icon="refresh" class="lo-dhead__reset" disabled=${!changed} onClick=${onReset}>${t('恢复默认')}<//>
+      <${Button} variant="secondary" size="sm" icon="refresh" class="lo-dhead__reset" disabled=${!changed} onClick=${onReset}>${t('恢复默认')}<//>
     </div>
     <div class="lo-detail__body" ref=${bodyRef}>
       <${OperatorVoice} charId=${chess.assets?.voice || chess.charId} />
@@ -846,14 +846,14 @@ function LoadoutScreen({ st, leaving = false }) {
       ${tab === 'diy' ? html`<div class="lo-top__right">
         ${syncText ? html`<span class=${cx('lo-sync', syncCls)} role="status" data-testid="diy-sync">${t(syncText)}</span>` : null}
         <span class="lo-count">${t('已选')} <b class="num">${nDiy}</b><span class="num t-dim">/4</span></span>
-        <${Button} variant="ghost" size="sm" data-testid="diy-export" disabled=${!nDiy} onClick=${openExport} title=${t('导出自选编队（可复制或下载）')}>${t('导出')}<//>
-        <${Button} variant="ghost" size="sm" data-testid="diy-import" disabled=${!ready} onClick=${openImport} title=${t('导入自选编队（粘贴或选择文件）')}>${t('导入')}<//>
+        <${Button} variant="secondary" size="sm" data-testid="diy-export" disabled=${!nDiy} onClick=${openExport} title=${t('导出自选编队（可复制或下载）')}>${t('导出')}<//>
+        <${Button} variant="secondary" size="sm" data-testid="diy-import" disabled=${!ready} onClick=${openImport} title=${t('导入自选编队（粘贴或选择文件）')}>${t('导入')}<//>
         <${Button} variant="secondary" size="sm" icon="refresh" data-testid="diy-reset" disabled=${!nDiy} onClick=${clearDiy}>${t('全部清空')}<//>
       </div>` : tab === 'ownership' ? html`<div class="lo-top__right">
         ${syncText ? html`<span class=${cx('lo-sync', syncCls)} role="status" data-testid="ownership-sync">${t(syncText)}</span>` : null}
         <span class="lo-count">${t('未持有')} <b class="num">${nNotOwned}</b><span class="num t-dim">/${ownRoster.length}</span></span>
-        <${Button} variant="ghost" size="sm" data-testid="ownership-export" disabled=${!nNotOwned} onClick=${openExport} title=${t('导出干员持有（可复制或下载）')}>${t('导出')}<//>
-        <${Button} variant="ghost" size="sm" data-testid="ownership-import" disabled=${!ready} onClick=${openImport} title=${t('导入干员持有（粘贴或选择文件）')}>${t('导入')}<//>
+        <${Button} variant="secondary" size="sm" data-testid="ownership-export" disabled=${!nNotOwned} onClick=${openExport} title=${t('导出干员持有（可复制或下载）')}>${t('导出')}<//>
+        <${Button} variant="secondary" size="sm" data-testid="ownership-import" disabled=${!ready} onClick=${openImport} title=${t('导入干员持有（粘贴或选择文件）')}>${t('导入')}<//>
         <${Button} variant="secondary" size="sm" icon="refresh" data-testid="ownership-reset" disabled=${!nNotOwned} onClick=${ownAll}>${t('全部持有')}<//>
       </div>` : deck ? html`<div class="lo-top__right">
         ${inMatch && hasDeadline(infoDeadline) ? html`<${Countdown} deadline=${infoDeadline} size="sm" gauge=${false} label=${t('调配截止')} class="lo-deadline" />` : null}
@@ -900,8 +900,8 @@ function LoadoutScreen({ st, leaving = false }) {
         ${inMatch && hasDeadline(infoDeadline) ? html`<${Countdown} deadline=${infoDeadline} size="sm" gauge=${false} label=${t('调配截止')} class="lo-deadline" />` : null}
         ${syncText ? html`<span class=${cx('lo-sync', syncCls)} role="status">${t(syncText)}</span>` : null}
         <span class="lo-count">${t('已调整')} <b class="num">${nChanged}</b><span class="num t-dim">/${roster.length}</span></span>
-        <${Button} variant="ghost" size="sm" data-testid="loadout-export" disabled=${!nChanged && !Object.keys(st.ops || {}).length} onClick=${openExport} title=${t('导出当前调配（可复制或下载）')}>${t('导出')}<//>
-        <${Button} variant="ghost" size="sm" data-testid="loadout-import" disabled=${!ready} onClick=${openImport} title=${t('导入调配（粘贴或选择文件）')}>${t('导入')}<//>
+        <${Button} variant="secondary" size="sm" data-testid="loadout-export" disabled=${!nChanged && !Object.keys(st.ops || {}).length} onClick=${openExport} title=${t('导出当前调配（可复制或下载）')}>${t('导出')}<//>
+        <${Button} variant="secondary" size="sm" data-testid="loadout-import" disabled=${!ready} onClick=${openImport} title=${t('导入调配（粘贴或选择文件）')}>${t('导入')}<//>
         <${Button} variant="secondary" size="sm" icon="refresh" disabled=${!nChanged} onClick=${resetAll}>${t('全部恢复默认')}<//>
       </div>`}
     </header>
@@ -953,10 +953,10 @@ function LoadoutScreen({ st, leaving = false }) {
         : io.mode === 'export' ? (ioOwn ? t('导出干员持有') : t('导出干员调配')) : (ioOwn ? t('导入干员持有') : t('导入干员调配'))}
       micro=${ioOwn ? 'OPERATOR ROSTER' : ioDiy ? 'SELF-SELECT SQUAD' : 'OPERATOR LOADOUT'}
       actions=${io.mode === 'export'
-        ? html`<${Button} variant="ghost" onClick=${() => setIo(null)}>${t('关闭')}<//>
+        ? html`<${Button} variant="secondary" onClick=${() => setIo(null)}>${t('关闭')}<//>
             <${Button} variant="secondary" icon="copy" data-testid="loadout-io-copy" onClick=${ioCopy}>${t('复制')}<//>
             <${Button} variant="primary" data-testid="loadout-io-download" onClick=${ioDownload}>${t('下载文件')}<//>`
-        : html`<${Button} variant="ghost" onClick=${() => setIo(null)}>${t('取消')}<//>
+        : html`<${Button} variant="secondary" onClick=${() => setIo(null)}>${t('取消')}<//>
             <${Button} variant="secondary" data-testid="loadout-io-pick" onClick=${ioPick}>${t('选择文件')}<//>
             <${Button} variant="primary" icon="check" data-testid="loadout-io-apply" disabled=${!ioText.trim() || !ready} onClick=${ioApply}>${t('导入')}<//>`}>
       <p class="lo-io__hint">${ioDiy

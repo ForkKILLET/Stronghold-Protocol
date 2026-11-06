@@ -102,7 +102,7 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = n
     </div>
     <div class="diy-slot__acts">
       <${Button} variant="secondary" size="sm" icon="refresh" data-testid="diy-change" onClick=${() => onOpen(slot.slotId)}>${t('更换')}<//>
-      <${Button} variant="ghost" size="sm" icon="close" data-testid="diy-clear" onClick=${() => onClear(slot.slotId)}>${t('清空')}<//>
+      <${Button} variant="secondary" size="sm" icon="close" data-testid="diy-clear" onClick=${() => onClear(slot.slotId)}>${t('清空')}<//>
     </div>
   </div>`;
 }
@@ -414,7 +414,7 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
       </div>
     </div>
     <footer class="diy-pick__foot">
-      <${Button} variant="ghost" onClick=${onClose}>${t('取消')}<//>
+      <${Button} variant="secondary" onClick=${onClose}>${t('取消')}<//>
       <${Button} variant="primary" icon="check" data-testid="diy-confirm" disabled=${!ch} onClick=${() => onDone(ch.proto ? { charId: draft.charId } : draft)}>${t('确认')}<//>
     </footer>
   </section>`;

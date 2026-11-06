@@ -22,7 +22,7 @@ function remember(user){profileStore.set({user,status:'saved'});savePref('doctor
 export function ProfileShare({user}){
  return user?.publicId?html`<div class="doctor-share"><span class="doctor-number num">${t('博士编号 {id}',{id:formatDoctorId(user.publicId)})}</span>
   <div class="doctor-actions"><${Button} variant="secondary" size="sm" icon="copy" onClick=${async()=>{const ok=await copyText(doctorLink(user.publicId));toast(ok?t('已复制档案链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制档案链接')}<//>
-   <${Button} variant="ghost" size="sm" icon="eye" onClick=${()=>openPublicDoctor(user.publicId,{preview:true})}>${t('预览公开档案')}<//></div></div>`:null;
+   <${Button} variant="secondary" size="sm" icon="eye" onClick=${()=>openPublicDoctor(user.publicId,{preview:true})}>${t('预览公开档案')}<//></div></div>`:null;
 }
 export function ProfileVisibility({user}){
  const {busy,error,run}=useOperation();const visibility=user.visibility || PRIVATE_PROFILE;
@@ -77,7 +77,7 @@ export function ProfileEditor({user}){
   ${error?html`<p class="profile-error" role="alert">${error}</p>`:null}
   <div class="profile-summary"><${AvatarFrame} name=${name} src=${selected?profileAvatarUrl(data.get('assets'),selected):null} size="lg" />
    <${TextField} label=${t('昵称')} value=${name} maxLength=${NAME_MAX_LEN} onInput=${setName} /></div>
-  <div class="profile-avatar-heading"><span>${selected?avatars[selected].name:t('默认')}</span><${Button} variant="ghost" size="sm" onClick=${()=>setAvatar(null)}>${t('使用默认头像')}<//></div>
+  <div class="profile-avatar-heading"><span>${selected?avatars[selected].name:t('默认')}</span><${Button} variant="secondary" size="sm" onClick=${()=>setAvatar(null)}>${t('使用默认头像')}<//></div>
   <${TextField} label=${t('搜索头像')} value=${query} onInput=${value=>{setQuery(value);setShown(48);}} />
   <div class="profile-avatar-filters" role="group" aria-label=${t('头像分类')}>${groups.map(([id,label])=>html`<button type="button" key=${id} class=${group===id?'is-on':''} aria-pressed=${group===id} onClick=${()=>{setGroup(id);setShown(48);}}>${label}</button>`)}</div>
   <p class="profile-note">${catalogReady?t('共 {n} 个头像',{n:choices.length}):data.status('profile-avatars')==='missing'?t('头像库暂不可用，请刷新后重试。'):t('正在读取头像库…')}</p>

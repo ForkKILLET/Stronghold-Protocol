@@ -52,7 +52,7 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   assert.equal(await page.$$eval('[data-visibility][aria-checked="false"]',e=>e.length),5);await capture(page,'privacy-desktop','.st');
   await page.setViewport({width:844,height:390});await capture(page,'privacy-mobile','.st');
   await page.setViewport({width:1440,height:900});
-  await page.locator('.doctor-share .btn--ghost').click();await page.waitForSelector('.public-doctor__private');
+  await page.locator('.doctor-share .btn').click();await page.waitForSelector('.public-doctor__private');
   await page.keyboard.press('Escape');await page.waitForSelector('.public-doctor',{hidden:true});
   assert.ok(await page.evaluate(()=>document.documentElement.classList.contains('sp-stats-open')),'public preview leaves the own archive overlay intact');
   const context=await browser.createBrowserContext(),visitor=await context.newPage(),requests=[];
@@ -95,7 +95,7 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   await page.waitForFunction(()=>[...document.querySelectorAll('.doctor-replay-menu button')].some(e=>e.textContent.trim()==='设为私密'&&!e.disabled));
   assert.ok(await page.$('.doctor-replay-menu'),'sharing keeps the menu open');await page.keyboard.press('Escape');await page.waitForSelector('.doctor-replay-menu',{hidden:true});
   await page.waitForSelector('.st-replay-marks svg[role=img] title');await page.waitForFunction(()=>[...document.querySelectorAll('.st-replay-marks title')].some(e=>e.textContent==='公开'));
-  await visitor.bringToFront();await visitor.locator('.public-doctor .st-top__right .btn--ghost').click();await visitor.waitForSelector('.public-doctor .st-table .btn');
+  await visitor.bringToFront();await visitor.locator('.public-doctor .st-top__right .btn').click();await visitor.waitForSelector('.public-doctor .st-table .btn');
   await visitor.locator('.st-tab[data-tab="achievements"]').click();await visitor.waitForSelector('.ach-mark');await capture(visitor,'public-achievements','.public-doctor');
   await visitor.setViewport({width:844,height:390});await capture(visitor,'achievements-mobile','.public-doctor');
   await visitor.locator('.st-tab[data-tab="replays"]').click();await visitor.waitForSelector('.public-doctor .st-table .btn');await capture(visitor,'public-replays-mobile','.public-doctor');

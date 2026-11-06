@@ -168,7 +168,7 @@ export function BackdropSettings({ bg }) {
     }} />
     ${imageUrl ? html`<div class="bgset__row">
       <button type="button" class="btn btn--secondary btn--sm" disabled=${busy} onClick=${() => fileRef.current?.click()}>${t('更换背景')}</button>
-      <button type="button" class="btn btn--ghost btn--sm" disabled=${busy} onClick=${() => action(bg.clearImage)}>${t('移除背景')}</button></div>` : null}
+      <button type="button" class="btn btn--secondary btn--sm" disabled=${busy} onClick=${() => action(bg.clearImage)}>${t('移除背景')}</button></div>` : null}
     ${pref.theme === 'custom' ? html`<div class="bgset__custom">
       <label class="bgset__slider"><span>${t('暗化')}</span><input type="range" min="0" max="85" value=${pref.dim}
         onInput=${(e) => update({ dim: Number(e.currentTarget.value) })} /><b class="num">${pref.dim}%</b></label>

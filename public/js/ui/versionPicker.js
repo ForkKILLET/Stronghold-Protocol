@@ -41,7 +41,7 @@ export function VersionPicker({ mode, versions, current, serverDefault, roomMode
   const list = Array.isArray(versions) ? versions : [];
   const chineseTexts = getLang() !== 'zh';
   return html`<${Modal} open=${true} utility=${true} onClose=${onClose} class="verpick" micro="OFFICIAL VERSION" title=${t('游戏版本')} width="min(8.4rem, 96vw)"
-      actions=${html`<${Button} variant="ghost" onClick=${onClose}>${t('关闭')}<//>`}>
+      actions=${html`<${Button} variant="secondary" onClick=${onClose}>${t('关闭')}<//>`}>
     <p class="verpick__lead">${mode === 'room' ? t('同盟的版本由创建者发起切换，在座的博士全部同意后生效。') : t('大厅版本只影响本机：加入其他版本的同盟时会载入该版本，离开后恢复。')}</p>
     <ul class="verpick__list" role="listbox" aria-label=${t('游戏版本')} data-testid="version-picker">
       ${list.map((v) => {

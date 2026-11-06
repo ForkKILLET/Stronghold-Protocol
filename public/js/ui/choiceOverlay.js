@@ -251,7 +251,7 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
           <p class="spov__sub">${timed ? (personal ? t('休整期结束时未选择将自动选定') : t('倒计时结束后仍未选定将自动分配')) : t('选择一项（无时间限制）')}${mine == null && myTurn ? t(' · 点击卡牌选中，再次点击确认') : ''}</p>
         </div>
         <div class="spov__turn">
-          ${canHide ? html`<${Button} variant="ghost" icon="collapse" class="spov__hide" aria-expanded="true" onClick=${() => onMinimize(true)}>${equipment ? t('隐藏装备') : t('隐藏悬赏')}<//>` : null}
+          ${canHide ? html`<${Button} variant="secondary" icon="collapse" class="spov__hide" aria-expanded="true" onClick=${() => onMinimize(true)}>${equipment ? t('隐藏装备') : t('隐藏悬赏')}<//>` : null}
           ${personal ? html`<span class="spov__turntxt is-mine">${t('从候选中选择一项战术特训')}</span>` : mine != null ? html`<span class="spov__turntxt is-done"><${Icon} name="check" />${t('已完成选择')}</span>`
             : myTurn ? html`<span class="spov__turntxt is-mine">${t('当前轮到你决策')}</span>`
             : html`<span class="spov__turntxt is-other"><span class="spov__tw"><b>${turnName}</b><small>${t('正在决策…')}</small></span><${Icon} name="hourglass" /></span>`}
