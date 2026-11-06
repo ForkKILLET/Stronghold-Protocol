@@ -1,5 +1,7 @@
 # 按需干员皮肤
 
+生产部署的资源刷新保留源码基础清单，仅用 `tools/assets/deployment-skins.mjs` 补入固定且经摘要校验的部署皮肤记录；同名皮肤以源码显式配置为准。不能以完整旧清单覆盖当前模型、新干员或技能音效。补入的皮肤仍经实际文件、摘要和预载 ZIP 校验；源码中的 `data/assets.json` 不需要提交本服生成的安装记录。
+
 ## 来源与范围
 
 采用 `kanomahoro1224/Stronghold-Protocol` 的 `merge/upstream-20261013` 分支（调查时为
