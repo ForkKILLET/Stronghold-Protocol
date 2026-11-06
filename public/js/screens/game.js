@@ -282,6 +282,7 @@ function MatchScreen() {
   const [rewardMin, setRewardMin] = useState(false);
   // 作战统计 (battle/metrics.js): a client-only local damage/healing panel — never uploaded to the server.
   const [emoteOpen, setEmoteOpen] = useState(false);
+  const [emotePinned, setEmotePinned] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
@@ -1667,7 +1668,7 @@ function MatchScreen() {
         return; // ChoiceOverlay handles Escape without cancelling the server's pending choice.
       }
       if (act === 'escape') {
-        if (L.emoteOpen) setEmoteOpen(false);
+        if (L.emoteOpen) { setEmoteOpen(false); setEmotePinned(false); }
         else if (L.pen && !L.detail) togglePenRef.current(false);
         else if (L.bondOpen) setBondOpen(null);
         else if (L.detail) setDetail(null);
@@ -1929,12 +1930,12 @@ function MatchScreen() {
       <div class="gm__corner">
         <${AiTakeoverPanel} />
         ${metricsOpen && !spectator ? html`<${CombatMetricsPanel} myId=${myId} onClose=${() => setMetricsOpen(false)} />` : null}
-        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} onSend=${(id) => actions.emote(id)}
+        ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} pinned=${emotePinned} onPinChange=${setEmotePinned} onSend=${(id) => actions.emote(id)}
           onChat=${actions.chat} history=${chatHistory} myId=${myId} disabled=${conn.status !== 'online'} />`}
         ${spectator ? null : html`<button type="button" class="gm__gear gm__metrics" aria-label=${t('作战统计')} title=${t('作战统计')} aria-expanded=${metricsOpen}
           aria-controls="combat-metrics-panel" onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }} onClick=${() => {
             setMetricsOpen(!metricsOpen);
-            setEmoteOpen(false);
+            if (!emotePinned) setEmoteOpen(false);
             setDetail(null);
             setSel(null);
             setBondOpen(null);

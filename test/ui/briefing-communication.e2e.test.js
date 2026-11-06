@@ -1,140 +1,102 @@
-// SP_E2E=1: real local room -> INFO_CHECK; never touches a production game or a user's browser.
+// Real room: persistent communication, independent information scrolling,
+// keyboard visibility and read-only spectators. Run through check:local.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {existsSync,mkdirSync} from 'node:fs';
+import {mkdirSync,existsSync} from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import {startServer} from '../../server/index.js';
 import {TestClient} from '../helpers/wsClient.js';
+import {localFontsOnly} from '../helpers/localFonts.js';
 import {EMOTES} from '../../shared/constants.js';
 
-const sizes=[{width:1366,height:768},{width:844,height:390,safe:true},{width:740,height:360},{width:640,height:360,text:'xl'},{width:844,height:240}];
-for(const [engine,executablePath] of [
- ['chrome',process.env.CHROME_PATH||'/run/current-system/sw/bin/google-chrome-stable'],
- ['firefox',process.env.FIREFOX_PATH||'/run/current-system/sw/bin/firefox'],
-])test(`${engine}: briefing communication stays visible and reachable`,{
- skip:process.env.SP_E2E!=='1'||!existsSync(executablePath),timeout:120000,
+for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communication, keyboard and spectators`,{
+ skip:process.env.SP_E2E!=='1'||(process.env.SP_E2E_ENGINE&&process.env.SP_E2E_ENGINE!==engine),timeout:120000,
 },async()=>{
- const server=await startServer({port:0,host:'127.0.0.1',quiet:true,workers:0,userFile:':memory:',clientBuild:process.env.SP_E2E_BUILD==='1',assetIndex:false,announcementsFile:null});
- const out=process.env.SP_E2E_OUT||new URL('../e2e/out/briefing-communication/',import.meta.url).pathname;
- mkdirSync(out,{recursive:true});let browser,guest,observer;
+ const executablePath=engine==='chrome'?'/run/current-system/sw/bin/google-chrome-stable':'/run/current-system/sw/bin/firefox';assert.ok(existsSync(executablePath));
+ const out=path.resolve(`.state/preparation-actions-20261107/${engine}`);mkdirSync(out,{recursive:true});
+ const server=await startServer({host:'127.0.0.1',port:0,quiet:true,workers:0,userFile:':memory:',clientBuild:process.env.SP_E2E_BUILD==='1',assetIndex:false,announcementsFile:null});
+ let browser,guest;const errors=[];
  try{
-  browser=await puppeteer.launch({browser:engine,executablePath,headless:true,args:engine==='chrome'?['--no-sandbox','--mute-audio','--no-proxy-server']:[]});
-  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  // Keep touch emulation stable across resizes: toggling it can reload Chrome and lose an arriving message.
-  const viewport=size=>({width:size.width,height:size.height,...(engine==='chrome'?{isMobile:true,hasTouch:true,isLandscape:true,deviceScaleFactor:1}:{})});
-  const click=async selector=>page.locator(selector).click();
+  browser=await puppeteer.launch({browser:engine,executablePath,headless:true,
+   ...(engine==='firefox'?{extraPrefsFirefox:{'dom.ipc.processCount':2,'dom.ipc.processCount.webIsolated':1,'dom.ipc.processPrelaunch.enabled':false,'fission.autostart':false}}:{}),
+   args:engine==='chrome'?['--no-sandbox','--mute-audio','--no-proxy-server','--enable-unsafe-swiftshader']:[]});
+  const page=await browser.newPage();await localFontsOnly(page);page.on('pageerror',e=>errors.push(e.message));
   const request=(t,fields={})=>page.evaluate(({t,fields})=>window.__SP__.net.request(t,fields),{t,fields});
-  const settle=()=>page.evaluate(async()=>{await document.fonts.ready;document.getAnimations().filter(a=>!a.effect?.target?.closest?.('.ebubble')&&Number.isFinite(a.effect?.getComputedTiming().endTime)).forEach(a=>a.finish());await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
-  await page.setViewport(viewport(sizes[0]));await page.goto(server.url,{waitUntil:'domcontentloaded'});
-  await page.waitForSelector('.title-login input');await page.type('.title-login input','交流验证');await click('.title-login .btn--primary');
-  await page.waitForSelector('.lobby-hub');await request('room.create',{mode:'coop',difficulty:'NORMAL'});await page.waitForSelector('.room-screen');
-  const code=await page.evaluate(()=>window.__SP__.store.get().room.code);
-  guest=await TestClient.connect(server.url.replace('http','ws')+'/ws');await guest.hello('测试队友的较长博士名字');
-  await guest.request({t:'room.join',code});await guest.request({t:'room.ready',ready:true});
-  observer=await TestClient.connect(server.url.replace('http','ws')+'/ws');await observer.hello('观战验证');await observer.request({t:'room.spectate',code});
-  await request('room.start');await page.waitForSelector('.brief__foot');
-  // Only extend this local fixture's countdown; all message delivery and UI actions use the real protocol.
-  const match=server.lobby.rooms.get(code).match;match.setDeadline(180,()=>match.enterBandDraft());match.markPublic();
-  await request('g.infoReady');await page.waitForFunction(()=>document.querySelector('.brief__foot > .btn')?.disabled);
-  for(let i=0;i<sizes.length;i++){
-   const size=sizes[i];
-   await page.setViewport(viewport(size));
-   await page.evaluate(size=>{
-    document.documentElement.dataset.text=size.text||'md';
-    for(const [key,value] of Object.entries({'--sa-l':size.safe?'44px':'0px','--sa-r':size.safe?'44px':'0px','--sa-b':size.safe?'21px':'0px'}))document.documentElement.style.setProperty(key,value);
-    dispatchEvent(new Event('resize'));
-   },size);await settle();
-   const message=`${i}请确认阵容准备完毕之后再开始作战`;
-   assert.equal((await guest.request({t:'g.chat',text:message})).t,'ok');
-   await page.waitForFunction(message=>document.querySelector('.brief .communication-activity')?.textContent.includes(message),{},message);
-   await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.communication-bubble')).opacity)>.9);
-   await settle();await page.screenshot({path:path.join(out,`${engine}-${size.width}-${size.height}-chat.png`)});
-   const activity=await page.$eval('.brief .communication-activity',e=>{
-    const r=e.getBoundingClientRect(),main=e.closest('.brief__main').getBoundingClientRect(),bubble=e.querySelector('.communication-bubble'),b=bubble.getBoundingClientRect();
-    return{top:r.top,bottom:r.bottom,left:r.left,right:r.right,mainTop:main.top,mainBottom:main.bottom,visible:Number(getComputedStyle(bubble).opacity)>.5&&!!document.elementFromPoint(b.x+b.width/2,b.y+b.height/2)?.closest('.communication-activity'),pageOverflow:document.documentElement.scrollWidth-innerWidth};
-   });
-   assert.ok(activity.visible&&activity.top>=activity.mainTop&&activity.bottom<=activity.mainBottom+1,JSON.stringify(activity));
-   assert.ok(activity.pageOverflow<=1,JSON.stringify(activity));
-   const reroll=await page.$eval('.brief-reroll',e=>{
-    const box=e.getBoundingClientRect(),right=e.closest('.brief__right').getBoundingClientRect(),bonds=document.querySelector('.brief__bonds').getBoundingClientRect();
-    return{left:box.left,right:box.right,top:box.top,bottom:box.bottom,columnLeft:right.left,columnRight:right.right,columnBottom:right.bottom,bondsBottom:bonds.bottom};
-   });
-   assert.ok(reroll.left>=reroll.columnLeft-1&&reroll.right<=reroll.columnRight+1&&reroll.bottom<=reroll.columnBottom+1&&reroll.top>=reroll.bondsBottom-1,'reroll stays below the right-column bonds: '+JSON.stringify(reroll));
-   if(i===0||i===1||i===4){
-    await click('.brief-reroll__actions button');await page.waitForFunction(()=>!!window.__SP__.store.get().match.public.rerollVote);await settle();
-    await page.screenshot({path:path.join(out,`${engine}-${size.width}-${size.height}-reroll-vote.png`)});
-    for(const button of await page.$$('.brief-reroll__actions button')){
-     await button.evaluate(e=>e.scrollIntoView({block:'nearest'}));await settle();
-     const hit=await button.evaluate(e=>{const r=e.getBoundingClientRect(),panel=e.closest('.brief-reroll').getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return{ok:!!hit&&e.contains(hit)&&r.top>=panel.top-1&&r.bottom<=panel.bottom+1,button:e.textContent,x:r.x,y:r.y,width:r.width,height:r.height,panelTop:panel.top,panelBottom:panel.bottom,top:hit?.className};});
-     assert.ok(hit.ok,'reroll consent/cancel controls stay reachable: '+JSON.stringify(hit));
-    }
-    await page.screenshot({path:path.join(out,`${engine}-${size.width}-${size.height}-reroll-vote.png`)});
-    await click('.brief-reroll__actions button:last-child');await page.waitForFunction(()=>!window.__SP__.store.get().match.public.rerollVote);await settle();
-   }
-   const stage=await page.$eval('.brief-stage',e=>{
-    const label=e.querySelector('.brief-stage__k').getBoundingClientRect(),name=e.querySelector('.brief-stage__name').getBoundingClientRect();
-    return{overlap:Math.min(label.right,name.right)>Math.max(label.left,name.left)+1&&Math.min(label.bottom,name.bottom)>Math.max(label.top,name.top)+1,overflow:e.scrollWidth-e.clientWidth};
-   });
-   assert.ok(!stage.overlap&&stage.overflow<=1,'battlefield label and name stay separate: '+JSON.stringify(stage));
-   if(size.width===844){await page.$eval('.brief-stage',e=>e.scrollIntoView({block:'start'}));await settle();await page.screenshot({path:path.join(out,`${engine}-${size.width}-${size.height}-battlefield.png`)});}
-   await click('.brief .ewheel__btn');await page.waitForSelector('.brief .ewheel__dialog');await settle();
-   const geometry=await page.evaluate(()=>{
-    const box=selector=>{const e=document.querySelector(selector),r=e.getBoundingClientRect();return{left:r.left,top:r.top,right:r.right,bottom:r.bottom,height:r.height,hit:!!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest(selector)};};
-    return{dialog:box('.brief .ewheel__dialog'),loadout:box('.brief-loadout'),button:box('.brief .ewheel__btn'),ready:box('.brief__foot > .btn'),header:box('.brief > .app-header'),cells:[...document.querySelectorAll('.ewheel__item')].map(e=>{const r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.ewheel__item')===e;})};
-   });
-   await page.screenshot({path:path.join(out,`${engine}-${size.width}-${size.height}-open.png`)});
-   assert.ok(geometry.cells.every(Boolean),'all six emotes are reachable');
-   assert.ok(geometry.dialog.top>=geometry.header.bottom-1&&geometry.dialog.bottom<=geometry.button.top+1,JSON.stringify(geometry));
-   assert.ok(Math.abs(geometry.loadout.height-geometry.button.height)<1,JSON.stringify(geometry));
-   assert.ok(geometry.loadout.hit&&geometry.button.hit,'both footer tools stay reachable');
-   await click('.echat__tab[aria-label="聊天历史"]');
-   await page.waitForFunction(message=>document.querySelector('.echat__history')?.textContent.includes(message),{},message);
-   await click('.brief .ewheel__btn');
-   // A fresh emote remains visible after scrolling the independent briefing information.
-   await new Promise(resolve=>setTimeout(resolve,1050));
-   assert.equal((await guest.request({t:'g.emote',id:EMOTES[0]})).t,'ok');
-   await page.waitForSelector('.brief .communication-activity [data-emote]');
-   await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.communication-bubble')).opacity)>.9);
-   const scrollSelector=await page.$('.brief__intel')?'.brief__intel':'.brief__left';
-   await page.$eval(scrollSelector,e=>{e.scrollTop=e.scrollHeight;});await settle();
-   assert.equal(await page.$eval('.brief .communication-activity [data-emote]',e=>{const r=e.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.communication-activity');}),true,'emote survives information scrolling');
-   await page.screenshot({path:path.join(out,`${engine}-${size.width}-${size.height}-emote.png`)});
-   await new Promise(resolve=>setTimeout(resolve,1050));
-  }
-  await click('.brief .ewheel__btn');await page.waitForSelector('.echat__input');
-  await page.type('.echat__input','已就绪，可以交流');await click('.echat__send');
-  assert.equal((await guest.waitFor('m.chat',m=>m.text==='已就绪，可以交流')).text,'已就绪，可以交流','ready player can actually send text');
-  await click('.brief .ewheel__btn');
-  await page.setViewport(viewport({width:844,height:390}));
-  await page.evaluate(()=>{
-   document.documentElement.dataset.text='md';
-   for(const name of ['--sa-l','--sa-r','--sa-b'])document.documentElement.style.setProperty(name,'0px');
-   dispatchEvent(new Event('resize'));
-  });await settle();
-  await click('.brief .ewheel__btn');await page.waitForSelector('.echat__input');
-  await page.$eval('.echat__input',e=>e.focus());
-  await page.evaluate(()=>{
-   const vv=visualViewport;
-   Object.defineProperty(vv,'height',{configurable:true,value:200});
-   Object.defineProperty(vv,'offsetTop',{configurable:true,value:24});
-   vv.dispatchEvent(new Event('resize'));
-  });await settle();
-  await page.screenshot({path:path.join(out,`${engine}-keyboard.png`)});
-  const keyboard=await page.$eval('.ewheel__dialog',e=>{
-   const r=e.getBoundingClientRect(),input=e.querySelector('input').getBoundingClientRect();
-   return{top:r.top,bottom:r.bottom,inputTop:input.top,inputBottom:input.bottom,visibleTop:visualViewport.offsetTop,visibleBottom:visualViewport.offsetTop+visualViewport.height};
+  const settle=()=>page.evaluate(async()=>{await document.fonts.ready;for(const a of document.getAnimations())if(Number.isFinite(a.effect?.getComputedTiming().endTime)&&!a.effect?.target?.closest?.('.ebubble'))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+  const chatGeometry=()=>page.evaluate(()=>{
+   const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right};};
+   const input=document.querySelector('.echat__input'),count=document.querySelector('.echat__count');
+   return {dialog:rect(document.querySelector('.ewheel__dialog')),input:rect(input),count:rect(count),
+    placeholder:input.hasAttribute('placeholder'),triggerVisible:!!document.querySelector('.ewheel__btn').getBoundingClientRect().width,
+    messageCounts:document.querySelectorAll('.echat__tab-count').length,
+    tabs:[...document.querySelectorAll('.echat__tab')].map(e=>{const s=getComputedStyle(e);return {...rect(e),shadow:s.boxShadow,borders:[s.borderLeftWidth,s.borderRightWidth,s.borderTopWidth,s.borderBottomWidth]};})};
   });
-  assert.ok(keyboard.top>=keyboard.visibleTop&&keyboard.bottom<=keyboard.visibleBottom+1,JSON.stringify(keyboard));
-  assert.ok(keyboard.inputTop>=keyboard.top&&keyboard.inputBottom<=keyboard.visibleBottom+1,JSON.stringify(keyboard));
-  await page.evaluate(()=>{delete visualViewport.height;delete visualViewport.offsetTop;visualViewport.dispatchEvent(new Event('resize'));});
-  await click('.brief [data-testid="settings-btn"]');await page.waitForSelector('.settings-modal');await settle();
-  assert.equal(await page.$eval('.brief .ewheel__btn',e=>{const r=e.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.modal');}),true,'settings cover communication controls');
-  await page.keyboard.press('Escape');await page.waitForSelector('.settings-modal',{hidden:true});
-  const context=await browser.createBrowserContext(),watch=await context.newPage();
-  await watch.setViewport(sizes[0]);await watch.goto(`${server.url}/?spectate=${code}`,{waitUntil:'domcontentloaded'});
-  await watch.waitForSelector('.title-login input');await watch.type('.title-login input','旁观验证');await watch.locator('.title-login .btn--primary').click();
-  await watch.waitForSelector('.brief .ewheel__btn');assert.equal(await watch.$eval('.brief .ewheel__btn',e=>e.disabled),true,'spectators cannot send');
+  const checkChat=geometry=>{
+   assert.equal(geometry.triggerVisible,false,'opening replaces the communication trigger');
+   assert.equal(geometry.placeholder,false);assert.equal(geometry.messageCounts,0);
+   assert.equal(geometry.tabs.length,3);
+   for(const tab of geometry.tabs){assert.ok(Math.abs(tab.w-tab.h)<1,'toolbar controls are square');assert.equal(tab.shadow,'none');assert.equal(new Set(tab.borders).size,1,'all button edges have equal thickness');}
+   assert.ok(Math.abs(geometry.tabs[0].x-geometry.input.x)<1,'toolbar and input share the left edge');
+   assert.ok(geometry.count.x>geometry.input.x&&geometry.count.right<geometry.input.right-3,'counter stays inside the right of the input');
+  };
+  await page.setViewport({width:1366,height:768});await page.goto(server.url,{waitUntil:'domcontentloaded'});await page.waitForSelector('.title-login input');await page.type('.title-login input','交流验证');await page.click('.title-login .btn--primary');await page.waitForSelector('.lobby-hub');
+  await request('room.create',{mode:'coop',difficulty:'NORMAL'});await page.waitForSelector('.room-screen');const code=await page.evaluate(()=>window.__SP__.store.get().room.code);
+  guest=await TestClient.connect(server.url.replace('http','ws')+'/ws');await guest.hello('测试队友');await guest.request({t:'room.join',code});await guest.request({t:'room.ready',ready:true});await request('room.start');await page.waitForSelector('.brief');
+  const match=server.lobby.rooms.get(code).match;match.setDeadline(180,()=>{});match.markPublic();
+  await guest.request({t:'g.chat',text:'请确认阵容后再开始'});await page.waitForFunction(()=>document.querySelector('.echat__history')?.textContent.includes('请确认阵容后再开始'));
+  for(const [width,height] of [[1366,768],[844,390],[640,360]]){
+   await page.setViewport({width,height});await settle();
+   await page.type('.echat__input','等一下');await settle();const pinned=await chatGeometry();checkChat(pinned);
+   await page.screenshot({path:path.join(out,`pinned-${width}.png`)});
+   await page.click('.echat__pin');await settle();const unpinned=await chatGeometry();checkChat(unpinned);
+   for(const part of ['dialog','input','count'])for(const key of ['x','y','w','h'])assert.ok(Math.abs(pinned[part][key]-unpinned[part][key])<1,`${part} ${key} stays unchanged when unpinning`);
+   assert.equal(await page.$eval('.echat__input',e=>e.value),'等一下','pinning preserves a draft');
+   await page.screenshot({path:path.join(out,`unpinned-${width}.png`)});
+   await page.click('[aria-label="表情"]');await settle();const emotes=await chatGeometry();checkChat(emotes);
+   for(const part of ['dialog','input','count'])for(const key of ['x','y','w','h'])assert.ok(Math.abs(unpinned[part][key]-emotes[part][key])<1,`${part} ${key} stays unchanged between messages and emotes`);
+   await page.click('.echat__pin');await settle();assert.deepEqual(await chatGeometry(),emotes,'emote layout also stays unchanged when pinning');
+   await page.screenshot({path:path.join(out,`emotes-${width}.png`)});
+   await page.click('[aria-label="聊天历史"]');await page.click('.echat__pin');await settle();
+   await page.click('.brief-bonds:first-child .brief-h');await page.waitForSelector('.ewheel__dialog',{hidden:true});
+   await page.waitForSelector('.ewheel__btn',{visible:true});await page.click('.ewheel__btn');await settle();checkChat(await chatGeometry());
+   await page.click('.echat__pin');await settle();
+   await page.$eval('.echat__input',e=>{e.value='';e.dispatchEvent(new Event('input',{bubbles:true}));});
+  }
+  for(const [width,height] of [[844,390],[740,360],[640,360],[844,240]]){
+   await page.setViewport({width,height});await settle();await page.$eval('.brief__intel',e=>{e.scrollTop=e.scrollHeight;});await settle();
+   const input=await page.$eval('.echat__input',e=>{const r=e.getBoundingClientRect();return{hit:e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),bottom:r.bottom};});await page.screenshot({path:path.join(out,`06-chat-${width}-${height}.png`)});assert.ok(input.hit&&input.bottom<=height,'fixed input survives independent intel scrolling '+JSON.stringify({width,height,input}));
+   await page.screenshot({path:path.join(out,`06-chat-${width}-${height}.png`)});
+  }
+  await page.setViewport({width:844,height:390});await settle();await page.$eval('.echat__input',e=>e.focus());
+  await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{configurable:true,value:200});Object.defineProperty(visualViewport,'offsetTop',{configurable:true,value:24});visualViewport.dispatchEvent(new Event('resize'));});await settle();
+  const keyboard=await page.$eval('.echat__input',e=>{const r=e.getBoundingClientRect();return{top:r.top,bottom:r.bottom,hit:e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)};});assert.ok(keyboard.hit&&keyboard.top>=24&&keyboard.bottom<=224,'keyboard leaves input visible');await page.screenshot({path:path.join(out,'07-chat-keyboard.png')});
+  await page.evaluate(()=>{delete visualViewport.height;delete visualViewport.offsetTop;visualViewport.dispatchEvent(new Event('resize'));});await settle();
+  await new Promise(resolve=>setTimeout(resolve,1050));await guest.request({t:'g.emote',id:EMOTES[0]});await page.waitForSelector('.communication-activity [data-emote]');
+  await page.click('[data-testid="settings-btn"]');await page.waitForSelector('.settings-modal');await settle();
+  assert.equal(await page.$eval('.echat__input',e=>{const r=e.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.modal');}),true,'settings cover fixed chat');await page.keyboard.press('Escape');
+  // Reuse this disposable page as a new spectator identity. Firefox BiDi can send
+  // keyboard actions to browser chrome when switching to a new private window.
+  const context=browser.defaultBrowserContext(),watch=page;
+  await watch.evaluate(()=>{localStorage.clear();sessionStorage.clear();});await context.deleteCookie(...await context.cookies());
+  await watch.setViewport({width:844,height:390});await watch.goto(new URL(`/?spectate=${code}`,server.url).href,{waitUntil:'domcontentloaded'});await watch.waitForSelector('.title-login input');await watch.type('.title-login input','旁观验证');
+  await watch.click('.title-login .btn--primary');await watch.waitForFunction(()=>!!window.__SP__?.store.get().match.public||!!window.__SP__?.store.get().ui.pendingJoinError);
+  if(await watch.evaluate(()=>window.__SP__.store.get().ui.pendingJoinError?.code==='RATE')){await new Promise(resolve=>setTimeout(resolve,1100));await watch.click('[data-testid="invite-retry"]');}
+  await watch.waitForSelector('.brief .echat__input',{timeout:10000}).catch(async error=>{await watch.screenshot({path:path.join(out,'spectator-failure.png')});console.log(await watch.evaluate(()=>({phase:window.__SP__?.store.get().match.public?.phase,room:window.__SP__?.store.get().room,ui:window.__SP__?.store.get().ui,text:document.body.textContent.slice(-1800)})));throw error;});
+  assert.equal(await watch.$eval('.echat__input',e=>e.disabled),true,'spectators cannot send');await watch.click('.echat__pin');await watch.click('.brief-bonds:first-child .brief-h');await watch.waitForSelector('.ewheel__dialog',{hidden:true});await watch.click('.ewheel__btn');assert.ok(await watch.$('.echat__history'),'spectators can reopen history');
+  // The battle HUD removes the hidden trigger's footprint and keeps other controls reachable.
+  await page.goto(`${server.url}/dev/game-mock.html?render=fallback&shot=1&phase=PREP`,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>!!window.__MOCK__&&window.__SP_VIEW__?.kind==='fallback');
+  const cornerHeight=()=>page.$eval('.gm__corner',e=>e.getBoundingClientRect().height);
+  for(const [width,height] of [[1366,768],[844,390],[640,360]]){
+   await page.setViewport({width,height});await settle();const before=await cornerHeight();
+   await page.click('.ewheel__btn');await settle();checkChat(await chatGeometry());
+   assert.ok(await cornerHeight()<=before,'the hidden trigger does not reserve an extra row');
+   assert.ok(await page.$$eval('.gm__corner>.gm__gear',es=>es.every(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})),'chat does not cover the other corner controls');
+   await page.screenshot({path:path.join(out,`battle-${width}.png`)});
+   await page.keyboard.press('Escape');await page.waitForSelector('.ewheel__dialog',{hidden:true});
+   await page.waitForSelector('.ewheel__btn',{visible:true});
+  }
   assert.deepEqual(errors,[]);
- }finally{await browser?.close();await guest?.close();await observer?.close();await server.close();}
+ }finally{await browser?.close();await guest?.close();await server.close();}
 });

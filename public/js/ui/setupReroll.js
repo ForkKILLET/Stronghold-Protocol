@@ -33,7 +33,7 @@ export function SetupReroll({ pub, compact = false }) {
       })}</div>` : null}
     </div>
     <div class="brief-reroll__actions">
-      ${!vote ? html`<${Button} icon="refresh" size="lg" loading=${busy} disabled=${!online || !allConnected}
+      ${!vote ? html`<${Button} variant="danger" icon="refresh" size="xl" class="brief-reroll__start" loading=${busy} disabled=${!online || !allConnected}
         title=${allConnected ? t('全体真人玩家一致同意后刷新，随机结果可能重复。') : t('请等待所有玩家连接后再发起投票')}
         onClick=${() => send(() => actions.rerollSetup(pub.setupRevision ?? 0))}>${t('重刷本局')}<//>` : null}
       ${vote && voter ? html`<${Button} variant="primary" loading=${busy} disabled=${!online || agreed}

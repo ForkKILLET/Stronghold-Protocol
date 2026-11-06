@@ -21,7 +21,7 @@
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { EMOTE_THEMES, EMOTE_COOLDOWN_MS, EMOTE_BUBBLE_MS, emoteInfo, emoteArtGroup } from '../../../shared/constants.js';
-import { html } from './components.js';
+import { html, Icon } from './components.js';
 import { GIcon } from './gameComponents.js';
 import { data, useData, localAsset, artUrls, nextArtUrl } from '../data.js';
 import { loadPref, savePref } from '../store.js';
@@ -209,9 +209,9 @@ export function EmoteBubble({ id, text, class: cls, ttl = EMOTE_BUBBLE_MS, at })
 /**
  * 交流 button + emote panel.
  * @param {{ onSend: (id:string)=>void, open: boolean, onToggle: (open:boolean)=>void, disabled?: boolean,
- *   cooldownMs?: number, onChat?: (text:string)=>Promise<boolean>, history?: any[], myId?: string }} props
+ *   cooldownMs?: number, onChat?: (text:string)=>Promise<boolean>, history?: any[], myId?: string, pinned?: boolean, onPinChange?: (pinned:boolean)=>void, initialView?: string }} props
  */
-export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle, disabled = false, cooldownMs = EMOTE_COOLDOWN_MS }) {
+export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle, disabled = false, cooldownMs = EMOTE_COOLDOWN_MS, pinned = false, onPinChange, initialView = 'emotes' }) {
   useData('local');
   useEffect(() => { ensureEmoteCss(); }, []);
   const [page, setPage] = useState(lastThemeIndex);
@@ -220,7 +220,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   const [cooling, setCooling] = useState(() => cooldownLeft(lastSentAt, Date.now(), cooldownMs) > 0);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
-  const [chatView, setChatView] = useState('emotes');
+  const [chatView, setChatView] = useState(initialView);
   const composing = useRef(false);
   const pendingChat = useRef(false);
   const chatInput = useRef(null);
@@ -228,7 +228,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   const swallowClick = useRef(false);
   const wheelAcc = useRef({ x: 0, t: -Infinity, spent: false });
   const live = useRef({});
-  live.current = { page, onToggle, chatView };
+  live.current = { page, onToggle, chatView, pinned };
 
   const go = (to) => {
     const next = clampPage(to);
@@ -240,7 +240,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
 
   // reopen on the last used theme
   useEffect(() => {
-    if (open) { setPage(lastThemeIndex()); setDir(0); setDx(0); setChatView('emotes'); }
+    if (open) { setPage(lastThemeIndex()); setDir(0); setDx(0); setChatView(initialView); }
   }, [open]);
 
   // cooldown: the button is greyed for chatCD after a send (from the send time, so a remounted wheel keeps it)
@@ -253,7 +253,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   // outside press closes; ← / → change the page
   useEffect(() => {
     if (!open) return undefined;
-    const onDown = (e) => { if (!(e.target instanceof Element) || !e.target.closest('.ewheel')) live.current.onToggle(false); };
+    const onDown = (e) => { if (!live.current.pinned && (!(e.target instanceof Element) || !e.target.closest('.ewheel'))) live.current.onToggle(false); };
     const onKey = (e) => {
       if (live.current.chatView === 'history') return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -278,7 +278,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
     rememberTheme(e.themeId);
     setCooling(true);
     onSend(id);
-    onToggle(false);
+    if (!pinned) onToggle(false);
   };
 
   const sendChat = async (event) => {
@@ -343,10 +343,11 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   const panelBg = emoteUiSprite('emoji_bkg');
   const cellBg = emoteUiSprite('emoji_cell_bkg');
   const panelStyle = [panelBg && `--ewheel-bg:url("${panelBg}")`, cellBg && `--ewheel-cell:url("${cellBg}")`].filter(Boolean).join(';');
-  return html`<div class="ewheel">
+  return html`<div class=${cx('ewheel', onChat && 'has-chat', open && 'is-open', pinned && 'is-pinned')}>
     <button type="button" class=${cx('ewheel__btn', btnSprite && 'has-sprite', onChat && 'is-communication', open && 'is-on', !onChat && cooling && 'is-cooling')}
-      style=${btnSprite ? `--ewheel-btn:url("${btnSprite}")` : ''} onClick=${() => onToggle(!open)}
-      aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog" disabled=${disabled || (!onChat && cooling)}>
+      hidden=${!!onChat && open}
+      style=${btnSprite ? `--ewheel-btn:url("${btnSprite}")` : ''} onClick=${() => { if(open)onPinChange?.(false); onToggle(!open); }}
+      aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog" disabled=${!onChat && (disabled || cooling)}>
       ${btnSprite ? null : html`<${GIcon} name="emote" />`}<span class="ewheel__label">${t('交流')}</span>
     </button>
     ${open ? html`<div class=${cx('ewheel__dialog', onChat && 'has-chat')} role="dialog" aria-label=${t('交流')}>
@@ -359,8 +360,11 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
       <button type="button" class=${cx('echat__tab', chatView === 'history' && 'is-on')}
         aria-label=${t('聊天历史')} title=${t('聊天历史')}
         aria-pressed=${chatView === 'history' ? 'true' : 'false'} onClick=${() => setChatView('history')}>
-        <${GIcon} name="history" /><span class="echat__tab-count">${history.length}</span>
+        <${Icon} name="message" />
       </button>
+      ${onPinChange ? html`<button type="button" class=${cx('echat__tab', 'echat__pin', pinned && 'is-on')}
+        aria-label=${pinned ? t('取消固定交流框') : t('固定交流框')} title=${pinned ? t('取消固定交流框') : t('固定交流框')}
+        aria-pressed=${pinned ? 'true' : 'false'} onClick=${() => onPinChange(!pinned)}><${Icon} name="pin" /></button>` : null}
     </nav>` : null}
     <div class="ewheel__compose">
     <div class=${cx('ewheel__panel', panelBg && 'has-sprite', cellBg && 'has-cell')} style=${panelStyle}
@@ -390,7 +394,8 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
     </div>
     ${onChat ? html`<div class="echat">
       <form class="echat__form" onSubmit=${sendChat}>
-        <input type="text" class="echat__input" ref=${chatInput} value=${draft} placeholder=${t('最多20字')}
+        <div class="echat__field">
+        <input type="text" class="echat__input" ref=${chatInput} value=${draft}
           aria-label=${t('局内聊天，最多20字')} disabled=${disabled}
           onCompositionStart=${() => { composing.current = true; }}
           onCompositionEnd=${(e) => {
@@ -407,6 +412,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
             e.stopPropagation();
           }} />
         <span class="echat__count">${chatLength(draft)}/${CHAT_MAX_LENGTH}</span>
+        </div>
         <button type="submit" class="echat__send" disabled=${disabled}
           aria-disabled=${cooling || sending || !validChatText(draft) ? 'true' : 'false'}
           onPointerDown=${(e) => {

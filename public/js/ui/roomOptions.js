@@ -31,7 +31,7 @@ import { validPrepChoice as valid } from './prepTime.js';
 
 
 export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSeconds=null, battleSpeed=2, onOpen, editable=true, disabled=false, contentLabel=null,soloTimeLabel=null}) {
- return html`<div class="room-config-summary">
+ return html`<div class="room-config-summary setup-action-group">
   <div class="room-config-summary__values"><${DifficultyTag} difficulty=${difficulty} size="sm" />
    <span>${t('休整期')} ${mode==='solo'?(soloTimeLabel||t('不限时')):prepSeconds!=null?t('每回合 {seconds} 秒',{seconds:prepSeconds}):prepTimeLabel(prepMultiplier)}</span>
    <span>${t('战斗倍速')} ${battleSpeed}×</span>

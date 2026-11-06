@@ -38,7 +38,7 @@
 .brief-h::before { content: ''; width: calc(.06 * var(--ui-unit, 1rem)); height: calc(.2 * var(--ui-unit, 1rem)); background: var(--mint-500); align-self: center; }
 
 /* ---- briefing layout ---- */
-.brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); overflow: hidden; grid-template-columns: calc(6.2 * var(--ui-unit, 1rem)) 1fr; gap: calc(.36 * var(--ui-unit, 1rem)); padding: calc(.3 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.1 * var(--ui-unit, 1rem)); }
+.brief__main { position: relative; z-index: 1; flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); overflow: hidden; grid-template-columns: calc(6.2 * var(--ui-unit, 1rem)) 1fr; gap: calc(.36 * var(--ui-unit, 1rem)); padding: calc(.3 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)); }
 /* a match with gameplay plugins (DESIGN §32.6): the unofficial mark under the step header */
 .brief__modmark { position: relative; z-index: 2; align-self: flex-start; margin: calc(.06 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) 0; }
 .brief__left { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-height: 0; min-width: 0; overflow: hidden; }
@@ -50,7 +50,7 @@
 .brief__left > .communication-activity .communication-bubble { min-width: 0; }
 .brief__left > .communication-activity .ebubble--chat { flex: 1; }
 .brief__left > .communication-activity .ebubble:not(.ebubble--chat) { flex: none; width: 44px; height: 36px; }
-.brief__right { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-width: 0; min-height: 0; overflow: hidden; }
+.brief__right { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-width: 0; min-height: 0; overflow: visible; }
 .brief__bonds { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
 .brief__bonds > * { flex-shrink: 0; }
 
@@ -129,13 +129,13 @@
 .diybanned__tag { display: inline-block; margin-right: calc(.06 * var(--ui-unit, 1rem)); padding: calc(.01 * var(--ui-unit, 1rem)) calc(.06 * var(--ui-unit, 1rem)); font-size: calc(.12 * var(--utility-text, var(--t))); font-weight: 700;
   letter-spacing: .08em; background: var(--mint-500); color: var(--text-on-mint); vertical-align: calc(.01 * var(--ui-unit, 1rem)); }
 
-.brief__foot { position: relative; z-index: 2; flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: calc(.18 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)); padding: calc(.18 * var(--ui-unit, 1rem)) calc(.5 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)); }
-.brief__tools { display: flex; flex-wrap: wrap; align-items: center; gap: calc(.18 * var(--ui-unit, 1rem)); margin-right: auto; min-width: 0; }
-.brief__tools .btn, .brief__tools .communication-dock .ewheel__btn { box-sizing: border-box; height: max(44px, calc(.64 * var(--ui-unit, 1rem))); min-height: max(44px, calc(.64 * var(--ui-unit, 1rem))); padding: 6px 12px; font-size: max(12px, calc(.16 * var(--utility-text, var(--t)))); }
-.brief-ready { display: flex; align-items: center; gap: calc(.16 * var(--ui-unit, 1rem)); }
-.brief-ready__txt { font-size: calc(.2 * var(--utility-text, var(--t))); color: var(--text-lo); }
+.brief__foot { position: relative; z-index: 2; flex: none; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: calc(.12 * var(--ui-unit, 1rem)); }
+.brief__tools { display: flex; flex:1; flex-wrap: wrap; align-items: center; gap: calc(.12 * var(--ui-unit, 1rem)); margin-right: auto; min-width: 0; }
+.brief__decision { display:flex; flex:none; align-items:center; gap:calc(.18 * var(--ui-unit,1rem)); }
+.brief-ready { display: flex; align-items:center; gap:calc(.12 * var(--ui-unit,1rem)); }
+.brief-ready__txt { font-size: calc(.2 * var(--utility-text, var(--t))); line-height:1; color: var(--text-lo); }
 .brief-ready__txt b { font-size: calc(.4 * var(--utility-text, var(--t))); color: var(--mint-400); margin: 0 calc(.02 * var(--ui-unit, 1rem)); }
-.brief-ready__txt span { font-size: calc(.24 * var(--utility-text, var(--t))); color: var(--text-dim); }
+.brief-ready__total { font-size: calc(.24 * var(--utility-text, var(--t))); color: var(--text-dim); }
 .brief-ready__pips { display: flex; gap: calc(.06 * var(--ui-unit, 1rem)); }
 .brief-ready__pips i { width: calc(.3 * var(--ui-unit, 1rem)); height: calc(.3 * var(--ui-unit, 1rem)); display: grid; place-items: center; color: var(--text-dim); }
 .brief-ready__pips i .icon { width: 100%; height: 100%; }
@@ -144,7 +144,7 @@
 
 /* Extremely short landscape: a narrow column cannot fit a whole incoming message. */
 @media (max-height: 300px) and (orientation: landscape) {
-  .brief__main { grid-template-rows: minmax(46px, 1fr) auto; row-gap: 4px; padding-block: 0; }
+  .brief__main { grid-template-rows: minmax(46px, 1fr) auto; row-gap: 4px; padding-block: 6px; }
   .brief__left { display: contents; }
   .brief__intel { grid-column: 1; grid-row: 1; min-width: 0; }
   .brief__right { grid-column: 2; grid-row: 1; gap: 0; }
@@ -215,14 +215,14 @@
 .stephead__title { animation: pg-right 420ms var(--pg-ease) 120ms backwards; }
 .brief-sec { animation: pg-right 460ms var(--pg-ease) backwards; animation-delay: calc(160ms + var(--i, 0) * 80ms); }
 .brief-sec .brief-bonds__row > *, .brief-sec .brief-banned__grid > * { animation: pg-pop 340ms var(--pg-ease) backwards; animation-delay: calc(360ms + var(--i, 0) * 80ms); }
-.brief__foot .brief-ready, .brief__foot .brief-loadout { animation: pg-rise 420ms var(--pg-ease) 420ms backwards; }
+.brief__foot .brief-ready, .brief__foot .brief-loadout, .brief__foot .brief-reroll__start { animation: pg-rise 420ms var(--pg-ease) 420ms backwards; }
 /* opens from its left edge by a transform (a scaleX from its left, held by the backwards fill until it starts): the
    button takes taps only where it is drawn at that moment, and the corner's other controls stay put */
 .brief-go { transform-origin: left center; animation: brief-go-in 520ms var(--pg-ease) 480ms backwards; }
 @keyframes brief-go-in { 0% { opacity: 0; transform: scaleX(.08); filter: brightness(2.2); } 60% { opacity: 1; transform: none; filter: brightness(1.5); } }
 @media (prefers-reduced-motion: reduce) {
   .brief .stephead, .draft .stephead, .stephead__title, .brief-sec, .brief-sec .brief-bonds__row > *, .brief-sec .brief-banned__grid > *,
-  .brief__foot .brief-ready, .brief__foot .brief-loadout, .brief-go, .brief-ready__pips i.on { animation: none; }
+  .brief__foot .brief-ready, .brief__foot .brief-loadout, .brief__foot .brief-reroll__start, .brief-go, .brief-ready__pips i.on { animation: none; }
 }
 
 /* official versions (DESIGN §35.23): the version's tag beside the 非官方 mark */
@@ -247,12 +247,23 @@
 .tooltip.brief-faction__tip { max-width: min(calc(4.8 * var(--ui-unit, 1rem)), calc(100vw - 16px)); font-size: max(calc(.15 * var(--utility-text, var(--t))), 10px); }
 .brief-faction__icon:focus-visible { outline: 1px solid var(--mint-500); outline-offset: 2px; }
 
-/* Compact briefing information leaves the footer in charge of all actions. */
+/* Compact information scrolls above the bond column's persistent actions. */
 .brief__bonds .brief-bonds, .brief__bonds .brief-banned { padding:calc(.1 * var(--ui-unit,1rem)) calc(.16 * var(--ui-unit,1rem)) calc(.12 * var(--ui-unit,1rem)); }
 .brief__bonds .brief-h { margin-bottom:calc(.08 * var(--ui-unit,1rem)); }
 .brief__bonds .brief-bonds__row { gap:calc(.1 * var(--ui-unit,1rem)) calc(.08 * var(--ui-unit,1rem)); }
 .brief__bonds .brief-bond .bond { --disc:calc(.6 * var(--ui-unit,1rem)); }
 .brief__bonds .brief-banned__grid .uthumb { --ut:calc(.54 * var(--ui-unit,1rem)); }
-.brief-reroll--compact { position:relative; flex:none; margin:0; padding:0; border:0; background:none; }
+.brief-reroll--compact { position:static; flex:none; margin:0; padding:0; border:0; background:none; }
 .brief-reroll--compact:not(.brief-reroll--vote) .brief-reroll__text { display:none; }
-.brief-reroll--compact.brief-reroll--vote .brief-reroll__text { position:absolute; left:0; bottom:calc(100% + 8px); width:min(420px,calc(100vw - 36px)); max-height:45dvh; overflow:auto; padding:12px; border:1px solid var(--mint-700); background:var(--bg-1); box-shadow:0 8px 24px #0008; z-index:40; }
+.brief-reroll--compact.brief-reroll--vote .brief-reroll__text { position:absolute; left:0; bottom:calc(100% + 8px); box-sizing:border-box; width:min(420px,100%); max-height:min(45dvh,calc(100dvh - 240px)); overflow:auto; padding:12px; border:1px solid var(--mint-700); background:var(--bg-1); box-shadow:0 8px 24px #0008; z-index:40; }
+@media (max-width:1000px) {
+ .brief__foot, .brief__tools, .brief__decision { gap:6px; }
+ .brief-ready__pips { display:none; }
+ .brief-ready__txt { font-size:12px; white-space:nowrap; }
+ .brief-ready__txt b { font-size:20px; }
+ .brief-ready__total { font-size:14px; }
+}
+@media (max-width:700px) {
+ /* The ready button gives the count its context; keep the label for screen readers. */
+ .brief-ready__label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+}

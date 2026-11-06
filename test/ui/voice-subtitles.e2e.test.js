@@ -146,7 +146,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       await page.click('.ewheel__btn'); await page.waitForSelector('.ewheel__dialog');
       await checkClear('.ewheel__dialog,.gm__corner,.chud > *');
       await page.screenshot({ path: new URL(`${engine}-chat.png`, out).pathname });
-      await page.click('.ewheel__btn'); await page.waitForSelector('.ewheel__dialog', { hidden: true });
+      await page.keyboard.press('Escape'); await page.waitForSelector('.ewheel__dialog', { hidden: true });
       await page.click('.gm__metrics'); await page.waitForSelector('.combat-metrics');
       await checkClear('.combat-metrics,.gm__corner,.chud > *');
       await page.click('.combat-metrics__close'); await page.waitForSelector('.combat-metrics', { hidden: true });

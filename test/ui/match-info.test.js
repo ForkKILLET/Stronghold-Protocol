@@ -83,7 +83,7 @@ test('matchInfoModel: random and static pool bans both mark incomplete lineups, 
   assert.deepEqual([empty.bonds.length, empty.banned.length, empty.sets.drawn.size, empty.sets.off.size], [0, 0, 0, 0]);
 });
 
-test('MatchBondRow: greyed by state (✕ disc), the banned-member badge, the red ring on an enabled bond that lost members, the tip', () => {
+test('MatchBondRow: greyed by state, only the banned-member badge, the red ring on an enabled bond that lost members, the tip', () => {
   const m = model();
   const row = MatchBondRow({ title: '附加盟约', micro: 'ADD-ON BONDS', bonds: m.addon, model: m });
   assert.match(textOf(row), /附加盟约ADD-ON BONDS/);
@@ -94,6 +94,7 @@ test('MatchBondRow: greyed by state (✕ disc), the banned-member badge, the red
   // 奥术: static pool ban — incomplete lineup, badge 2, still activatable.
   assert.ok(hasClass(cell('arcaneShip'), 'is-off') && hasClass(cell('arcaneShip'), 'is-incomplete'));
   assert.deepEqual([disc('arcaneShip').props.disabled, disc('arcaneShip').props.active, disc('arcaneShip').props.tier], [true, false, 0]);
+  assert.equal(disc('arcaneShip').props.showDisabledBadge, false, 'the member count replaces the generic cross badge');
   assert.match(textOf(badge('arcaneShip')), /^2$/);
   assert.equal(tipOf('arcaneShip').props.text, '奥术：部分盟约所含干员阵容不完整（2 名干员无法出现）');
   // 坚守: drawn (D) — greyed as well, marked incomplete, the 阵容不完整 tip

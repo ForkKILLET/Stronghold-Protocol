@@ -95,7 +95,7 @@ function BondBannedAside(bond, model, banned) {
 }
 
 /**
- * One row of bond discs (核心盟约 / 附加盟约): a greyed disc (✕) for a bond in the drawn set D or one the mode never
+ * One row of bond discs (核心盟约 / 附加盟约): a greyed disc for a bond in the drawn set D or one the mode never
  * activates, the red badge with its banned members, a red ring on an enabled bond that lost members; the tooltip says
  * which (briefingBondTip). A bond with banned members lists them in a second box beside the tooltip (BondBannedAside).
  * @param {{ title: string, micro: string, bonds: any[], model: MatchInfoModel, onBond?: (id:string)=>void }} props
@@ -113,7 +113,7 @@ export function MatchBondRow({ title, micro, bonds, model, onBond }) {
         return html`<${Tooltip} key=${b.bondId} text=${briefingBondTip(b.name, state, bannedN)}
           aside=${bannedN > 0 ? BondBannedAside(b, model, banned) : null}>
           <div class=${cx('brief-bond', off && 'is-off', state === 'drawn' && 'is-incomplete', !off && bannedN > 0 && 'is-partial')} data-bond=${b.bondId}>
-            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId)} active=${!off} disabled=${off} tier=${off ? 0 : (b.thresholds?.length || 1)}
+            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId)} active=${!off} disabled=${off} showDisabledBadge=${false} tier=${off ? 0 : (b.thresholds?.length || 1)}
               maxTier=${Math.max(1, b.thresholds?.length || 1)} size="md" onClick=${onBond ? () => onBond(b.bondId) : undefined} />
             ${bannedN > 0 ? html`<span class="brief-bond__ban num"><${Icon} name="user" />${bannedN}</span>` : null}
           </div>

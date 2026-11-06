@@ -134,7 +134,7 @@
 .draft-detail__btns .btn { flex: 1; }
 .dorder__secs { margin-left: calc(.06 * var(--ui-unit, 1rem)); font-size: calc(.15 * var(--utility-text, var(--utility-text, var(--t)))); color: var(--gold); }
 /* 队友已选 (research 09 §5): a strategy a teammate picked cannot be chosen again */
-.dband.is-taken { cursor: not-allowed; border-color: rgba(246, 163, 41, .35); }
+.dband.is-taken { cursor: pointer; border-color: rgba(246, 163, 41, .35); }
 .dband.is-taken .bandicon, .dband.is-taken .dband__name, .dband.is-taken .dband__lp { filter: grayscale(.8) brightness(.62); }
 .dband.is-taken:hover { transform: none; }
 .dband__taken {
@@ -445,3 +445,38 @@
 .dturn__go b, .dturn__txt b, .dturn__txt span { font-size:calc(.24 * var(--utility-text,var(--t))); }
 .dturn__txt { max-width:calc(3.2 * var(--ui-unit,1rem)); }
 .dturn__txt b { max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.draft-detail__overview { display:flex; flex-direction:column; gap:calc(.08 * var(--ui-unit,1rem)); }
+.draft-tip__compact { display:none; }
+.draft-communication { align-self:stretch; width:100%; }
+@media (max-height:560px) {
+ .draft-order { gap:4px; }
+ .draft-order__deco { display:none; }
+ .draft-order__rows { gap:4px; padding-block:2px; }
+ .dorder { height:calc(.72 * var(--ui-unit,1rem)); }
+ .draft-tip__full { display:none; }
+ .draft-tip__compact { display:block; }
+ .draft-order__tip { font-size:10px; line-height:1.3; }
+ .draft-detail__overview { display:grid; grid-template-columns:calc(.9 * var(--ui-unit,1rem)) minmax(0,1fr); gap:4px; align-items:center; }
+ .draft-detail__overview .draft-detail__art { grid-column:1; grid-row:1 / span 2; width:calc(.9 * var(--ui-unit,1rem)); height:calc(.9 * var(--ui-unit,1rem)); }
+ .draft-detail__overview .draft-detail__hp { grid-column:2; font-size:10px; white-space:nowrap; gap:4px; }
+ .draft-detail__overview .draft-detail__hp b { font-size:12px; }
+ .draft-detail__overview .draft-tag { display:none; }
+ .draft-detail__name { grid-column:2; font-size:min(calc(.3 * var(--utility-text,var(--t))),20px); }
+ .draft-detail__medal { grid-column:1 / -1; }
+}
+@media (max-height:560px) {
+ .draft-order .dorder { height:max(32px,calc(.72 * var(--ui-unit,1rem))); }
+ .draft-order .dorder__name { font-size:min(12px,calc(.2 * var(--utility-text,var(--t)))); line-height:1.2; }
+ .draft-order .dorder__state { font-size:min(10px,calc(.15 * var(--utility-text,var(--t)))); line-height:1.2; }
+ .draft-detail__overview .draft-detail__art .bandicon { --bi:100%; width:100%; height:100%; }
+}
+
+.draft-confirm__compact { display:none; }
+@media (max-height:560px) {
+ .draft-confirm__full { display:none; }
+ .draft-confirm__compact { display:inline; }
+ .draft-detail__btns .btn--lg { font-size:min(12px,max(11px,calc(.2 * var(--utility-text,var(--t))))); }
+}
+
+@media (max-width:760px) and (max-height:560px) { .draft-detail__btns .btn__icon { display:none; } }

@@ -75,6 +75,7 @@ export const ICONS = {
   warn: { d: 'M12 2 1 21h22zm-1 7v6h2V9zm0 7.5v2h2v-2z', eo: true },
   pause: { d: 'M5 3h5v18H5zM14 3h5v18h-5z' },
   pin: { d: 'M7 2h10v2h-1v6l4 4v2h-7v6h-2v-6H4v-2l4-4V4H7z' },
+  message: { d: 'M3 3h18v14H9l-6 5zm2 2v12.2L8.2 15H19V5zm2 3h10v2H7zm0 4h7v2H7z', eo: true },
   play: { d: 'M7 4v16l13-8z' },
   mic: { d: 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21H8v2h8v-2h-3v-3.1A7 7 0 0 0 19 11z' },
   edit: { d: 'M3 17.2V21h3.8l11-11-3.8-3.8zM20.7 7.1a1 1 0 0 0 0-1.4l-2.4-2.4a1 1 0 0 0-1.4 0l-1.8 1.8 3.8 3.8z' },
@@ -220,11 +221,11 @@ export function TierChip({ tier, golden = false, size = 'md', class: cls }) {
 /**
  * Bond disc: round glyph disc with segmented tier ring, stack count and name.
  * @param {{ name?: string, icon?: string, count?: number, layers?: number, tier?: number, maxTier?: number,
- *   active?: boolean, disabled?: boolean, layersDisabled?: boolean, size?: 'sm'|'md'|'lg', showName?: boolean,
+ *   active?: boolean, disabled?: boolean, showDisabledBadge?: boolean, layersDisabled?: boolean, size?: 'sm'|'md'|'lg', showName?: boolean,
  *   onClick?: Function, class?: string, title?: string }} props
  */
 export function BondDisc({
-  name = '', icon, count, layers, tier = 0, maxTier = 3, active = false, disabled = false, layersDisabled = false,
+  name = '', icon, count, layers, tier = 0, maxTier = 3, active = false, disabled = false, showDisabledBadge = true, layersDisabled = false,
   size = 'md', showName = true, onClick, class: cls, title,
 }) {
   // Remember which URL failed (a per-URL flag can't race a reset effect).
@@ -254,7 +255,7 @@ export function BondDisc({
           : html`<span class="bond__glyph">${glyph}</span>`}
       </span>
       ${stack != null ? html`<span class="bond__count">${stack}</span>` : null}
-      ${disabled ? html`<span class="bond__ban" aria-label=${t('禁用')}><${Icon} name="close" /></span>` : null}
+      ${disabled && showDisabledBadge ? html`<span class="bond__ban" aria-label=${t('禁用')}><${Icon} name="close" /></span>` : null}
     </span>
     ${showName && name ? html`<span class="bond__name">${name}</span>` : null}
   <//>`;

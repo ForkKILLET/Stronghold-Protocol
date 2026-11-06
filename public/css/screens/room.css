@@ -456,10 +456,6 @@
 .room-screen .room-config-summary { grid-area:summary; display:flex; flex-wrap:nowrap; align-items:center; justify-content:flex-start; gap:16px; min-width:0; min-height:var(--room-action-height); padding:0; border:0; background:none; }
 .room-screen .room-config-summary__values { flex:0 1 auto; gap:6px var(--summary-gap); font-size:max(12px,calc(.15 * var(--utility-text,var(--utility-text, var(--t))))); }
 .room-screen .room-config-summary > .btn { flex:none; }
-.room-screen .room-config-summary > .btn, .room-screen .room-bar__right .btn {
-  box-sizing:border-box; height:var(--room-action-height); min-height:var(--room-action-height);
-  min-width:var(--room-action-width); padding:10px 14px; font-size:max(14px,calc(.18 * var(--utility-text,var(--utility-text, var(--t))))); font-weight:700; letter-spacing:.04em; gap:8px;
-}
 .room-screen .room-bar__center { grid-area:status; display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; justify-self:end; gap:4px 10px; min-width:0; max-width:380px; min-height:var(--room-action-height); }
 .ready-count[hidden] { display:none; }
 .ready-count { display:flex; flex:none; align-items:baseline; gap:4px; font-size:14px; white-space:nowrap; }
@@ -476,8 +472,6 @@
 @media (max-width:1100px) {
  .room-bar { --room-action-height:40px; --room-action-width:104px; gap:6px 12px; padding:8px 16px; }
  .room-screen .room-config-summary { gap:10px; }
- .room-screen .room-config-summary > .btn, .room-screen .room-bar__right .btn { padding:4px 10px; font-size:14px; gap:6px; }
- .room-screen .room-loadout { max-width:144px; flex-wrap:wrap; align-content:center; justify-content:center; gap:0 4px; }
  .room-screen .room-bar__tools { gap:4px 6px; }
  .room-screen .room-bar__right { gap:8px; }
  .room-screen .room-bar__center { max-width:300px; }
@@ -514,4 +508,3 @@
  .room-screen .rseat__strip { height:36px; min-height:36px; }
  .room-screen .rseat__strip .rseat__pick { width:32px; height:32px; min-height:32px; }
 }
-.room-screen .room-config-summary > .btn .btn__icon, .room-screen .room-bar__right .btn__icon, .room-screen .room-bar__right .lo-entry__icon { flex:none; width:1.15em; height:1.15em; }

@@ -90,25 +90,26 @@ export function BriefingScreen() {
           </div>`) : html`<p class="t-dim">${t('本局没有特训敌人')}</p>`}
         </div>
         </div>
-        <${CommunicationActivity} players=${players} />
+        <div class="brief-communication"><${CommunicationActivity} players=${players} emotesOnly=${true} /><${CommunicationDock} disabled=${!me} /></div>
       </section>
       <section class="brief__right">
         <div class="brief__bonds"><${MatchInfo} model=${info} onBond=${setBondId} /></div>
+        <footer class="brief__foot setup-action-group">
+          <div class="brief__tools">
+            <${LoadoutButton} from="briefing" size="xl" class="brief-loadout" />
+            <${SetupReroll} pub=${pub} compact=${true} />
+          </div>
+          <div class="brief__decision">
+            <div class="brief-ready">
+              <span class="brief-ready__txt"><span class="brief-ready__label">${t('已就绪')}</span><b class="num">${readyN}</b><span class="brief-ready__total num">/${players.length}</span></span>
+              <span class="brief-ready__pips">${players.map((p) => html`<i key=${p.playerId} class=${cx(p.ready && 'on', p.playerId === myId && 'me')} title=${p.name}><${Icon} name="user" /></i>`)}</span>
+            </div>
+            <${Button} variant="primary" size="xl" class="brief-go" icon=${me?.ready ? 'check' : me ? 'play' : 'eye'} active=${!!me?.ready} loading=${busy}
+              disabled=${!!me?.ready || !me || !!pub.rerollVote} onClick=${ready}>${me?.ready ? t('已就绪') : me ? t('准备就绪') : t('观战中')}<//>
+          </div>
+        </footer>
       </section>
     </main>
-    <footer class="brief__foot">
-      <div class="brief__tools">
-        <${LoadoutButton} from="briefing" size="lg" class="brief-loadout" />
-        <${CommunicationDock} disabled=${!me} />
-        <${SetupReroll} pub=${pub} compact=${true} />
-      </div>
-      <div class="brief-ready">
-        <span class="brief-ready__txt">${t('已就绪')}<b class="num">${readyN}</b><span class="num">/${players.length}</span></span>
-        <span class="brief-ready__pips">${players.map((p) => html`<i key=${p.playerId} class=${cx(p.ready && 'on', p.playerId === myId && 'me')} title=${p.name}><${Icon} name="user" /></i>`)}</span>
-      </div>
-      <${Button} variant="primary" size="xl" class="brief-go" icon=${me?.ready ? 'check' : me ? 'play' : 'eye'} active=${!!me?.ready} loading=${busy}
-        disabled=${!!me?.ready || !me || !!pub.rerollVote} onClick=${ready}>${me?.ready ? t('已就绪') : me ? t('准备就绪') : t('观战中')}<//>
-    </footer>
     <${ExitModal} open=${exit} onClose=${() => setExit(false)} solo=${solo} />
     <${MatchBondDialog} bondId=${bondId} onClose=${() => setBondId(null)} priv=${priv} banned=${info.banned} off=${info.sets.off.has(bondId)} />
   </div>`;

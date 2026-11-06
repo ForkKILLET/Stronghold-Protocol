@@ -696,6 +696,8 @@ export function RoomScreen() {
       <//>`} />
     ${coop ? html`<section class="room-invitation" aria-label=${t('同盟密钥')}><${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} version=${curVersion} /></section>` : null}
 
+    <div class="room-stage">
+    <aside class="room-communication"><${CommunicationDock} room=${true} disabled=${facts.spectating} /></aside>
     <main ref=${seatsRef} class=${`seats${coop ? '' : ' seats--solo'}`}>
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
         myId=${me.playerId} busy=${busy} onAddBot=${addBot} onRemoveBot=${removeBot} onKick=${kick} searching=${!!room.matching} portraits=${portraits}
@@ -711,6 +713,7 @@ export function RoomScreen() {
         </ul>
       </aside>`}
     </main>
+    </div>
     <${SpectatorBar} facts=${facts} room=${room} myId=${me.playerId} busy=${busy} onRemove=${removeSpectator} onSit=${sit} onSpectate=${spectate} />
     <${VersionVote} room=${room} />
 
@@ -721,7 +724,6 @@ export function RoomScreen() {
           editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft(currentDraft())} />
         <div class="room-bar__tools">
           <${SoloUnlimitedToggle} option=${soloUnlimitedOption(room, me.playerId, soloTimedOf(getConfig(), curVersion))} busy=${busy} onToggle=${setSoloUnlimited} />
-          <${CommunicationDock} room=${true} disabled=${facts.spectating} />
           ${canManageConsole || room.consoleEnabled ? html`<${RoomOptionSwitch} label=${t('启用控制台')}
             checked=${!!room.consoleEnabled} disabled=${!canManageConsole || (!room.consoleEnabled && !!room.matching) || !online || !!busy}
             busy=${busy === 'console' || busy === 'console-disable'}
@@ -741,7 +743,7 @@ export function RoomScreen() {
         </div>
         <div class="room-bar__status">${statusLine}</div>
       </div>
-      <div class="room-bar__right">
+      <div class="room-bar__right setup-action-group">
         <${LoadoutButton} from="room" size="lg" class="room-loadout" label=${t('干员调配')} />
         ${facts.isHost
           ? coop

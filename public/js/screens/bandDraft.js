@@ -419,7 +419,6 @@ export function BandDraftScreen({ held = null } = {}) {
     <main class="draft__main">
       <aside class="draft-order">
         <div class="draft-order__deco" aria-hidden="true"><i></i><i></i><span>STRONGHOLD PROTOCOL<br />${solo ? 'SINGLE OPERATOR' : 'COLLABORATIVE SYSTEM'}</span></div>
-        <${CommunicationActivity} players=${players} />
         <div class="draft-order__rows">
           ${rows.map((p, i) => {
             const picked = draft.picks.get(p.playerId) || (p.playerId === myId ? myPick : p.bandId) || null;
@@ -428,8 +427,11 @@ export function BandDraftScreen({ held = null } = {}) {
               preview=${draft.focus.get(p.playerId)} arts=${artOf(p)} medal=${p.playerId === myId ? myMedal : null} gd=${gd} onPeek=${peekBand} />`;
           })}
         </div>
-        ${!solo ? html`<p class="draft-order__tip" data-testid="draft-tip">${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}</p>` : null}
-        <div class="draft-communication"><${CommunicationDock} disabled=${!draft.order.includes(myId)} /></div>
+        ${!solo ? html`<p class="draft-order__tip" data-testid="draft-tip" title=${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}>
+          <span class="draft-tip__full">${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}</span>
+          <span class="draft-tip__compact">${myPick ? t('等待其他博士') : timed ? t('超时选择「{name}」', { name: autoName }) : t('不限时选择')}</span>
+        </p>` : null}
+        <div class="draft-communication"><${CommunicationActivity} players=${players} emotesOnly=${true} /><${CommunicationDock} disabled=${!draft.order.includes(myId)} /></div>
       </aside>
       <i class="draft__link" aria-hidden="true"></i>
 
@@ -455,11 +457,13 @@ export function BandDraftScreen({ held = null } = {}) {
         </section>
         ${shownBand ? html`<aside class="draft-detail" key="detail">
           <div class="draft-detail__body" key=${shownBand.bandId}>
+            <div class="draft-detail__overview">
             <div class="draft-detail__art"><${BandIcon} bandId=${shownBand.bandId} size="xl" /></div>
             ${local.won[shownBand.bandId] ? html`<span class="draft-detail__medal">${t('已通过模拟{n}次', { n: local.won[shownBand.bandId] })}</span>` : null}
             <div class="draft-detail__hp">${t('初始生命值')}<b class="num">${shownBand.totalHp ?? '--'}</b></div>
             <span class="draft-tag">STRATEGY</span>
             <h2 class="draft-detail__name">${shownBand.name}</h2>
+            </div>
             <${BandOffNote} names=${bandOffBonds(shownBand, offBonds).map((id) => gd.bond(id)?.name || id)} />
             <span class="draft-tag">INTRO</span>
             <div class="draft-detail__eff"><${BandText} band=${shownBand} class="draft-detail__desc" /></div>
@@ -474,7 +478,7 @@ export function BandDraftScreen({ held = null } = {}) {
               ${!solo ? html`<${Button} variant="secondary" size="lg" icon="chevronRight" class="draft-skip" disabled=${!canSkip || !!busy}
                 loading=${busy === 'skip'} title=${skipsLeft > 0 ? t('跳过本轮，稍后再选') : t('跳过次数已用完')} onClick=${skip}>${t('跳过')}<//>` : null}
               <${Button} variant="primary" size="lg" icon="check" class="draft-confirm" disabled=${!!myPick || !!peek || !myTurn || !band || selTaken}
-                loading=${busy === 'pick'} onClick=${confirm}>${myPick ? t('已选择') : t('确认选择')}<//>
+                loading=${busy === 'pick'} title=${myPick ? t('已选择') : t('确认选择')} aria-label=${myPick ? t('已选择') : t('确认选择')} onClick=${confirm}><span class="draft-confirm__full">${myPick ? t('已选择') : t('确认选择')}</span><span class="draft-confirm__compact">${myPick ? t('已选择') : t('确认')}</span><//>
             </div>
           </div>
         </aside>` : null}

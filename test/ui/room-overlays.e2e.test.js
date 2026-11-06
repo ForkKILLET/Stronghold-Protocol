@@ -69,7 +69,7 @@ for (const [engine, executablePath] of engines) {
               if (animation.effect?.target?.closest?.('.modal, .guide') && animation.effect.getComputedTiming().iterations !== Infinity) animation.finish();
             }
           });
-          const hits = await page.$$eval('.rseat__kick, .communication-dock .ewheel__btn', (buttons, selector) => buttons.map(button => {
+          const hits = await page.$$eval('.rseat__kick, .communication-dock .echat__pin', (buttons, selector) => buttons.map(button => {
             const r = button.getBoundingClientRect();
             const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
             return {label:button.getAttribute('aria-label'), covered:!!top?.closest(selector), top:top?.className?.baseVal ?? top?.className};
