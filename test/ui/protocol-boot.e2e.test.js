@@ -150,7 +150,7 @@ describe('协议启动！ screen (headless Chrome)', { skip: !ENABLED && 'set SP
     // turn, if its art came in time, has played by then
     await page.waitForFunction(() => !document.querySelector('[data-testid="turn-banner"]'), { timeout: 4000 });
     await page.evaluate(() => globalThis.__MOCK__.mutate((s) => { s.priv.bandId = 'band_bldsk'; }));
-    await page.waitForSelector('.draft-done', { timeout: 3000 });
+    await page.waitForFunction(() => document.querySelector('.draft-confirm')?.disabled && document.querySelector('.draft-detail__status')?.textContent.includes('已选择'), { timeout: 3000 });
     await page.evaluate(() => { globalThis.__sfx.length = 0; globalThis.__MOCK__.mutate((s) => { s.priv.bandId = null; }); });
     await page.waitForSelector('[data-testid="turn-banner"]', { timeout: 3000 });
     await page.waitForFunction(() => globalThis.__sfx.includes('yourTurn'), { timeout: 2000 }).catch(() => null);

@@ -690,8 +690,8 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
   .room-options__tabs button { min-height:32px; padding:6px 16px; }
   .room-options__actions { padding:4px 6px 6px; }
   .room-options__actions .btn { min-height:36px; padding:6px 12px; font-size:max(12px,calc(.17 * var(--t))); }
-  .draft-order { min-width:0; overflow-y:auto; overscroll-behavior:contain; }
-  .draft-order > * { flex-shrink:0; }
+  .draft-order { min-width:0; overflow:visible; }
+  .draft-order > :not(.draft-order__rows) { flex-shrink:0; }
   .draft-order > .brief-h { flex-wrap:wrap; gap:4px; }
   .draft-order > .brief-h > span:first-of-type { white-space:nowrap; }
   .draft-order > .brief-h .micro { flex-basis:100%; }

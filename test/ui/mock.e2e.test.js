@@ -528,10 +528,11 @@ describe('in-match UI (mock harness, headless Chrome)', { skip: !ENABLED && 'set
     await bands[5].click();
     await page.click('.draft-detail__btns .btn--primary');
     await sleep(300);
-    // (PR #828: after the own pick the wall gives way to 已选定策略 with the picked strategy)
-    await page.waitForSelector('.draft-done', { timeout: 3000 });
-    const done = await page.$eval('.draft-done', (el) => ({ title: el.querySelector('.draft-done__title')?.textContent, name: el.querySelector('.draft-done__name')?.textContent }));
-    assert.equal(done.title, '已选定策略', 'band picked');
+    // Confirmation keeps the wall and marks the persistent detail as already chosen.
+    await page.waitForFunction(() => document.querySelector('.draft-detail__status')?.textContent.includes('已选择'), { timeout: 3000 });
+    const done = await page.$eval('.draft-detail', (el) => ({ confirmed: el.querySelector('.draft-confirm')?.disabled, name: el.querySelector('.draft-detail__name')?.textContent }));
+    assert.equal(done.confirmed, true, 'band picked');
+    assert.ok(await page.$('.draft-grid'), 'wall remains available');
     const pickedName = await page.evaluate(async (id) => (await import('/js/data.js')).data.lookup('bands', id)?.name, bandId);
     assert.equal(done.name, pickedName, 'the picked strategy');
     assert.deepEqual(problems, []);

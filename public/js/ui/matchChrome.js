@@ -128,9 +128,8 @@ export function AwayOverlay({ onBack = () => {} }) {
 }
 
 /**
- * Pre-game step header (PR #643, the event's pre-game, video 6:29–7:51): exit over the ping | the difficulty, with
- * `extra` beside it in one capsule (the draft's 本局信息) | "1/2 确认本局信息" ……… `status` (the draft's turn: 请选择策略 /
- * X 正在选择策略… / 策略选择完成) | 玩法说明 and the countdown.
+ * Shared preparation header: phase at left, optional information / turn status centred,
+ * and the same difficulty, countdown and pause controls at right in both steps.
  * @param {{ step: number, of: number, title: string, micro: string, pub: any, total?: number|null, onExit: Function,
  *   extra?: any, status?: any }} props
  */
@@ -138,10 +137,9 @@ export function StepHeader({ step, of, title, micro, pub, total, onExit, extra =
   return html`<${PageHeader} onBack=${onExit} backTitle=${t('离开')} title=${title} micro=${micro} />
   <header class="stephead stephead--context">
     <div class="stephead__progress num"><b>${step}</b><span>/${of}</span></div>
+    <div class="stephead__middle">${extra}${status ? html`<div class="stephead__status">${status}</div>` : null}</div>
     <div class="stephead__right">
       ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} />` : null}
-      ${extra}
-      ${status ? html`<div class="stephead__status">${status}</div>` : null}
       <${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />
       <${DraftPause} pub=${pub} standalone=${true} />
     </div>

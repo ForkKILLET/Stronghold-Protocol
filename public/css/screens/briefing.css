@@ -53,11 +53,7 @@
 .brief__right { display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); min-width: 0; min-height: 0; overflow: hidden; }
 .brief__bonds { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: calc(.2 * var(--ui-unit, 1rem)); overflow: auto; padding-right: calc(.06 * var(--ui-unit, 1rem)); }
 .brief__bonds > * { flex-shrink: 0; }
-.brief__right > .brief-reroll { margin: 0; min-height: 0; flex: 0 1 auto; overflow-y: auto; }
-.brief__right .brief-reroll__text { font-size: max(11px, calc(.16 * var(--utility-text, var(--t)))); }
-.brief__right .brief-reroll__text strong { font-size: max(12px, calc(.2 * var(--utility-text, var(--t)))); }
-.brief__right .brief-reroll__actions { flex-wrap: nowrap; }
-.brief__right .brief-reroll__actions .btn { box-sizing: border-box; height: 44px; min-height: 44px; padding: 6px 10px; font-size: max(12px, calc(.16 * var(--utility-text, var(--t)))); }
+
 
 .brief-boss {
   --bk-c: var(--orange-hi);
@@ -250,3 +246,13 @@
 
 .tooltip.brief-faction__tip { max-width: min(calc(4.8 * var(--ui-unit, 1rem)), calc(100vw - 16px)); font-size: max(calc(.15 * var(--utility-text, var(--t))), 10px); }
 .brief-faction__icon:focus-visible { outline: 1px solid var(--mint-500); outline-offset: 2px; }
+
+/* Compact briefing information leaves the footer in charge of all actions. */
+.brief__bonds .brief-bonds, .brief__bonds .brief-banned { padding:calc(.1 * var(--ui-unit,1rem)) calc(.16 * var(--ui-unit,1rem)) calc(.12 * var(--ui-unit,1rem)); }
+.brief__bonds .brief-h { margin-bottom:calc(.08 * var(--ui-unit,1rem)); }
+.brief__bonds .brief-bonds__row { gap:calc(.1 * var(--ui-unit,1rem)) calc(.08 * var(--ui-unit,1rem)); }
+.brief__bonds .brief-bond .bond { --disc:calc(.6 * var(--ui-unit,1rem)); }
+.brief__bonds .brief-banned__grid .uthumb { --ut:calc(.54 * var(--ui-unit,1rem)); }
+.brief-reroll--compact { position:relative; flex:none; margin:0; padding:0; border:0; background:none; }
+.brief-reroll--compact:not(.brief-reroll--vote) .brief-reroll__text { display:none; }
+.brief-reroll--compact.brief-reroll--vote .brief-reroll__text { position:absolute; left:0; bottom:calc(100% + 8px); width:min(420px,calc(100vw - 36px)); max-height:45dvh; overflow:auto; padding:12px; border:1px solid var(--mint-700); background:var(--bg-1); box-shadow:0 8px 24px #0008; z-index:40; }

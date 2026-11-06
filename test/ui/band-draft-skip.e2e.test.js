@@ -11,8 +11,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const OUT = path.join(ROOT, 'test/e2e/out/band-draft-skip');
 const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const ENABLED = process.env.SP_E2E === '1' && existsSync(CHROME);
-// 跳过选择 / 无法跳过 sits in the step header's turn line (PR #643), only while it is the player's turn: no button = no skip
-const SKIP = '.dturn .draft-skip';
+// The persistent detail pane keeps skip beside confirmation; eligibility is reflected by disabled.
+const SKIP = '.draft-detail .draft-skip';
 
 describe('strategy skip eligibility (real server, normal browser operations)', {
   skip: !ENABLED && 'set SP_E2E=1 and have Chrome to run',

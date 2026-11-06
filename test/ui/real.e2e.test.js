@@ -510,11 +510,11 @@ describe('real server + real browsers', { skip: !ENABLED && 'set SP_REAL_E2E=1 (
           if (c === guest && !guestSkipped) {
             guestSkipped = true;
             // one skip — only while someone is left to pass to: the last player still to pick sees 跳过 disabled (PR #546)
-            // (PR #828: 跳过选择 sits in the step header's turn line, .dturn .draft-skip, on the player's own turn)
-            const canSkip = await c.page.evaluate(() => [...document.querySelectorAll('.dturn .draft-skip')]
+            // (PR #828: 跳过选择 sits in the step header's turn line, .draft-detail .draft-skip, on the player's own turn)
+            const canSkip = await c.page.evaluate(() => [...document.querySelectorAll('.draft-detail .draft-skip')]
               .some((b) => b.textContent.includes('跳过') && !b.disabled));
             if (canSkip) {
-              await c.click('.dturn .draft-skip', '跳过');
+              await c.click('.draft-detail .draft-skip', '跳过');
               c.note('skipped once');
               continue;
             }

@@ -160,3 +160,10 @@
 }
 @media (max-width:600px) { .utility-modal.hub-dialog { width:calc(100vw - 16px); } }
 @media (prefers-reduced-motion:reduce) { .app-header__heading, .room-options__frame, .st-body { animation:none; } }
+
+/* Preparation keeps identical left / centre / right slots across both steps. */
+.stephead.stephead--context { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); }
+.stephead__middle { display:flex; align-items:center; justify-content:center; gap:calc(.18 * var(--ui-unit,1rem)); min-width:0; }
+.stephead--context .stephead__info { display:inline-flex; align-items:center; gap:calc(.06 * var(--ui-unit,1rem)); min-height:32px; padding:4px 8px; border:1px solid var(--line-2); background:var(--bg-1); color:var(--mint-400); font-size:max(11px,calc(.16 * var(--utility-text,var(--t)))); cursor:pointer; }
+.stephead--context .stephead__info:hover { border-color:var(--mint-500); background:var(--mint-a10); }
+.stephead--context .stephead__right { justify-self:end; }

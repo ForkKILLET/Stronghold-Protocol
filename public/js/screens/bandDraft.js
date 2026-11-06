@@ -262,7 +262,6 @@ export function BandDraftScreen({ held = null } = {}) {
   const roomSeats = useStore((s) => s.room?.seats);
   const gd = useGameData();
   const [sel, setSel] = useState(null);
-  const [open, setOpen] = useState(false);   // the detail pane: only once a portrait (or a row's pick) is tapped
   const [peek, setPeek] = useState(null);    // a teammate's / my own pick opened from its row (read-only)
   const [busy, setBusy] = useState(null);
   const [exit, setExit] = useState(false);
@@ -351,8 +350,8 @@ export function BandDraftScreen({ held = null } = {}) {
     if (await actions.bandSkip()) setSkipped(true);
     setBusy(null);
   };
-  const pickTile = (id) => { setSel(id); setOpen(true); setPeek(null); audio.sfx('tab', { volume: 0.5 }); };
-  const peekBand = (id) => { setPeek(id); setOpen(true); audio.sfx('tab', { volume: 0.5 }); };
+  const pickTile = (id) => { if (myPick) setPeek(id); else { setSel(id); setPeek(null); } audio.sfx('tab', { volume: 0.5 }); };
+  const peekBand = (id) => { setPeek(id); audio.sfx('tab', { volume: 0.5 }); };
   const turnName = players.find((p) => p.playerId === draft.turnPid)?.name;
   useTicker(clock ? 250 : 0);
   const turnSecs = clock ? secondsLeft(clock.deadline) : null;
@@ -394,7 +393,8 @@ export function BandDraftScreen({ held = null } = {}) {
 
   // what the right side shows: 已选定策略 after my pick, else the detail pane once opened, else only the wall
   const allPicked = !!draft.done || (draft.order.length > 0 && draft.order.every((pid) => draft.picks.has(pid)));
-  const view = peek ? 'detail' : inOrder && myPick ? 'done' : open && band ? 'detail' : 'grid';
+  // Every draft state keeps the same three columns, including after our confirmed pick.
+  const view = 'detail';
   const shownBand = peek ? gd.band(peek) : band;
   const rows = solo ? players.filter((p) => p.playerId === myId) : draft.order.map((pid) => players.find((p) => p.playerId === pid)).filter(Boolean);
 
@@ -402,10 +402,7 @@ export function BandDraftScreen({ held = null } = {}) {
     : myTurn ? html`<div class="dturn is-turn">
         <span class="dturn__go"><${Sprite} k="bandChoose/youturn_finger" class="dturn__finger" fallback=${html`<${Icon} name="chevronLeft" class="dturn__finger" />`} />
           <b>${t('请选择策略')}</b></span>
-        ${!solo ? html`<button type="button" class="draft-skip" disabled=${!canSkip || !!busy} aria-busy=${busy === 'skip' ? 'true' : undefined} onClick=${skip}
-            title=${skipsLeft > 0 ? t('跳过本轮，稍后再选') : t('跳过次数已用完')}>
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19v-5a7 7 0 0 1 7-7h7V3.5L22.5 9 17 14.5V11h-7a3 3 0 0 0-3 3v5z" /></svg>
-          <span>${skipsLeft > 0 ? t('跳过选择') : t('无法跳过')}</span></button>` : null}
+
       </div>`
     : turnName ? html`<div class="dturn"><span class="dturn__txt"><b>${turnName}</b><span>${t('正在选择策略…')}</span></span><${Icon} name="hourglass" class="dturn__glass" /></div>`
     : null;
@@ -416,8 +413,8 @@ export function BandDraftScreen({ held = null } = {}) {
     <div class="brief__bg" aria-hidden="true"></div>
     <${StepHeader} step=${2} of=${2} title=${t('选择策略')} micro="STRATEGY // BAND CHECK" pub=${clock ? { ...pub, deadline: clock.deadline } : { ...pub, deadline: 0 }}
       total=${clock ? clock.total : null} onExit=${() => setExit(true)}
-      extra=${html`<button type="button" class="stephead__info" data-testid="match-info-open" aria-haspopup="dialog" onClick=${() => setInfoOpen(true)}
-        title=${t('本局信息')}><${Icon} name="search" /><span>${t('本局信息')}</span></button>`}
+      extra=${html`<${Button} variant="secondary" size="sm" icon="search" class="stephead__info" data-testid="match-info-open" aria-haspopup="dialog" onClick=${() => setInfoOpen(true)}
+        title=${t('本局信息')}>${t('本局信息')}<//>`}
       status=${head} />
     <main class="draft__main">
       <aside class="draft-order">
@@ -431,31 +428,20 @@ export function BandDraftScreen({ held = null } = {}) {
               preview=${draft.focus.get(p.playerId)} arts=${artOf(p)} medal=${p.playerId === myId ? myMedal : null} gd=${gd} onPeek=${peekBand} />`;
           })}
         </div>
-        ${!solo ? html`<p class="draft-order__tip" data-testid="draft-tip">${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: open && autoId === sel })}</p>` : null}
+        ${!solo ? html`<p class="draft-order__tip" data-testid="draft-tip">${draftTip({ timed, turnSeconds: turnLen, autoName: myPick ? null : autoName, selected: autoId === sel })}</p>` : null}
         <div class="draft-communication"><${CommunicationDock} disabled=${!draft.order.includes(myId)} /></div>
       </aside>
       <i class="draft__link" aria-hidden="true"></i>
 
-      ${view === 'done' ? html`<section class="draft-done" key=${myPick} aria-live="polite">
-          <div class="draft-done__art"><${BandIcon} bandId=${myPick} size="xl" /></div>
-          <div class="draft-done__head">
-            <span class="draft-tag">STRATEGY</span>
-            <h2 class="draft-done__title">${t('已选定策略')}</h2>
-            <b class="draft-done__name">${gd.band(myPick)?.name || ''}</b>
-          </div>
-          <div class="draft-done__hp">${t('初始生命值')}<b class="num">${gd.band(myPick)?.totalHp ?? '--'}</b></div>
-          ${gd.band(myPick) ? html`<${BandText} band=${gd.band(myPick)} class="draft-done__desc" />` : null}
-          <p class="draft-detail__status t-mint"><${Icon} name="check" />${t('已选择「{name}」', { name: gd.band(myPick)?.name || '' })}${!solo && !allPicked ? t('，等待其他博士') : ''}</p>
-        </section>` : html`
         <section class="draft-grid" role="listbox" aria-label=${t('策略')}>
           ${bands.map((b, i) => {
             const isTaken = taken.has(b.bandId);
             const offNames = bandOffBonds(b, offBonds).map((id) => gd.bond(id)?.name || id); // 本局禁用 (still selectable)
-            const on = view === 'detail' && !peek && sel === b.bandId;
+            const on = (peek || sel) === b.bandId;
             const previewed = [...draft.focus].some(([pid, bid]) => pid !== myId && bid === b.bandId && !draft.picks.has(pid));
             const badged = local.badges.has(b.bandId); // (the count is the detail pane's 已通过模拟 N 次)
             return html`<button key=${b.bandId} type="button" role="option" aria-selected=${on ? 'true' : 'false'} data-band=${b.bandId}
-                aria-disabled=${isTaken ? 'true' : 'false'} title=${isTaken ? t('已被选择') : offNames.length ? bandOffLine(offNames) : b.name}
+                title=${isTaken ? t('已被选择') : offNames.length ? bandOffLine(offNames) : b.name}
                 class=${cx('dband', previewed && 'is-preview', on && 'is-sel', myPick === b.bandId && 'is-mine', isTaken && 'is-taken', offNames.length && 'is-off')} style=${`--n:${Math.min(i, 15)}`}
                 onClick=${() => pickTile(b.bandId)}>
               <span class="dband__frame"><${BandIcon} bandId=${b.bandId} size="lg" /></span>
@@ -464,11 +450,10 @@ export function BandDraftScreen({ held = null } = {}) {
                 <${Sprite} k="statistics/strategyBadge" class="dband__badge-art" fallback=${html`<span class="dband__medal"><${Icon} name="rook" /></span>`} /></span>` : null}
               <${BandOffTag} names=${offNames} />
               ${isTaken ? html`<span class="dband__taken">${t('已被选择')}</span>` : null}
-              ${on ? html`<span class="dband__selmark" aria-hidden="true">SELECTED</span>` : null}
             </button>`;
           })}
         </section>
-        ${view === 'detail' && shownBand ? html`<aside class="draft-detail" key="detail">
+        ${shownBand ? html`<aside class="draft-detail" key="detail">
           <div class="draft-detail__body" key=${shownBand.bandId}>
             <div class="draft-detail__art"><${BandIcon} bandId=${shownBand.bandId} size="xl" /></div>
             ${local.won[shownBand.bandId] ? html`<span class="draft-detail__medal">${t('已通过模拟{n}次', { n: local.won[shownBand.bandId] })}</span>` : null}
@@ -480,15 +465,19 @@ export function BandDraftScreen({ held = null } = {}) {
             <div class="draft-detail__eff"><${BandText} band=${shownBand} class="draft-detail__desc" /></div>
           </div>
           <div class="draft-detail__actions">
-            ${peek ? html`<p class="draft-detail__status"><${Icon} name="search" />${myPick === peek ? t('你选择的策略') : t('{names} 选择的策略', { names: (pickers.get(peek) || []).map((x) => x.name).join('、') || t('博士') })}</p>
-              <div class="draft-detail__btns"><${Button} variant="secondary" size="lg" icon="chevronLeft" onClick=${() => setPeek(null)}>${t('返回')}<//></div>`
-            : html`${selTaken ? html`<p class="draft-detail__status draft-detail__status--taken"><${Icon} name="close" />${t('队友已选，请选择其他策略')}</p>`
-                : !myTurn ? html`<p class="draft-detail__status"><${Icon} name="hourglass" />${!inOrder ? t('观战中') : turnName ? t('{turnName} 正在决策…', { turnName }) : t('等待轮到你')}</p>` : null}
-              <div class="draft-detail__btns">
-                <${Button} variant="primary" size="lg" icon="check" class="draft-confirm" disabled=${!myTurn || !band || selTaken} loading=${busy === 'pick'} onClick=${confirm}>${selTaken ? t('已被选择') : t('确认选择')}<//>
-              </div>`}
+            <p class=${cx('draft-detail__status', myPick && 't-mint', !myPick && selTaken && 'draft-detail__status--taken')}>
+              ${myPick && !peek ? html`<${Icon} name="check" />${t('已选择「{name}」', { name: gd.band(myPick)?.name || '' })}${!solo && !allPicked ? t('，等待其他博士') : ''}`
+                : peek ? html`<${Icon} name="search" />${myPick === peek ? t('你选择的策略') : (pickers.get(peek)?.length ? t('{names} 选择的策略', { names: pickers.get(peek).map(x => x.name).join('、') }) : t('查看策略'))}`
+                : selTaken ? t('队友已选，请选择其他策略') : !inOrder ? t('观战中') : !myTurn && turnName ? t('{turnName} 正在决策…', { turnName }) : '\u00a0'}
+            </p>
+            <div class="draft-detail__btns">
+              ${!solo ? html`<${Button} variant="secondary" size="lg" icon="chevronRight" class="draft-skip" disabled=${!canSkip || !!busy}
+                loading=${busy === 'skip'} title=${skipsLeft > 0 ? t('跳过本轮，稍后再选') : t('跳过次数已用完')} onClick=${skip}>${t('跳过')}<//>` : null}
+              <${Button} variant="primary" size="lg" icon="check" class="draft-confirm" disabled=${!!myPick || !!peek || !myTurn || !band || selTaken}
+                loading=${busy === 'pick'} onClick=${confirm}>${myPick ? t('已选择') : t('确认选择')}<//>
+            </div>
           </div>
-        </aside>` : null}`}
+        </aside>` : null}
     </main>
     <${ExitModal} open=${exit} onClose=${() => setExit(false)} solo=${solo} />
     <${MatchInfoDialog} open=${infoOpen} onClose=${() => setInfoOpen(false)} model=${info} onBond=${setBondId}
