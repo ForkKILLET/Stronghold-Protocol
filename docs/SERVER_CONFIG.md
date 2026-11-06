@@ -23,11 +23,30 @@ npm start
 | `persistence` | `saveMs`、`checkpointConcurrency`、`checkpointWaitMs` | `SP_REDIS_SAVE_MS`、`SP_CHECKPOINT_CONCURRENCY`、`SP_CHECKPOINT_WAIT_MS` |
 | `workers` | `simulation`、`rooms`、`matches`、`maxQueue`、`timeoutMs` | `SP_WORKERS`、`SP_ROOM_WORKERS`、`SP_MATCH_WORKERS`、`SP_WORKER_QUEUE`、`SP_WORKER_TIMEOUT_MS` |
 | `replays` | `perUser`、`maxBytes` | `SP_REPLAY_LIMIT`、`SP_REPLAY_MAX_BYTES` |
+| `versions` | `enabled`、`default`、`maxHosts` | `SP_VERSIONS`、`SP_VERSION_DEFAULT`、`SP_MAX_VERSION_HOSTS` |
+| `rooms` | `versionVoteMs`、`versionRetryMs`、`versionProposeGapMs` | `SP_VERSION_VOTE_MS`、`SP_VERSION_RETRY_MS`、`SP_VERSION_PROPOSE_GAP_MS` |
 | `shutdown` | `timeoutMs` | `SP_SHUTDOWN_TIMEOUT_MS` |
 
 容量范围为 0–1000000，`maxSessions` 至少 1。每网络容量的 0 表示不限；全局连接／房间的 0 禁止新接入／新建，不代表不限。时间通常为 1 毫秒至 7 天；存档周期至少 1000 毫秒。Worker 数量 0–32，房间 lane 不能超过模拟 Worker 总数；队列 0–10000，Worker 超时 1–3600000 毫秒。退出超时 1000–300000 毫秒，默认 60000；超时退出状态为失败，避免将未完成保存误报为成功。
 
 省略 `workers.simulation` 时保持自动选择线程数。省略 `reconnect.soloMs` 时使用上游默认 6 小时；省略 `persistence.saveMs` 时为上游默认 30 秒；设为 `null` 可显式跟随游戏数据。部署策略建议明确写入 86400000（24 小时）和 `persistence.saveMs:10000`（10 秒），避免同步上游默认值时改变运营策略。
+
+## 官方规则版本
+
+规则版本与程序发布版本（例如 v0.3.3）独立。同一套模拟引擎按版本加载对应数据和规则开关，每份内容使用自己的 `cs` 指纹；房间、检查点、结算、回放沿用实际版本。注册表在 `shared/versions.js`：
+
+| UI 名称 | ID | 数据目录 |
+| --- | --- | --- |
+| 第二期下半（默认） | `act2autochess` | `data/` |
+| 第二期上半 | `act2autochess@V2_1` | `data/versions/act2autochess-v2_1/` |
+| 第一期下半 | `act1autochess` | `data/versions/act1autochess/` |
+| 第一期上半 | `act1autochess@V1_1` | `data/versions/act1autochess-v1_1/` |
+
+`versions.enabled` 默认为 `"all"`，也可指定 ID 数组；对应目录缺失或内容无法校验的版本不会提供给玩家。`versions.default` 默认 `act2autochess`，必须选择已启用版本；`versions.maxHosts` 控制历史版本内容 Host 的数量，不是完整 Match Worker 数。三份历史版本仍标为“预览”，选择窗保留其估算规则及文本语言说明。
+
+玩家入口在首页四个开始操作上方的版本按钮：只保存此浏览器的大厅偏好，新建房间沿用该版本；加入他人房间时自动加载房间版本，离开后恢复偏好。等待室的“调整配置 → 基础配置 → 游戏版本”由创建者发起投票，在座真人全部同意后切换并重新准备，已开始的对局不切版本；本服公共匹配仍只接受默认版本。博士档案的版本下拉仅筛选已有统计和记录，不切换大厅或房间规则。
+
+修改服务器版本范围后重启生效；新增或替换版本数据还需要重新构建、发布和验证内容指纹、历史回放以及对应版本的客户端模拟。
 
 ## 查看生效值
 

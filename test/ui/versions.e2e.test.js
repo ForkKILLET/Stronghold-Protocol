@@ -166,7 +166,9 @@ describe('official versions (real server, SP_VERSIONS=all)', { skip: !ENABLED &&
       await host.page.waitForSelector('[data-testid="stats-version"]', { visible: true });
       await host.page.waitForSelector('.st-table--history tr[data-version="act1autochess"] [data-testid="version-tag"]', { visible: true });
       assert.equal(await host.page.$$eval('.st-table--history tbody tr', (r) => r.length), 1, 'the lobby\'s version: its records only');
-      await host.click('[data-testid="stats-version"] [data-version="all"]');
+      await host.click('[data-testid="stats-version"] [role="combobox"]');
+      await host.page.keyboard.press('End');
+      await host.page.keyboard.press('Enter');
       await host.page.waitForFunction(() => document.querySelectorAll('.st-table--history tbody tr').length === 2);
       await host.shot('stats');
       // re-viewing the 第二期下半 record from the 第一期下半 lobby shows 第二期下半 while it is open, and the lobby's own
@@ -306,7 +308,9 @@ describe('official versions (real server, SP_VERSIONS=all)', { skip: !ENABLED &&
       await input.uploadFile(FIXTURE);
       await c.page.waitForFunction(() => [...document.querySelectorAll('.toast__text')].some((e) => /已导入 2 条记录/.test(e.textContent)), { timeout: 10000 });
       await c.click('.st-tab[data-tab="history"]');
-      await c.click('[data-testid="stats-version"] [data-version="all"]');
+      await c.click('[data-testid="stats-version"] [role="combobox"]');
+      await c.page.keyboard.press('End');
+      await c.page.keyboard.press('Enter');
       await c.page.waitForSelector('.st-table--history tr[data-version="act1autochess"]', { visible: true });
       const row = await c.page.$eval('.st-table--history tr[data-version="act1autochess"]', (r) => ({ cls: r.className, title: r.title }));
       assert.doesNotMatch(row.cls, /is-clickable/);

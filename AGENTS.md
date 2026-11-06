@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-06 首页规则版本与恢复本机对局入口在 hub-entries__context 内，与四个开始操作同组，保留至少 44px 点击高度；不得重新插在公共顶栏与正文之间。博士档案的版本 Select、插件及历史页本机记录筛选共用 doctor-filters，等高且与内容左边缘对齐；版本筛选不改变大厅／房间规则。保留版本标签、选择及投票样式，管理尺寸使用局外设计单位，选择窗口复用 utility Modal。
+
 - 2026-11-05 用户授权继续精选主线 dev；本轮固定审阅 `e017558a`，仅移植 docs/MERGE_DEV_2026-11-05.md 所列修复、新干员及必要适配，不整体合并 dev 或提前声明正式 0.3.4。保留本服 Worker、账户、回放、音频/字幕、UI/预载及已记录规则；三份新 kit 必须同时进入 Vite 明确导入表，数据源保持玩法 CN 2.7.81 / 干员 CN 2.7.91。重建数据本地化后须再运行 build-terms，恢复独立术语覆盖；新增语音同时更新固定来源字幕。暂停预览只完成普通显示淡入，联防延迟入场继续隐藏，不推进模拟或动画时钟。
 
 - 2026-11-05 本机测试必须避免全机 OOM。devops 会话记录曾有 Paseo 子 Node 占用约 22.1 GiB RAM / 18.4 GiB swap，导致 Paseo 整组停止，具体测试命令无法由日志确定。以后所有本机重型测试、golden、浏览器和构建都通过 `npm run check:local -- <command> ...`，独立 systemd scope 固定 MemoryHigh=6G、MemoryMax=8G、MemorySwapMax=512M、OOMPolicy=kill，Node 堆上限 2 GiB；默认低于 10 GiB MemAvailable 不启动；定向检查可显式 --small 收窄到 MemoryHigh=3G/MemoryMax=4G/SwapMax=256M/1 GiB 堆，要求至少 6 GiB 可用内存。共享锁只允许一项重任务。npm test 在本机 Linux 自动进入该隔离并串行跑测试；golden 显式 --jobs 1。禁止与全量/浏览器/构建叠跑、禁止裸 node --test 自动发现 helpers；不能因超限而去掉限额或自动增大预算。超限结果须作为测试失败排查，不将中断报告算通过；按文件定向复验并保留已完成证据，避免重复长跑。此条替代下文旧“本地固定 --test-concurrency=2”的约定，CI 分片保持原设置。见 docs/LOCAL_TESTING.md。

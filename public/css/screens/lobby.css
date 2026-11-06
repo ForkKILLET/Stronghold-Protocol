@@ -1709,7 +1709,15 @@ button.sw-eth:hover { border-color: #fff; }
   background:linear-gradient(120deg,#244a3e,#10291f) !important; border-color:var(--mint-400) !important; box-shadow:inset 0 0 20px var(--mint-a10),0 6px 20px #0005;
 }
 .lobby-hub .hub-plate__label, .lobby-hub .hub-plate .btn__label { color:var(--text-hi); font-size:max(18px,calc(.24 * var(--utility-text,var(--t)))); }
-.lobby-hub .hub-entries { grid-column:2; grid-row:2; align-items:stretch; min-width:0; width:min(100%,900px); justify-self:center; padding-bottom:16px; }
+.lobby-hub .hub-entries { grid-column:2; grid-row:2; flex-direction:column; align-items:stretch; min-width:0; width:min(100%,900px); justify-self:center; padding-bottom:16px; }
+.hub-entries__context { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px 12px; min-width:0; }
+.hub-entries__context:empty { display:none; }
+/* Nested recovery/version dialogs must cover the sibling shared header. */
+.lobby-hub .hub-stage:has(.hub-entries__context .modal) { z-index:4; }
+.hub-entries__context .verchip-wrap { margin-right:auto; }
+.hub-entries__context .verchip--ro { margin-right:auto; }
+.hub-entries__context .verchip,.hub-entries__context .verchip__retry { min-height:44px; font-size:max(14px,calc(.18 * var(--utility-text,var(--t)))); }
+.lobby-hub .hub-entries__context .hub-resume { min-height:44px; padding:8px 16px; font-size:max(14px,calc(.18 * var(--utility-text,var(--t)))); }
 .lobby-hub .hub-entries__row { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; transform:none; }
 .lobby-hub .hub-entry-wrap { min-width:0; }
 .lobby-hub .hub-entry__group--blank { display:none; }

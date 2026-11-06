@@ -235,7 +235,9 @@ describe('official versions: text fit (real server, SP_VERSIONS=all)', { skip: !
         (await import('/js/screens/stats.js')).openStats();
       }, fixture);
       await host.page.waitForSelector('[data-testid="stats-version"]', { visible: true });
-      await host.click('[data-testid="stats-version"] [data-version="all"]');
+      await host.click('[data-testid="stats-version"] [role="combobox"]');
+      await host.page.keyboard.press('End');
+      await host.page.keyboard.press('Enter');
       await host.click('.st-tab[data-tab="history"]');
       await host.page.waitForSelector('.st-table--history [data-testid="version-tag"]', { visible: true });
       const tagsFit = async (selector, sidewaysOnly = false) => {

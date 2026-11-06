@@ -58,12 +58,20 @@
 
 .doctor-achievements { min-width: 0; padding-bottom: calc(.3 * var(--ui-unit, 1rem)); }
 .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
-.doctor-modded { justify-content: flex-end; margin-bottom: calc(.15 * var(--ui-unit, 1rem)); }
 @media (max-width: 760px) { .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1fr); } }
-.doctor-modded { display:inline-flex; align-items:center; gap:10px; width:max-content; max-width:100%; padding:8px 12px; border:1px solid var(--line-2); border-radius:0; background:var(--bg-1); color:var(--text-md); font:inherit; font-size:max(calc(.15 * var(--utility-text, var(--t))),12px); cursor:pointer; }
-.doctor-modded.is-on { color:var(--mint-400); border-color:var(--mint-700); }
-.doctor-modded:not(.is-disabled):hover { border-color:var(--mint-700); }
-.doctor-modded.is-disabled { color:var(--text-dim); cursor:not-allowed; }
+.doctor-filters { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:16px; font-size:max(calc(.15 * var(--utility-text,var(--t))),12px); }
+.doctor-filter,.st-verfilter { box-sizing:border-box; display:inline-flex; align-items:center; gap:10px; min-height:40px; max-width:100%; padding:8px 12px; border:1px solid var(--line-2); background:var(--bg-1); color:var(--text-md); }
+.doctor-filter { cursor:pointer; }
+.doctor-filter.is-on { color:var(--mint-400); border-color:var(--mint-700); }
+.doctor-filter:not(.is-disabled):hover { border-color:var(--mint-700); }
+.doctor-filter.is-disabled { color:var(--text-dim); cursor:not-allowed; }
+.st-verfilter { padding:0 0 0 12px; }
+.st-verfilter__k { flex:none; color:var(--text-lo); }
+.st-verfilter .game-select { align-self:stretch; min-height:38px; min-width:160px; border:0; border-left:1px solid var(--line-2); font:inherit; }
+@media (pointer:coarse),(max-height:560px) {
+ .doctor-filter,.st-verfilter { min-height:44px; }
+ .st-verfilter .game-select { min-height:42px; }
+}
 
 /* A single action slot keeps saved, missing and compacted rows at the same baseline. */
 .st-table--actions { --history-action-size:32px; }

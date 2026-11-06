@@ -1,7 +1,7 @@
 // ui/versionPicker.js — the official version switch (DESIGN §35.23, M1; versions.js): the lobby's chip and the picker the
 // lobby and the room open.
 //
-//   * VersionSwitch — the chip at the lobby's top right (screens/lobby.js, before 恢复本机对局): only when the server
+//   * VersionSwitch — the chip beside the lobby's start actions (screens/lobby.js): only when the server
 //     enables other versions (welcome.versions); the version the lobby shows (this browser's choice) and, while the page
 //     loads or checks its data, how far it is (载入中 n%) or that it failed (校验失败 · 重试). A server that enables one
 //     version only, not 第二期下半, shows it as a plain tag (nothing to choose). A tap opens the picker.
@@ -40,7 +40,7 @@ export function versionLoadText(c, id) {
 export function VersionPicker({ mode, versions, current, serverDefault, roomMode = null, editable = true, busy = false, onPick, onClose, note = null }) {
   const list = Array.isArray(versions) ? versions : [];
   const chineseTexts = getLang() !== 'zh';
-  return html`<${Modal} open=${true} onClose=${onClose} class="verpick" micro="OFFICIAL VERSION" title=${t('游戏版本')} width="min(8.4rem, 96vw)"
+  return html`<${Modal} open=${true} utility=${true} onClose=${onClose} class="verpick" micro="OFFICIAL VERSION" title=${t('游戏版本')} width="min(8.4rem, 96vw)"
       actions=${html`<${Button} variant="ghost" onClick=${onClose}>${t('关闭')}<//>`}>
     <p class="verpick__lead">${mode === 'room' ? t('同盟的版本由创建者发起切换，在座的博士全部同意后生效。') : t('大厅版本只影响本机：加入其他版本的同盟时会载入该版本，离开后恢复。')}</p>
     <ul class="verpick__list" role="listbox" aria-label=${t('游戏版本')} data-testid="version-picker">

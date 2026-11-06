@@ -38,6 +38,7 @@ import { VersionTag } from '../ui/pluginTag.js';
 import { contentSet, retryContentSet } from '../content.js';
 import { DEFAULT_VERSION, shownVersion, seasonOf, versionLabel, welcomeVersion } from '../versions.js';
 import { VERSIONS } from '../../../shared/versions.js';
+import { Select } from '../ui/select.js';
 
 const identityName=()=>store.get().me.name;
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -223,11 +224,10 @@ function VersionFilter({ records, value, shown }) {
   const have = new Set((records || []).map(recordVersion));
   have.add(shown);
   if (!enabled && have.size < 2) return null;
-  const options = [...VERSIONS.filter((v) => have.has(v.id)).map((v) => ({ id: v.id, name: versionLabel(v.id) })), { id: 'all', name: t('全部版本') }];
-  return html`<div class="st-verfilter" role="radiogroup" aria-label=${t('版本')} data-testid="stats-version">
+  const options = [...VERSIONS.filter((v) => have.has(v.id)).map((v) => ({ value: v.id, label: versionLabel(v.id) })), { value: 'all', label: t('全部版本') }];
+  return html`<div class="st-verfilter" data-testid="stats-version">
     <span class="st-verfilter__k">${t('版本')}</span>
-    ${options.map((o) => html`<button key=${o.id} type="button" role="radio" aria-checked=${value === o.id ? 'true' : 'false'} data-version=${o.id}
-      class=${cx('dpick__opt', value === o.id && 'is-active')} onClick=${() => statsStore.set({ version: o.id === shown ? null : o.id })}>${o.name}</button>`)}
+    <${Select} label=${t('版本')} value=${value} options=${options} onChange=${id => statsStore.set({ version: id === shown ? null : id })} />
   </div>`;
 }
 
@@ -304,13 +304,13 @@ function HistoryRow({ rec, gd, onOpen, onPlay, onPin, onShare, publicId, allowSh
 }
 
 /** 对局记录: every stored match, newest first, HISTORY_PAGE rows at a time. */
-function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, onShare, publicId, allowSharing, busy, locked, quota }) {
+function History({ records, gd, onOpen, more, loading, onMore, onPlay, onPin, onShare, publicId, allowSharing, busy, locked, quota, deviceOnly=false }) {
   const [shown, setShown] = useState(HISTORY_PAGE);
-  const [deviceOnly,setDeviceOnly]=useState(false);
+  useEffect(() => setShown(HISTORY_PAGE), [deviceOnly]);
   const filtered=deviceOnly?records.filter(r=>r.deviceOnly):records;
   const rows = filtered.slice(0, shown);
   return html`<${Section} title=${t('对局记录')} micro=${`HISTORY · ${filtered.length}`}>
-    <div class="doctor-history-tools"><button type="button" class=${deviceOnly?'is-on':''} aria-pressed=${deviceOnly} onClick=${()=>{setDeviceOnly(!deviceOnly);setShown(HISTORY_PAGE);}}>${t('仅看此设备记录')}</button>${quota?html`<span class="st-replay-quota">${t('已保存 {n}/{limit} 个回放',{n:quota.saved,limit:quota.limit})} · ${t('已固定 {n}/{limit}',{n:quota.pinned,limit:quota.pinLimit})}</span>`:null}</div>
+    ${quota?html`<div class="doctor-history-tools"><span class="st-replay-quota">${t('已保存 {n}/{limit} 个回放',{n:quota.saved,limit:quota.limit})} · ${t('已固定 {n}/{limit}',{n:quota.pinned,limit:quota.pinLimit})}</span></div>`:null}
     ${quota?html`<p class="st-hint">${locked?t('请先结束当前对局，再播放回放。'):t('新回放会替换最旧的未固定回放；对局记录始终保留。')}</p>`:null}
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table st-table--history st-table--actions">
       <thead><tr><th>${t('时间')}</th><th>${t('难度')}</th><th>${t('模式')}</th><th>${t('策略')}</th><th>${t('结果')}</th><th class="num st-round">${t('回合')}</th><th>${t('回放')}</th><th class="st-history-actions" aria-label=${t('对局操作')}></th></tr></thead>
@@ -374,6 +374,7 @@ function StatsScreen({ tab }) {
   const [account,setAccount]=useState(()=>(()=>{const c=cachedAccountStats(loadPref('doctorStats',null),profile.user?.id);return c?.withModded?null:c;})());
   const [loading,setLoading]=useState(false);
   const [withModded,setWithModded]=useState(false);
+  const [deviceOnly,setDeviceOnly]=useState(false);
   const [offline,setOffline]=useState(profile.status==='offline');
   const requestRef=useRef(false);
   const accountRef=useRef(account);accountRef.current=account;
@@ -520,8 +521,11 @@ function StatsScreen({ tab }) {
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}
     ${stats.dropped ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('有 {n} 条记录已损坏，已忽略。', { n: stats.dropped })}</p>` : null}
     <main class="st-body" data-tab=${tab}>
-      ${!['profile','privacy','manage'].includes(tab)?html`<${VersionFilter} records=${records} value=${filterVersion} shown=${shownVersionId} />`:null}
-      ${!['profile','privacy','manage'].includes(tab)?html`<label class=${cx('doctor-modded',withModded&&'is-on',loading&&'is-disabled')}><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>`:null}
+      ${!['profile','privacy','manage'].includes(tab)?html`<div class="doctor-filters" role="group" aria-label=${t('筛选')}>
+        <${VersionFilter} records=${records} value=${filterVersion} shown=${shownVersionId} />
+        <label class=${cx('doctor-filter doctor-modded',withModded&&'is-on',loading&&'is-disabled')}><input type="checkbox" checked=${withModded} disabled=${loading} onChange=${e=>{setAccount(null);setWithModded(e.currentTarget.checked);}} />${t('含插件对局')}</label>
+        ${tab==='history'?html`<label class=${cx('doctor-filter',deviceOnly&&'is-on')}><input type="checkbox" checked=${deviceOnly} onChange=${e=>setDeviceOnly(e.currentTarget.checked)} />${t('仅看此设备记录')}</label>`:null}
+      </div>`:null}
       ${!ready ? html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : tab==='profile'&&profile.user ? html`<${ProfileEditor} user=${profile.user} />`
         : tab==='privacy'&&profile.user ? html`<${ProfileVisibility} user=${profile.user} />`
@@ -529,7 +533,7 @@ function StatsScreen({ tab }) {
           <section><h3 class="st-sec__h">${t('此设备的记录')}</h3><p class="profile-note">${t('导入、导出和清空只影响此设备，不修改已保存的档案战绩。')}</p>
           <div class="doctor-actions"><${Button} variant="secondary" size="md" data-testid="stats-export" disabled=${!stats.records.length||stats.newer} onClick=${doExport}>${t('导出')}<//><${Button} variant="secondary" size="md" data-testid="stats-import" disabled=${stats.newer} onClick=${()=>fileRef.current?.click()}>${t('导入')}<//><${Button} variant="ghost" size="md" data-testid="stats-clear" disabled=${!stats.records.length||stats.newer} onClick=${doClear}>${t('清空此设备记录')}<//></div>
           <input ref=${fileRef} type="file" accept="application/json,.json" hidden onChange=${doFile} /></section></div>`
-        : tab==='history' ? html`<${History} records=${filteredRecords} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
+        : tab==='history' ? html`<${History} records=${filteredRecords} deviceOnly=${deviceOnly} gd=${gd} onOpen=${setReplay} more=${account?.next} loading=${loading} onMore=${()=>fetchAccount(true)} onPlay=${playReplay} onPin=${pinReplay} onShare=${shareReplay} publicId=${profile.user?.publicId} allowSharing=${profile.user?.visibility?.replays} busy=${replayBusy||offline} locked=${inMatch} quota=${account?.replays} />`
         : stats.newer&&!profile.enabled ? html`<p class="st-empty">${t('检测到更新版本的统计数据，请先升级客户端再查看，以免覆盖数据。')}</p>`
         : tab==='achievements' ? achievement?html`<${AchievementContent} s=${achievement} gd=${gd} />`:html`<div class="st-loading"><${Spinner} size="md" /></div>`
         : !agg.count ? html`<div class="st-empty"><p>${loading?t('正在读取…'):offline&&!account?t('此设备尚无档案缓存，请稍后刷新；已有本机记录仍可查看。'):t('还没有记录 —— 完成一局对局后，这里会开始积累。')}</p>${!empty?html`<${Button} variant="secondary" onClick=${()=>statsStore.set({tab:'history'})}>${t('查看此设备的旧记录')}<//>`:null}</div>`

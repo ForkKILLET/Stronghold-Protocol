@@ -671,7 +671,6 @@ export function LobbyScreen() {
   return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
     <${HubBackdrop} bg=${bg} />
     <${PageHeader} onBack=${backToTitle} backTitle=${t('返回标题')} title=${t('开始模拟')} micro="OPERATIONS HUB" />
-    <div class="hub-recover"><${VersionSwitch} /><${ResumeMatchButton} /></div>
     <main class="hub-stage screen__scroll">
       <div class="hub-center" aria-hidden="true">
         <div class="hub-center__mark"><${HubRadar} bg=${bg} /><${Emblem} /></div>
@@ -689,6 +688,7 @@ export function LobbyScreen() {
       </aside>
       <section class="hub-entries" aria-label=${t('模拟方式')}>
         ${matchQueue ? html`<${MatchQueuePanel} queue=${matchQueue} onCancel=${cancelMatchmaking} prepMultiplier=${prepChoiceMultiplier(prepChoice)} battleSpeed=${battleSpeed} onOptions=${()=>setOptionsOpen(true)} />` : null}
+        <div class="hub-entries__context"><${VersionSwitch} /><${ResumeMatchButton} /></div>
         <div class="hub-entries__row">
           ${MODE_CARDS.map((c) => html`<${HubEntry} key=${c.id} name=${c.id === 'coop' ? t('创建同盟') : t(c.name)} en=${c.en} icon=${c.icon}
             entryRef=${(el) => { modeEntries.current[c.id] = el; }}
