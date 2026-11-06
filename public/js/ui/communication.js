@@ -15,7 +15,7 @@ export function CommunicationDock({room=false,disabled=false}) {
  const state=saved.key===key?saved:{key,open:true,pinned:true};
  const {open,pinned}=state;
  const setOpen=value=>disclosure.set({key,open:value,pinned:value?disclosure.get().pinned:false});
- const setPinned=value=>disclosure.set({key,pinned:value,open:true});
+ const setPinned=value=>disclosure.set({key,pinned:value,open:value});
  useLayoutEffect(()=>{if(disclosure.get().key!==key)disclosure.set({key,open:true,pinned:true});},[key]);
  const root=useRef(null);
  // Pre-game screens can shrink under the mobile keyboard. Keep the shared composer

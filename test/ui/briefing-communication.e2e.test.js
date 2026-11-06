@@ -49,7 +49,8 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
    await page.setViewport({width,height});await settle();
    await page.type('.echat__input','等一下');await settle();const pinned=await chatGeometry();checkChat(pinned);
    await page.screenshot({path:path.join(out,`pinned-${width}.png`)});
-   await page.click('.echat__pin');await settle();const unpinned=await chatGeometry();checkChat(unpinned);
+   await page.click('.echat__pin');await page.waitForSelector('.ewheel__dialog',{hidden:true});
+   await page.click('.ewheel__btn');await settle();const unpinned=await chatGeometry();checkChat(unpinned);
    for(const part of ['dialog','input','count'])for(const key of ['x','y','w','h'])assert.ok(Math.abs(pinned[part][key]-unpinned[part][key])<1,`${part} ${key} stays unchanged when unpinning`);
    assert.equal(await page.$eval('.echat__input',e=>e.value),'等一下','pinning preserves a draft');
    await page.screenshot({path:path.join(out,`unpinned-${width}.png`)});

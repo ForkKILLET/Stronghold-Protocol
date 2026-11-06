@@ -8,6 +8,7 @@ import { LoadoutButton } from './loadout.js';
 import { UnofficialMark, VersionTag } from '../ui/pluginTag.js';
 import { SetupReroll } from '../ui/setupReroll.js';
 import { CommunicationDock, CommunicationActivity } from '../ui/communication.js';
+import { PreparationReady } from '../ui/preparationReady.js';
 import { actions } from '../ui/gameActions.js';
 import { factionTypes, sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
 import { enemyIconUrl, factionIconUrl } from '../ui/assetUrls.js';
@@ -15,7 +16,6 @@ import { useStore } from '../store.js';
 import { data } from '../data.js';
 import { t, tParts } from '../../../shared/i18n.js';
 
-const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** INFO_CHECK screen. */
 export function BriefingScreen() {
@@ -33,7 +33,6 @@ export function BriefingScreen() {
 
   const players = sortedPlayers(pub);
   const me = players.find((p) => p.playerId === myId);
-  const readyN = players.filter((p) => p.ready).length;
   const mode = gd.config?.modes?.[pub.modeId];
   // (+ the own 自选 pieces this match leaves out of the shop: m.private.diyBanned)
   const info = matchInfoModel(pub, { bonds: gd.list('bonds'), chess: gd.chess, mode, priv, diyData: { chess: data.get('chess'), backups: data.get('backups') } });
@@ -100,10 +99,7 @@ export function BriefingScreen() {
             <${SetupReroll} pub=${pub} compact=${true} />
           </div>
           <div class="brief__decision">
-            <div class="brief-ready">
-              <span class="brief-ready__txt"><span class="brief-ready__label">${t('已就绪')}</span><b class="num">${readyN}</b><span class="brief-ready__total num">/${players.length}</span></span>
-              <span class="brief-ready__pips">${players.map((p) => html`<i key=${p.playerId} class=${cx(p.ready && 'on', p.playerId === myId && 'me')} title=${p.name}><${Icon} name="user" /></i>`)}</span>
-            </div>
+            <${PreparationReady} players=${players} myId=${myId} />
             <${Button} variant="primary" size="xl" class="brief-go" icon=${me?.ready ? 'check' : me ? 'play' : 'eye'} active=${!!me?.ready} loading=${busy}
               disabled=${!!me?.ready || !me || !!pub.rerollVote} onClick=${ready}>${me?.ready ? t('已就绪') : me ? t('准备就绪') : t('观战中')}<//>
           </div>

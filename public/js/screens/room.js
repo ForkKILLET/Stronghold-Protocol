@@ -2,6 +2,7 @@ import { PageHeader, PageHeading } from '../ui/pageHeader.js';
 import {profileAvatarUrl} from '../ui/assetUrls.js';
 import {useData as useAvatarData} from '../data.js';
 import { CommunicationDock, CommunicationBubble } from '../ui/communication.js';
+import { PreparationReady } from '../ui/preparationReady.js';
 import { RoomOptionsPage, RoomConfigSummary } from '../ui/roomOptions.js';
 import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // Room screen (同盟等待室): 4 seat cards (avatar frame, name, ready state, AI badge, host crown),
@@ -611,10 +612,10 @@ export function RoomScreen() {
       ? html`<span class="t-lo">${t('等待所有博士载入房间的插件内容')}</span>`
     : facts.isHost
       ? facts.canStart
-        ? html`<span class="t-mint">${t('*同盟人数达标，准许进入模拟')}</span>`
+        ? null
         : html`<span class="t-lo">${t('等待所有博士准备就绪')}</span>`
       : myReady
-        ? html`<span class="t-mint">${t('已就绪 · 等待创建者开始模拟')}</span>`
+        ? html`<span class="t-mint">${t('等待创建者开始模拟')}</span>`
         : html`<span class="t-lo">${t('准备就绪后，创建者即可开始模拟')}</span>`;
 
   // the room's version (DESIGN §35.23): the pill and ⚙'s row on a server that enables versions (or in a version room)
@@ -727,11 +728,8 @@ export function RoomScreen() {
         </div>
       </div>
       <div class="room-bar__center">
-        <div class="ready-count" hidden=${!coop}>
-          <span class="t-lo">${t('已就绪')}</span>
-          <b class="num">${facts.readyHumans}</b><span class="num t-dim">/${facts.humans.length}</span>
-        </div>
-        <div class="room-bar__status">${statusLine}</div>
+        ${coop ? html`<${PreparationReady} players=${facts.humans} myId=${me.playerId} isReady=${facts.isReady} />` : null}
+        ${statusLine ? html`<div class="room-bar__status">${statusLine}</div>` : null}
       </div>
       <div class="room-bar__right setup-action-group">
         <${LoadoutButton} from="room" size="lg" class="room-loadout" label=${t('干员调配')} />

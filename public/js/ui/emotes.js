@@ -364,7 +364,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
       </button>
       ${onPinChange ? html`<button type="button" class=${cx('echat__tab', 'echat__pin', pinned && 'is-on')}
         aria-label=${pinned ? t('取消固定交流框') : t('固定交流框')} title=${pinned ? t('取消固定交流框') : t('固定交流框')}
-        aria-pressed=${pinned ? 'true' : 'false'} onClick=${() => onPinChange(!pinned)}><${Icon} name="pin" /></button>` : null}
+        aria-pressed=${pinned ? 'true' : 'false'} onClick=${() => { onPinChange(!pinned); if (pinned) onToggle(false); }}><${Icon} name="pin" /></button>` : null}
     </nav>` : null}
     <div class="ewheel__compose">
     <div class=${cx('ewheel__panel', panelBg && 'has-sprite', cellBg && 'has-cell')} style=${panelStyle}
