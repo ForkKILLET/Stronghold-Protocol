@@ -96,7 +96,7 @@ function ResourceTier({ st, tier, optional, onOptional, disabled }) {
   const bytes = chosen.reduce((n, g) => n + g.bytes, 0);
   const totalBytes = chosen.reduce((n, g) => n + g.totalBytes, 0);
   const unknown = chosen.some((g) => g.unknownSize);
-  return html`<section class="resource-tier">
+  return html`<section class="resource-tier resource-panel">
     <header class="resource-tier__head">
       <div><h3>${tier === 1 ? t('必备资源') : t('可选资源')}</h3>
         <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、官方特效、音效、背景音乐与玩法说明图片')}</p></div>
@@ -119,12 +119,11 @@ function ResourceTier({ st, tier, optional, onOptional, disabled }) {
 
 function ResourceOptions({ optional, voiceLang, onVoiceLang, skins, onSkins, disabled }) {
   const selected = normalizePreloadVoiceLang(voiceLang);
-  return html`<div class="resource-manager__options">
-    <fieldset class="resource-voice-choice" disabled=${disabled}>
-      <legend>${t('预载语音语言')}</legend>
-      <div class="resource-voice-choice__options" role="group" aria-label=${t('预载语音语言')} data-testid="preload-voice-lang">
+  return html`<fieldset class="resource-voice-choice" disabled=${disabled} aria-labelledby="resource-voice-title">
+      <h3 id="resource-voice-title">${t('预载语音')}</h3>
+      <div class="resource-voice-choice__options" role="group" aria-label=${t('预载语音')} data-testid="preload-voice-lang">
         ${PRELOAD_VOICE_LANGS.map((lang) => html`<label class="resource-choice" key=${lang}>
-          <input type="checkbox" name="preload-voice-lang" value=${lang} checked=${selected.includes(lang)}
+          <input type="checkbox" name="preload-voice-lang" disabled=${disabled} value=${lang} checked=${selected.includes(lang)}
             onChange=${(e) => onVoiceLang(normalizePreloadVoiceLang(e.currentTarget.checked
               ? [...selected, lang] : selected.filter((id) => id !== lang)))} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
       </div>
@@ -132,10 +131,9 @@ function ResourceOptions({ optional, voiceLang, onVoiceLang, skins, onSkins, dis
       <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
       ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
     </fieldset>
-    <div class="resource-skin-options"><label class="resource-choice resource-skin-choice"><input type="checkbox" checked=${skins} disabled=${disabled}
-      onChange=${(e) => onSkins(e.currentTarget.checked)} />${t('预载皮肤')}</label>
-      <p class="resource-skin-hint">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p></div>
-  </div>`;
+    <section class="resource-skin-options resource-panel"><h3>${t('预载皮肤')}</h3><label class="resource-choice resource-skin-choice"><input type="checkbox" checked=${skins} disabled=${disabled}
+      onChange=${(e) => onSkins(e.currentTarget.checked)} />${t('启用')}</label>
+      <p class="resource-skin-hint">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p></section>`;
 }
 
 /** Mounted once in main.js, above all screens including the settings modal. */
@@ -164,58 +162,61 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { /* controller displays the error */ }
   };
-  return html`<${Modal} open=${open} onClose=${closeResources} title=${t('预载资源管理')} micro="RESOURCE MANAGER" class="resource-modal" utility=${true}
-    actions=${html`
-      ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy || st.phase === 'checking' ? t('取消处理') : t('暂停下载')}<//>`
-        : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused || st.checkBlocked && st.selectionComplete}
-          onClick=${() => st.selectionComplete ? checkResources() : enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
-      ${enabled && st.combatPaused && !st.manualPaused && !archiveBusy ? html`<${Button} variant="secondary" icon="hourglass"
-        onClick=${pauseResources}>${t('暂停下载')}<//>` : null}
-      <${Button} variant="secondary" onClick=${closeResources}>${t('关闭')}<//>`}>
+  return html`<${Modal} open=${open} onClose=${closeResources} title=${t('预载资源管理')} micro="RESOURCE MANAGER" class="resource-modal" utility=${true}>
     <div class="resource-manager">
-      <p class="resource-manager__intro">${t('先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。')}</p>
-      <${ResourceOptions} optional=${optional} voiceLang=${voiceLang} onVoiceLang=${onVoiceLang} skins=${skins} onSkins=${onSkins} disabled=${archiveBusy} />
-      <div class="resource-manager__tiers">
+      <div class="resource-manager__top">
+        <section class="resource-manager__status resource-panel">
+          <h3>${t('预载状态')}</h3>
+          <p class=${`resource-manager__message${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
+            ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
+          ${st.checkBlocked ? html`<p class="resource-manager__warn">${t('完整检查请返回大厅后进行。')}</p>` : null}
+          ${st.packProgress ? html`<div class="resource-manager__pack-progress">
+            <${ProgressBar}
+              value=${resourcePackPercent(st.packProgress)} max=${100} size="sm" tone="mint"
+              label=${t('{0}资源包：{percent}%', { 0: t('正在下载'),
+                percent: resourcePackPercent(st.packProgress) })} />
+            <small>${t('下载速度：{0}/秒', { 0: formatBytes(st.packProgress.speedBytesPerSecond || 0) })}
+              ${st.packProgress.activeDownloads > 1 ? ` · ×${st.packProgress.activeDownloads}` : ''}</small>
+          </div>` : null}
+          ${st.packProgress?.importing ? html`<${ProgressBar}
+            value=${st.packProgress.importing.done} max=${Math.max(1, st.packProgress.importing.totalFiles)}
+            size="sm" tone="amber" label=${t('{0}资源包：{percent}%', {
+              0: t('正在导入'),
+              percent: st.packProgress.importing.totalFiles
+                ? Math.floor(st.packProgress.importing.done * 100 / st.packProgress.importing.totalFiles) : 0 })} />` : null}
+          ${st.worker ? html`<p class="resource-manager__warn">${st.worker}</p>` : null}
+          ${st.failed ? html`<p class="resource-manager__warn">${t('{failed} 个文件下载失败，继续下载时重试。', { failed: st.failed })}</p>` : null}
+          ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}
+          <div class="res-actions resource-status__actions">
+            ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy || st.phase === 'checking' ? t('取消处理') : t('暂停下载')}<//>`
+              : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused || st.checkBlocked && st.selectionComplete}
+                onClick=${() => st.selectionComplete ? checkResources() : enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
+            ${enabled && st.combatPaused && !st.manualPaused && !archiveBusy ? html`<${Button} variant="secondary" icon="hourglass"
+              onClick=${pauseResources}>${t('暂停下载')}<//>` : null}
+            <${Button} variant="secondary" disabled=${archiveBusy} onClick=${() => { void clearResources(); }}>${t('清理缓存')}<//>
+            <${Button} variant="secondary" disabled=${!enabled} onClick=${() => onChange(false)}>${t('关闭预载')}<//>
+          </div>
+          <p class="resource-manager__intro">${t('先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。')}</p>
+          <p class="resource-manager__intro">${t('关闭预载会保留已缓存资源。')}</p>
+        </section>
+        <section class="resource-archive resource-panel">
+          <h3>${t('ZIP 资源包')}</h3>
+          <p>${t('可前往本服资源补给站下载分类 ZIP，也可将已缓存的资源导出并分享。导入时只复用当前版本仍有效的资源，缺少的部分会增量下载。')}</p>
+          ${st.archive ? html`<${ProgressBar} value=${st.archivePercent} max=${100} size="sm" tone="mint" />` : null}
+          <input ref=${fileInput} type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden onChange=${importFile} />
+          <div class="res-actions">
+            <${Button} variant="secondary" disabled=${archiveBusy || !st.supported} onClick=${() => fileInput.current?.click()}>${t('导入 ZIP')}<//>
+            <${Button} variant="secondary" disabled=${archiveBusy || !st.supported || !st.done} onClick=${exportFile}>${t('导出 ZIP')}<//>
+            <${Button} variant="secondary" icon="link" disabled=${!RESOURCE_DOWNLOAD_URL}
+              title=${t('ZIP 资源包')}
+              onClick=${() => window.open(RESOURCE_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')}>${t('前往下载')}<//>
+          </div>
+        </section>
+      </div>
+      <div class="resource-manager__grid">
+        <${ResourceOptions} optional=${optional} voiceLang=${voiceLang} onVoiceLang=${onVoiceLang} skins=${skins} onSkins=${onSkins} disabled=${archiveBusy} />
         <${ResourceTier} st=${st} tier=${1} />
         <${ResourceTier} st=${st} tier=${2} optional=${optional} onOptional=${onOptional} disabled=${archiveBusy} />
-      </div>
-      <p class=${`resource-manager__status${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
-        ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
-      ${st.checkBlocked ? html`<p class="resource-manager__warn">${t('完整检查请返回大厅后进行。')}</p>` : null}
-      ${st.packProgress ? html`<div class="resource-manager__pack-progress">
-        <${ProgressBar}
-          value=${resourcePackPercent(st.packProgress)} max=${100} size="sm" tone="mint"
-          label=${t('{0}资源包：{percent}%', { 0: t('正在下载'),
-            percent: resourcePackPercent(st.packProgress) })} />
-        <small>${t('下载速度：{0}/秒', { 0: formatBytes(st.packProgress.speedBytesPerSecond || 0) })}
-          ${st.packProgress.activeDownloads > 1 ? ` · ×${st.packProgress.activeDownloads}` : ''}</small>
-      </div>` : null}
-      ${st.packProgress?.importing ? html`<${ProgressBar}
-        value=${st.packProgress.importing.done} max=${Math.max(1, st.packProgress.importing.totalFiles)}
-        size="sm" tone="amber" label=${t('{0}资源包：{percent}%', {
-          0: t('正在导入'),
-          percent: st.packProgress.importing.totalFiles
-            ? Math.floor(st.packProgress.importing.done * 100 / st.packProgress.importing.totalFiles) : 0 })} />` : null}
-      ${st.worker ? html`<p class="resource-manager__warn">${st.worker}</p>` : null}
-      ${st.failed ? html`<p class="resource-manager__warn">${t('{failed} 个文件下载失败，继续下载时重试。', { failed: st.failed })}</p>` : null}
-      ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}
-      <section class="resource-archive">
-        <h3>${t('ZIP 资源包')}</h3>
-        <p>${t('可前往本服资源补给站下载分类 ZIP，也可将已缓存的资源导出并分享。导入时只复用当前版本仍有效的资源，缺少的部分会增量下载。')}</p>
-        ${st.archive ? html`<${ProgressBar} value=${st.archivePercent} max=${100} size="sm" tone="mint" />` : null}
-        <input ref=${fileInput} type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden onChange=${importFile} />
-        <div class="res-actions">
-          <${Button} variant="secondary" disabled=${archiveBusy || !st.supported} onClick=${() => fileInput.current?.click()}>${t('导入 ZIP')}<//>
-          <${Button} variant="secondary" disabled=${archiveBusy || !st.supported || !st.done} onClick=${exportFile}>${t('导出 ZIP')}<//>
-          <${Button} variant="secondary" icon="link" disabled=${!RESOURCE_DOWNLOAD_URL}
-            title=${t('ZIP 资源包')}
-            onClick=${() => window.open(RESOURCE_DOWNLOAD_URL, '_blank', 'noopener,noreferrer')}>${t('前往下载')}<//>
-        </div>
-      </section>
-      <div class="resource-manager__maintenance">
-        <button type="button" class="res-link" disabled=${archiveBusy} onClick=${() => { void clearResources(); }}>${t('清理缓存')}</button>
-        ${enabled ? html`<button type="button" class="res-link" onClick=${() => onChange(false)}>${t('关闭预载')}</button>` : null}
-        <span>${t('关闭预载会保留已缓存资源。')}</span>
       </div>
     </div>
   <//>`;
