@@ -114,10 +114,10 @@ function Slider({ label, micro, value, onInput, icon }) {
   </label>`;
 }
 
-function Toggle({ label, micro, value, onChange }) {
+function Toggle({ label, micro, value, onChange, testId }) {
   return html`<div class="set-row">
     <span class="set-row__label">${label}<${MicroLabel}>${micro}<//></span>
-    <button type="button" class=${`set-toggle${value ? ' is-on' : ''}`} role="switch" aria-checked=${value ? 'true' : 'false'}
+    <button type="button" class=${`set-toggle${value ? ' is-on' : ''}`} role="switch" aria-label=${label} data-testid=${testId} aria-checked=${value ? 'true' : 'false'}
       onClick=${() => onChange(!value)}><i></i><span>${value ? tc('toggle', '开启') : tc('toggle', '关闭')}</span></button>
   </div>`;
 }
@@ -307,11 +307,21 @@ function UiPluginSection() {
  * of the site's data. StorageManager exists only in a secure context: on plain http to a LAN IP the line says so and
  * there is no button. Laid out like 问题反馈 below it.
  */
+const SETTINGS_CATEGORIES = [
+  ['interface', N_('界面'), 'INTERFACE'],
+  ['audio', N_('声音'), 'AUDIO'],
+  ['battle', N_('战斗显示'), 'BATTLE'],
+  ['controls', N_('操作'), 'CONTROLS'],
+  ['appearance', N_('个性化'), 'APPEARANCE'],
+  ['resources', N_('资源与反馈'), 'RESOURCES'],
+];
+
 export function SettingsModal({ open, onClose }) {
   const s = useSettings();
   const [tested, setTested] = useState(false);
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
   const [shortcutOpen, setShortcutOpen] = useState(false);
+  const [category, setCategory] = useState('interface');
   const mtNote = machineTranslationNote(); // a pack marked as machine translation says so under the switch
   const [fxOk, setFxOk] = useState(false);  // effects extracted from the local client: the 官方特效 row shows
   // only while it is open (the title page keeps the modal mounted, closed), and from the effects' own file list: the
@@ -326,15 +336,39 @@ export function SettingsModal({ open, onClose }) {
     return () => { live = false; off(); };
   }, [open]);
   const fxTier = resolveOfficialFx(s.officialFx, true);
-  return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="7.4rem" utility=${true} class="settings-modal"
+  return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="10.4rem" utility=${true} class="settings-modal"
     actions=${html`<${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
-    <div class="set-list">
+    <div class="settings-layout">
+      <nav class="settings-nav" role="tablist" aria-label=${t('设置分类')} aria-orientation="vertical" onKeyDown=${e => {
+        if (!['ArrowUp','ArrowDown','Home','End'].includes(e.key)) return;
+        const tabs = [...e.currentTarget.querySelectorAll('[role="tab"]')];
+        const i = tabs.indexOf(document.activeElement);
+        const next = e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + tabs.length) % tabs.length;
+        e.preventDefault(); tabs[next].focus(); tabs[next].click();
+      }}>
+        ${SETTINGS_CATEGORIES.map(([id,label,micro],i) => html`<button type="button" key=${id} id=${`settings-tab-${id}`} role="tab"
+          data-settings-tab=${id} aria-selected=${category===id} aria-controls=${`settings-panel-${id}`} tabIndex=${category===id?0:-1}
+          class=${`settings-nav__item${category===id?' is-on':''}`} onClick=${() => setCategory(id)}>
+          <span class="settings-nav__index num">${String(i+1).padStart(2,'0')}</span><span>${t(label)}<${MicroLabel}>${micro}<//></span></button>`)}
+      </nav>
+      <section key=${category} class="settings-content set-list" role="tabpanel" id=${`settings-panel-${category}`} aria-labelledby=${`settings-tab-${category}`} tabIndex="0">
+      ${category === 'interface' ? html`
       <div class="set-row">
         <span class="set-row__label">${t('界面语言')}<${MicroLabel}>LANGUAGE<//></span>
         <${LangToggle} class="set-lang" />
       </div>
       ${mtNote ? html`<p class="set-hint set-lang-note" data-testid="lang-mt-note">${mtNote}</p>` : null}
-      <${PersonalizationSection} />
+      <div class="set-row">
+        <span class="set-row__label">${t('文字大小')}<${MicroLabel}>TEXT SIZE<//></span>
+        <div class="set-seg set-textsize" role="radiogroup" aria-label=${t('文字大小')} data-testid="text-size">
+          ${TEXT_SCALES.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.textSize === id ? 'true' : 'false'}
+            class=${s.textSize === id ? 'is-on' : ''} onClick=${() => updateSettings({ textSize: id })}>${t(label)}</button>`)}
+        </div>
+      </div>
+      <p class="set-hint set-textsize-note">${t('调整界面文字大小，棋盘保持原比例。')}</p>
+      <${ScreenFitSection} />
+      ` : null}
+      ${category === 'audio' ? html`
       <${Slider} label=${t('背景音乐')} micro="BGM" icon="play" value=${s.bgm} onInput=${(v) => updateSettings({ bgm: v })} />
       <${Slider} label=${t('干员语音')} micro="VOICE" icon="mic" value=${s.voice} onInput=${(v) => updateSettings({ voice: v })} />
       <div class="set-row">
@@ -342,10 +376,9 @@ export function SettingsModal({ open, onClose }) {
         <div class="set-voice">
           <${Select} label=${t('语音语言')} data-testid="voice-lang" value=${s.voiceLang}
             options=${VOICE_LANGS.map(id=>({value:id,label:VOICE_LANG_NAMES[id],lang:VOICE_LANG_TAGS[id]}))} onChange=${voiceLang=>updateSettings({voiceLang})} />
-          <button type="button" class=${s.voiceNative ? 'set-native is-on' : 'set-native'} data-testid="voice-native" role="switch" aria-checked=${s.voiceNative}
-            title=${t('有本土配音时优先使用；没有时回退到所选语音。')} onClick=${() => updateSettings({ voiceNative: !s.voiceNative })}>${t('优先本土配音')}</button>
         </div>
       </div>
+      <${Toggle} label=${t('优先本土配音')} micro="NATIVE VOICE" value=${s.voiceNative} testId="voice-native" onChange=${voiceNative => updateSettings({voiceNative})} />
       <p class="set-hint">${t('本土配音由干员决定，不是界面语言；单独指定的干员配音优先于全局设置。')}</p>
       <${Toggle} label=${t('显示字幕')} micro="SUBTITLES" value=${s.voiceSubtitles} onChange=${voiceSubtitles => updateSettings({ voiceSubtitles })} />
       <div class="set-row">
@@ -358,6 +391,8 @@ export function SettingsModal({ open, onClose }) {
       <${Slider} label=${t('音效')} micro="SFX" icon="signal" value=${s.sfx}
                  onInput=${(v) => { updateSettings({ sfx: v }); if (!tested) { setTested(true); setTimeout(() => setTested(false), 400); audio.sfx('click'); } }} />
       <${Toggle} label=${t('静音')} micro="MUTE" value=${s.muted} onChange=${(v) => updateSettings({ muted: v })} />
+      ` : null}
+      ${category === 'battle' ? html`
       <${Toggle} label=${t('显示伤害数字')} micro="DAMAGE NUMBERS" value=${s.damageNumbers} onChange=${(v) => updateSettings({ damageNumbers: v })} />
       <${Toggle} label=${t('官方伤害数字')} micro="OFFICIAL NUMBERS" value=${s.officialDamageNumbers} onChange=${(v) => updateSettings({ officialDamageNumbers: v })} />
       <p class="set-hint">${t('只显示达到官方暴击条件的红色数字。关闭时仍显示每一次命中。')}</p>
@@ -365,23 +400,8 @@ export function SettingsModal({ open, onClose }) {
       <p class="set-hint">${t('弹药类技能开启时，在弹药条下方显示剩余弹药 / 总弹药数（如 13/14）；秘术师的血条下方显示储存的攻击能量 / 上限（如 2/3）。官方界面没有这些数字。')}</p>
       <${Toggle} label=${t('部署时镜头缩放')} micro="DEPLOYMENT ZOOM" value=${s.deploymentZoom} onChange=${(v) => updateSettings({ deploymentZoom: v })} />
       <p class="set-hint">${t('放置或移动干员、装备时临时收起商店并放大棋盘，结束后恢复。默认关闭，不影响手动收起商店。')}</p>
-      <${ResourceRow} enabled=${s.preload} onChange=${(v) => updateSettings({ preload: v })} />
-      <${Toggle} label=${t('启用皮肤')} micro="SKINS" value=${s.skinsEnabled} onChange=${(v) => updateSettings({ skinsEnabled: v })} />
-      <p class="set-hint">${t('开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。')}</p>
-      <${OtherSkinsRow} value=${s.otherSkins !== false} onSet=${v => updateSettings({otherSkins:v})} />
-      <div class="set-row"><span class="set-row__label"><${Icon} name="keyboard" />${t('快捷键')}<${MicroLabel}>SHORTCUTS<//></span>
-        <${Button} variant="secondary" icon="edit" onClick=${() => setShortcutOpen(true)}>${t('修改快捷键')}<//></div>
       <${Toggle} label=${t('盟约效果剩余时间')} micro="BOND TIMERS" value=${s.bondTimers} onChange=${(v) => updateSettings({ bondTimers: v })} />
       <p class="set-hint">${t('在选中单位的详情中显示叙拉古、萨尔贡效果的剩余时间；萨尔贡显示层数与下一层到期时间。官方界面没有这些数字。')}</p>
-      <${Toggle} label=${t('全屏时保持屏幕常亮')} micro="SCREEN WAKE LOCK" value=${s.fullscreenWakeLock} onChange=${(v) => updateSettings({ fullscreenWakeLock: v })} />
-      <p class="set-hint" data-testid="wake-lock-hint">${tParts(isIOS()
-        ? N_('全屏期间始终保持屏幕常亮（{support}）；iOS低电量模式下可能不生效。')
-        : N_('全屏期间始终保持屏幕常亮（{support}）。'), {
-        support: html`<${Tooltip} tap=${true} id="wake-lock-requirements" placement="bottom"
-          text=${t('需要 HTTPS 或可信的本地地址（如 localhost），浏览器支持 Screen Wake Lock API，且页面保持在前台。系统设置仍可能限制生效。')}>
-          <button type="button" class="set-hint__help" aria-describedby="wake-lock-requirements">${t('需要环境支持')}<${Icon} name="info" /></button>
-        <//>`,
-      })}</p>
       <div class="set-row">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
         <div class="set-seg" role="radiogroup">
@@ -397,18 +417,6 @@ export function SettingsModal({ open, onClose }) {
         </div>
       </div>
       <p class="set-hint">${t('使用服主从自己的游戏客户端提取的官方战斗特效（普攻、弹道、命中、状态、阵亡、部署，干员、召唤物和敌人的技能与天赋，以及秘术师储存的能量），连到这台服务器的玩家看到的都是服主提取的这一份；提取里没有的或对战中没有时机的（如只在游戏内部条件下触发的天赋效果）仍为本作的特效。精简：半分辨率贴图、粒子减半，适合手机。只在 3D 棋盘上显示。')}</p>` : null}
-      <div class="set-row">
-        <span class="set-row__label">${t('文字大小')}<${MicroLabel}>TEXT SIZE<//></span>
-        <div class="set-seg set-textsize" role="radiogroup" aria-label=${t('文字大小')} data-testid="text-size">
-          ${TEXT_SCALES.map(([id, label]) => html`<button key=${id} type="button" role="radio" aria-checked=${s.textSize === id ? 'true' : 'false'}
-            class=${s.textSize === id ? 'is-on' : ''} onClick=${() => updateSettings({ textSize: id })}>${t(label)}</button>`)}
-        </div>
-      </div>
-      <p class="set-hint set-textsize-note">${t('调整界面文字大小，棋盘保持原比例。')}</p>
-      <${ScreenFitSection} />
-      <${CosmeticSection} />
-      <${UiPluginSection} />
-      <${DiagSection} />
       <div class="set-row set-row--fps">
         <span class="set-row__label">${t('帧率上限')}<${MicroLabel}>FRAME RATE<//></span>
         <div class="set-seg set-seg--fps" role="radiogroup" aria-label=${t('帧率上限')}>
@@ -417,9 +425,36 @@ export function SettingsModal({ open, onClose }) {
             onClick=${() => updateSettings({ fpsLimit: limit })}>${limit || t('不限')}</button>`)}
         </div>
       </div>
+      ` : null}
+      ${category === 'controls' ? html`
+      <div class="set-row"><span class="set-row__label"><${Icon} name="keyboard" />${t('快捷键')}<${MicroLabel}>SHORTCUTS<//></span>
+        <${Button} variant="secondary" size="sm" class="settings-page-action" icon="edit" aria-haspopup="dialog" onClick=${() => setShortcutOpen(true)}>${t('修改快捷键')}<//></div>
+      <${Toggle} label=${t('全屏时保持屏幕常亮')} micro="SCREEN WAKE LOCK" value=${s.fullscreenWakeLock} onChange=${(v) => updateSettings({ fullscreenWakeLock: v })} />
+      <p class="set-hint" data-testid="wake-lock-hint">${tParts(isIOS()
+        ? N_('全屏期间始终保持屏幕常亮（{support}）；iOS低电量模式下可能不生效。')
+        : N_('全屏期间始终保持屏幕常亮（{support}）。'), {
+        support: html`<${Tooltip} tap=${true} id="wake-lock-requirements" placement="bottom"
+          text=${t('需要 HTTPS 或可信的本地地址（如 localhost），浏览器支持 Screen Wake Lock API，且页面保持在前台。系统设置仍可能限制生效。')}>
+          <button type="button" class="set-hint__help" aria-describedby="wake-lock-requirements">${t('需要环境支持')}<${Icon} name="info" /></button>
+        <//>`,
+      })}</p>
       ${touchUi
         ? html`<p class="set-hint">${t('触屏操作：点击单位选中（撤退 / 出售）· 长按单位或卡牌查看详情 · 拖动部署后滑动选择朝向')}</p>`
         : html`<p class="set-hint">${t('快捷键可在“修改快捷键”中自定义。')}<kbd>Esc</kbd> ${t('关闭弹窗 · 右键查看详情')}</p>`}
+      ` : null}
+      ${category === 'appearance' ? html`
+      <${PersonalizationSection} />
+      <${Toggle} label=${t('启用皮肤')} micro="SKINS" value=${s.skinsEnabled} onChange=${(v) => updateSettings({ skinsEnabled: v })} />
+      <p class="set-hint">${t('开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。')}</p>
+      <${OtherSkinsRow} value=${s.otherSkins !== false} onSet=${v => updateSettings({otherSkins:v})} />
+      <${CosmeticSection} />
+      <${UiPluginSection} />
+      ` : null}
+      ${category === 'resources' ? html`
+      <${ResourceRow} enabled=${s.preload} onChange=${(v) => updateSettings({ preload: v })} />
+      <${DiagSection} />
+      ` : null}
+      </section>
     </div>
     <${ShortcutModal} open=${shortcutOpen} onClose=${() => setShortcutOpen(false)} />
   <//>`;

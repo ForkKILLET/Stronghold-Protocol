@@ -70,7 +70,7 @@ export function ResourceRow({ enabled }) {
   return html`<div class="set-res">
     <div class="set-row">
       <span class="set-row__label">${t('预载资源')}<${MicroLabel}>PRELOAD<//></span>
-      <${Button} variant="secondary" size="sm" icon="expand" onClick=${openResources}>${t('资源管理')}<//>
+      <${Button} variant="secondary" size="sm" class="settings-page-action" icon="expand" aria-haspopup="dialog" onClick=${openResources}>${t('资源管理')}<//>
     </div>
     <p class="set-hint">${stateText(st, enabled)} ${t('· 管理必备与可选资源，或导入、导出 ZIP 资源包。')}</p>
   </div>`;

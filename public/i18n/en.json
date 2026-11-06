@@ -3222,5 +3222,11 @@
   "这台服务器没有提供该记录的版本。": "This server does not offer the version used by this record.",
   "版本数据加载失败，请稍后重试。": "Version data failed to load. Please try again later.",
   "预选「{name}」": "Previewing “{name}”",
-  "回放所需的版本内容不可用，仍可查看经营记录。": "The version content required by this replay is unavailable. You can still view preparation records."
+  "回放所需的版本内容不可用，仍可查看经营记录。": "The version content required by this replay is unavailable. You can still view preparation records.",
+  "声音": "Audio",
+  "战斗显示": "Battle display",
+  "操作": "Controls",
+  "个性化": "Personalization",
+  "资源与反馈": "Resources & feedback",
+  "设置分类": "Settings categories"
 }

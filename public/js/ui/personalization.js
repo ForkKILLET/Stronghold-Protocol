@@ -12,9 +12,9 @@ export function PersonalizationSection() {
   return html`<section class="set-personalization" aria-labelledby="set-personalization-title">
     <h3 class="set-row__label" id="set-personalization-title">${t('大厅个性化')}<${MicroLabel}>PERSONALIZATION<//></h3>
     <div class="set-personalization__entries">
-      <${Button} class="set-personalization__entry" title=${t('大厅背景')} aria-label=${t('大厅背景')}
+      <${Button} size="sm" class="set-personalization__entry settings-page-action" aria-haspopup="dialog" title=${t('大厅背景')} aria-label=${t('大厅背景')}
         onClick=${() => setBackgroundOpen(true)}><${BackdropGlyph} />${t('大厅背景')}<//>
-      <${LobbyMusicButton} class="set-personalization__entry" size="md" square=${false} />
+      <${LobbyMusicButton} class="set-personalization__entry settings-page-action" size="sm" square=${false} />
     </div>
     <${Modal} open=${backgroundOpen} utility=${true} class="hub-backdrop-panel" title=${t('大厅背景')} micro="LOBBY BACKDROP" onClose=${() => setBackgroundOpen(false)}>
       <${BackdropSettings} bg=${background} />

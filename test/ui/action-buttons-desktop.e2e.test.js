@@ -56,6 +56,32 @@ test('desktop Firefox: content actions retain borders and device-record clearing
       await page.screenshot({ path: path.join(out, name + '.png') });
     };
     await page.click('[data-testid="settings-btn"]');
+    await page.waitForSelector('[data-settings-tab="interface"][aria-selected="true"]');
+    assert.equal(await page.$$eval('.settings-nav [role="tab"]', es => es.length), 6);
+    await shot('settings-interface');
+    const shell = await page.$eval('.settings-modal', e => e.getBoundingClientRect().height);
+    const head = await page.$eval('[data-testid="screen-fit"] .set-keys__head', e => {
+      const a=e.firstElementChild.getBoundingClientRect(),b=e.lastElementChild.getBoundingClientRect();return b.left-a.right;
+    });
+    assert.ok(head >= 20, 'screen-fit title and reset have breathing room');
+    await page.click('[data-settings-tab="audio"]');
+    assert.ok(await page.$eval('[data-testid="voice-native"]', e => e.classList.contains('set-toggle') && !!e.querySelector('i')));
+    const nativeBefore = await page.$eval('[data-testid="voice-native"]', e => e.getAttribute('aria-checked'));
+    await page.click('[data-testid="voice-native"]');
+    assert.notEqual(await page.$eval('[data-testid="voice-native"]', e => e.getAttribute('aria-checked')), nativeBefore);
+    await shot('settings-audio');
+    await page.click('[data-settings-tab="appearance"]');
+    assert.equal(await page.$eval('.set-personalization', e => getComputedStyle(e).borderTopWidth), '0px');
+    const dimensions = await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize})));
+    await shot('settings-appearance');
+    await page.click('[data-settings-tab="controls"]');
+    dimensions.push(...await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
+    await page.click('[data-settings-tab="resources"]');
+    dimensions.push(...await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
+    assert.equal(dimensions.length, 4);
+    for (const d of dimensions) assert.deepEqual(d, dimensions[0], 'all settings page launchers share dimensions and typography');
+    assert.equal(await page.$eval('.settings-modal', e => e.getBoundingClientRect().height), shell, 'category changes preserve window height');
+
     await framed('[data-testid="diag-copy"]');
     await page.$eval('[data-testid="diag-copy"]', e => e.scrollIntoView({ block: 'center' }));
     await page.hover('[data-testid="diag-copy"]');
