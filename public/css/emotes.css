@@ -288,9 +288,18 @@
 .ewheel__btn.is-communication:disabled { color:var(--text-dim); border-color:var(--line-2); background:#080b0a; }
 @media (pointer:coarse) { .ewheel__btn.is-communication { min-height:44px; } }
 
-/* Preparation reserves the same space in either mode; pinning only changes dismissal. */
-.communication-dock.is-open { display:block; width:288px; max-width:100%; min-width:0; }
-.communication-dock .ewheel__dialog.has-chat { position:relative; inset:auto; width:100%; max-width:100%; max-height:none; box-shadow:none; }
+/* All chat is modeless; its position is shared by preparation and battle screens. */
+.echat-layer { --ui-unit:1rem; --utility-text:var(--t); position:fixed; inset:0; z-index:60; pointer-events:none; padding:max(8px,var(--sa-t,0px)) max(8px,var(--sa-r,0px)) max(8px,var(--sa-b,0px)) max(8px,var(--sa-l,0px)); }
+.echat-layer .echat-window { position:fixed; inset:auto; left:0; top:0; margin:0; max-width:none; pointer-events:auto; visibility:hidden; }
+/* Screen-local dialogs have their own stacking contexts: keep chat behind their interaction. */
+body:has(.modal, .guide, .st, .lo, [aria-modal="true"], [data-testid="paused"], .awayov) .echat-layer { display:none; }
+.echat__drag { align-self:stretch; flex:1; min-width:18px; display:grid; place-items:center; padding:4px; border:0; background:none; color:var(--text-dim); cursor:grab; touch-action:none; user-select:none; }
+.echat__drag svg { display:block; width:16px; height:16px; fill:currentColor; }
+.echat__drag:hover { color:var(--mint-400); }
+.echat-window.is-dragging, .echat-window.is-dragging .echat__drag { cursor:grabbing; }
+.echat__close { flex:none; display:grid; place-items:center; width:var(--echat-control-size); height:var(--echat-control-size); padding:5px; border:1px solid var(--line-2); background:none; color:var(--text-lo); }
+.echat__close .icon { width:18px; height:18px; }
+.echat__close:hover { color:var(--mint-400); border-color:var(--mint-600); }
 .brief-communication, .room-communication { min-width:0; flex:none; }
 .room-stage { flex:1; min-height:0; display:grid; grid-template-columns:max(160px,calc(3.4 * var(--ui-unit,1rem))) minmax(0,1fr); gap:calc(.16 * var(--ui-unit,1rem)); padding-inline:calc(.4 * var(--ui-unit,1rem)); }
 .room-communication { display:flex; flex-direction:column; justify-content:flex-end; padding-block:8px; }
@@ -309,6 +318,3 @@
 .brief-communication, .draft-communication { position:relative; }
 :is(.brief-communication,.draft-communication) > .communication-activity { position:absolute; left:0; right:0; bottom:calc(100% + 4px); z-index:35; flex-direction:row; align-items:center; padding:4px; }
 :is(.brief-communication,.draft-communication) .communication-activity .ebubble { width:36px; height:32px; flex:none; }
-
-/* A compressed keyboard viewport temporarily floats the composer above page actions. */
-.screen.communication-keyboard :is(.brief__main,.draft__main,.room-stage) { position:relative; z-index:50; }

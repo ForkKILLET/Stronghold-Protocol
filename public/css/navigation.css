@@ -171,11 +171,9 @@
 .preparation-hud .countdown--untimed { width:32px; }
 .preparation-hud .draft-pause { position:static; display:flex; z-index:auto; }
 
-/* Chat takes its own row while open. Closed, the trigger joins the four battle tools.
-   The whole corner stays in the left column's flow, above no interactive content. */
+/* The floating window leaves its trigger and four battle tools in one stable row. */
 .preparation-tools { --ui-unit:1rem; --utility-text:var(--t); --corner-button-size:max(.56rem,36px); position:relative; display:grid; grid-template-columns:auto minmax(0,1fr); align-items:end; gap:max(.1rem,8px); max-width:100%; }
 .brief__left { overflow:visible; }
-.preparation-tools > .communication-dock.is-open { grid-column:1/-1; }
 .preparation-tools__actions { display:flex; align-items:center; gap:max(.1rem,8px); min-width:0; }
 .preparation-tools .gm__gear { flex:none; box-sizing:border-box; width:var(--corner-button-size); height:var(--corner-button-size); min-height:var(--corner-button-size); min-width:0; padding:0; background:rgba(8,11,10,.85); color:var(--text-lo); border:1px solid var(--line-2); }
 .preparation-tools .gm__gear .icon { width:max(.28rem,18px); height:max(.28rem,18px); }

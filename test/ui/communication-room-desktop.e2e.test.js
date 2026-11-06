@@ -37,7 +37,7 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
    assert.ok(controls.every(e=>Math.abs(e.w-e.h)<1&&e.hit),'all four square tools remain reachable below chat');
    const content=await page.$eval('.brief__intel,.draft-order__rows',e=>({bottom:e.getBoundingClientRect().bottom,scroll:e.scrollHeight>e.clientHeight,overflow:getComputedStyle(e).overflowY}));
    const chat=await page.$eval('.communication-dock',e=>e.getBoundingClientRect().top);
-   assert.ok(content.bottom<=chat,'chat has its own reserved space below the independently scrolling information');
+   assert.ok(content.bottom<=chat,'the communication trigger stays below independently scrolling information');
    assert.equal(content.overflow,'auto');
    await page.hover('.preparation-tools [aria-label="设置"]');await settle();
    assert.ok(await page.$eval('.preparation-tools [aria-label="设置"]',e=>{
@@ -47,6 +47,7 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
     return true;
    }),'corner button hover brackets fit within clipping ancestors');
    await page.click('.preparation-tools [aria-label="设置"]');await page.waitForSelector('.modal');
+   assert.equal(await page.$eval('.echat-layer',e=>getComputedStyle(e).display),'none','modeless chat stays behind menu interactions');
    await page.keyboard.press('Escape');await page.waitForSelector('.modal',{hidden:true});
    await page.click('.preparation-tools [aria-label="玩法说明"]');await page.waitForSelector('.guide');
    await page.keyboard.press('Escape');await page.waitForSelector('.guide',{hidden:true});
@@ -64,14 +65,28 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
    assert.equal(geometry.width,288,'all desktop preparation and battle chat panes use the same fixed width');
    assert.ok(geometry.hit,'input remains reachable');assert.ok(geometry.inset>=8,'tools have breathing room');
    assert.ok(Math.abs(geometry.inset-geometry.inputInset)<1,'tools and input stay aligned');assert.ok(geometry.paddings.every(n=>n>=8));
+   assert.deepEqual(await page.$$eval('.echat__tabs > button',es=>es.map(e=>e.classList.contains('echat__drag')?'drag':e.classList.contains('echat__pin')?'pin':e.classList.contains('echat__close')?'close':e.getAttribute('aria-label'))),['表情','聊天历史','drag','pin','close'],'toolbar DOM and keyboard order match the visual grouping');
    await page.type('.echat__input','稍等一下');await page.click('.echat__pin');
    await page.waitForSelector('.ewheel__dialog',{hidden:true});await page.waitForSelector('.ewheel__btn',{visible:true});
    assert.match(await page.$eval('.ewheel__btn',e=>getComputedStyle(e).backgroundColor),/^rgb\(/,'communication trigger is opaque');
    await page.click('.ewheel__btn');await settle();
    assert.equal(await page.$eval('.echat__input',e=>e.value),'稍等一下','unpinning preserves the unsent message');
    assert.equal(await page.$eval('.echat__pin',e=>e.getAttribute('aria-pressed')),'false');
+   const floating=await page.evaluate(()=>{
+    const trigger=document.querySelector('.ewheel__btn'),panel=document.querySelector('.ewheel__dialog'),a=trigger.getBoundingClientRect(),b=panel.getBoundingClientRect();
+    const controls=[...document.querySelectorAll('.preparation-tools__actions button,.gm__corner>.gm__gear')];
+    return{triggerVisible:!trigger.hidden,expanded:trigger.getAttribute('aria-expanded'),triggerHit:trigger.contains(document.elementFromPoint(a.x+a.width/2,a.y+a.height/2)),above:b.bottom<=a.top-4,width:b.width,height:b.height,tools:controls.every(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})};
+   });observations.push({name,floating});
+   assert.ok(floating.triggerVisible&&floating.triggerHit&&floating.above&&floating.tools,'floating chat keeps the trigger and neighboring tools reachable below it');
+   assert.equal(floating.expanded,'true');assert.equal(floating.width,geometry.width);assert.equal(floating.height,geometry.height);
+   await shot(name+'-floating');
+   await page.click('.ewheel__btn');await page.waitForSelector('.ewheel__dialog',{hidden:true});
+   assert.equal(await page.$eval('.ewheel__btn',e=>e.getAttribute('aria-expanded')),'false');
+   await page.click('.ewheel__btn');await page.waitForSelector('.ewheel__dialog',{visible:true});
+   assert.equal(await page.$eval('.echat__input',e=>e.value),'稍等一下','closing through the trigger preserves the unsent message');
    await page.click('.echat__pin');await settle();
    assert.equal(await page.$eval('.echat__pin',e=>e.getAttribute('aria-pressed')),'true');
+   assert.equal(await page.$eval('.ewheel__btn',e=>e.hidden),false,'the bottom trigger remains available for fixed floating chat');
    await shot(name);return geometry;
   };
   await page.goto(server.url,{waitUntil:'domcontentloaded'});await page.waitForSelector('.title-login input');
@@ -96,6 +111,18 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
   await shot('01-room-1440');await page.setViewport({width:3072,height:1800,deviceScaleFactor:1});await settle();
   await guests[0].request({t:'room.chat',text:'看一下阵容再开始'});await page.waitForFunction(()=>document.querySelector('.echat__history')?.textContent.includes('看一下阵容再开始'));
   await checkChat('03-room-chat');
+  const windowRect=()=>page.$eval('.echat-window',e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height};});
+  const initialWindow=await windowRect(),grip=await page.$eval('.echat__drag',e=>{const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};});
+  await page.mouse.move(grip.x,grip.y);await page.mouse.down();await page.mouse.move(grip.x+360,grip.y-180,{steps:8});await page.mouse.up();await settle();
+  const movedWindow=await windowRect();assert.ok(Math.abs(movedWindow.x-initialWindow.x-360)<1&&Math.abs(movedWindow.y-initialWindow.y+180)<1,'dragging changes both coordinates');
+  assert.ok(await page.evaluate(()=>JSON.parse(localStorage.getItem('sp.pref.communication.position'))?.x>0),'drag end saves a browser preference');
+  await page.focus('.echat__drag');await page.keyboard.press('ArrowRight');await settle();assert.ok(Math.abs((await windowRect()).x-movedWindow.x-10)<1,'focused drag handle supports keyboard movement');
+  await page.click('.echat__close');await page.waitForSelector('.echat-window',{hidden:true});await page.click('.ewheel__btn');await page.waitForSelector('.echat-window');await settle();
+  const restoredWindow=await windowRect();assert.ok(Math.abs(restoredWindow.x-movedWindow.x-10)<1&&Math.abs(restoredWindow.y-movedWindow.y)<1,'closing and reopening restores position');
+  await shot('03-room-chat-dragged');
+  await page.focus('.echat__drag');await page.keyboard.press('Home');await settle();
+  assert.equal(await page.evaluate(()=>localStorage.getItem('sp.pref.communication.position')),'null','Home resets to the default anchor');
+  await page.click('.echat__pin');await settle();
   await request('room.start');await page.waitForSelector('.brief');
   const match=server.lobby.rooms.get(code).match;match.setDeadline(180,()=>{});match.markPublic();
   const briefHud=await checkHud('briefing');
@@ -149,6 +176,13 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
   await page.waitForSelector('.gm__corner .ewheel__btn');await page.click('.gm__corner .ewheel__btn');await page.waitForSelector('.echat__pin');
   await page.click('.echat__pin');await page.click('[aria-label="聊天历史"]');await checkChat('06-battle-chat');
   assert.ok(await page.$$eval('.gm__corner>.gm__gear',es=>es.every(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})),'expanded chat leaves corner actions reachable');
+  const gameGrip=await page.$eval('.echat__drag',e=>{const r=e.getBoundingClientRect();return{x:r.x+r.width/2,y:r.y+r.height/2};});
+  await page.mouse.move(gameGrip.x,gameGrip.y);await page.mouse.down();await page.mouse.move(gameGrip.x+500,gameGrip.y-250,{steps:8});await page.mouse.up();await settle();
+  const beforeReload=await windowRect();await page.reload({waitUntil:'domcontentloaded'});await page.waitForSelector('.gm__corner .ewheel__btn');await page.click('.gm__corner .ewheel__btn');await page.waitForSelector('.echat-window');await settle();
+  const afterReload=await windowRect();assert.ok(Math.abs(beforeReload.x-afterReload.x)<1&&Math.abs(beforeReload.y-afterReload.y)<1,'full browser reload remembers the dragged position');
+  await page.setViewport({width:1440,height:900,deviceScaleFactor:1});await settle();const resized=await windowRect();assert.ok(resized.x>=8&&resized.y>=8&&resized.x+resized.w<=1432&&resized.y+resized.h<=892,'a smaller desktop viewport keeps the whole window visible');
+  await shot('07-battle-chat-restored');
+  await page.click('.echat__drag',{count:2});await settle();assert.equal(await page.evaluate(()=>localStorage.getItem('sp.pref.communication.position')),'null','double-clicking the handle restores the default position');
   assert.deepEqual(errors,[]);
  }finally{writeFileSync(path.join(out,'observations.json'),JSON.stringify({errors,observations},null,2));await browser?.close();for(const c of guests)await c.close();await server.close();}
 });

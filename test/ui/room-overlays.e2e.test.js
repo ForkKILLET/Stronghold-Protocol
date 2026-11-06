@@ -69,10 +69,10 @@ for (const [engine, executablePath] of engines) {
               if (animation.effect?.target?.closest?.('.modal, .guide') && animation.effect.getComputedTiming().iterations !== Infinity) animation.finish();
             }
           });
-          const hits = await page.$$eval('.rseat__kick, .communication-dock .echat__pin', (buttons, selector) => buttons.map(button => {
+          const hits = await page.$$eval('.rseat__kick, .echat__pin', (buttons, selector) => buttons.map(button => {
             const r = button.getBoundingClientRect();
             const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-            return {label:button.getAttribute('aria-label'), covered:!!top?.closest(selector), top:top?.className?.baseVal ?? top?.className};
+            return {label:button.getAttribute('aria-label'), covered:!r.width || !r.height || !!top?.closest(selector), top:top?.className?.baseVal ?? top?.className};
           }), overlay);
           await page.screenshot({path:path.join(out, `${engine}-room-${label}.png`)});
           assert.equal(hits.length, 3);

@@ -33,7 +33,7 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
     tabs:[...document.querySelectorAll('.echat__tab')].map(e=>{const s=getComputedStyle(e);return {...rect(e),shadow:s.boxShadow,borders:[s.borderLeftWidth,s.borderRightWidth,s.borderTopWidth,s.borderBottomWidth]};})};
   });
   const checkChat=geometry=>{
-   assert.equal(geometry.triggerVisible,false,'opening replaces the communication trigger');
+   assert.equal(geometry.triggerVisible,true,'the floating window retains its communication trigger');
    assert.equal(geometry.placeholder,false);assert.equal(geometry.messageCounts,0);
    assert.equal(geometry.tabs.length,3);
    for(const tab of geometry.tabs){assert.ok(Math.abs(tab.w-tab.h)<1,'toolbar controls are square');assert.equal(tab.shadow,'none');assert.equal(new Set(tab.borders).size,1,'all button edges have equal thickness');}
@@ -51,12 +51,13 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
    await page.screenshot({path:path.join(out,`pinned-${width}.png`)});
    await page.click('.echat__pin');await page.waitForSelector('.ewheel__dialog',{hidden:true});
    await page.click('.ewheel__btn');await settle();const unpinned=await chatGeometry();checkChat(unpinned);
-   for(const part of ['dialog','input','count'])for(const key of ['x','y','w','h'])assert.ok(Math.abs(pinned[part][key]-unpinned[part][key])<1,`${part} ${key} stays unchanged when unpinning`);
+   for(const part of ['dialog','input','count'])for(const key of ['w','h'])assert.ok(Math.abs(pinned[part][key]-unpinned[part][key])<1,`${part} ${key} stays unchanged when unpinning`);
    assert.equal(await page.$eval('.echat__input',e=>e.value),'等一下','pinning preserves a draft');
    await page.screenshot({path:path.join(out,`unpinned-${width}.png`)});
    await page.click('[aria-label="表情"]');await settle();const emotes=await chatGeometry();checkChat(emotes);
    for(const part of ['dialog','input','count'])for(const key of ['x','y','w','h'])assert.ok(Math.abs(unpinned[part][key]-emotes[part][key])<1,`${part} ${key} stays unchanged between messages and emotes`);
-   await page.click('.echat__pin');await settle();assert.deepEqual(await chatGeometry(),emotes,'emote layout also stays unchanged when pinning');
+   await page.click('.echat__pin');await settle();const fixedEmotes=await chatGeometry();checkChat(fixedEmotes);
+   for(const key of ['w','h'])assert.equal(fixedEmotes.dialog[key],emotes.dialog[key],'pinning preserves the emote panel size');
    await page.screenshot({path:path.join(out,`emotes-${width}.png`)});
    await page.click('[aria-label="聊天历史"]');await page.click('.echat__pin');await settle();
    await page.click('.brief-bonds:first-child .brief-h');await page.waitForSelector('.ewheel__dialog',{hidden:true});
@@ -75,7 +76,7 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
   await page.evaluate(()=>{delete visualViewport.height;delete visualViewport.offsetTop;visualViewport.dispatchEvent(new Event('resize'));});await settle();
   await new Promise(resolve=>setTimeout(resolve,1050));await guest.request({t:'g.emote',id:EMOTES[0]});await page.waitForSelector('.communication-activity [data-emote]');
   await page.click('[data-testid="settings-btn"]');await page.waitForSelector('.settings-modal');await settle();
-  assert.equal(await page.$eval('.echat__input',e=>{const r=e.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.modal');}),true,'settings cover fixed chat');await page.keyboard.press('Escape');
+  assert.equal(await page.$eval('.echat-layer',e=>getComputedStyle(e).display),'none','settings hide the modeless chat window');await page.keyboard.press('Escape');
   // Reuse this disposable page as a new spectator identity. Firefox BiDi can send
   // keyboard actions to browser chrome when switching to a new private window.
   const context=browser.defaultBrowserContext(),watch=page;
@@ -83,16 +84,16 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
   await watch.setViewport({width:844,height:390});await watch.goto(new URL(`/?spectate=${code}`,server.url).href,{waitUntil:'domcontentloaded'});await watch.waitForSelector('.title-login input');await watch.type('.title-login input','旁观验证');
   await watch.click('.title-login .btn--primary');await watch.waitForFunction(()=>!!window.__SP__?.store.get().match.public||!!window.__SP__?.store.get().ui.pendingJoinError);
   if(await watch.evaluate(()=>window.__SP__.store.get().ui.pendingJoinError?.code==='RATE')){await new Promise(resolve=>setTimeout(resolve,1100));await watch.click('[data-testid="invite-retry"]');}
-  await watch.waitForSelector('.brief .echat__input',{timeout:10000}).catch(async error=>{await watch.screenshot({path:path.join(out,'spectator-failure.png')});console.log(await watch.evaluate(()=>({phase:window.__SP__?.store.get().match.public?.phase,room:window.__SP__?.store.get().room,ui:window.__SP__?.store.get().ui,text:document.body.textContent.slice(-1800)})));throw error;});
+  await watch.waitForSelector('.echat__input',{timeout:10000}).catch(async error=>{await watch.screenshot({path:path.join(out,'spectator-failure.png')});console.log(await watch.evaluate(()=>({phase:window.__SP__?.store.get().match.public?.phase,room:window.__SP__?.store.get().room,ui:window.__SP__?.store.get().ui,text:document.body.textContent.slice(-1800)})));throw error;});
   assert.equal(await watch.$eval('.echat__input',e=>e.disabled),true,'spectators cannot send');await watch.click('.echat__pin');await watch.click('.brief-bonds:first-child .brief-h');await watch.waitForSelector('.ewheel__dialog',{hidden:true});await watch.click('.ewheel__btn');assert.ok(await watch.$('.echat__history'),'spectators can reopen history');
-  // The battle HUD removes the hidden trigger's footprint and keeps other controls reachable.
+  // The floating window leaves the battle corner's trigger and other controls reachable.
   await page.goto(`${server.url}/dev/game-mock.html?render=fallback&shot=1&phase=PREP`,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>!!window.__MOCK__&&window.__SP_VIEW__?.kind==='fallback');
   const cornerHeight=()=>page.$eval('.gm__corner',e=>e.getBoundingClientRect().height);
   for(const [width,height] of [[1366,768],[844,390],[640,360]]){
    await page.setViewport({width,height});await settle();const before=await cornerHeight();
    await page.click('.ewheel__btn');await settle();checkChat(await chatGeometry());
-   assert.ok(await cornerHeight()<=before,'the hidden trigger does not reserve an extra row');
+   assert.ok(await cornerHeight()<=before,'the floating window does not reserve an extra row');
    assert.ok(await page.$$eval('.gm__corner>.gm__gear',es=>es.every(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})),'chat does not cover the other corner controls');
    await page.screenshot({path:path.join(out,`battle-${width}.png`)});
    await page.keyboard.press('Escape');await page.waitForSelector('.ewheel__dialog',{hidden:true});

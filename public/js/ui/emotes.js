@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { EMOTE_THEMES, EMOTE_COOLDOWN_MS, EMOTE_BUBBLE_MS, emoteInfo, emoteArtGroup } from '../../../shared/constants.js';
 import { html, Icon } from './components.js';
 import { GIcon } from './gameComponents.js';
+import { ChatWindow } from './chatWindow.js';
 import { data, useData, localAsset, artUrls, nextArtUrl } from '../data.js';
 import { loadPref, savePref } from '../store.js';
 import { t } from '../../../shared/i18n.js';
@@ -224,6 +225,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   const composing = useRef(false);
   const pendingChat = useRef(false);
   const chatInput = useRef(null);
+  const trigger = useRef(null), dialog = useRef(null);
   const drag = useRef(null);                  // { id, x0, moved }
   const swallowClick = useRef(false);
   const wheelAcc = useRef({ x: 0, t: -Infinity, spent: false });
@@ -253,7 +255,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   // outside press closes; ← / → change the page
   useEffect(() => {
     if (!open) return undefined;
-    const onDown = (e) => { if (!live.current.pinned && (!(e.target instanceof Element) || !e.target.closest('.ewheel'))) live.current.onToggle(false); };
+    const onDown = (e) => { if (!live.current.pinned && !trigger.current?.contains(e.target) && !dialog.current?.contains(e.target)) live.current.onToggle(false); };
     const onKey = (e) => {
       if (live.current.chatView === 'history') return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -343,15 +345,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   const panelBg = emoteUiSprite('emoji_bkg');
   const cellBg = emoteUiSprite('emoji_cell_bkg');
   const panelStyle = [panelBg && `--ewheel-bg:url("${panelBg}")`, cellBg && `--ewheel-cell:url("${cellBg}")`].filter(Boolean).join(';');
-  return html`<div class=${cx('ewheel', onChat && 'has-chat', open && 'is-open', pinned && 'is-pinned')}>
-    <button type="button" class=${cx('ewheel__btn', btnSprite && 'has-sprite', onChat && 'is-communication', open && 'is-on', !onChat && cooling && 'is-cooling')}
-      hidden=${!!onChat && open}
-      style=${btnSprite ? `--ewheel-btn:url("${btnSprite}")` : ''} onClick=${() => { if(open)onPinChange?.(false); onToggle(!open); }}
-      aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog" disabled=${!onChat && (disabled || cooling)}>
-      ${btnSprite ? null : html`<${GIcon} name="emote" />`}<span class="ewheel__label">${t('交流')}</span>
-    </button>
-    ${open ? html`<div class=${cx('ewheel__dialog', onChat && 'has-chat')} role="dialog" aria-label=${t('交流')}>
-    ${onChat ? html`<nav class="echat__tabs" aria-label=${t('交流内容')}>
+  const tabs = onChat ? html`
       <button type="button" class=${cx('echat__tab', chatView === 'emotes' && 'is-on')}
         aria-label=${t('表情')} title=${t('表情')}
         aria-pressed=${chatView === 'emotes' ? 'true' : 'false'} onClick=${() => setChatView('emotes')}>
@@ -362,11 +356,11 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
         aria-pressed=${chatView === 'history' ? 'true' : 'false'} onClick=${() => setChatView('history')}>
         <${Icon} name="message" />
       </button>
-      ${onPinChange ? html`<button type="button" class=${cx('echat__tab', 'echat__pin', pinned && 'is-on')}
+  ` : null;
+  const pinControl = onChat && onPinChange ? html`<button type="button" class=${cx('echat__tab', 'echat__pin', pinned && 'is-on')}
         aria-label=${pinned ? t('取消固定交流框') : t('固定交流框')} title=${pinned ? t('取消固定交流框') : t('固定交流框')}
-        aria-pressed=${pinned ? 'true' : 'false'} onClick=${() => { onPinChange(!pinned); if (pinned) onToggle(false); }}><${Icon} name="pin" /></button>` : null}
-    </nav>` : null}
-    <div class="ewheel__compose">
+        aria-pressed=${pinned ? 'true' : 'false'} onClick=${() => { onPinChange(!pinned); if (pinned) onToggle(false); }}><${Icon} name="pin" /></button>` : null;
+  const content = html`    <div class="ewheel__compose">
     <div class=${cx('ewheel__panel', panelBg && 'has-sprite', cellBg && 'has-cell')} style=${panelStyle}
       hidden=${!!onChat && chatView !== 'emotes'}>
       <div class="ewheel__viewport" onPointerDown=${onPointerDown} onPointerMove=${onPointerMove}
@@ -421,7 +415,17 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
           }}>${t('发送')}</button>
       </form>
     </div>` : null}
-    </div>` : null}
+  `;
+  const close = () => { onPinChange?.(false); onToggle(false); queueMicrotask(() => trigger.current?.focus()); };
+  return html`<div class=${cx('ewheel', onChat && 'has-chat', open && 'is-open', pinned && 'is-pinned')}>
+    <button type="button" class=${cx('ewheel__btn', btnSprite && 'has-sprite', onChat && 'is-communication', open && 'is-on', !onChat && cooling && 'is-cooling')}
+      ref=${trigger}
+      style=${btnSprite ? `--ewheel-btn:url("${btnSprite}")` : ''} onClick=${() => { if(open)onPinChange?.(false); onToggle(!open); }}
+      aria-expanded=${open ? 'true' : 'false'} aria-haspopup="dialog" disabled=${!onChat && (disabled || cooling)}>
+      ${btnSprite ? null : html`<${GIcon} name="emote" />`}<span class="ewheel__label">${t('交流')}</span>
+    </button>
+    ${open ? onChat ? html`<${ChatWindow} trigger=${trigger} panelRef=${dialog} tabs=${tabs} pinControl=${pinControl} onClose=${close}>${content}<//>`
+      : html`<div class="ewheel__dialog" ref=${dialog} role="dialog" aria-label=${t('交流')}>${content}</div>` : null}
   </div>`;
 }
 

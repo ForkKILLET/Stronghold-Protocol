@@ -42,25 +42,25 @@ for(const engine of ['chrome','firefox'])test(`${engine}: preparation layout and
    const body=await page.$eval('.seats--solo',e=>{const r=e.getBoundingClientRect(),brief=e.querySelector('.solo-brief').getBoundingClientRect();return{overflow:e.scrollWidth-e.clientWidth,right:r.right,briefRight:brief.right};});
    assert.ok(body.overflow<=2&&body.briefRight<=body.right+1,'solo room fits beside pinned communication '+JSON.stringify({width,body}));
   }
-  await click('.room-communication .echat__pin');await click('.app-header__title');
+  await click('.echat__pin');await click('.app-header__title');
   await click('.app-back');await page.waitForSelector('.lobby-hub');await resize(1440,900);
   await request('room.create',{mode:'coop',difficulty:'ABYSS'});await page.waitForSelector('.room-screen');
   const code=await page.evaluate(()=>window.__SP__.store.get().room.code);
   for(const name of ['同盟队友甲','作战队友乙','较长昵称的同盟队友丙']){const c=await TestClient.connect(server.url.replace('http','ws')+'/ws');c.id=(await c.hello(name)).playerId;await c.request({t:'room.join',code});await c.request({t:'room.ready',ready:true});guests.push(c);}
-  await page.waitForSelector('.room-communication .echat__history');
+  await page.waitForSelector('.echat__history');
   for(const [width,height,text] of sizes){
    await resize(width,height,text);await page.mouse.move(0,0);await settle();await shot('00-room-pinned-'+width);
    roomActions.set(width,await actionStyles('.room-loadout,.room-bar__right .btn--primary'));
    assert.equal(roomActions.get(width).length,2,'matching reference includes loadout and start');
   }
-  await click('.room-communication .echat__pin');await click('.app-header__title');
+  await click('.echat__pin');await click('.app-header__title');
   await request('room.start');await page.waitForSelector('.brief');
-  assert.equal(await page.$('.brief .ewheel__dialog'),null,'manual closure survives the room / briefing transition');
-  await click('.brief .ewheel__btn');await click('.brief .echat__pin');
-  assert.ok(await page.$('.brief .communication-dock.is-pinned .echat__history'));
-  await guests[0].request({t:'g.chat',text:'先看禁用盟约再准备'});await page.waitForFunction(()=>document.querySelector('.brief .echat__history')?.textContent.includes('先看禁用盟约再准备'));
-  await page.type('.brief .echat__input','收到，稍等一下');await click('.brief .echat__send');await page.waitForFunction(()=>document.querySelector('.brief .echat__history')?.textContent.includes('收到，稍等一下'));
-  await click('.brief .brief-bonds:first-child .brief-h');assert.ok(await page.$('.brief .ewheel__dialog'),'outside click keeps pinned messages');
+  assert.equal(await page.$('.ewheel__dialog'),null,'manual closure survives the room / briefing transition');
+  await click('.brief .ewheel__btn');await click('.echat__pin');
+  assert.ok(await page.$('.brief .communication-dock.is-pinned'));
+  await guests[0].request({t:'g.chat',text:'先看禁用盟约再准备'});await page.waitForFunction(()=>document.querySelector('.echat__history')?.textContent.includes('先看禁用盟约再准备'));
+  await page.type('.echat__input','收到，稍等一下');await click('.echat__send');await page.waitForFunction(()=>document.querySelector('.echat__history')?.textContent.includes('收到，稍等一下'));
+  await click('.brief .brief-bonds:first-child .brief-h');assert.ok(await page.$('.ewheel__dialog'),'outside click keeps pinned messages');
   const match=server.lobby.rooms.get(code).match;match.setDeadline(180,()=>{});match.markPublic();
   for(const [width,height,text] of sizes){
    await resize(width,height,text);await shot('01-brief-'+width);
@@ -111,8 +111,8 @@ for(const engine of ['chrome','firefox'])test(`${engine}: preparation layout and
    }
    await page.mouse.move(0,0);await settle();
    assert.equal(await page.$eval('.brief-reroll__actions button',e=>e.classList.contains('btn--danger')),true,'reroll uses the shared danger style');
-   assert.ok(await page.$('.brief .communication-dock.is-pinned .echat__history'));
-   const chat=await page.$eval('.brief .echat__input',e=>{const r=e.getBoundingClientRect();return{visible:e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),bottom:r.bottom};});assert.ok(chat.visible,'pinned input is not clipped');assert.ok(chat.bottom<=height);
+   assert.ok(await page.$('.brief .communication-dock.is-pinned'));
+   const chat=await page.$eval('.echat__input',e=>{const r=e.getBoundingClientRect();return{visible:e===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),bottom:r.bottom};});assert.ok(chat.visible,'pinned input is not clipped');assert.ok(chat.bottom<=height);
   }
   await resize(844,390);await click('.brief-reroll__actions button');await page.waitForSelector('.brief-reroll--vote');
   for(const [width,height] of [[844,390],[640,360]]){
@@ -126,9 +126,9 @@ for(const engine of ['chrome','firefox'])test(`${engine}: preparation layout and
   await resize(1440,900);
   const headerBefore=await page.$eval('.stephead',e=>{const r=e.getBoundingClientRect();return{height:r.height,pauseX:e.querySelector('.draft-pause').getBoundingClientRect().x};});
   await request('g.infoReady');for(const c of guests)await c.request({t:'g.infoReady'});await page.waitForSelector('.draft');
-  assert.ok(await page.$('.draft .communication-dock.is-pinned .echat__history'),'pin survives the briefing / strategy transition');
-  await click('.draft [aria-label="表情"]');await page.waitForFunction(()=>![...document.querySelectorAll('.draft .ewheel__item')].some(e=>e.disabled));
-  await click('.draft .ewheel__item:first-child');assert.ok(await page.$('.draft .ewheel__dialog'),'sending an emote keeps the pin');await click('.draft [aria-label="聊天历史"]');await page.waitForSelector('.communication-activity',{hidden:true});
+  assert.ok(await page.$('.draft .communication-dock.is-pinned'),'pin survives the briefing / strategy transition');
+  await click('.echat-window [aria-label="表情"]');await page.waitForFunction(()=>![...document.querySelectorAll('.ewheel__item')].some(e=>e.disabled));
+  await click('.ewheel__item:first-child');assert.ok(await page.$('.ewheel__dialog'),'sending an emote keeps the pin');await click('.echat-window [aria-label="聊天历史"]');await page.waitForSelector('.communication-activity',{hidden:true});
   const myId=await page.evaluate(()=>window.__SP__.store.get().me.playerId);
   // Rotate earlier teammates to the end using their real skip allowance, so our
   // confirmation necessarily leaves teammates still choosing.
