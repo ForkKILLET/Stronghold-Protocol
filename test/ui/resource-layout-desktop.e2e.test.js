@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, symlink, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { startServer } from '../../server/index.js';
@@ -13,11 +15,24 @@ test('desktop Firefox: preload panels use a bounded grid, internal headings and 
   const paths = ['map/test.png', 'char/portrait/test.png', 'spine/test.skel', 'ui/test.png',
     'profile-avatars/test.png', 'char/portrait/skin/test.png', 'voice/cn/test.mp3', 'voice/jp/test.mp3',
     'voice/en/test.mp3', 'voice/kr/test.mp3', 'voice/test.mp3', 'local/fx/test.png', 'sfx/test.mp3', 'bgm/test.mp3', 'other/test.png'];
+  const payload = 'x'.repeat(1024), assetRequests=[];
+  const resourceHash = createHash('sha1').update(payload).digest('hex').slice(0,12);
   const manifest = { format: 1, version: 'layout-test', files: paths.map((p, i) => ({
-    url: '/assets/' + p, tier: i < 4 ? 1 : 2, size: 1024, hash: '0123456789ab',
+    url: '/assets/' + p, tier: i < 4 ? 1 : 2, size: 1024, hash: resourceHash,
   })) };
+  // Firefox's intercepted binary responses do not exercise native fetch/Cache Storage reliably.
+  // Serve fixture bytes over HTTP while keeping all application sources unchanged.
+  const publicDir = await mkdtemp(path.join(tmpdir(), 'sp-resource-ui-'));
+  for (const entry of await readdir('public')) {
+    if (entry !== 'assets') await symlink(path.resolve('public', entry), path.join(publicDir, entry));
+  }
+  for (const file of paths) {
+    const target = path.join(publicDir, 'assets', file);
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, payload);
+  }
   const server = await startServer({ host: '127.0.0.1', port: 0, quiet: true, workers: 0,
-    userFile: ':memory:', assetIndex: false, announcementsFile: null, clientBuild: false });
+    publicDir, userFile: ':memory:', assetIndex: false, announcementsFile: null, clientBuild: false });
   let browser;
   try {
     browser = await puppeteer.launch({ browser: 'firefox', executablePath: '/run/current-system/sw/bin/firefox', headless: true,
@@ -30,6 +45,10 @@ test('desktop Firefox: preload panels use a bounded grid, internal headings and 
     page.on('request', r => {
       const u = new URL(r.url());
       if (u.pathname === '/data/resource-manifest.json') void r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify(manifest) }).catch(() => {});
+      else if (paths.includes(u.pathname.replace('/assets/',''))) {
+        assetRequests.push(u.pathname);
+        void r.continue().catch(()=>{});
+      }
       else if (u.hostname === 'fonts.googleapis.com') void r.respond({ status: 200, contentType: 'text/css', body: '' }).catch(() => {});
       else void r.continue().catch(() => {});
     });
@@ -69,11 +88,50 @@ test('desktop Firefox: preload panels use a bounded grid, internal headings and 
       assert.ok(geometry.lists.every(p => p.scroll === 'auto' && p.bottom <= geometry.body.bottom));
       assert.ok(geometry.lists[1].excess > 0, 'optional resources scroll within their panel');
       const labels = await page.$$eval('.resource-manager__status .btn', es => es.map(e => e.textContent.trim()));
-      assert.deepEqual(labels, ['开始预载', '清理缓存', '关闭预载']);
+      assert.deepEqual(labels, ['删除本机游戏资源']);
+      assert.equal(await page.$eval('[data-testid="preload-enabled"]',e=>e.checked),false);
+      assert.ok(await page.$eval('.resource-status__actions .btn',e=>e.classList.contains('btn--danger')));
+      const descriptions=await page.$$eval('.resource-description',es=>es.map(e=>({font:getComputedStyle(e).fontSize,color:getComputedStyle(e).color})));
+      for(const d of descriptions)assert.deepEqual(d,descriptions[0],'all panel descriptions use the same typography');
       await page.screenshot({ path: path.join(out, `manager-${width}.png`) });
       await page.$eval('.resource-tier:last-child .resource-tier__list', e => { e.scrollTop = e.scrollHeight; });
       assert.ok(await page.$eval('.resource-tier:last-child .resource-tier__list', e => e.lastElementChild.getBoundingClientRect().bottom <= e.getBoundingClientRect().bottom + 1));
     }
+    await page.setViewport({width:1920,height:1080});
+    await page.click('[data-testid="preload-enabled"]');
+    await page.waitForFunction(async()=> (await import('/js/resources/index.js')).resourceState().selectionComplete).catch(async err=>{
+      console.log('preload failure',await page.evaluate(async()=> (await import('/js/resources/index.js')).resourceState()),assetRequests,errors);
+      await page.screenshot({path:path.join(out,'control-failure.png')});throw err;
+    });
+    assert.equal(await page.$eval('[data-testid="preload-enabled"]',e=>e.checked),true);
+    const saved=await page.evaluate(async()=> (await import('/js/resources/index.js')).resourceState().done);
+    assert.equal(saved,4,'the real controller saved all required files');
+    const fetched=assetRequests.length;
+    await page.click('[data-testid="preload-enabled"]');
+    await page.waitForFunction(async()=> !(await import('/js/resources/index.js')).resourceState().enabled);
+    assert.equal(await page.evaluate(async()=> (await import('/js/resources/index.js')).resourceState().done),saved,'switching off keeps saved files');
+    await page.click('[data-testid="preload-enabled"]');
+    await page.waitForFunction(async()=> (await import('/js/resources/index.js')).resourceState().phase==='ready');
+    assert.equal(assetRequests.length,fetched,'re-enabling reuses the saved files');
+    await page.evaluate(()=>localStorage.setItem('sp.pref.stats',JSON.stringify({v:3,records:[]})));
+    const records=await page.evaluate(()=>localStorage.getItem('sp.pref.stats'));
+    await page.click('.resource-status__actions .btn--danger');
+    await page.waitForSelector('.modal__actions .btn--danger');
+    await page.evaluate(() => { for (const a of document.getAnimations()) if (Number.isFinite(a.effect?.getComputedTiming().endTime)) a.finish(); });
+    await page.screenshot({path:path.join(out,'delete-confirmation.png')});
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.modal__actions',{hidden:true});
+    assert.equal(await page.evaluate(async()=> (await import('/js/resources/index.js')).resourceState().done),saved,'cancelling confirmation changes no resources');
+    await page.click('.resource-status__actions .btn--danger');
+    await page.waitForSelector('.modal__actions .btn--danger');
+    await page.evaluate(() => { for (const a of document.getAnimations()) if (Number.isFinite(a.effect?.getComputedTiming().endTime)) a.finish(); });
+    await page.click('.modal__actions .btn--danger');
+    await page.waitForFunction(async()=> (await import('/js/resources/index.js')).resourceState().done===0).catch(async err=>{
+      console.log('delete failure',await page.evaluate(async()=> ({state:(await import('/js/resources/index.js')).resourceState(),text:document.querySelector('.resource-modal')?.textContent,dialogs:document.querySelectorAll('.modal__actions').length})),errors);
+      await page.screenshot({path:path.join(out,'delete-failure.png')});throw err;
+    });
+    assert.equal(await page.$eval('[data-testid="preload-enabled"]',e=>e.checked),false,'deleting cannot immediately start another automatic download');
+    assert.equal(await page.evaluate(()=>localStorage.getItem('sp.pref.stats')),records,'resource deletion preserves device records');
     const voice = await page.$eval('[name="preload-voice-lang"][value="jp"]', e => e.checked);
     await page.click('[name="preload-voice-lang"][value="jp"]');
     assert.notEqual(await page.$eval('[name="preload-voice-lang"][value="jp"]', e => e.checked), voice);
@@ -83,5 +141,6 @@ test('desktop Firefox: preload panels use a bounded grid, internal headings and 
   } finally {
     await browser?.close();
     await server.close();
+    await rm(publicDir, { recursive: true, force: true });
   }
 });

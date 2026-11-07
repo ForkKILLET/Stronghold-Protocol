@@ -122,8 +122,10 @@ waits on a download: the files are served from the browser cache instead of bein
 there is a way in without leaving the home screen: the title screen shows a compact 「预载资源」 pill in its bottom-right
 corner, and 设置 ▸ 预载资源 provides the same entry. Both open a large resource manager (`ui/resourcePanel.js`) with
 required/optional groups, file counts, sizes, progress and ZIP import/export. Opening it only checks the manifest/cache;
-asset downloads start when the player clicks 开始预载 or successfully imports a package. Closing the modal leaves downloads
-running; 暂停下载 stops them and 关闭预载 disables automatic downloading while retaining the cache.
+asset downloads start when the player checks 自动预载 or successfully imports a package. Closing the modal leaves downloads
+running; unchecking 自动预载 stops bulk downloading while retaining saved resources. Combat pauses it temporarily and
+resumes it afterwards. Checking and ZIP operations have a separate cancel action; cancelling also disables automatic
+preload. Failed or manually paused work can be retried without discarding saved files.
 
 - The list comes from the server: `GET /data/resource-manifest.json` is generated from the two manifests below and
   rewritten the same way, so a CDN install preloads *from the CDN* (`server/resources.js`). Every entry carries a
@@ -315,8 +317,10 @@ running; 暂停下载 stops them and 关闭预载 disables automatic downloading
   The usual hit uses a single `CacheStorage.match` scoped to the current cache; only a miss enumerates older app caches.
   No Cache handles are retained, so clearing/replacing a cache takes effect immediately. Preloading stores file bytes;
   first-use Spine parsing, image decoding and GPU upload still happen when the scene needs each model.
-- 「清理缓存」 deletes every cache the app owns; turning the switch off stops the downloads and keeps what is cached
-  (still served from the cache by the worker), and the worker is removed once there is nothing left to serve. Once a run
+- 「删除本机游戏资源」 is a danger action with confirmation: it first disables automatic preload, then deletes all versions
+  of the app’s resource caches, including preloaded, ZIP-imported and runtime-saved assets. These need downloading or
+  importing again; doctor profiles, match records and settings are retained. Turning the switch off alone keeps saved
+  files available through the worker; runtime caching stays active independently of bulk preload. Once a run
   has brought the set up to date, the caches of earlier layouts and the entries the manifest no longer lists are
   dropped. The host therefore has to serve `/resource-sw.js` and never cache it at the edge.
 

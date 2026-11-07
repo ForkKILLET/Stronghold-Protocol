@@ -471,6 +471,8 @@
   backdrop-filter: blur(3px);
   animation: modal-fade var(--t-med) var(--ease-out);
 }
+/* Imperative confirmations must cover their originating management window regardless of host order. */
+.modal.modal--dialog { z-index:calc(var(--z-modal) + 1); }
 .modal__box {
   --bk-c: var(--mint-500);
   --mstripe: var(--mint-500);

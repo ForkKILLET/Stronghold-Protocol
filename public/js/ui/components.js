@@ -543,7 +543,7 @@ export function DialogHost() {
     if (e.key === 'Enter' && e.target?.tagName !== 'BUTTON') { e.preventDefault(); closeDialog(d.id, true); }
   };
   return html`<div onKeyDown=${onKey}>
-    <${Modal} key=${d.id} open=${true} title=${title} micro=${micro} tone=${tone || (danger ? 'red' : 'mint')} utility=${utility}
+    <${Modal} key=${d.id} open=${true} title=${title} micro=${micro} tone=${tone || (danger ? 'red' : 'mint')} utility=${utility} veilClass="modal--dialog"
       onClose=${() => closeDialog(d.id, isConfirm ? false : true)}
       actions=${html`
         ${isConfirm ? html`<${Button} variant="secondary" onClick=${() => closeDialog(d.id, false)}>${cancelText}<//>` : null}

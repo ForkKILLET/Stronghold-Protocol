@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { byteText, detailText, percent } from '../../public/js/ui/resourcePanel.js';
+import { byteText, detailText, percent, resourceControls, stateText } from '../../public/js/ui/resourcePanel.js';
 import { designCss } from '../helpers/designCss.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -83,4 +83,25 @@ describe('where the preload is reachable', () => {
     assert.match(panel, /onChange\(false\)/);
     assert.equal(/可离线进入对局|断网[^。]*可用/.test(panel), false);
   });
+});
+
+
+test('automatic preload has one toggle; only checks and archives have a separate cancel action', () => {
+  const base = { supported:true, phase:'off', selectionComplete:false };
+  const controls = (patch, enabled=true) => resourceControls({...base,...patch},enabled);
+  assert.deepEqual(controls({},false), {cancel:false,resume:false,check:false,toggleDisabled:false});
+  assert.deepEqual(controls({phase:'download'}), {cancel:false,resume:false,check:false,toggleDisabled:false});
+  for (const archive of ['import','export']) {
+    const c=controls({archive});assert.equal(c.cancel,true);assert.equal(c.toggleDisabled,true);
+  }
+  assert.equal(controls({phase:'checking'}).cancel,true);
+  assert.equal(controls({phase:'error'}).resume,true);
+  assert.equal(controls({phase:'paused',manualPaused:true}).resume,true);
+  assert.equal(controls({phase:'paused',combatPaused:true}).resume,false);
+  assert.equal(controls({phase:'foreign'}).resume,false);
+  assert.equal(controls({phase:'ready',selectionComplete:true},false).check,true,'saved files can be checked while automatic preload is off');
+  assert.equal(controls({supported:false},false).toggleDisabled,true);
+  assert.equal(controls({supported:false},true).toggleDisabled,false,'an unsupported enabled preference can still be switched off');
+  assert.equal(stateText({...base,phase:'checking'},true),'正在检查');
+  assert.equal(stateText({...base,phase:'download'},true),'正在下载');
 });

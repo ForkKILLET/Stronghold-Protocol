@@ -1,7 +1,7 @@
 // public/js/resources/index.js — the page side of the optional asset preload (docs/ASSETS.md「Preload」).
 //
 // Bulk preload is off by default. The Service Worker is registered for every supported session, so resources loaded
-// during normal play are cached on demand. Turning bulk preload off only stops batch downloads; 「清理缓存」 still
+// during normal play are cached on demand. Turning bulk preload off only stops batch downloads; 「删除本机游戏资源」 still
 // deletes the runtime cache. Combat temporarily pauses bulk work without changing the user's preload preference.
 //
 // The settings panel (public/js/ui/resourcePanel.js) renders `resourceState()`; main.js calls `syncResources()` with the
@@ -76,7 +76,7 @@ let activeCheck = null;
 let backgroundCheckNeeded = true;
 
 const combatMessage = () => t('战斗中已暂停批量预载，战斗结束后自动继续。');
-const manualMessage = () => t('已暂停，可继续下载或清理缓存。');
+const manualMessage = () => t('预载已暂停，已保存的资源会保留。');
 const downloadBlocked = () => !current || combatPaused || manualPaused;
 
 /** Session navigation and local lobby panels have independent lifetimes. */
@@ -234,7 +234,7 @@ export async function syncResources(enabled, includeOptional = optional, preload
       console.warn('[resources] service worker not registered', err);
       set({ worker: t('预载服务未启用（{0}）', { 0: err?.message || err }) });
     });
-    set({ phase: state.complete ? 'ready' : 'paused', message: state.complete ? t('批量预载已停止；已保存的资源保留，可继续下载或清理缓存。') : t('已停止批量预载。') });
+    set({ phase: state.complete ? 'ready' : 'paused', message: state.complete ? t('批量预载已停止，已保存的资源会保留。') : t('已停止批量预载。') });
     return;
   }
   if (changed) controller?.abort();
@@ -484,11 +484,11 @@ async function startDownload(signal, { verifyCache = false, background = false, 
     if (err?.name === 'AbortError') {
       // Do not begin a cache-key scan while the battle is taking over the page.
       const now = combatPaused || checkBlockers.size ? null : await store.status({ verifyCache: false }).catch(() => null);
-      set({ ...(now ? counters(now) : {}), phase: 'paused', message: current ? t('已暂停，可继续下载或清理缓存。') : t('已停止预载。') });
+      set({ ...(now ? counters(now) : {}), phase: 'paused', message: current ? t('预载已暂停，已保存的资源会保留。') : t('已停止预载。') });
       return;
     }
     const message = err?.name === 'QuotaExceededError' || /quota|空间不足/i.test(String(err?.message || ''))
-      ? t('浏览器存储空间不足：已保存的文件保留，可清理缓存后重试。')
+      ? t('浏览器存储空间不足：已保存的文件保留，可删除本机游戏资源后重试。')
       : t('预载失败：{0}', { 0: err?.message || err });
     const now = await store.status({ verifyCache: false }).catch(() => null);
     set({ ...(now ? counters(now) : {}), phase: 'error', message, error: true });
@@ -799,7 +799,7 @@ export async function clearResources() {
   set({
     done: 0, tier1Done: 0, tier2Done: 0, bytes: 0, failed: 0, complete: false, error: false, cacheVerified: true,
     phase: current ? 'paused' : 'off',
-    message: t('已清理预载资源缓存。'),
+    message: t('已删除本机保存的游戏资源。'),
     selectionComplete: false,
     ...resourceSelection({ groups: state.groups.map((g) => ({ ...g, present: 0, bytes: 0 })) }, optional, voiceLang, skins),
   });

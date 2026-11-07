@@ -761,3 +761,9 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
  .resource-manager__top,.resource-manager__grid { grid-template-columns:minmax(0,1fr); grid-template-rows:auto; }
  .resource-modal .resource-tier__list { max-height:240px; flex:auto; }
 }
+
+.resource-status__head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:10px; }
+.resource-modal .resource-status__head h3 { margin:0; }
+.resource-modal .resource-status__head .resource-choice { min-height:36px; color:var(--text-hi); }
+.resource-modal p.resource-description { font-size:max(12px,calc(.14 * var(--utility-text,var(--t)))); color:var(--text-md); line-height:1.65; }
+.resource-modal .resource-manager__status > .resource-description { margin-top:10px; }

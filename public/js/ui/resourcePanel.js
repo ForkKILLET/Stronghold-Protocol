@@ -1,10 +1,10 @@
 // Compact entry points share one global resource manager; closing it leaves background downloads running.
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Button, MicroLabel, Modal, ProgressBar } from './components.js';
+import { html, Button, MicroLabel, Modal, ProgressBar, confirmDialog } from './components.js';
 import { createStore, useStore } from '../store.js';
 import { formatBytes, normalizePreloadVoiceLang, PRELOAD_VOICE_LANGS, resourcePackPercent } from '../resources/common.js';
 import { clearResources, exportResources, importResources, inspectResources, pauseResources,
-  resourceState, startResources, checkResources, subscribeResources, cancelResourceCheck } from '../resources/index.js';
+  resourceState, startResources, syncResources, checkResources, subscribeResources, cancelResourceCheck } from '../resources/index.js';
 import { t, N_ } from '../../../shared/i18n.js';
 
 const PRELOAD_VOICE_LABELS = { cn: N_('中文语音'), jp: N_('日语语音'), en: N_('英语语音'), kr: N_('韩语语音') };
@@ -53,17 +53,31 @@ function useResources() {
   return state;
 }
 
-function stateText(st, enabled) {
+export function stateText(st, enabled) {
   if (st.archive) return st.archive === 'import' ? t('正在导入') : t('正在导出');
   if (enabled && st.combatPaused && !st.manualPaused) return t('战斗中暂停');
   if (st.phase === 'foreign') return t('另一标签页处理中');
   if (st.phase === 'error') return t('资源未完成，请继续下载');
-  if (busy(st)) return t('处理中');
+  if (st.phase === 'checking') return t('正在检查');
+  if (st.phase === 'download') return t('正在下载');
   if (st.cacheVerified === false && st.selectionComplete && st.tier1Total) return t('缓存索引已读取');
   if (st.complete) return t('全部已保存');
   if (st.selectionComplete && st.tier1Total) return st.optional || st.skins ? t('所选资源已齐全。') : t('必备已保存');
   return enabled ? t('已暂停') : t('未开启');
 }
+
+/** The preference controls automatic downloading; ZIP/check jobs have a separate cancel action. */
+export function resourceControls(st, enabled) {
+  return {
+    cancel: !!st.archive || st.phase === 'checking',
+    resume: enabled && !busy(st) && !st.combatPaused && !st.selectionComplete
+      && (st.manualPaused || st.phase === 'paused' || st.phase === 'error'),
+    check: !busy(st) && !!st.selectionComplete,
+    toggleDisabled: !!st.archive || st.phase === 'checking' || (!st.supported && !enabled),
+  };
+}
+
+export const resourceDeleteNotice = () => t('删除此浏览器为本站保存的游戏素材，包括预载、ZIP 导入和游玩时按需保存的资源。之后需要重新下载或导入；博士档案、对局记录和设置不会被删除。');
 
 export function ResourceRow({ enabled }) {
   const st = useResources();
@@ -99,7 +113,7 @@ function ResourceTier({ st, tier, optional, onOptional, disabled }) {
   return html`<section class="resource-tier resource-panel">
     <header class="resource-tier__head">
       <div><h3>${tier === 1 ? t('必备资源') : t('可选资源')}</h3>
-        <p>${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、官方特效、音效、背景音乐与玩法说明图片')}</p></div>
+        <p class="resource-description">${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、官方特效、音效、背景音乐与玩法说明图片')}</p></div>
       ${tier === 2 ? html`<label class="resource-choice"><input type="checkbox" checked=${optional} disabled=${disabled}
         onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : html`<${MicroLabel}>REQUIRED<//>`}
     </header>
@@ -127,13 +141,13 @@ function ResourceOptions({ optional, voiceLang, onVoiceLang, skins, onSkins, dis
             onChange=${(e) => onVoiceLang(normalizePreloadVoiceLang(e.currentTarget.checked
               ? [...selected, lang] : selected.filter((id) => id !== lang)))} />${t(PRELOAD_VOICE_LABELS[lang])}</label>`)}
       </div>
-      <p>${t('可多选；全部取消勾选则不预载语音。')}</p>
-      <p>${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
-      ${!optional ? html`<p>${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
+      <p class="resource-description">${t('可多选；全部取消勾选则不预载语音。')}</p>
+      <p class="resource-description">${t('仅影响预载范围；播放语言仍在设置中选择。切换后保留已有缓存。')}</p>
+      ${!optional ? html`<p class="resource-description">${t('勾选“同时预载”后下载所选语音。')}</p>` : null}
     </fieldset>
     <section class="resource-skin-options resource-panel"><h3>${t('预载皮肤')}</h3><label class="resource-choice resource-skin-choice"><input type="checkbox" checked=${skins} disabled=${disabled}
       onChange=${(e) => onSkins(e.currentTarget.checked)} />${t('启用')}</label>
-      <p class="resource-skin-hint">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p></section>`;
+      <p class="resource-skin-hint resource-description">${t('独立于“同时预载”；不勾选时，启用的皮肤仅在显示时按需加载。保留已有缓存。')}</p></section>`;
 }
 
 /** Mounted once in main.js, above all screens including the settings modal. */
@@ -142,7 +156,28 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
   const st = useResources();
   const fileInput = useRef(null);
   useEffect(() => { if (open) void inspectResources().catch(() => {}); }, [open]);
-  const archiveBusy = !!st.archive;
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const deleteFlight = useRef(false);
+  const archiveBusy = !!st.archive || deleting;
+  const controls = resourceControls(st, enabled);
+  const cancelProcessing = () => { pauseResources(); onChange(false); };
+  const deleteLocalResources = async () => {
+    if (deleteFlight.current) return;
+    deleteFlight.current = true;
+    try {
+      if (!await confirmDialog({ utility: true, danger: true, title: t('删除本机游戏资源'),
+        text: resourceDeleteNotice(), okText: t('删除资源') })) return;
+      setDeleting(true); setDeleteError('');
+      onChange(false);
+      await syncResources(false);
+      await clearResources();
+    } catch {
+      setDeleteError(t('无法删除游戏资源，请重试。'));
+    } finally {
+      deleteFlight.current = false; setDeleting(false);
+    }
+  };
   const importFile = async (e) => {
     const file = e.currentTarget.files?.[0];
     e.currentTarget.value = '';
@@ -166,7 +201,10 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
     <div class="resource-manager">
       <div class="resource-manager__top">
         <section class="resource-manager__status resource-panel">
-          <h3>${t('预载状态')}</h3>
+          <div class="resource-status__head"><h3>${t('预载状态')}</h3>
+            <label class="resource-choice"><input type="checkbox" data-testid="preload-enabled" checked=${enabled}
+              disabled=${controls.toggleDisabled || deleting} onChange=${e => onChange(e.currentTarget.checked)} />${t('自动预载')}</label>
+          </div>
           <p class=${`resource-manager__message${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
             ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
           ${st.checkBlocked ? html`<p class="resource-manager__warn">${t('完整检查请返回大厅后进行。')}</p>` : null}
@@ -188,20 +226,18 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
           ${st.failed ? html`<p class="resource-manager__warn">${t('{failed} 个文件下载失败，继续下载时重试。', { failed: st.failed })}</p>` : null}
           ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}
           <div class="res-actions resource-status__actions">
-            ${busy(st) ? html`<${Button} variant="secondary" icon="hourglass" onClick=${pauseResources}>${archiveBusy || st.phase === 'checking' ? t('取消处理') : t('暂停下载')}<//>`
-              : html`<${Button} variant="primary" icon="play" disabled=${!st.supported || st.combatPaused || st.checkBlocked && st.selectionComplete}
-                onClick=${() => st.selectionComplete ? checkResources() : enabled ? startResources() : onChange(true)}>${st.selectionComplete ? t('检查资源') : enabled ? t('继续下载') : t('开始预载')}<//>`}
-            ${enabled && st.combatPaused && !st.manualPaused && !archiveBusy ? html`<${Button} variant="secondary" icon="hourglass"
-              onClick=${pauseResources}>${t('暂停下载')}<//>` : null}
-            <${Button} variant="secondary" disabled=${archiveBusy} onClick=${() => { void clearResources(); }}>${t('清理缓存')}<//>
-            <${Button} variant="secondary" disabled=${!enabled} onClick=${() => onChange(false)}>${t('关闭预载')}<//>
+            ${controls.cancel ? html`<${Button} variant="secondary" icon="hourglass" disabled=${deleting} onClick=${cancelProcessing}>${t('取消处理')}<//>` : null}
+            ${controls.resume ? html`<${Button} variant="secondary" icon="refresh" disabled=${deleting || !st.supported} onClick=${startResources}>${st.phase === 'error' ? t('重试预载') : t('继续预载')}<//>` : null}
+            ${controls.check ? html`<${Button} variant="secondary" icon="refresh" disabled=${deleting || !st.supported || st.combatPaused || st.checkBlocked} onClick=${checkResources}>${t('检查资源')}<//>` : null}
+            <${Button} variant="danger" loading=${deleting} disabled=${archiveBusy} onClick=${deleteLocalResources}>${t('删除本机游戏资源')}<//>
           </div>
-          <p class="resource-manager__intro">${t('先预载必备资源；可选资源可按需加载。关闭此窗口后，下载会在后台继续。')}</p>
-          <p class="resource-manager__intro">${t('关闭预载会保留已缓存资源。')}</p>
+          ${deleteError ? html`<p class="resource-manager__warn" role="alert">${deleteError}</p>` : null}
+          <p class="resource-description">${t('勾选后自动补齐所选资源；关闭只停止批量下载，已保存的资源仍可使用。战斗中暂停，结束后自动继续。')}</p>
+          <p class="resource-description">${resourceDeleteNotice()}</p>
         </section>
         <section class="resource-archive resource-panel">
           <h3>${t('ZIP 资源包')}</h3>
-          <p>${t('可前往本服资源补给站下载分类 ZIP，也可将已缓存的资源导出并分享。导入时只复用当前版本仍有效的资源，缺少的部分会增量下载。')}</p>
+          <p class="resource-description">${t('可前往本服资源补给站下载分类 ZIP，也可将已缓存的资源导出并分享。导入时只复用当前版本仍有效的资源，缺少的部分会增量下载。')}</p>
           ${st.archive ? html`<${ProgressBar} value=${st.archivePercent} max=${100} size="sm" tone="mint" />` : null}
           <input ref=${fileInput} type="file" accept=".zip,application/zip,application/x-zip-compressed" hidden onChange=${importFile} />
           <div class="res-actions">
