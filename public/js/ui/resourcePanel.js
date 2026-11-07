@@ -201,9 +201,9 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
     <div class="resource-manager">
       <div class="resource-manager__top">
         <section class="resource-manager__status resource-panel">
-          <div class="resource-status__head"><h3>${t('预载状态')}</h3>
+          <div class="resource-status__head"><div class="resource-status__summary"><h3>${t('预载状态')}</h3>
             <span class=${`resource-manager__message${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
-              ${st.message || stateText(st, enabled)}</span>
+              ${st.message || stateText(st, enabled)}</span></div>
             <label class="resource-choice"><input type="checkbox" data-testid="preload-enabled" checked=${enabled}
               disabled=${controls.toggleDisabled || deleting} onChange=${e => onChange(e.currentTarget.checked)} />${t('自动预载')}</label>
           </div>
