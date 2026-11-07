@@ -115,7 +115,7 @@ function ResourceTier({ st, tier, optional, onOptional, disabled }) {
       <div><h3>${tier === 1 ? t('必备资源') : t('可选资源')}</h3>
         <p class="resource-description">${tier === 1 ? t('地图、干员图片与 Spine 等画面资源') : t('个人头像、角色语音、官方特效、音效、背景音乐与玩法说明图片')}</p></div>
       ${tier === 2 ? html`<label class="resource-choice"><input type="checkbox" checked=${optional} disabled=${disabled}
-        onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : html`<${MicroLabel}>REQUIRED<//>`}
+        onChange=${(e) => onOptional(e.currentTarget.checked)} />${t('同时预载')}</label>` : null}
     </header>
     <div class="resource-tier__summary"><span class="num">${t('{done} / {total} 个文件', { done, total })}</span>
       <span class="num">${unknown ? t('部分大小未知') : `${formatBytes(bytes)} / ${formatBytes(totalBytes)}`}</span></div>
@@ -202,11 +202,11 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
       <div class="resource-manager__top">
         <section class="resource-manager__status resource-panel">
           <div class="resource-status__head"><h3>${t('预载状态')}</h3>
+            <span class=${`resource-manager__message${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
+              ${st.message || stateText(st, enabled)}</span>
             <label class="resource-choice"><input type="checkbox" data-testid="preload-enabled" checked=${enabled}
               disabled=${controls.toggleDisabled || deleting} onChange=${e => onChange(e.currentTarget.checked)} />${t('自动预载')}</label>
           </div>
-          <p class=${`resource-manager__message${st.error ? ' is-error' : ''}`} role="status" aria-live="polite">
-            ${st.message || (enabled ? t('预载已开启') : t('选择下载范围，然后开始预载；也可以直接导入资源包。'))}</p>
           ${st.checkBlocked ? html`<p class="resource-manager__warn">${t('完整检查请返回大厅后进行。')}</p>` : null}
           ${st.packProgress ? html`<div class="resource-manager__pack-progress">
             <${ProgressBar}
@@ -225,6 +225,7 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
           ${st.worker ? html`<p class="resource-manager__warn">${st.worker}</p>` : null}
           ${st.failed ? html`<p class="resource-manager__warn">${t('{failed} 个文件下载失败，继续下载时重试。', { failed: st.failed })}</p>` : null}
           ${st.skipped ? html`<p class="resource-manager__warn">${t('{skipped} 个文件超过单文件缓存上限，使用时按需加载。', { skipped: st.skipped })}</p>` : null}
+          <p class="resource-description">${t('勾选自动预载后自动补齐所选资源；关闭只停止批量下载，已保存的资源仍可使用。战斗中暂停，结束后自动继续。')}</p>
           <div class="res-actions resource-status__actions">
             ${controls.cancel ? html`<${Button} variant="secondary" icon="hourglass" disabled=${deleting} onClick=${cancelProcessing}>${t('取消处理')}<//>` : null}
             ${controls.resume ? html`<${Button} variant="secondary" icon="refresh" disabled=${deleting || !st.supported} onClick=${startResources}>${st.phase === 'error' ? t('重试预载') : t('继续预载')}<//>` : null}
@@ -232,8 +233,6 @@ export function ResourceHost({ enabled, optional, voiceLang = 'cn', onVoiceLang,
             <${Button} variant="danger" loading=${deleting} disabled=${archiveBusy} onClick=${deleteLocalResources}>${t('删除本机游戏资源')}<//>
           </div>
           ${deleteError ? html`<p class="resource-manager__warn" role="alert">${deleteError}</p>` : null}
-          <p class="resource-description">${t('勾选后自动补齐所选资源；关闭只停止批量下载，已保存的资源仍可使用。战斗中暂停，结束后自动继续。')}</p>
-          <p class="resource-description">${resourceDeleteNotice()}</p>
         </section>
         <section class="resource-archive resource-panel">
           <h3>${t('ZIP 资源包')}</h3>
