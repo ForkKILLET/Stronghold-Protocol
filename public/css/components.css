@@ -505,6 +505,9 @@
 .modal__title { font-size: calc(.26 * var(--utility-text, var(--t))); font-weight: 700; letter-spacing: .04em; }
 .modal__body { padding: calc(.14 * var(--ui-unit, 1rem)) calc(.3 * var(--ui-unit, 1rem)) calc(.26 * var(--ui-unit, 1rem)); color: var(--text-md); overflow: auto; }
 .modal__text { font-size: calc(.18 * var(--utility-text, var(--t))); line-height: 1.7; }
+.resume-modal .modal__body { display:flex; flex-direction:column; gap:max(12px,calc(.16 * var(--ui-unit,1rem))); }
+.resume-modal .modal__body > p { margin:0; line-height:1.7; }
+.resume-modal .btn--block { flex:none; white-space:normal; overflow-wrap:anywhere; }
 .resource-modal {
   width: min(calc(10.4 * var(--ui-unit, 1rem)), calc(100vw - calc(.4 * var(--ui-unit, 1rem))));
   max-height: min(90vh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - calc(.4 * var(--ui-unit, 1rem))));

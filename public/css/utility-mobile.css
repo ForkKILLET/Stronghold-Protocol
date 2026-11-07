@@ -129,7 +129,6 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
   .utility-modal .title-about__links { gap: 6px; }
   .utility-modal .title-about__disclaimer, .utility-modal .title-about__hint { line-height: 1.5; }
   .utility-modal .title-about__disclaimer p + p { margin-top: 8px; }
-  .resume-modal .btn--block { margin-top: 6px; white-space: normal; overflow-wrap: anywhere; }
   .utility-modal .console-ui { min-height: 0; gap: 6px; }
   .utility-modal .console-ui__list { max-height: none; }
   .utility-modal .console-ui__entry { min-height: 30px; padding: 5px 6px; }
