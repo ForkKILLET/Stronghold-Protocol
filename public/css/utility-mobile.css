@@ -707,7 +707,7 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
 .settings-layout { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:calc(.24 * var(--ui-unit,1rem)); flex:1; min-width:0; min-height:0; }
 .settings-nav { display:flex; flex-direction:column; align-items:stretch; gap:8px; min-height:0; overflow:auto; padding:2px; border-right:1px solid var(--line); padding-right:calc(.16 * var(--ui-unit,1rem)); }
 .settings-nav__item { display:flex; align-items:center; gap:10px; min-height:62px; flex-shrink:0; padding:10px 14px; border:1px solid transparent; background:transparent; color:var(--text-lo); font:inherit; font-size:max(14px,calc(.17 * var(--utility-text,var(--t)))); text-align:left; }
-.settings-nav__item > span:last-child { display:flex; flex-direction:column; flex:none; gap:5px; white-space:nowrap; }
+.settings-nav__item > span:last-child { display:flex; flex-direction:column; flex:none; gap:5px; white-space:nowrap; color:var(--text-hi); }
 .settings-nav__item .micro { font-size:10px; letter-spacing:.1em; }
 .settings-nav__index { flex:none; font-size:12px; color:var(--text-dim); }
 .settings-nav__item:hover { background:var(--mint-a10); color:var(--text-hi); }
