@@ -79,9 +79,31 @@ test('desktop Firefox: content actions retain borders and device-record clearing
     await page.click('[data-settings-tab="resources"]');
     dimensions.push(...await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
     assert.equal(dimensions.length, 4);
-    for (const d of dimensions) assert.deepEqual(d, dimensions[0], 'all settings page launchers share dimensions and typography');
+    for (const d of dimensions) {
+      assert.equal(d.h, 36, 'page launchers use the standard small button height');
+      assert.equal(d.font, dimensions[0].font, 'page launchers share typography');
+      assert.ok(d.w < 190, 'small buttons use their content width: '+JSON.stringify(d));
+    }
     assert.equal(await page.$eval('.settings-modal', e => e.getBoundingClientRect().height), shell, 'category changes preserve window height');
 
+    for (const textSize of ['sm', 'xl']) {
+      await page.setViewport({ width: 3072, height: 1800 });
+      await page.evaluate(async size => (await import('/js/ui/settings.js')).updateSettings({textSize:size}), textSize);
+      const nav = await page.$$eval('.settings-nav__item', es => es.map(e => {
+        const box=e.getBoundingClientRect(),label=e.lastElementChild,r=label.getBoundingClientRect();
+        const text=document.createRange();text.selectNodeContents(label.firstChild);
+        return {lines:text.getClientRects().length,rightPadding:box.right-r.right,overflow:e.scrollWidth-e.clientWidth};
+      }));
+      assert.ok(nav.every(n => n.lines===1 && n.rightPadding>=14 && n.overflow<=1), JSON.stringify(nav));
+      await page.click('[data-settings-tab="battle"]');
+      await page.$eval('.set-seg--fps', e => e.scrollIntoView({block:'end'}));
+      const controls = await page.$$eval('.settings-content .set-toggle,.settings-content .set-seg', es => es.map(e => e.getBoundingClientRect().left));
+      assert.ok(controls.every(x => Math.abs(x-controls[0])<1), 'frame-rate, quality and switches have the same control column');
+      await shot('settings-battle-'+textSize);
+    }
+    await page.evaluate(async () => (await import('/js/ui/settings.js')).updateSettings({textSize:'sm'}));
+    await page.setViewport({width:1920,height:1080});
+    await page.click('[data-settings-tab="resources"]');
     await framed('[data-testid="diag-copy"]');
     await page.$eval('[data-testid="diag-copy"]', e => e.scrollIntoView({ block: 'center' }));
     await page.hover('[data-testid="diag-copy"]');

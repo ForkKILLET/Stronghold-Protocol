@@ -1046,7 +1046,7 @@
 .set-personalization { padding:12px; border:1px solid var(--line); background:rgba(8,11,10,.45); background:color-mix(in srgb,var(--bg-0) 45%,transparent); }
 .set-personalization h3 { margin:0; font-weight:600; }
 .set-personalization__entries { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
-.set-personalization__entry.btn { width:100%; min-width:0; min-height:44px; height:auto; padding:10px 12px; font-size:max(12px,calc(.17 * var(--utility-text,var(--t)))); }
+.set-personalization__entry.btn { min-width:0; }
 .set-personalization__entry .btn__label { display:flex; align-items:center; justify-content:center; gap:8px; white-space:normal; }
 .set-personalization__entry .btn__icon { flex:none; color:var(--mint-400); }
 
@@ -1090,9 +1090,8 @@
 .set-seg.set-textsize button { min-width: .62rem; }
 .set-seg button:last-child { border-right: 0; }
 .set-seg button.is-on { background: var(--mint-500); color: var(--text-on-mint); font-weight: 700; }
-.set-row--fps { grid-template-columns: minmax(0, 1fr) auto; }
 .set-row--fps .set-row__label { flex-wrap: wrap; white-space: normal; }
-.set-seg--fps { grid-column: 2; justify-self: end; }
+.set-seg--fps { grid-column: 2 / 4; justify-self: start; }
 .set-seg--fps button:focus-visible { outline: 2px solid var(--mint-400); outline-offset: -2px; }
 @media (pointer: coarse), (any-pointer: coarse) {
   .set-row--fps .set-seg--fps button { min-width: max(.8rem, 44px); }

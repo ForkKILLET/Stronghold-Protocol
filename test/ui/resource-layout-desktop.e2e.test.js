@@ -59,6 +59,8 @@ test('desktop Firefox: preload panels use a bounded grid, internal headings and 
       assert.equal(geometry.panels.length, 4);
       const [voice, skin, required, optional] = geometry.panels;
       assert.ok(Math.abs(voice.y - skin.y) < 1 && Math.abs(required.y - optional.y) < 1);
+      assert.ok(Math.abs(voice.h - skin.h) < 1, 'voice and skin cards fill their shared grid row');
+      assert.ok(await page.$eval('.resource-tier:last-child .resource-choice', e => getComputedStyle(e).color === getComputedStyle(e.closest('header').querySelector('h3')).color), 'optional preload label uses the normal white text color');
       assert.ok(voice.right < skin.x && required.right < optional.x);
       assert.ok(required.y >= Math.max(voice.bottom, skin.bottom) + 10);
       assert.ok(Math.abs(required.bottom - geometry.body.bottom) < 32);
