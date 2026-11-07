@@ -106,7 +106,7 @@ export {
  *   store?: object | null, resume?: boolean, saveMs?: number, checkpointConcurrency?: number, checkpointWaitMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
  *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, wsUrl?: string, clientBuild?: boolean,
- *   versionVoteMs?: number, versionRetryMs?: number,
+ *   versionVoteMs?: number, versionRetryMs?: number, hotReload?: boolean,
  *   roomCode?: string | null,
  *   versions?: { enabled?: 'all' | string[], default?: string, maxHosts?: number },
  * }} [opts]
@@ -149,6 +149,7 @@ export async function startServer(opts = {}) {
   const simDir = path.join(ROOT, 'server', 'sim');
 
   const clientBuild = opts.clientBuild ?? !process.argv.includes('--source-client');
+  const hotReload = !clientBuild && (opts.hotReload ?? process.argv.includes('--hot'));
   const rawWsUrl = opts.wsUrl ?? process.env.SP_WS_URL;
   const wsUrl = parseWsUrl(rawWsUrl);
   if (String(rawWsUrl ?? '').trim() && !wsUrl) {
@@ -312,9 +313,9 @@ export async function startServer(opts = {}) {
   const traffic = createTrafficCounter();
   const health = { startedAt, network, registry, lobby, traffic, content, trusted: trustedRuntime?.health, versions, versionHosts };
   const diagnostics = { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic };
-  let admin=null;
+  let admin=null, devReload=null;
   const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, health, serveApi,
-    diagnostics, log, trustProxy: network.opts.trustProxy }));
+    diagnostics, log, trustProxy: network.opts.trustProxy, serveDev: hotReload ? (...args) => devReload?.handle(...args) : null }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic, users });
 
@@ -361,7 +362,13 @@ export async function startServer(opts = {}) {
       lobby.trustedRuntime = null;
       await trustedRuntime?.close();
     }
+    if (hotReload) {
+      const { createDevReload } = await import('./http/devReload.js');
+      devReload = createDevReload({ publicDir, sharedDir, simDir, log });
+      log.info('[dev] CSS hot replacement; JS/HTML auto reload enabled');
+    }
   } catch (e) {
+    devReload?.close();
     clearInterval(userRetry);
     await users?.close();
     await store?.close();
@@ -395,6 +402,7 @@ export async function startServer(opts = {}) {
   async function close() {
     if (closing) return closing;
     closing = (async () => {
+      devReload?.close();
       await admin?.close();
       clearInterval(userRetry);
       network.beginShutdown();

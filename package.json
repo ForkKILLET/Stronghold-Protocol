@@ -24,7 +24,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js --source-client",
+    "dev": "node --watch server/index.js --source-client --hot",
+    "dev:source": "node --watch server/index.js --source-client",
     "profile:pull": "node tools/profile-debug.mjs pull",
     "dev:profile": "node --watch tools/profile-debug.mjs serve",
     "build": "npm run vendor && vite build",

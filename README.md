@@ -112,7 +112,7 @@ npm start          # 启动服务器：http://localhost:3000
 
 也可以直接运行启动脚本（Windows `scripts\start-windows.bat`，macOS / Linux `scripts/start.sh`）：首次会自动安装依赖、下载素材，然后启动服务器并打开浏览器。四个官方版本默认都开着，大厅右上角有「版本」。启动脚本和 `npm start` 不用加参数。只开第二期下半时设置 `SP_VERSIONS=act2autochess`（大厅不显示版本按钮），详见 [docs/DEPLOY.md](docs/DEPLOY.md) §11。
 
-生产页面使用 `public/build/` 中的压缩产物，JS/CSS 文件名带内容哈希，未修改的文件可长期缓存；渲染器、战斗模拟和 Three.js 按需加载。修改代码后重新运行 `npm run build` 并重启服务器。开发时运行 `npm run dev`，直接提供源码页面，刷新即可看到修改；没有构建产物时普通启动也会回退到源码页面。详见 [前端构建与缓存](docs/DEPLOY.md#前端构建与缓存)。
+生产页面使用 `public/build/` 中的压缩产物，JS/CSS 文件名带内容哈希，未修改的文件可长期缓存；渲染器、战斗模拟和 Three.js 按需加载。修改代码后重新运行 `npm run build` 并重启服务器。开发时运行 `npm run dev`，直接提供源码页面；CSS 保存后热替换，JS／HTML／翻译保存后自动刷新页面，服务器代码变更后自动重启；没有构建产物时普通启动也会回退到源码页面。详见 [前端构建与缓存](docs/DEPLOY.md#前端构建与缓存)。
 
 - **本地客户端素材（可选）**：官方 3D 棋盘、官方战斗特效（0.3.0「官方特效」）、部分官方界面图标（交流按钮与表情面板的边框、模组类型图标等）、灼热 / 炽焰源石虫和 39 个召唤物（多数自选召唤物）的官方模型需要从本机的《明日方舟》PC 客户端提取（Windows 原生客户端、macOS 的 CrossOver 或 PlayCover）。`npm run setup` 检测到客户端时会询问是否提取（需要 Python 3.8+，依赖装在项目内的 `.venv-extract`，不影响系统）；之后可以用 `node tools/setup.mjs --local` 重新提取，或用 `--game "<…/StreamingAssets/AB/Windows>"` 指定路径。没有客户端时游戏照常运行，这几样换成替代样式：2D 棋盘、样式相近的图标、染色的普通源石虫、召唤物头像。表情和「玩法说明」的教程图随上面的素材一起从公开镜像下载，不需要客户端。没有客户端的服务器（例如 Linux VPS）也可以从**同一版本**的整合包（完整包；精简包没有）里复制 `public/assets/local/` 和 `data/local-assets.json`，见 [docs/DEPLOY.md](docs/DEPLOY.md) 的「本地客户端素材」。
 - **本地客户端素材（可选）**：官方 3D 棋盘、官方战斗特效（0.3.0「官方特效」）、部分官方界面图标（交流按钮与表情面板的边框、模组类型图标等）、灼热 / 炽焰源石虫和 39 个召唤物（多数自选召唤物）的官方模型需要从本机的《明日方舟》PC 客户端提取（Windows 原生客户端、macOS 的 CrossOver 或 PlayCover）。`npm run setup` 检测到客户端时会询问是否提取（需要 Python 3.8+，依赖装在项目内的 `.venv-extract`，不影响系统）；之后可以用 `node tools/setup.mjs --local` 重新提取，或用 `--game "<安装目录或 …/StreamingAssets/AB/Windows>"` 指定路径。没有客户端时游戏照常运行，这几样换成替代样式：2D 棋盘、样式相近的图标、染色的普通源石虫、召唤物头像。表情和「玩法说明」的教程图随上面的素材一起从公开镜像下载，不需要客户端。没有客户端的服务器（例如 Linux VPS）也可以从**同一版本**的整合包（完整包；精简包没有）里复制 `public/assets/local/` 和 `data/local-assets.json`，见 [docs/DEPLOY.md](docs/DEPLOY.md) 的「本地客户端素材」。
@@ -252,7 +252,8 @@ npm start          # 启动服务器：http://localhost:3000
 ## 开发与测试
 
 ```bash
-npm run dev                 # node --watch：改动服务器代码后自动重启
+npm run dev                 # CSS 热替换；前端代码自动刷新；后端代码自动重启
+npm run dev:source          # 关闭前端自动更新，保留后端 watch
 npm test                    # 本机 Linux 自动限额/串行；CI 按分片运行，缺少素材/浏览器的用例跳过
 SP_E2E=1 node --test test/ui/mock.e2e.test.js        # 浏览器端到端测试，需要本机 Chrome（CHROME_PATH 可指定路径）
 SP_REAL_E2E=1 node --test test/ui/real.e2e.test.js   # 需要 Chrome + 已下载的素材

@@ -116,12 +116,13 @@ const wantsTraffic = (query) => /(?:^|&)traffic(?:=(?:1|true|yes))?(?:&|$)/i.tes
  * @param {{ serveStatic: (req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse,
  *             rawPath: string, query: string) => Promise<void>,
  *           health: Parameters<typeof healthReport>[0], log: object, trustProxy?: 'auto' | boolean,
+ *           serveDev?: ((req: any, res: any, rawPath: string) => Promise<boolean> | undefined) | null,
  *           studio?: { handles: (rawPath: string) => boolean, handle: (req: any, res: any, rawPath: string, query: string) => Promise<void> } | null }} deps
  *   trustProxy: whose forwarding headers name the client (net.js clientAddress; the server's TRUST_PROXY); studio: the
  *   plugin studio (server/studio/index.js), or none
  * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
  */
-export function createRequestHandler({ serveStatic, health, serveApi = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null }) {
+export function createRequestHandler({ serveStatic, health, serveApi = null, serveDev = null, diagnostics = {}, log, trustProxy = 'auto', studio = null, trustedRuntime = null }) {
   const healthBody = createHealthBody(health);
   function serveHealth(req, res) {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -160,6 +161,7 @@ export function createRequestHandler({ serveStatic, health, serveApi = null, dia
       sendError(req, res, 405, '不支持的请求方法 · Method not allowed');
       return;
     }
+    if (serveDev && await serveDev(req, res, parts.rawPath)) return;
     if (parts.rawPath === '/metrics') {
       const { network, lobby } = health;
       const { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic } = diagnostics;
