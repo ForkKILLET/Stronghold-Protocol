@@ -132,7 +132,7 @@ export function armedCard(armed, sp, o) {
 export function choiceVisibilityKey(pub, sp) {
   return sp ? JSON.stringify([pub?.round, sp.family, sp.turnPid, sp.cards.map((c) => c.id ?? c.idx)]) : null;
 }
-export function bountyCanHide(sp) { return /^(?:bounty|shop|supply)(?:_s)?$/.test(sp?.family || ''); }
+export function bountyCanHide(sp) { return /^(?:bounty|shop|supply|tactic)(?:_s)?$/.test(sp?.family || ''); }
 
 /**
  * The overlay: keeps the two-tap selection and renders ChoiceView. `onPick(idx)` sends the confirmed card (g.choice).
@@ -224,9 +224,10 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
   const armedName = armedCardRec ? resolveSpCard(armedCardRec, sp.family).name : null;
   const canHide = !personal && bountyCanHide(sp);
   const equipment = /^(shop|supply)/.test(sp.family || '');
-  if (canHide && minimized) return html`<div class="spov-folded" role="group" aria-label=${equipment ? t('装备选择已隐藏') : t('悬赏选择已隐藏')}>
+  const tactic = /^tactic(?:_s)?$/.test(sp.family || '');
+  if (canHide && minimized) return html`<div class="spov-folded" role="group" aria-label=${equipment ? t('装备选择已隐藏') : tactic ? t('战术选择已隐藏') : t('悬赏选择已隐藏')}>
     <button type="button" class="spov-folded__open" aria-expanded="false" onClick=${() => onMinimize(false)}>
-      <${Icon} name="eye" /><span>${equipment ? t('继续选择装备') : t('继续选择悬赏')}</span>
+      <${Icon} name="eye" /><span>${equipment ? t('继续选择装备') : tactic ? t('继续选择战术') : t('继续选择悬赏')}</span>
       <small>${mine != null ? t('已完成选择') : myTurn ? t('轮到你决策') : t('等待队友')}</small>
     </button>
     ${timed ? html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="sm" />` : null}
@@ -251,7 +252,7 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
           <p class="spov__sub">${timed ? (personal ? t('休整期结束时未选择将自动选定') : t('倒计时结束后仍未选定将自动分配')) : t('选择一项（无时间限制）')}${mine == null && myTurn ? t(' · 点击卡牌选中，再次点击确认') : ''}</p>
         </div>
         <div class="spov__turn">
-          ${canHide ? html`<${Button} variant="secondary" icon="collapse" class="spov__hide" aria-expanded="true" onClick=${() => onMinimize(true)}>${equipment ? t('隐藏装备') : t('隐藏悬赏')}<//>` : null}
+          ${canHide ? html`<${Button} variant="secondary" icon="collapse" class="spov__hide" aria-expanded="true" onClick=${() => onMinimize(true)}>${equipment ? t('隐藏装备') : tactic ? t('隐藏战术') : t('隐藏悬赏')}<//>` : null}
           ${personal ? html`<span class="spov__turntxt is-mine">${t('从候选中选择一项战术特训')}</span>` : mine != null ? html`<span class="spov__turntxt is-done"><${Icon} name="check" />${t('已完成选择')}</span>`
             : myTurn ? html`<span class="spov__turntxt is-mine">${t('当前轮到你决策')}</span>`
             : html`<span class="spov__turntxt is-other"><span class="spov__tw"><b>${turnName}</b><small>${t('正在决策…')}</small></span><${Icon} name="hourglass" /></span>`}

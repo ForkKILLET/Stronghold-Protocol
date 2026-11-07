@@ -43,12 +43,34 @@ test('hiding remains local to the same draft turn and round; ordinary state upda
   assert.notEqual(choiceVisibilityKey(pub, { ...sp, family: 'tactic' }), key);
   assert.equal(choiceVisibilityKey(pub, null), null);
 });
-test('other contingency families retain their existing full overlay', () => {
-  for (const family of ['tactic']) {
+test('unknown contingency families retain their existing full overlay', () => {
+  for (const family of ['unknown', null]) {
     assert.equal(bountyCanHide({ family }), false);
     const nodes = [...walk(ChoiceView({ ...props, sp: { ...sp, family }, minimized: true }))];
     assert.ok(nodes.some((n) => n.props?.role === 'dialog'));
     assert.ok(!nodes.some((n) => n.props?.class === 'spov__hide'));
+  }
+});
+
+test('tactical decisions and their special variant can hide and reopen with tactical captions', () => {
+  for (const family of ['tactic', 'tactic_s']) {
+    assert.equal(bountyCanHide({ family }), true);
+    const events = [];
+    const options = { ...props, sp: { ...sp, family }, onMinimize: hidden => events.push(hidden) };
+    const open = [...walk(ChoiceView(options))];
+    const hide = open.find(n => n.props?.class === 'spov__hide');
+    assert.equal(hide.props.children, '隐藏战术');
+    hide.props.onClick();
+    const folded = [...walk(ChoiceView({ ...options, minimized: true }))];
+    assert.equal(folded[0].props['aria-label'], '战术选择已隐藏');
+    assert.ok(folded.some(n => n.type === 'span' && n.props.children === '继续选择战术'));
+    assert.equal(folded.find(n => n.type === Countdown).props.deadline, pub.deadline);
+    folded.find(n => n.props?.class === 'spov-folded__open').props.onClick();
+    assert.deepEqual(events, [true, false]);
+    assert.equal(sp.pickOf.size, 0);
+    const personal = [...walk(ChoiceView({ ...options, personal: true, minimized: true }))];
+    assert.ok(personal.some(n => n.props?.role === 'dialog'));
+    assert.ok(!personal.some(n => n.props?.class === 'spov__hide'));
   }
 });
 
@@ -63,7 +85,7 @@ test('equipment drafts share disclosure controls and keep their own caption', ()
 
 test('expanded choices own their inline pause control; folded bounty/equipment use the top HUD',()=>{
  const pause={requested:true,votes:1,required:4,onToggle(){}};
- for(const family of ['bounty','shop','supply']){
+ for(const family of ['bounty','shop','supply','tactic','tactic_s']){
   const active=[...walk(ChoiceView({...props,sp:{...sp,family},pause}))];
   const clock=active.find(n=>n.props?.class==='spov__clock');assert.ok(clock);
   const control=[...walk(clock)].find(n=>n.type===PauseButton);assert.equal(control.props.requested,true);assert.equal(control.props.onToggle,pause.onToggle);
