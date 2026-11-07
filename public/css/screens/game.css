@@ -539,8 +539,22 @@
    to swallow the taps and drags on them (review of user playtest #2 item 8: every own unit reachable). */
 .gm__bonds > *, .gm__bonds .bstrip { pointer-events: none; }
 .gm__bonds .bslot, .gm__bonds .bstrip__more { pointer-events: auto; }
-.gm__bond-list { min-width: 0; }
+.gm__bond-list { min-width: 0; flex: 1; }
 .gm__bond-list:not([hidden]) { display: flex; }
+.gm__bond-list > .tt-anchor { min-width: 0; max-width: 100%; flex: 1; }
+.bstrip-scroll { display: flex; align-items: center; min-width: 0; max-width: 100%; flex: 1; gap: .04rem; }
+/* Keep the rings/counts clear of clipping and leave empty battlefield space transparent to pointer input. */
+.bstrip-scroll .bstrip { min-width: 0; flex: 1; overflow-x: auto; overflow-y: hidden;
+  padding: .08rem 0; margin: -.08rem 0; touch-action: pan-x; scrollbar-width: thin; }
+.bstrip-scroll .bslot { flex: none; }
+.gm__bonds .bstrip-scroll__arrow { pointer-events: auto; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0; border: 1px solid var(--line-2); border-radius: 0;
+  background: rgba(8, 11, 10, .7); color: var(--mint-500); cursor: pointer; }
+.bstrip-scroll__arrow[hidden] { display: none; }
+.bstrip-scroll__arrow .icon { width: max(.22rem, 18px); height: max(.22rem, 18px); }
+.bstrip-scroll__arrow:disabled { opacity: .3; cursor: default; }
+.bstrip-scroll__arrow:hover:not(:disabled), .bstrip-scroll__arrow:focus-visible { border-color: var(--mint-500); }
+.gm.is-pen .gm__bonds .bstrip-scroll__arrow { pointer-events: none; }
 /* The hidden list leaves no hit area over the board; only this compact tab can reopen it (GitHub #142). */
 /* A bare arrow (the owner's request after 0.2.0: the boxed 「收起」 tab looked heavy): transparent, half-visible until
    hovered or focused; the 44 × 44 touch target stays (an invisible hit area), the name is the aria-label. */

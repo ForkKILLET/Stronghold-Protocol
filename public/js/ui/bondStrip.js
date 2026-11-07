@@ -51,13 +51,16 @@ function OwnerTag({ owner }) {
 
 function BondScroller({ count, children }) {
   const viewport = useRef(null);
-  const [edges, setEdges] = useState({ left: false, right: false });
+  const [edges, setEdges] = useState({ overflow: false, left: false, right: false });
   useEffect(() => {
     const el = viewport.current;
     if (!el) return;
     const update = () => {
+      // Compare with the whole available row, before space taken by the arrows. Otherwise shrinking the content can
+      // leave the controls visible just because the controls themselves make the viewport too narrow.
+      const overflow = el.scrollWidth > el.parentElement.clientWidth + 1;
       const left = el.scrollLeft > 1, right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-      setEdges((old) => old.left === left && old.right === right ? old : { left, right });
+      setEdges((old) => old.overflow === overflow && old.left === left && old.right === right ? old : { overflow, left, right });
     };
     // A render can resize the observed slots too. Update after observer delivery, so those changes are measured in the
     // next frame rather than producing "ResizeObserver loop completed with undelivered notifications" during prep.
@@ -67,6 +70,7 @@ function BondScroller({ count, children }) {
       frame = requestAnimationFrame(() => { frame = null; update(); });
     });
     observer.observe(el);
+    observer.observe(el.parentElement);
     for (const child of el.children) observer.observe(child);
     el.addEventListener('scroll', update, { passive: true });
     update();
@@ -78,9 +82,9 @@ function BondScroller({ count, children }) {
   }, [viewport, count]);
   const scroll = direction => viewport.current?.scrollBy({ left: direction * Math.max(80, viewport.current.clientWidth * .75), behavior: 'smooth' });
   return html`<div class="bstrip-scroll">
-    <button type="button" class="bstrip-scroll__arrow" disabled=${!edges.left} aria-label=${t('向左滚动盟约')} onClick=${() => scroll(-1)}>‹</button>
+    <button type="button" class="bstrip-scroll__arrow" hidden=${!edges.overflow} disabled=${!edges.left} aria-label=${t('向左滚动盟约')} onClick=${() => scroll(-1)}><${Icon} name="chevronLeft" /></button>
     ${cloneElement(children, { ref: viewport })}
-    <button type="button" class="bstrip-scroll__arrow" disabled=${!edges.right} aria-label=${t('向右滚动盟约')} onClick=${() => scroll(1)}>›</button>
+    <button type="button" class="bstrip-scroll__arrow" hidden=${!edges.overflow} disabled=${!edges.right} aria-label=${t('向右滚动盟约')} onClick=${() => scroll(1)}><${Icon} name="chevronRight" /></button>
   </div>`;
 }
 
