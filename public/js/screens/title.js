@@ -18,7 +18,6 @@ import {persistProfileName} from '../ui/profile.js';
 // (ui/pluginPanel.js InstalledPlugins, which fetches the catalogue when it opens); nothing on a server without any, which
 // the page never asks for its catalogue — and the title page loads none of the panel's code.
 
-import { ResumeMatchButton } from '../ui/resumeMatch.js';
 import { useEffect, useMemo, useState } from '../../vendor/hooks.module.js';
 import { NAME_MAX_LEN, APP_VERSION, DEV_BUILD } from '../../../shared/constants.js';
 import { html, Button, Icon, MicroLabel, TextField, Modal } from '../ui/components.js';
@@ -236,7 +235,7 @@ export function TitleScreen() {
       <span class="cross" style="left:60%;top:12%"></span>
     </div>
 
-    <${PageHeader} variant="title" language=${html`<${LangToggle} />`}
+    <${PageHeader} variant="title" brandMark=${html`<${Emblem} />`} language=${html`<${LangToggle} />`}
       heading=${html`<div class="app-header__heading app-header__brand" aria-hidden="true">
         <${MicroLabel} tone="mint">RHODES ISLAND<//>
         <${MicroLabel}>SIMULATION SERVICE<//>
@@ -271,7 +270,6 @@ export function TitleScreen() {
     ${Installed ? html`<${Installed} open=${true} onClose=${() => setInstalled(null)} />` : null}
 
     <footer class="title-foot">
-      <${ResumeMatchButton} />
       ${installed ? html`<button type="button" class="title-plugins" data-testid="title-plugins" onClick=${openPlugins}>
         <${Icon} name="info" />${t('本服务器安装了 {n} 个插件', { n: installed })}</button>` : null}
       <span>${t('非官方同人复刻 · 游戏素材版权归 上海鹰角网络 / Yostar 所有')}</span>

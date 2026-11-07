@@ -21,24 +21,23 @@ const STATUS_TEXT = {
 };
 
 /** Every page uses the same navigation geometry; only its title and return action vary. */
-export function PageHeader({ onBack, backTitle, backBusy = false, title = null, micro = null, subtitle = null, heading = null, variant = 'page', language = null, visitor = false }) {
+export function PageHeader({ onBack, backTitle, backBusy = false, title = null, micro = null, subtitle = null, heading = null, variant = 'page', brandMark = null, language = null, visitor = false }) {
   const connection = useStore(s => s.connection, shallowEqual);
   const presence = useStore(s => s.presence, shallowEqual);
   const me = useStore(s => s.me, shallowEqual);
   const profile = useStore(s => s.user, Object.is, profileStore);
   const isTitle = variant === 'title';
-  const dot = ['connected', 'online'].includes(connection.status) ? 'is-on'
-    : ['connecting', 'handshaking', 'reconnecting'].includes(connection.status) ? 'is-warn' : 'is-bad';
+  const connectionLabel = t(connection.lastError?.code === 'SERVER_FULL' ? N_('当前服务器容量已满') : STATUS_TEXT[connection.status] || N_('未连接'));
   const name = profile?.name || me.name || t('博士');
   const openArchive = () => import('../screens/stats.js').then(m => m.openStats());
-  const backButton = isTitle ? html`<span class="app-header__connection" role=${connection.lastError?.code === 'SERVER_FULL' ? 'alert' : 'status'}>
-    <span class=${`status-dot ${dot}`} aria-hidden="true"></span>
-    <span>${t(connection.lastError?.code === 'SERVER_FULL' ? N_('当前服务器容量已满') : STATUS_TEXT[connection.status] || N_('未连接'))}</span>
+  const backButton = isTitle ? html`<span class="app-header__connection" data-back-label=${t('返回')} title=${connectionLabel} role=${connection.lastError?.code === 'SERVER_FULL' ? 'alert' : 'status'}>
+    <span class="app-header__mark" aria-hidden="true">${brandMark || html`<${Icon} name="rook" />`}</span>
+    <span class="sr-only">${connectionLabel}</span>
   </span>` : html`<${BackButton} onClick=${onBack} title=${backTitle || t('返回')} busy=${backBusy} />`;
   const status = html`<div class="app-header__status connection-status">
-    ${visitor?html`<span class="doctor-visitor-status">${t('只读访问')}</span>`:!isTitle || connection.status === 'online' ? html`
+    ${visitor?html`<span class="doctor-visitor-status">${t('只读访问')}</span>`:html`
       <${PingPill} ms=${connection.ping} online=${connection.status === 'online'} />
-      <${OnlineCount} online=${presence.online} />` : null}
+      <${OnlineCount} online=${presence.online} />`}
     <${AnnouncementButton} variant="ghost" size="sm" class="topbar-announcement" />
   </div>`;
   const tools = html`<div class="app-header__tools">

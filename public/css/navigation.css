@@ -29,8 +29,25 @@
 .app-header__language [role="radio"] { height:36px; min-width:0; padding:6px; font-size:12px; }
 /* The entry page shares navigation, while its central title remains the primary heading. */
 .app-header--title { width:100%; background:linear-gradient(180deg,#080f0de6,#0b131166); }
-.app-header__connection { flex:none; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; font-size:max(12px,calc(.16 * var(--utility-text,var(--t)))); color:var(--text-lo); }
-.app-header__connection .status-dot { flex:none; }
+.app-header__connection { position:relative; flex:none; display:inline-flex; align-items:center; box-sizing:border-box; height:36px; padding:6px 10px; white-space:nowrap; font-size:max(12px,calc(.15 * var(--utility-text,var(--t)))); font-weight:700; letter-spacing:.06em; line-height:1; color:var(--text-lo); }
+/* Match BackButton's translated label + 16px icon + 8px gap without displaying another label. */
+.app-header__connection::before { content:attr(data-back-label); visibility:hidden; padding-left:24px; }
+.app-header__connection::after { content:''; position:absolute; inset:0; pointer-events:none; --corner:var(--mint-a35);
+ background:linear-gradient(var(--corner),var(--corner)) top left / 8px 1px,
+ linear-gradient(var(--corner),var(--corner)) top left / 1px 8px,
+ linear-gradient(var(--corner),var(--corner)) top right / 8px 1px,
+ linear-gradient(var(--corner),var(--corner)) top right / 1px 8px,
+ linear-gradient(var(--corner),var(--corner)) bottom left / 8px 1px,
+ linear-gradient(var(--corner),var(--corner)) bottom left / 1px 8px,
+ linear-gradient(var(--corner),var(--corner)) bottom right / 8px 1px,
+ linear-gradient(var(--corner),var(--corner)) bottom right / 1px 8px;
+ background-repeat:no-repeat;
+}
+.app-header__mark { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.app-header__mark .emblem { margin:0; gap:0; animation:none; }
+.app-header__mark .emblem__bracket { display:none; }
+.app-header__mark .emblem__svg { width:24px; height:26px; filter:none; }
+.app-header__mark .emblem__svg circle { animation:none; filter:none; }
 .app-header__brand > .micro { font-size:11px; letter-spacing:.18em; }
 .app-header__identity { grid-area:identity; align-self:start; justify-self:end; box-sizing:border-box; min-width:150px; max-width:230px; height:44px; min-height:44px; margin:0; padding:6px 10px; }
 .app-header__identity .avatar { --av:32px; }
@@ -149,6 +166,32 @@
 }
 @media (max-width:600px) { .utility-modal.hub-dialog { width:calc(100vw - 16px); } }
 @media (prefers-reduced-motion:reduce) { .app-header__heading, .room-options__frame, .st-body { animation:none; } }
+
+/* Title account cards share one frame; other pages keep their compact navigation layout. */
+.app-header--title { --title-account-width:180px; }
+.app-header--title .app-header__language,.app-header--title .app-header__identity { box-sizing:border-box; flex:none; width:var(--title-account-width); min-width:var(--title-account-width); max-width:var(--title-account-width); }
+.app-header--title .lang-toggle,.app-header--title .app-header__identity { box-sizing:border-box; height:44px; min-height:44px; border:1px solid var(--line-2); border-radius:0; background:rgba(0,0,0,.35); }
+.app-header--title .app-header__language .game-select { height:42px; min-height:42px; border:0; background:transparent; }
+.app-header--title .app-header__language [role="radio"] { height:42px; }
+.app-header--title .lang-toggle:hover,.app-header--title .lang-toggle:focus-within,.app-header--title .app-header__identity:hover { border-color:var(--mint-700); background:rgba(34,42,38,.6); }
+@media (max-width:1100px) {
+ .app-header--title { --title-account-width:120px; }
+ .app-header--title .app-header__identity { justify-content:flex-start; padding:6px; }
+ .app-header--title .app-header__identity .me-chip__text { display:flex; }
+ .app-header--title .app-header__identity .me-chip__stats { display:none; }
+}
+@media (max-width:760px) and (orientation:portrait) {
+ .app-header--title .app-header__row { grid-template-columns:minmax(0,1fr) var(--title-account-width); }
+}
+@media (max-width:400px), (max-height:560px) and (orientation:landscape) {
+ .app-header__connection { width:28px; padding:0; }
+ .app-header__connection::before { display:none; }
+ .app-header__mark .emblem__svg { width:20px; height:22px; }
+}
+@media (max-height:560px) and (orientation:landscape) {
+ .app-header--title { --title-account-width:104px; }
+ .app-header--title .app-header__row { grid-template-columns:minmax(0,1fr) var(--title-account-width) auto var(--title-account-width); }
+}
 
 /* Preparation adopts the battle HUD. Keep one band and fixed corner slots in both steps.
    These lengths deliberately follow the battle HUD's rem, not the management scale. */

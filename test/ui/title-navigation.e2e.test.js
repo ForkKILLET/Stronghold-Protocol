@@ -29,8 +29,8 @@ for(const [engine,executablePath] of [
     await page.waitForSelector('.title-screen .app-header');
     assert.equal(await page.evaluate(()=>[...document.scripts].some(s=>s.src.includes('/build/assets/index-'))),built);
     assert.equal(await page.$eval('.app-header__connection',e=>e.textContent.trim()),'已连接');
-    assert.equal(await page.$('.app-header .ping'),null,'no latency before hello');
-    assert.equal(await page.$('.app-header .online-count'),null,'no invented player count');
+    assert.equal(await page.$eval('.app-header .latency-pill .ping__value',e=>e.textContent),'--','unknown latency keeps its slot before hello');
+    assert.equal(await page.$eval('.app-header .online-count .ping__value',e=>e.textContent),'--','unknown player count is a placeholder');
     assert.equal(await page.$('.title-login .settings-btn'),null,'login form only contains entry actions');
     await page.evaluate(()=>{const event=new Event('beforeinstallprompt',{cancelable:true});event.prompt=async()=>({outcome:'dismissed'});window.dispatchEvent(event);});
     await page.waitForSelector('.app-header [data-testid="pwa-install"]');

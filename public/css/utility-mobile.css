@@ -377,7 +377,7 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
   .title-screen .title-login { width: min(7.2rem, 100%); margin-top: .3rem; gap: .15rem; padding: .25rem; }
   .title-screen .title-login .field__box { min-height: .85rem; height: auto; }
   .title-screen .title-login .field__input { font-size: calc(.2 * var(--utility-text, var(--t))); }
-  .title-screen .title-login .btn--xl { height: auto; min-height: 36px; padding: 6px 10px; letter-spacing: .16em; font-size: calc(.24 * var(--utility-text, var(--t))); }
+  .title-screen .title-login .btn--xl { --title-start-tracking:.16em; height: auto; min-height: 36px; padding: 6px 10px; font-size: calc(.24 * var(--utility-text, var(--t))); }
   .title-screen .title-login .title-invite { font-size: calc(.14 * var(--utility-text, var(--t))); }
   .title-screen .title-tag { font-size: calc(.16 * var(--utility-text, var(--t))); letter-spacing: .02em; text-align: center; }
   .title-screen .title-foot { position: relative; inset: auto; width: 100%; flex-wrap: wrap; padding: .15rem .25rem; gap: .1rem; font-size: calc(.13 * var(--utility-text, var(--t))); }

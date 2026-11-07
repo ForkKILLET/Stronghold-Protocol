@@ -217,7 +217,9 @@
   height: 2px;
   background: linear-gradient(90deg, var(--mint-500), transparent 60%);
 }
-.title-login .btn--xl { letter-spacing: .6em; padding-left: calc(calc(.48 * var(--ui-unit, 1rem)) + .3em); }
+.title-login .btn--xl { --title-start-tracking:.6em; display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); letter-spacing:var(--title-start-tracking); }
+.title-login .btn--xl .btn__label { grid-column:2; padding-left:var(--title-start-tracking); }
+.title-login .btn--xl .btn__icon--right { grid-column:3; justify-self:end; }
 .title-invite {
   display: flex;
   align-items: center;
@@ -230,7 +232,7 @@
 }
 .title-invite .icon { width: calc(.2 * var(--ui-unit, 1rem)); height: calc(.2 * var(--ui-unit, 1rem)); }
 .title-invite b { font-size: calc(.2 * var(--utility-text, var(--t))); letter-spacing: .2em; color: #ffd08a; }
-html[data-script="alphabetic"] .title-login .btn--xl { letter-spacing: .3em; }
+html[data-script="alphabetic"] .title-login .btn--xl { --title-start-tracking:.3em; }
 
 .title-foot {
   position: absolute;
