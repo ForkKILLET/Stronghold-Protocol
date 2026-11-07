@@ -291,7 +291,7 @@ export function TitleScreen() {
         </div>
         <div>
           <dt>${t('本分支更新与反馈')}</dt>
-          <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol/blob/deployment/genshin/CHANGELOG.md" target="_blank" rel="noopener noreferrer">${t('更新日志')}</a></dd>
+          <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">${t('更新日志')}</a></dd>
           <dd><a href="https://github.com/ForkKILLET/Stronghold-Protocol/issues" target="_blank" rel="noopener noreferrer">${t('本分支问题反馈')}</a></dd>
         </div>
         <div>
@@ -299,18 +299,16 @@ export function TitleScreen() {
           <dd><a href="mailto:fork_killet@outlook.com">fork_killet@outlook.com</a></dd>
         </div>
         <div>
-          <dt>${t('上游来源')}</dt>
-          <dd><a href="https://github.com/xinhai-ai/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">xinhai-ai/Stronghold-Protocol</a></dd>
+          <dt>${t('项目主线')}</dt>
           <dd><a href="https://github.com/sganggs/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">sganggs/Stronghold-Protocol</a></dd>
+          <p class="title-about__hint">${t('项目主线由 sganggs 维护。本分支现以主线为直接上游，持续同步玩法与修复。')}</p>
+          <dd><a href="https://github.com/sganggs/Stronghold-Protocol/issues" target="_blank" rel="noopener noreferrer">${t('主线问题反馈')}</a></dd>
+          <p class="title-about__hint">${t('本服及本分支问题请通过本服邮箱或本分支问题反馈入口联系；原版也能复现的游戏规则问题可反馈给主线。')}</p>
         </div>
         <div>
-          <dt>${t('上游作者联系邮箱')}</dt>
-          <dd><a href="mailto:linxia@fastmail.com">linxia@fastmail.com</a></dd>
-        </div>
-        <div>
-          <dt>${t('上游作者反馈入口')}</dt>
-          <dd><a href="https://space.bilibili.com/401522003" target="_blank" rel="noopener noreferrer">${t('B 站：临夏俨然')}</a></dd>
-          <p class="title-about__hint">${t('上游联系方式仅用于联系上游作者；本服及本分支问题请通过本服邮箱或本分支问题反馈入口联系。')}</p>
+          <dt>${t('原上游分支')}</dt>
+          <dd><a href="https://github.com/xinhai-ai/Stronghold-Protocol" target="_blank" rel="noopener noreferrer">xinhai-ai/Stronghold-Protocol</a></dd>
+          <p class="title-about__hint">${t('原上游 xinhai-ai 分支已停止维护。本分支保留其服务器端与资源优化，并继续独立维护。')}</p>
         </div>
         <div>
           <dt>${t('UI 制作')}</dt>
