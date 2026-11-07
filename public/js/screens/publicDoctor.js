@@ -74,7 +74,6 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
     <${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>refresh(n=>n+1)}>${t('刷新')}<//></div>
    <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${TABS.map(([id,label])=>html`<button type="button" role="tab" key=${id} data-tab=${id} aria-selected=${tab===id} class=${`st-tab${tab===id?' is-on':''}`} onClick=${()=>setTab(id)}>${t(label)}</button>`)}</nav>
   </header>
-  <p class="st-note"><${Icon} name="info" />${preview?t('这里与其他玩家看到的公开档案相同，不包含本机记录。'):t('仅展示该博士允许公开的服务器数据。')}</p>
   <main class="st-body" data-tab=${tab}>
    ${error?html`<p class="st-empty profile-error" role="alert">${error}</p>`:loading||!ready?html`<div class="st-loading"><${Spinner} /></div>`:html`
     ${tab==='overview'?html`<section class="public-doctor__trophies">${visibility.trophies?html`<${StatCard} label=${t('奖杯')} micro="TROPHIES" value=${page.trophies} tone="gold" />`:html`<p class="st-hint">${t('杯数未公开')}</p>`}</section>`:null}

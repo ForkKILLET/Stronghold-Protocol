@@ -127,7 +127,7 @@ for(const [engine,executablePath] of [['chrome','/run/current-system/sw/bin/goog
   await page.locator('.rseat:not(.is-me) .doctor-name-link').click();await page.waitForSelector('.public-doctor__private');
   assert.equal(await page.$eval('.public-doctor .doctor-identity h2',e=>e.textContent),'队友博士');await capture(page,'teammate-profile','.public-doctor');
   await page.locator('.public-doctor .stats-entry').click();await page.waitForSelector('.public-doctor',{hidden:true});
-  assert.equal(await page.$eval('.st .doctor-identity h2',e=>e.textContent),'档案测试博士','global own-avatar entry leaves the peer archive');
+  assert.equal(await page.$eval('.st .app-header__identity .me-chip__name',e=>e.textContent),'档案测试博士','global own-avatar entry leaves the peer archive');
   await page.keyboard.press('Escape');await page.waitForSelector('.st',{hidden:true});assert.ok(await page.$('.room-screen'));
   await page.locator('.rseat:not(.is-me) .doctor-name-link').click();await page.waitForSelector('.public-doctor');
   await guest.request({t:'room.ready',ready:true});await page.evaluate(()=>window.__SP__.net.request('room.start'));

@@ -6,7 +6,7 @@ import { data, useData } from '../data.js';
 import { profileStore } from './profile.js';
 import { loadPref, useStore } from '../store.js';
 import { loadStats, cachedAccountStats, subscribeStats, STATS_PREF_KEY } from './stats.js';
-import { achievementStats, bondOperators, recordBonds, HEX_TITLES, ACHIEVEMENT_GROUPS } from './achievementModel.js';
+import { achievementStats, bondOperators, recordBonds, ACHIEVEMENT_GROUPS } from './achievementModel.js';
 import { useLeave } from './transitions.js';
 import { cardOperators, cardAvatarUrl } from './seatArt.js';
 import { useMyCard, setCardAvatar } from './playerCard.js';
@@ -15,6 +15,8 @@ import { Emblem } from '../screens/title.js';
 import { OpCard } from '../screens/settle.js';
 import { openStats } from '../screens/stats.js';
 import { t } from '../../../shared/i18n.js';
+import { uiUrl } from './assetUrls.js';
+import { TITLE_HEX_SECTORS, titleSectorClip } from './titleHexagon.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
@@ -70,51 +72,41 @@ function SectionBar({ title, micro }) {
   </h3>`;
 }
 
-/**
- * The six 评语 round a hexagon of six solid triangles (gaps between them, the outer corners cut, a ruler along each
- * outer edge, a dark hub). Exported for the tests: the segment paths are plain geometry.
- */
-function hexSegments(R = 172) {
-  const pt = (deg, r) => [Math.cos((deg * Math.PI) / 180) * r, Math.sin((deg * Math.PI) / 180) * r];
-  const mix = (p, q, u) => [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u];
-  const r1 = (p) => p.map((v) => Math.round(v * 10) / 10);
-  return HEX_TITLES.map((id, i) => {
-    const a = -90 + i * 60;
-    const n = pt(a, 1); // outward normal of the outer edge
-    const off = (p, d) => [p[0] + n[0] * d, p[1] + n[1] * d];
-    const p1 = pt(a - 30, R), p2 = pt(a + 30, R);
-    // the gaps: each triangle shrunk towards its centroid; then the hub corner and the two outer corners cut
-    const g = [(p1[0] + p2[0]) / 3, (p1[1] + p2[1]) / 3];
-    const s = (p) => [g[0] + (p[0] - g[0]) * 0.93, g[1] + (p[1] - g[1]) * 0.93];
-    const [C, P1, P2] = [s([0, 0]), s(p1), s(p2)];
-    const poly = [mix(C, P1, 0.12), mix(C, P1, 0.93), mix(P1, P2, 0.06), mix(P1, P2, 0.94), mix(C, P2, 0.93), mix(C, P2, 0.12)];
-    // the ruler: a line inside the outer edge and ticks reaching towards it (every fourth one longer)
-    const e1 = off(mix(P1, P2, 0.12), -14), e2 = off(mix(P1, P2, 0.88), -14);
-    const ticks = Array.from({ length: 17 }, (_, j) => { const q = mix(e1, e2, j / 16); return [r1(q), r1(off(q, j % 4 === 0 ? 9 : 5))]; });
-    return { id, i, points: poly.map((p) => r1(p).join(',')).join(' '), rule: [r1(e1), r1(e2)], ticks };
-  });
-}
-const HEX = hexSegments();
-const seg = ([p, q], key) => html`<line key=${key} x1=${p[0]} y1=${p[1]} x2=${q[0]} y2=${q[1]} />`;
-
+/** Mainline's official-template wedges: each award count fills independently, capped at 20. */
 function TitleHex({ titles, gd }) {
-  const recs = Array.isArray(gd.config?.titles) ? gd.config.titles : [];
-  const pt = (deg, r) => [Math.cos((deg * Math.PI) / 180) * r, Math.sin((deg * Math.PI) / 180) * r];
-  return html`<div class="ach-hex">
-    <span class="ach-hex__cap" aria-hidden="true"><i></i>STRONGHOLD PROTOCOL<small></small></span>
-    <svg class="ach-hex__svg" viewBox="-300 -240 600 480" aria-hidden="true">
-      ${HEX.map((h) => html`<g key=${h.id} class="ach-hex__seg" style=${`--i:${h.i}`}>
-        <polygon points=${h.points} />
-        <g class="ach-hex__ticks">${seg(h.rule, 'rule')}${h.ticks.map(seg)}</g>
-      </g>`)}
-      <circle class="ach-hex__hub" r="15" />
-    </svg>
-    ${HEX_TITLES.map((id, i) => {
-      const [x, y] = pt(-90 + i * 60, 222);
-      const rec = recs.find((r) => r.id === id);
-      return html`<span key=${id} class="ach-hex__label" style=${`left:calc(50% + ${(x / 600) * 100}%);top:calc(50% + ${(y / 480) * 100}%);--i:${i}`} title=${rec?.text || ''}>
-        <b class="num">${titles[id] || 0}</b><span>${rec?.name || id}</span></span>`;
-    })}
+  const recs = new Map((Array.isArray(gd.config?.titles) ? gd.config.titles : []).map(rec => [rec.id, rec]));
+  const mask = uiUrl(gd.m, 'statistics/titleMask'), glow = uiUrl(gd.m, 'statistics/countGlow');
+  const [loadedArt, setLoadedArt] = useState([]);
+  useEffect(() => {
+    let active = true;
+    const images = [mask, glow].filter(Boolean).map(url => {
+      const image = new Image();
+      image.onload = () => { if (active) setLoadedArt(loaded => loaded.includes(url) ? loaded : [...loaded, url]); };
+      image.src = url;
+      return image;
+    });
+    return () => { active = false; for (const image of images) image.onload = null; };
+  }, [mask, glow]);
+  const count = id => Number.isFinite(titles[id]) ? Math.max(0, titles[id]) : 0;
+  return html`<div class=${cx('ach-hex st-titlehex', mask && loadedArt.includes(mask) && 'has-reference-mask')}
+      role="group" aria-label=${t('评语记录')} title=${t('每种评语获得20次时填满；数字为实际获得次数。')}
+      style=${{ '--st-title-mask': mask ? `url("${mask}")` : undefined, '--st-title-glow': glow && loadedArt.includes(glow) ? `url("${glow}")` : undefined }}>
+    <div class="st-titlehex__graphic" aria-hidden="true">
+      ${TITLE_HEX_SECTORS.map(([id, angle]) => {
+        const clip = titleSectorClip(count(id));
+        return html`<div key=${id} class="st-titlehex__wedge" data-title-id=${id}
+            style=${{ '--sector-angle': `${angle}deg`, '--texture-angle': `${-angle}deg` }}>
+          <div class="st-titlehex__base"></div>
+          ${clip ? html`<div class="st-titlehex__active"><div class="st-titlehex__sector" style=${{ clipPath: clip }}><div class="st-titlehex__texture"></div></div></div>` : null}
+        </div>`;
+      })}
+      <${Img} src=${uiUrl(gd.m, 'statistics/decoration')} class="st-titlehex__decoration" />
+    </div>
+    <ul class="st-titlehex__labels">
+      ${TITLE_HEX_SECTORS.map(([id], i) => html`<li key=${id} class=${`st-titlehex__label st-titlehex__label--${i}`} data-title-id=${id} title=${recs.get(id)?.text || ''}>
+        <b class=${cx('st-titlehex__count num', count(id) >= 20 && 'is-bright')}>${fmt(count(id))}</b><span class="st-titlehex__name">${recs.get(id)?.name || id}</span>
+      </li>`)}
+    </ul>
   </div>`;
 }
 
@@ -182,15 +174,15 @@ function BestRecord({ best, gd }) {
   </div>`;
 }
 
-function Maxima({ maxima }) {
-  const box = (cls, label, v, glyph) => html`<div class=${cx('ach-max', cls)}>
+function Maxima({ maxima, gd }) {
+  const box = (cls, label, v, art, fallback) => html`<div class=${cx('ach-max', cls)}>
     <span class="ach-max__label">${label}</span><b class="ach-max__num"><small>x</small><span class="num">${v}</span></b>
-    <svg class="ach-max__glyph" viewBox="0 0 48 48" aria-hidden="true"><path d=${glyph} /></svg>
+    <${Img} class="ach-max__glyph" src=${uiUrl(gd?.m, `statistics/${art}`)} fallback=${fallback} />
   </div>`;
   return html`<div class="ach-maxima">
-    ${box('is-gold', t('单局最多消耗资金:'), maxima.gold, 'M24 3 33 13 24 23 15 13zM12 21l9 10-9 10-9-10zM36 21l9 10-9 10-9-10z')}
-    ${box('is-orange', t('单局最多晋级次数:'), maxima.merges, 'M4 22 16 10l8 8 8-8 12 12-5 5-7-7-8 8-8-8-7 7zM4 38l12-12 8 8 8-8 12 12-5 5-7-7-8 8-8-8-7 7z')}
-    ${box('is-mint', t('单局最多击败数:'), maxima.kills, 'M6 4h8l10 13L34 4h8L28 22l16 18-6 5-14-15-14 15-6-5 16-18z')}
+    ${box('is-gold', t('单局最多消耗资金:'), maxima.gold, 'recordFunds', html`<svg class="ach-max__glyph" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 34 13 24 23 14 13zM12 21l10 10-10 10L2 31zM36 21l10 10-10 10-10-10z" /></svg>`)}
+    ${box('is-orange', t('单局最多晋升次数'), maxima.merges, 'recordPromotions', html`<svg class="ach-max__glyph" viewBox="0 0 48 48" aria-hidden="true"><path d="M4 22 16 10l8 8 8-8 12 12-5 5-7-7-8 8-8-8-7 7zM4 38l12-12 8 8 8-8 12 12-5 5-7-7-8 8-8-8-7 7z" /></svg>`)}
+    ${box('is-mint', t('单局最多击败数:'), maxima.kills, 'recordDefeats', html`<${Icon} name="sword" class="ach-max__glyph ach-max__glyph--fallback" />`)}
   </div>`;
 }
 
@@ -291,7 +283,7 @@ export function AchievementView({ me, onClose, gd, ready, s, local, boxRef, clos
         </div>`)}
         <${SectionBar} title=${t('卫戍成就')} micro="RECORDS" />
         <${BestRecord} best=${s.best} gd=${gd} />
-        <${Maxima} maxima=${s.maxima} />
+        <${Maxima} maxima=${s.maxima} gd=${gd} />
         <${SectionBar} title=${t('盟约纪录')} micro="BONDS" />
         <${BondRecord} topBonds=${s.topBonds} gd=${gd} />
         <${SectionBar} title=${t('策略纪录')} micro="STRATEGIES" />
@@ -309,18 +301,20 @@ export function AchievementView({ me, onClose, gd, ready, s, local, boxRef, clos
 /** Upstream achievement presentation embedded in the unified doctor archive. */
 export function AchievementContent({ s, gd }) {
   const icons = Object.fromEntries(ACHIEVEMENT_GROUPS.map(([id, , icon]) => [id, icon]));
-  return html`<section class="doctor-achievements">        <section class="ach-top-area">
+  return html`<section class="doctor-achievements">
+        <${SectionBar} title=${t('模拟概况')} micro="OVERVIEW" />
+        <section class="ach-top-area">
           <div class="ach-top-area__left"><p class="ach-sub">${t('奖杯')} <b class="num t-mint">${s.trophies}</b></p><${ModeTable} modes=${s.modes} /></div>
           <${TitleHex} titles=${s.titles} gd=${gd} />
         </section>
-        <${SectionBar} title=${t('成就')} micro="ACHIEVEMENTS" />
+        <${SectionBar} title=${t('成就进度')} micro="ACHIEVEMENTS" />
         ${ACHIEVEMENT_GROUPS.map(([id, label]) => html`<div key=${id} class="ach-list">
-          <p class="ach-sub">${t(label)}</p>
+          <h4 class="ach-sub">${t(label)}</h4>
           <div class="ach-marks ach-marks--list">${s.achievements.filter((a) => a.group === id).map((a) => html`<${AchievementMark} key=${a.id} a=${a} icon=${icons[id]} />`)}</div>
         </div>`)}
-        <${SectionBar} title=${t('卫戍成就')} micro="RECORDS" />
+        <${SectionBar} title=${t('单局纪录')} micro="RECORDS" />
         <${BestRecord} best=${s.best} gd=${gd} />
-        <${Maxima} maxima=${s.maxima} />
+        <${Maxima} maxima=${s.maxima} gd=${gd} />
         <${SectionBar} title=${t('盟约纪录')} micro="BONDS" />
         <${BondRecord} topBonds=${s.topBonds} gd=${gd} />
         <${SectionBar} title=${t('策略纪录')} micro="STRATEGIES" />

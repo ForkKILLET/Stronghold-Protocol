@@ -3242,5 +3242,10 @@
   "批量预载已停止，已保存的资源会保留。": "Bulk preload stopped. Saved resources are kept.",
   "浏览器存储空间不足：已保存的文件保留，可删除本机游戏资源后重试。": "Browser storage is full. Saved files are kept; you can delete local game resources and retry.",
   "重试预载": "Retry preload",
-  "继续预载": "Resume preload"
+  "继续预载": "Resume preload",
+  "模拟概况": "Simulation overview",
+  "成就进度": "Achievement progress",
+  "单局纪录": "Single-match records",
+  "评语记录": "Title records",
+  "每种评语获得20次时填满；数字为实际获得次数。": "Each title fills at 20 awards; numbers show actual award counts."
 }

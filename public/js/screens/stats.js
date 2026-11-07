@@ -1,8 +1,7 @@
 import { useReplayVersion } from '../ui/replayVersion.js';
 import { PageHeader } from '../ui/pageHeader.js';
-import {profileStore,ProfileEditor,ProfileRecovery,ProfileVisibility,DoctorAvatar,userRequest,openProfile,initProfile} from '../ui/profile.js';
+import {profileStore,ProfileEditor,ProfileRecovery,ProfileVisibility,userRequest,openProfile,initProfile} from '../ui/profile.js';
 import {publicDoctorStore,doctorLink,ensureDoctorStyles} from '../ui/doctorLinks.js';
-import {formatDoctorId} from '../../../shared/publicProfiles.js';
 import {copyText} from '../ui/clipboard.js';
 import {archivedCombatReader,mergeCombatReader} from '../battle/combatHistory.js';
 import {syncArchivedCombat} from '../battle/combatSync.js';
@@ -24,7 +23,7 @@ import { data, useData } from '../data.js';
 import { fmtNum } from '../ui/gameLogic.js';
 import { titleIconUrl } from '../ui/assetUrls.js';
 import { useDocClass } from '../ui/device.js';
-import { store, useStore, selectRoute, loadPref, savePref } from '../store.js';
+import { useStore, selectRoute, loadPref, savePref } from '../store.js';
 import { ResultView } from './result.js';
 import { toast, toastError } from '../ui/toasts.js';
 import {
@@ -40,7 +39,6 @@ import { DEFAULT_VERSION, shownVersion, seasonOf, versionLabel, welcomeVersion }
 import { VERSIONS } from '../../../shared/versions.js';
 import { Select } from '../ui/select.js';
 
-const identityName=()=>store.get().me.name;
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
 /** Rows of 对局记录 shown at first and added by each 显示更多. */
@@ -508,14 +506,10 @@ function StatsScreen({ tab }) {
   return html`<div class="st" role="dialog" aria-modal="true" aria-label=${t('博士档案')} tabindex="-1" ref=${boxRef}>
     <div class="st__bg" aria-hidden="true"></div>
     <${PageHeader} onBack=${closeStats} title=${t('博士档案')} micro="DOCTOR ARCHIVE" />
-    <header class="st-top doctor-top">
-
-      <div class="doctor-identity"><${DoctorAvatar} size="md" name=${identityName()} /><div><h2>${profile.user?.name || identityName() || t('博士')}</h2>${profile.user?.publicId?html`<span class="doctor-number num">${formatDoctorId(profile.user.publicId)}</span>`:null}<span class=${cx('doctor-status',offline&&'is-offline')} role="status">${profile.enabled?(offline?t('暂未同步'):loading?t('正在同步…'):t('已自动保存')):t('此设备档案')}</span></div>
-      ${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="edit" onClick=${()=>statsStore.set({tab:'profile'})}>${t('编辑资料')}<//>`:null}</div>
-      <div class="st-top__right">${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>fetchAccount()}>${t('刷新')}<//>`:null}</div>
+    <header class="st-top doctor-top doctor-top--compact">
       <nav class="st-tabs doctor-tabs" role="tablist" aria-label=${t('博士档案')}>${tabs.map(x=>html`<button key=${x.id} type="button" role="tab" aria-selected=${x.id===tab} data-tab=${x.id} class=${cx('st-tab',x.id===tab&&'is-on')} onClick=${()=>statsStore.set({tab:x.id})}>${t(x.name)}</button>`)}</nav>
+      <div class="st-top__right">${profile.enabled?html`<${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>fetchAccount()}>${t('刷新')}<//>`:null}</div>
     </header>
-    <p class="st-note"><${Icon} name="info" />${profile.enabled?t('累计统计以已保存的结算为准；此设备的旧记录与未同步记录保留在对局记录中，不重复累计。'):t('本机数据：只保存在这个浏览器里，不会上传到服务器；同盟对局里队友的代号也会存在本机（导出文件里也有）。')}</p>
     ${offline?html`<p class="st-note is-warn">${t('暂时无法同步，正在显示已缓存的档案与此设备记录，不影响开始游戏。')}</p>`:null}
     ${agg.missingFrame?html`<p class="st-note">${t('部分早期结算缺少时长与隐秘核心信息，相关汇总暂不显示。')}</p>`:null}
     ${stats.damaged ? html`<p class="st-note is-warn"><${Icon} name="warn" />${t('本机保存的统计数据无法读取，已另存为备份，从现在起重新记录。')}</p>` : null}

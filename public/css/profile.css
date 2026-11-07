@@ -57,7 +57,8 @@
 .profile-avatar-filters button:focus-visible { outline:2px solid var(--mint-400); outline-offset:2px; }
 
 .doctor-achievements { min-width: 0; padding-bottom: calc(.3 * var(--ui-unit, 1rem)); }
-.doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+.doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); padding-top: 0; }
+.doctor-achievements .ach-list .ach-sub { margin-left: calc(.8 * var(--ui-unit, 1rem)); }
 @media (max-width: 760px) { .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1fr); } }
 .doctor-filters { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:16px; font-size:max(calc(.15 * var(--utility-text,var(--t))),12px); }
 .doctor-filter,.st-verfilter { box-sizing:border-box; display:inline-flex; align-items:center; gap:10px; min-height:40px; max-width:100%; padding:8px 12px; border:1px solid var(--line-2); background:var(--bg-1); color:var(--text-md); }
