@@ -23,7 +23,9 @@ import { audio } from '../audio.js';
 import { TurnBanner, TURN_BANNER_LATE_MS } from '../ui/turnBanner.js';
 import { onBootArt, preloadBootArt } from '../ui/protocolBoot.js';
 import { reducedMotion } from '../ui/device.js';
-import { aggregateStats, peekStatsRecords, strategyBadgeIds } from '../ui/stats.js';
+import {useStrategyProgress} from '../ui/draftProgress.js';
+export {draftRecords} from '../ui/draftProgress.js';
+import {shownVersion} from '../versions.js';
 import { modeOffBonds, bandOffBonds, bandOffLine } from '../ui/gameLogic.js';
 import { t, tParts } from '../../../shared/i18n.js';
 
@@ -142,26 +144,6 @@ export function draftInfoStatus({ myPick = null, pickName = null, myTurn, turnNa
   const tone = s != null && s <= 10 ? 'warn' : 'gold';
   if (myTurn) return { text: t('轮到你决策'), secs: s, tone };
   return { text: turnName ? t('{turnName} 决策中', { turnName }) : t('等待轮到你'), secs: s, tone: s != null ? tone : 'dim' };
-}
-
-/** Nothing known yet (before the records are read, or none). */
-const NO_RECORDS = Object.freeze({ won: Object.freeze({}), badges: new Set(), trophies: 0 });
-
-/**
- * What the wall shows from this browser's records (ui/stats.js): `won` bandId → runs won with it (the detail pane's
- * 已通过模拟 N 次), `badges` the strategies with the official corner badge — strategyBadgeIds, the stats page's rule: the
- * band's own victorCount (3 for all 40 in activity_table / data/bands.json) of clears, quit, test and 入门协议 runs left
- * out — and `trophies` for the name card's medal.
- * @param {any[]} records peekStatsRecords()
- * @param {Record<string, any>|any[]} bands data.get('bands')
- * @returns {{ won: Record<string, number>, badges: Set<string>, trophies: number }}
- */
-export function draftRecords(records, bands) {
-  try {
-    const agg = aggregateStats(records);
-    const won = Object.fromEntries(Object.entries(agg.bands || {}).map(([id, b]) => [id, b.wins | 0]).filter(([, n]) => n > 0));
-    return { won, badges: new Set(strategyBadgeIds(records, bands)), trophies: agg.trophies || 0 };
-  } catch { return NO_RECORDS; }
 }
 
 /** 「【effect】 description」 of a strategy (the data's description usually opens with the 【effect】 already). */
@@ -301,14 +283,8 @@ export function BandDraftScreen({ held = null } = {}) {
   const infoStatus = infoOpen ? draftInfoStatus({ myPick, pickName: myPick ? gd.band(myPick)?.name : null, myTurn, turnName, secs: turnSecs,
     waiting: !solo && !draft.done }) : null;
 
-  // Read local strategy victories after the entry animation; order rows use doctor avatars.
-  const [local, setLocal] = useState(NO_RECORDS);
-  useEffect(() => {
-    const later = globalThis.requestIdleCallback ? (fn) => globalThis.requestIdleCallback(fn, { timeout: 1200 }) : (fn) => setTimeout(fn, 300);
-    const cancel = globalThis.cancelIdleCallback && globalThis.requestIdleCallback ? (id) => globalThis.cancelIdleCallback(id) : (id) => clearTimeout(id);
-    const id = later(() => setLocal(draftRecords(peekStatsRecords(), data.get('bands'))));
-    return () => cancel(id);
-  }, []);
+  const version=useStore(shownVersion);
+  const progress=useStrategyProgress({version,matchId:pub?.matchId,bands});
   const allPicked = !!draft.done || (draft.order.length > 0 && draft.order.every((pid) => draft.picks.has(pid)));
   // Every draft state keeps the same three columns, including after our confirmed pick.
   const view = 'detail';
@@ -341,7 +317,7 @@ export function BandDraftScreen({ held = null } = {}) {
             const offNames = bandOffBonds(b, offBonds).map((id) => gd.bond(id)?.name || id); // 本局禁用 (still selectable)
             const on = (peek || sel) === b.bandId;
             const previewed = [...draft.focus].some(([pid, bid]) => pid !== myId && bid === b.bandId && !draft.picks.has(pid));
-            const badged = local.badges.has(b.bandId); // (the count is the detail pane's 已通过模拟 N 次)
+            const badged = progress.badges.has(b.bandId); // (the count is the detail pane's 已通过模拟 N 次)
             return html`<button key=${b.bandId} type="button" role="option" aria-selected=${on ? 'true' : 'false'} data-band=${b.bandId}
                 title=${isTaken ? t('已被选择') : offNames.length ? bandOffLine(offNames) : b.name}
                 class=${cx('dband', previewed && 'is-preview', on && 'is-sel', myPick === b.bandId && 'is-mine', isTaken && 'is-taken', offNames.length && 'is-off')} style=${`--n:${Math.min(i, 15)}`}
@@ -355,11 +331,13 @@ export function BandDraftScreen({ held = null } = {}) {
             </button>`;
           })}
         </section>
-        ${shownBand ? html`<aside class="draft-detail" key="detail">
+        ${shownBand ? html`<aside class="draft-detail" key="detail" data-stats-source=${progress.source} data-stats-status=${progress.status}>
           <div class="draft-detail__body" key=${shownBand.bandId}>
             <div class="draft-detail__overview">
             <div class="draft-detail__art"><${BandIcon} bandId=${shownBand.bandId} size="xl" /></div>
-            ${local.won[shownBand.bandId] ? html`<span class="draft-detail__medal">${t('已通过模拟{n}次', { n: local.won[shownBand.bandId] })}</span>` : null}
+            ${progress.status!=='ready'?html`<span class="draft-detail__stats-status" role="status">${progress.status==='error'?t('统计暂不可用'):t('正在读取统计数据…')}
+              ${progress.status==='error'?html`<${Button} size="sm" square icon="refresh" aria-label=${t('重新读取统计')} title=${t('重新读取统计')} onClick=${progress.retry}/>`:null}</span>`:
+              progress.won[shownBand.bandId]?html`<span class="draft-detail__medal" title=${progress.source==='server'?t('服务器账户统计'):t('此设备记录')}>${t('已通过模拟{n}次',{n:progress.won[shownBand.bandId]})}</span>`:null}
             <div class="draft-detail__hp"><span>${t('初始生命值')}</span><${LpTower} value=${shownBand.totalHp} size="lg" /></div>
             <span class="draft-tag">STRATEGY</span>
             <h2 class="draft-detail__name">${shownBand.name}</h2>

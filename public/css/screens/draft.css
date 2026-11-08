@@ -245,6 +245,8 @@ button.dorder__box:hover { border-color:var(--mint-400); }
 .draft-detail__btns .draft-info { flex:0 0 var(--draft-action-height); width:var(--draft-action-height); min-width:0; padding:0; }
 
 .draft-detail__overview { display:flex; flex-direction:column; gap:calc(.08 * var(--ui-unit,1rem)); }
+.draft-detail__stats-status { display:flex; align-items:center; justify-content:center; gap:8px; font-size:max(12px,calc(.14 * var(--utility-text,var(--t)))); color:var(--text-lo); }
+.draft-detail__stats-status .btn { flex:none; }
 .draft-communication { align-self:stretch; width:100%; }
 @media (max-height:560px) {
  .draft-order { gap:4px; }

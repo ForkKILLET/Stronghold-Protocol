@@ -1,4 +1,9 @@
 {
+  "统计暂不可用": "Statistics temporarily unavailable",
+  "正在读取统计数据…": "Loading statistics…",
+  "重新读取统计": "Reload statistics",
+  "服务器账户统计": "Server account statistics",
+  "此设备记录": "Device records",
   "项目主线": "Mainline project",
   "项目主线由 sganggs 维护。本分支现以主线为直接上游，持续同步玩法与修复。": "The mainline project is maintained by sganggs. This fork now follows mainline directly for gameplay updates and fixes.",
   "本服及本分支问题请通过本服邮箱或本分支问题反馈入口联系；原版也能复现的游戏规则问题可反馈给主线。": "For server or fork issues, use our contact email or fork issue tracker. Gameplay issues also reproducible in the original project can be reported to mainline.",

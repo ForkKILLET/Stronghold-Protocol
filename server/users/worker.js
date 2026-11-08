@@ -6,7 +6,7 @@ import {publicReplay} from '../replays/public.js';
 import {gzipSync} from 'node:zlib';
 import {achievementStats} from '../../shared/achievementStats.js';
 import { VERSIONS, DEFAULT_VERSION } from '../../shared/versions.js';
-import {aggregateStats,accountRecord} from '../../shared/userStats.js';
+import {aggregateStats,accountRecord,strategyClearCounts} from '../../shared/userStats.js';
 // The SQLite connection lives off the game/network event loop. Only newly issued credentials are returned; existing credentials are stored as hashes.
 import {parentPort,workerData} from 'node:worker_threads';
 import {DatabaseSync} from 'node:sqlite';
@@ -82,7 +82,8 @@ const methods={
    const hidden=new Set(workerData.hiddenBondsByVersion?.[v.id] || workerData.hiddenBonds || []);
    const achievements=achievementStats(subset,{hiddenLayers:id=>hidden.has(id),modded});
    achievements.achievements=achievements.achievements.map(({value:_value,...a})=>a);
-   return [v.id,{aggregate:aggregateStats(subset,{modded}),achievements}];
+   return [v.id,{aggregate:aggregateStats(subset,{modded}),achievements,
+    strategyClears:strategyClearCounts(modded?subset:subset.filter(r=>!r.content))}];
   }));
   const rows=q(`SELECT g.id,g.ended_at AS endedAt,g.mode,g.difficulty,g.source,r.player_id AS playerId,r.victory,r.rounds,r.payload FROM results r JOIN games g ON g.id=r.game_id WHERE r.user_id=? AND (? IS NULL OR g.rowid<?) ORDER BY g.rowid DESC LIMIT 51`).all(id,before,before);
   const hasMore=rows.length>50;rows.length=Math.min(rows.length,50);

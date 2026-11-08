@@ -27,6 +27,9 @@ test('version-scoped account history, full operation replay and public/pinned id
  assert.equal(stats.byVersion[historical].aggregate.count,1);
  assert.equal(stats.byVersion[historical].aggregate.sums.dmgDealt,123);
  assert.equal(stats.byVersion[historical].achievements.count,1);
+ assert.deepEqual(stats.byVersion[historical].strategyClears,{band_amiya:1});
+ assert.deepEqual(stats.byVersion[DEFAULT_VERSION].strategyClears,{band_amiya:1});
+ assert.equal((await db.call('stats',{id:user.id,modded:true})).byVersion[historical].strategyClears.band_amiya,2);
  assert.equal((await db.call('stats',{id:user.id,modded:true})).byVersion[historical].aggregate.count,2);
  assert.equal((await db.call('pinReplay',{id:user.id,matchId:'historical',pinned:true})).replay.pinned,true);
  await db.call('visibility',{id:user.id,visibility:{...user.visibility,history:true,replays:true,statistics:true,achievements:true}});

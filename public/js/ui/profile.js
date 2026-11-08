@@ -41,8 +41,10 @@ export function ProfileVisibility({user}){
 export async function initProfile(){
  try{const {user}=await userRequest('/api/user');profileStore.set({enabled:true});remember(user);return user;}
  catch(e){
+  if(e.userCode==='USER_STORAGE_DISABLED'){profileStore.set({enabled:false,user:null,status:'disabled'});return null;}
   const cached=loadPref('doctorProfile',null);
-  if(e.userCode!=='USER_STORAGE_DISABLED'&&cached?.id){profileStore.set({enabled:true,user:cached,status:'offline'});return cached;}
+  if(cached?.id){profileStore.set({enabled:true,user:cached,status:'offline'});return cached;}
+  profileStore.set({status:'offline'});
   return null;
  }
 }

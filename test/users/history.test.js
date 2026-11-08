@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {accountRecord,mergeAccountHistory,aggregateStats} from '../../shared/userStats.js';
 import {buildRecord,buildQuitRecord,normalizeRecord,compactRecord,cachedAccountStats} from '../../public/js/ui/stats.js';
 import {openUserStore} from '../../server/users/store.js';
+import {DEFAULT_VERSION} from '../../shared/versions.js';
 
 const own={playerId:'p1',bandId:'band_amiya',name:'doctor',alive:true,victory:true,roundsPassed:9,stats:{dmgDealt:120}};
 const frame={difficulty:'FUNNY',modeId:'mode_single_funny',durationMs:12345,hiddenReached:false,hiddenCleared:false};
@@ -32,8 +33,9 @@ test('server aggregates cover all pages and preserve compatibility with pre-fram
   for(let i=0;i<55;i++)await db.call('record',{id:'game-'+i,endedAt:i,mode:'mode_single_funny',difficulty:'FUNNY',source:'server',rows:[{userId:user.id,playerId:'p1',victory:true,rounds:9,payload:{...own,frame}},{userId:stranger.user.id,playerId:'p2',victory:false,rounds:1,payload:{playerId:'p2',stats:{dmgDealt:999999}}}]});
   const first=await db.call('stats',{id:user.id});
   assert.equal(first.userId,user.id);assert.equal(first.records.length,50);assert.equal(first.aggregate.count,55);assert.equal(first.aggregate.sums.dmgDealt,55*120);assert.equal(first.aggregate.duration.totalMs,55*12345);assert.equal(first.aggregate.bands.band_amiya.games,55);
+  assert.deepEqual(first.byVersion[DEFAULT_VERSION].strategyClears,{band_amiya:55});
   assert.equal(first.matchIds.length,55);assert.equal(first.aggregate.missingFrame,false);
-  const next=await db.call('stats',{id:user.id,before:first.next});assert.equal(next.records.length,5);assert.equal(next.next,null);assert.equal(next.aggregate.count,55);
+  const next=await db.call('stats',{id:user.id,before:first.next});assert.equal(next.records.length,5);assert.equal(next.next,null);assert.equal(next.aggregate.count,55);assert.equal(next.byVersion[DEFAULT_VERSION].strategyClears.band_amiya,55);
   await db.call('record',{id:'legacy',endedAt:100,mode:'mode_single_funny',difficulty:'FUNNY',source:'server',rows:[{userId:user.id,playerId:'p1',victory:true,rounds:9,payload:own}]});
   const legacy=await db.call('stats',{id:user.id});assert.equal(legacy.aggregate.missingFrame,true);assert.equal(legacy.aggregate.count,56);
  }finally{await db.close();}
