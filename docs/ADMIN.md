@@ -79,6 +79,7 @@ secrets:
 - 每行操作菜单可查看活动位置，或进入恢复码签发确认。签发以四位博士 ID 定位，事务中再次核对代号；资料发生变化返回 409，要求刷新后重新确认。新码覆盖旧码、仅可使用一次，不撤销现有登录凭据。明文只在本次弹窗展示，关闭／退出后不保留；复制失败仍可手动选择复制，不自动重试签发请求。
 - `GET /v1/players?page=&q=&status=` 使用同一内部 Bearer 认证；`POST /v1/player-recovery` 接受 `{publicId,name}`，仅返回新签发的码与公开身份。面板分别通过既有 `GET /admin/api/list?kind=players` 及新增 `POST /admin/api/player-recovery` 代理，后者受同源校验、1 KiB 请求体和每会话每分钟六次写入限制；游戏端另设每分钟十次上限。日志只记录公开博士 ID 与签发动作，不记录恢复码或令牌。
 - 游戏不可用时保留已有列表、状态显示未知、禁止签发，不把读取失败解释为离线。游戏端能力标记为 `players`／`playerRecovery`；首次发布需要同时更新游戏与面板（`--target all`），以后仍可独立更新面板。未启用账户数据库时仅列出临时会话，不提供恢复操作。
+- 两端也可分开切换：先发布面板时，旧游戏缺少能力标记，页面明确显示当前仅有在线／断线会话；标为会话玩家而非临时账户，隐藏离线账户筛选及签发操作。游戏随后更新后自动启用完整列表，无需再次发布面板。不能因面板 Compose 改变而绕过待发布游戏的配置校验；续接候选须先确认只有后台服务变化，保留当前后台镜像并重新记录校验基线。
 
 定向验证：`npm run check:local -- --small node --test --test-concurrency=1 test/admin-players.test.js test/admin.test.js test/admin-service.test.js test/admin-message.test.js`；面板构建及桌面 Firefox 截图分别使用同一隔离入口，浏览器文件为 `test/ui/admin-players.e2e.test.js`。
 

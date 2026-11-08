@@ -66,6 +66,24 @@ test('firefox: unified account roster, profile link, recovery dialog and stale s
   await click('完成');await page.waitForFunction(()=>!document.querySelector('[role=dialog]'));
   assert.ok(!(await page.content()).includes(code));assert.ok(!(await page.evaluate(()=>JSON.stringify(localStorage))).includes(code));
   await page.click('.ad-account-actions button');await click('生成新恢复码');await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.querySelector('[role=dialog]'));
+  // Independently deploying the panel before the game must not call retained sessions temporary accounts.
+  await page.evaluate(()=>{
+    const original=window.fetch;window.__adminOriginalFetch=original;
+    window.fetch=async(url,options)=>{
+      const response=await original(url,options);
+      if(!response.ok || !/\/admin\/api\/(overview|list)/.test(String(url)))return response;
+      const value=await response.json();
+      if(String(url).includes('/overview')){delete value.capabilities.players;delete value.capabilities.playerRecovery;}
+      else {delete value.counts;for(const row of value.items){delete row.persistent;delete row.publicId;}}
+      return new Response(JSON.stringify(value),{status:200,headers:{'Content-Type':'application/json'}});
+    };
+  });
+  await page.waitForFunction(()=>document.querySelector('.ad-list > .ad-note')?.textContent.includes('游戏服务尚未更新'));
+  assert.equal(await page.$eval('.ad-account-id',e=>e.textContent),'会话玩家');
+  assert.equal(await page.$('.ad-account-actions a'),null);
+  await page.click('.ad-account-actions button');assert.equal(await page.$('.ad-player-modal .btn--danger'),null);await shot('pending-game-update');await click('完成');
+  await page.evaluate(()=>{window.fetch=window.__adminOriginalFetch;});
+  await page.waitForSelector('.ad-account-actions a');
   // Game downtime keeps the roster visible but marks state unknown and disables credentials.
   await game.close();await page.waitForSelector('.ad-error--bar');
   assert.equal(await page.$eval('.ad-list-row--account > .ad-tag',e=>e.textContent),'状态未知');
