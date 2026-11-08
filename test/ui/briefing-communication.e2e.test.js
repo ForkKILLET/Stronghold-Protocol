@@ -25,10 +25,10 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
   const request=(t,fields={})=>page.evaluate(({t,fields})=>window.__SP__.net.request(t,fields),{t,fields});
   const settle=()=>page.evaluate(async()=>{await document.fonts.ready;for(const a of document.getAnimations())if(Number.isFinite(a.effect?.getComputedTiming().endTime)&&!a.effect?.target?.closest?.('.ebubble'))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
   const chatGeometry=()=>page.evaluate(()=>{
-   const rect=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right};};
+   const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,right:r.right};};
    const input=document.querySelector('.echat__input'),count=document.querySelector('.echat__count');
    return {dialog:rect(document.querySelector('.ewheel__dialog')),input:rect(input),count:rect(count),
-    placeholder:input.hasAttribute('placeholder'),triggerVisible:!!document.querySelector('.ewheel__btn').getBoundingClientRect().width,
+    placeholder:input?.hasAttribute('placeholder'),triggerVisible:!!document.querySelector('.ewheel__btn').getBoundingClientRect().width,
     messageCounts:document.querySelectorAll('.echat__tab-count').length,
     tabs:[...document.querySelectorAll('.echat__tab')].map(e=>{const s=getComputedStyle(e);return {...rect(e),shadow:s.boxShadow,borders:[s.borderLeftWidth,s.borderRightWidth,s.borderTopWidth,s.borderBottomWidth]};})};
   });
@@ -54,9 +54,10 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
    for(const part of ['dialog','input','count'])for(const key of ['w','h'])assert.ok(Math.abs(pinned[part][key]-unpinned[part][key])<1,`${part} ${key} stays unchanged when unpinning`);
    assert.equal(await page.$eval('.echat__input',e=>e.value),'等一下','pinning preserves a draft');
    await page.screenshot({path:path.join(out,`unpinned-${width}.png`)});
-   await page.click('[aria-label="表情"]');await settle();const emotes=await chatGeometry();checkChat(emotes);
-   for(const part of ['dialog','input','count'])for(const key of ['x','y','w','h'])assert.ok(Math.abs(unpinned[part][key]-emotes[part][key])<1,`${part} ${key} stays unchanged between messages and emotes`);
-   await page.click('.echat__pin');await settle();const fixedEmotes=await chatGeometry();checkChat(fixedEmotes);
+   await page.click('[aria-label="表情"]');await settle();const emotes=await chatGeometry();
+   assert.equal(emotes.input,null);assert.equal(emotes.count,null);assert.equal(await page.$('.echat__send'),null);
+   for(const key of ['x','y','w','h'])assert.ok(Math.abs(unpinned.dialog[key]-emotes.dialog[key])<1,`dialog ${key} stays unchanged between messages and emotes`);
+   await page.click('.echat__pin');await settle();const fixedEmotes=await chatGeometry();
    for(const key of ['w','h'])assert.equal(fixedEmotes.dialog[key],emotes.dialog[key],'pinning preserves the emote panel size');
    await page.screenshot({path:path.join(out,`emotes-${width}.png`)});
    await page.click('[aria-label="聊天历史"]');await page.click('.echat__pin');await settle();
@@ -92,7 +93,7 @@ for(const engine of ['chrome','firefox'])test(`${engine}: fixed briefing communi
   const cornerHeight=()=>page.$eval('.gm__corner',e=>e.getBoundingClientRect().height);
   for(const [width,height] of [[1366,768],[844,390],[640,360]]){
    await page.setViewport({width,height});await settle();const before=await cornerHeight();
-   await page.click('.ewheel__btn');await settle();checkChat(await chatGeometry());
+   await page.click('.ewheel__btn');await page.click('[aria-label="聊天历史"]');await settle();checkChat(await chatGeometry());
    assert.ok(await cornerHeight()<=before,'the floating window does not reserve an extra row');
    assert.ok(await page.$$eval('.gm__corner>.gm__gear',es=>es.every(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})),'chat does not cover the other corner controls');
    await page.screenshot({path:path.join(out,`battle-${width}.png`)});

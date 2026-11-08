@@ -9,7 +9,7 @@ import {TestClient} from '../helpers/wsClient.js';
 import {localFontsOnly} from '../helpers/localFonts.js';
 
 test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / strategy layout',{
- skip:process.env.SP_E2E!=='1',timeout:90000,
+ skip:process.env.SP_E2E!=='1',timeout:120000,
 },async()=>{
  const out=path.resolve('.state/communication-room-20261107');mkdirSync(out,{recursive:true});
  const server=await startServer({host:'127.0.0.1',port:0,quiet:true,workers:0,userFile:':memory:',assetIndex:false,announcementsFile:null,clientBuild:process.env.SP_E2E_BUILD==='1'});
@@ -57,6 +57,7 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
    return geometry;
   };
   const checkChat=async name=>{
+   await page.click('[aria-label="聊天历史"]');
    await settle();const geometry=await page.evaluate(()=>{
     const dialog=document.querySelector('.ewheel__dialog'),input=dialog.querySelector('.echat__input'),tab=dialog.querySelector('.echat__tab');
     const r=dialog.getBoundingClientRect(),i=input.getBoundingClientRect(),t=tab.getBoundingClientRect();
@@ -69,7 +70,7 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
    await page.type('.echat__input','稍等一下');await page.click('.echat__pin');
    await page.waitForSelector('.ewheel__dialog',{hidden:true});await page.waitForSelector('.ewheel__btn',{visible:true});
    assert.match(await page.$eval('.ewheel__btn',e=>getComputedStyle(e).backgroundColor),/^rgb\(/,'communication trigger is opaque');
-   await page.click('.ewheel__btn');await settle();
+   await page.click('.ewheel__btn');await page.click('[aria-label="聊天历史"]');await settle();
    assert.equal(await page.$eval('.echat__input',e=>e.value),'稍等一下','unpinning preserves the unsent message');
    assert.equal(await page.$eval('.echat__pin',e=>e.getAttribute('aria-pressed')),'false');
    const floating=await page.evaluate(()=>{
@@ -82,12 +83,26 @@ test('desktop Firefox: alliance cards, shared preparation HUD and stable chat / 
    await shot(name+'-floating');
    await page.click('.ewheel__btn');await page.waitForSelector('.ewheel__dialog',{hidden:true});
    assert.equal(await page.$eval('.ewheel__btn',e=>e.getAttribute('aria-expanded')),'false');
-   await page.click('.ewheel__btn');await page.waitForSelector('.ewheel__dialog',{visible:true});
+   await page.click('.ewheel__btn');await page.waitForSelector('.ewheel__dialog',{visible:true});await page.click('[aria-label="聊天历史"]');await settle();
    assert.equal(await page.$eval('.echat__input',e=>e.value),'稍等一下','closing through the trigger preserves the unsent message');
    await page.click('.echat__pin');await settle();
    assert.equal(await page.$eval('.echat__pin',e=>e.getAttribute('aria-pressed')),'true');
    assert.equal(await page.$eval('.ewheel__btn',e=>e.hidden),false,'the bottom trigger remains available for fixed floating chat');
-   await shot(name);return geometry;
+   await shot(name);
+   const smallCell=await page.$eval('.echat-window',e=>parseFloat(getComputedStyle(e).getPropertyValue('--ewheel-cell-size')));
+   await page.click('[aria-label="表情"]');await settle();
+   assert.equal(await page.$('.echat__input,.echat__send,.echat__count'),null,'emote mode has no text composer');
+   const emotes=await page.$eval('.echat-window',e=>{
+    const box=e.getBoundingClientRect(),panel=e.querySelector('.ewheel__compose').getBoundingClientRect();
+    const cells=[...e.querySelectorAll('.ewheel__item')].map(c=>{const r=c.getBoundingClientRect();return{h:r.height,top:r.top,bottom:r.bottom};});
+    return{width:box.width,height:box.height,cells,top:panel.top,bottom:panel.bottom};
+   });
+   assert.ok(Math.abs(emotes.width-geometry.width)<1&&Math.abs(emotes.height-geometry.height)<1,'switching modes preserves the floating window size');
+   assert.equal(emotes.cells.length,6);assert.ok(emotes.cells.every(c=>c.h>smallCell+15&&c.top>=emotes.top&&c.bottom<=emotes.bottom),'freed composer space enlarges both emote rows without clipping');
+   await shot(name+'-emotes');
+   await page.click('[aria-label="聊天历史"]');await settle();
+   assert.equal(await page.$eval('.echat__input',e=>e.value),'稍等一下','switching modes preserves the unsent draft');
+   return geometry;
   };
   await page.goto(server.url,{waitUntil:'domcontentloaded'});await page.waitForSelector('.title-login input');
   await page.type('.title-login input','交流布局验证');await page.click('.title-login .btn--primary');await page.waitForSelector('.lobby-hub');

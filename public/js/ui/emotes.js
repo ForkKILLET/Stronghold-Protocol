@@ -341,6 +341,12 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   };
 
   const theme = EMOTE_THEMES[clampPage(page)];
+  const changeView = (view) => {
+    // An IME composition may be interrupted when the message field unmounts.
+    composing.current = false;
+    setDraft(value => truncateChat(value));
+    setChatView(view);
+  };
   const btnSprite = onChat ? null : emoteUiSprite(disabled || cooling ? 'emoji_btn_disable' : 'emoji_btn');
   const panelBg = emoteUiSprite('emoji_bkg');
   const cellBg = emoteUiSprite('emoji_cell_bkg');
@@ -348,19 +354,19 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
   const tabs = onChat ? html`
       <button type="button" class=${cx('echat__tab', chatView === 'emotes' && 'is-on')}
         aria-label=${t('表情')} title=${t('表情')}
-        aria-pressed=${chatView === 'emotes' ? 'true' : 'false'} onClick=${() => setChatView('emotes')}>
+        aria-pressed=${chatView === 'emotes' ? 'true' : 'false'} onClick=${() => changeView('emotes')}>
         <${GIcon} name="emote" />
       </button>
       <button type="button" class=${cx('echat__tab', chatView === 'history' && 'is-on')}
         aria-label=${t('聊天历史')} title=${t('聊天历史')}
-        aria-pressed=${chatView === 'history' ? 'true' : 'false'} onClick=${() => setChatView('history')}>
+        aria-pressed=${chatView === 'history' ? 'true' : 'false'} onClick=${() => changeView('history')}>
         <${Icon} name="message" />
       </button>
   ` : null;
   const pinControl = onChat && onPinChange ? html`<button type="button" class=${cx('echat__tab', 'echat__pin', pinned && 'is-on')}
         aria-label=${pinned ? t('取消固定交流框') : t('固定交流框')} title=${pinned ? t('取消固定交流框') : t('固定交流框')}
         aria-pressed=${pinned ? 'true' : 'false'} onClick=${() => { onPinChange(!pinned); if (pinned) onToggle(false); }}><${Icon} name="pin" /></button>` : null;
-  const content = html`    <div class="ewheel__compose">
+  const content = html`    <div class=${cx('ewheel__compose', onChat && chatView === 'emotes' && 'is-emotes')}>
     <div class=${cx('ewheel__panel', panelBg && 'has-sprite', cellBg && 'has-cell')} style=${panelStyle}
       hidden=${!!onChat && chatView !== 'emotes'}>
       <div class="ewheel__viewport" onPointerDown=${onPointerDown} onPointerMove=${onPointerMove}
@@ -386,7 +392,7 @@ export function EmoteWheel({ onSend, onChat, history = [], myId, open, onToggle,
       <${ChatHistory} history=${history} myId=${myId} />
     </section>` : null}
     </div>
-    ${onChat ? html`<div class="echat">
+    ${onChat && chatView === 'history' ? html`<div class="echat">
       <form class="echat__form" onSubmit=${sendChat}>
         <div class="echat__field">
         <input type="text" class="echat__input" ref=${chatInput} value=${draft}

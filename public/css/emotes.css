@@ -138,7 +138,7 @@
 .ebubble__icon { position: absolute; left: .26rem; top: .12rem; width: .68rem; height: .70rem; display: grid; place-items: center; }
 .ebubble .eart { width: 100%; height: 100%; }
 
-/* Left view switcher; emotes/history share one content area above a persistent composer. */
+/* Message mode owns the composer; emote mode gives its space back to the picture grid. */
 .ewheel__dialog {
   position: absolute; left: -.15rem; bottom: calc(100% + .02rem); z-index: 5;
   width: 3.13rem;
@@ -189,6 +189,13 @@
   width: 100%; height: var(--ewheel-cell-size); padding: 4px; overflow: hidden;
 }
 .ewheel__dialog.has-chat .ewheel__item .eart { min-width: 0; min-height: 0; max-height: 100%; object-fit: contain; }
+.ewheel__dialog.has-chat .ewheel__compose.is-emotes {
+  height: calc(var(--echat-content-size) + var(--echat-input-size) + 2 * var(--echat-padding) + 1px);
+}
+.ewheel__dialog.has-chat .ewheel__compose.is-emotes .ewheel__panel { height: 100%; grid-template-rows: minmax(0, 1fr) 24px; }
+.ewheel__dialog.has-chat .ewheel__compose.is-emotes .ewheel__viewport { height: 100%; }
+.ewheel__dialog.has-chat .ewheel__compose.is-emotes .ewheel__page { height: 100%; grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.ewheel__dialog.has-chat .ewheel__compose.is-emotes .ewheel__item { height: 100%; }
 .ewheel__dialog.has-chat .ewheel__pager { display: flex; align-items: center; gap: 4px; height: 24px; }
 .ewheel__dialog.has-chat .ewheel__dots {
   position: relative; flex: 1; top: auto; bottom: auto; left: auto; right: auto; width: auto; height: 24px; gap: 6px;
