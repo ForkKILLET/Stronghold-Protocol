@@ -3,6 +3,7 @@ import {render} from '../../vendor/preact.module.js';
 import {useEffect,useRef,useState} from '../../vendor/hooks.module.js';
 import {html,Button,Icon,Tabs} from '../ui/components.js';
 import {ServerMessageEditor} from './serverMessage.js';
+import {PlayerRow,playerState} from './players.js';
 import {Select} from '../ui/select.js';
 import {initLang,useLang} from './lang.js';
 import {t} from '../../../shared/i18n.js';
@@ -21,7 +22,7 @@ function stateLabel(value) {
   return ({online:t('在线'),disconnected:t('已断线'),lobby:t('大厅'),waiting:t('等待室'),queue:t('匹配中'),
     match:t('对局中'),spectating:t('观战中')})[value] || value || '—';
 }
-const errorText = status => status===400?t('通知内容或有效期无效'):status===409?t('通知已变更，请载入最新版本'):status===429?t('请求过于频繁，请稍后重试'):status===401?t('管理员口令不正确或登录已过期'):t('无法读取服务器，请重试');
+const errorText = status => status===400?t('请求内容无效'):status===409?t('数据已变更，请刷新后重试'):status===429?t('请求过于频繁，请稍后重试'):status===401?t('管理员口令不正确或登录已过期'):t('无法读取服务器，请重试');
 async function api(route,{signal,body}={}) {
   const response=await fetch(`/admin/api/${route}`,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',
     signal:AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(8000)]),
@@ -80,9 +81,6 @@ function Roster({players=[]}) {
 }
 function ListRow({kind,row,now}) {
   const [open,setOpen]=useState(false),humans=row.players?.filter(p=>!p.isBot).length,bots=row.players?.filter(p=>p.isBot).length;
-  if(kind==='players')return html`<article class="ad-list-row ad-list-row--player"><${Person} p=${row} showConnection=${false}/><span class=${`ad-tag ${row.connected?'':'ad-tag--warn'}`}>${stateLabel(row.state)}</span>
-    <span class="ad-row-context">${row.roomCode?`${t('同盟')} ${row.roomCode}`:row.matchId?t('公共匹配对局'):'—'}</span><span class="ad-row-time ad-muted">${row.connected?t('在线'):t('断线 {time}',{time:elapsed(row.disconnectedAt,now)})}</span>
-    <details class="ad-player-details"><summary>${t('会话详情')}</summary><span class="ad-muted">${t('公开编号')} ${row.id} · ${t('保留会话 {n} 个',{n:row.sessionCount})}</span></details></article>`;
   const title=row.roomCode || (kind==='queue'?t('公共匹配'):t('公共匹配对局'));
   return html`<article class=${`ad-list-row ${open?'is-open':''}`}><div class="ad-row-head"><button class="ad-row-toggle" aria-expanded=${open} onClick=${()=>setOpen(!open)}>
     <span class="ad-row-title"><span class="ad-micro">${kind==='matches'?'OPERATION':kind==='rooms'?'ALLIANCE':'QUEUE'}</span><strong>${title}</strong></span>
@@ -122,7 +120,8 @@ function Dashboard() {
       finally{if(!c.signal.aborted){setUpdating(false);timer=setTimeout(poll,3000);}}
     };poll();return()=>{c.abort();clearTimeout(timer);};
   },[auth,hidden,kind,search,page,status,refresh]);
-  const changeTab=(next,sub)=>{setTab(next);if(sub)setMatching(sub);setPage(1);setQuery('');setSearch('');setStatus('all');setList(null);};
+  const changeTab=(next,sub)=>{setTab(next);if(sub)setMatching(sub);setPage(1);setQuery('');setSearch('');setStatus(next==='players'&&sub?'online':'all');setList(null);};
+  const expired=()=>{setAuth('login');setOverview(null);setList(null);setLoginError(t('登录已过期，请重新输入管理员口令'));};
   async function login(e){
     e.preventDefault();if(busy)return;setBusy(true);setLoginError('');
     const value=password.current.value;password.current.value='';
@@ -143,11 +142,12 @@ function Dashboard() {
       ${error?html`<div class="ad-error ad-error--bar" role="alert">${error} · ${t('保留最近一次数据，将自动重试')}</div>`:null}
       ${!overview?html`<p class="ad-empty" role="status">${error?t('等待重新连接服务器'):t('正在读取服务器状态')}</p>`:tab==='messages'?html`<${ServerMessageEditor} state=${overview.serverMessage} supported=${overview.capabilities?.serverMessage} connected=${!error && overview.connection?.ok!==false} api=${api}
         onChanged=${next=>{setOverview(v=>({...v,serverMessage:next}));setRefresh(v=>v+1);}} onExpired=${()=>{setAuth('login');setOverview(null);setList(null);setLoginError(t('登录已过期，请重新输入管理员口令'));}}/>`:tab==='overview'?html`<${Overview} data=${overview} onTab=${changeTab}/>`:html`
-        <section class="ad-section ad-list"><div class="ad-list-tools">${tab==='matching'?html`<${Tabs} size="sm" items=${[{id:'queue',label:t('匹配队列')},{id:'rooms',label:t('全部房间')}]} value=${matching} onChange=${next=>{setMatching(next);setList(null);setPage(1);}}/>`:html`<h2>${tab==='matches'?t('进行中对局'):t('玩家会话')}</h2>`}
-          <div class="ad-filters">${tab==='players'?html`<${Select} label=${t('玩家状态')} value=${status} options=${['all','online','disconnected','match','queue','waiting','lobby','spectating'].map(value=>({value,label:value==='all'?t('全部状态'):stateLabel(value)}))} onChange=${next=>{setStatus(next);setPage(1);setList(null);}}/>`:null}
-            <label class="ad-search"><${Icon} name="search"/><input type="search" aria-label=${t('搜索昵称或同盟密钥')} placeholder=${t('搜索昵称或同盟密钥')} value=${query} maxLength="80" onInput=${e=>setQuery(e.currentTarget.value)}/></label></div></div>
-          <p class="ad-note">${tab==='players'?t('按账户去重；未过期的断线会话单独保留。'):t('点击条目展开成员；时长包含暂停与等待。')}</p>
-          <div class="ad-list-items">${!list?html`<p class="ad-empty">${t('正在读取列表')}</p>`:list.items.length?list.items.map(row=>html`<${ListRow} key=${`${kind}:${row.id}`} kind=${kind} row=${row} now=${list.at}/>`)
+        <section class="ad-section ad-list"><div class="ad-list-tools">${tab==='matching'?html`<${Tabs} size="sm" items=${[{id:'queue',label:t('匹配队列')},{id:'rooms',label:t('全部房间')}]} value=${matching} onChange=${next=>{setMatching(next);setList(null);setPage(1);}}/>`:html`<h2>${tab==='matches'?t('进行中对局'):t('玩家列表')}</h2>`}
+          <div class="ad-filters">${tab==='players'?html`<${Select} label=${t('玩家状态')} value=${status} options=${['all','online','offline','disconnected','match','queue','waiting','lobby','spectating'].map(value=>({value,label:value==='all'?t('全部状态'):playerState(value)}))} onChange=${next=>{setStatus(next);setPage(1);setList(null);}}/>`:null}
+            <label class="ad-search"><${Icon} name="search"/><input type="search" aria-label=${tab==='players'?t('搜索博士代号或 ID'):t('搜索昵称或同盟密钥')} placeholder=${tab==='players'?t('搜索博士代号或 ID'):t('搜索昵称或同盟密钥')} value=${query} maxLength="80" onInput=${e=>setQuery(e.currentTarget.value)}/></label></div></div>
+          ${tab==='players'&&list?.counts?html`<div class="ad-player-counts"><span>${t('全部账户')} <b>${list.counts.accounts}</b></span><span>${t('在线账户')} <b>${list.counts.online}</b></span><span>${t('离线账户')} <b>${list.counts.offline}</b></span><span>${t('临时玩家')} <b>${list.counts.temporary}</b></span></div>`:null}
+          <p class="ad-note">${tab==='players'?t('包含全部持久账户，在线优先；临时玩家仅在会话保留期间展示。'):t('点击条目展开成员；时长包含暂停与等待。')}</p>
+          <div class="ad-list-items">${!list?html`<p class="ad-empty">${t('正在读取列表')}</p>`:list.items.length?list.items.map(row=>tab==='players'?html`<${PlayerRow} key=${`${kind}:${row.id}`} row=${row} Person=${Person} connected=${!error&&list.connection?.ok!==false} canRecover=${overview.capabilities?.playerRecovery} api=${api} onExpired=${expired}/>`:html`<${ListRow} key=${`${kind}:${row.id}`} kind=${kind} row=${row} now=${list.at}/>`)
             :html`<div class="ad-empty"><${Icon} name="search"/><strong>${search||status!=='all'?t('没有符合条件的记录'):t('当前没有记录')}</strong><span>${t('新状态将在下次刷新时显示')}</span></div>`}</div>
           ${list?html`<div class="ad-pagination"><span class="ad-muted">${t('共 {n} 条',{n:list.total})}</span><div><${Button} size="sm" disabled=${list.page<=1} onClick=${()=>setPage(list.page-1)}>${t('上一页')}</${Button}><span>${list.page} / ${list.pages}</span><${Button} size="sm" disabled=${list.page>=list.pages} onClick=${()=>setPage(list.page+1)}>${t('下一页')}</${Button}></div></div>`:null}</section>`}
       ${overview?html`<footer class="ad-footer"><span>v${overview.server.version} · ${overview.server.build}<span class="ad-footer__sep">/</span>${t('运行时长')} ${elapsed(overview.at-overview.server.uptimeSec*1000,overview.at)}</span>

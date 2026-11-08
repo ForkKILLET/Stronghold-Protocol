@@ -212,3 +212,40 @@ body.admin { height:auto; min-height:100vh; overflow:auto; font-size:15px; line-
 .ad-message__actions,.ad-message__conflict { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .ad-message__result { color:var(--accent); }
 @media (max-width:760px) { .ad-message__options { gap:12px; } .ad-message__options .game-select { min-width:0; } }
+
+.ad-player-counts { display:flex; flex-wrap:wrap; gap:12px 28px; margin-top:20px; color:var(--muted); font-size:13px; }
+.ad-player-counts b { color:var(--fg); margin-left:8px; font-variant-numeric:tabular-nums; font-weight:500; }
+.ad-list-row--account { display:grid; grid-template-columns:minmax(180px,1.1fr) 100px minmax(180px,1.4fr) 170px; gap:16px 24px; padding:18px 20px; align-items:center; }
+.ad-list-row--account > .ad-tag { justify-self:start; }
+.ad-account-identity,.ad-account-context { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.ad-account-id { color:var(--muted); font-size:12px; margin-left:42px; letter-spacing:1px; }
+.ad-account-context { font-size:13px; }
+.ad-account-context small { color:var(--muted); font-size:12px; }
+.ad-account-actions { display:flex; gap:10px; align-items:center; justify-content:flex-end; }
+.ad-account-actions a { display:inline-flex; gap:8px; align-items:center; text-decoration:none; white-space:nowrap; }
+.ad-account-actions a .icon { width:18px; height:18px; }
+.admin .ad-player-modal { width:min(560px,calc(100vw - 48px)); font-size:14px; }
+.ad-player-modal .modal__head { flex-direction:row; justify-content:space-between; align-items:center; }
+.ad-player-modal .modal__title { font-size:24px; }
+.ad-player-modal .modal__body { display:flex; flex-direction:column; gap:18px; line-height:1.7; }
+.ad-player-modal .modal__body > .btn { align-self:flex-start; }
+.ad-player-modal .utility-modal__close { width:36px; height:36px; padding:8px; border:1px solid var(--line-2); background:var(--bg-0); color:var(--muted); flex:none; }
+.ad-player-modal .utility-modal__close:hover { color:var(--accent); border-color:var(--accent); }
+.ad-player-modal .utility-modal__close .icon { width:100%; height:100%; }
+.ad-player-modal .ad-note { margin-top:0!important; }
+.ad-player-target { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--line); }
+.ad-player-target strong { font-size:18px; overflow-wrap:anywhere; }
+.ad-player-target span { color:var(--accent); white-space:nowrap; }
+.ad-player-facts { margin:0; display:grid; gap:10px; }
+.ad-player-facts > div { display:flex; gap:20px; justify-content:space-between; }
+.ad-player-facts dt { color:var(--muted); }
+.ad-player-facts dd { margin:0; text-align:right; }
+.ad-player-places { display:grid; gap:8px; list-style:none; margin:0; padding:12px 0; border-block:1px solid var(--line); }
+.ad-player-places li { display:flex; gap:20px; justify-content:space-between; }
+.ad-recovery-code { display:grid; gap:8px; color:var(--muted); }
+.ad-recovery-code input { width:100%; min-width:0; padding:12px; background:var(--bg-0); border:1px solid var(--accent); border-radius:0; color:var(--fg); font-family:monospace; font-size:14px; }
+@media(max-width:1000px) {
+ .ad-list-row--account { grid-template-columns:minmax(140px,1fr) auto; gap:14px; }
+ .ad-list-row--account > .ad-tag { justify-self:end; }
+ .ad-account-actions { grid-column:2; grid-row:2; }
+}
