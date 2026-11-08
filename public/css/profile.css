@@ -47,6 +47,7 @@
 .profile-error { color:var(--orange-hi); }
 .profile-avatars button:focus-visible,.doctor-history-tools button:focus-visible { outline:2px solid var(--mint-400); outline-offset:2px; }
 .profile-avatar-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; color:var(--mint-400); }
+.doctor-editor .profile-avatar-source a { color:var(--mint-400); }
 .profile-avatar-filters { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
 .profile-avatar-filters button { padding:8px 12px; background:var(--bg-1); color:var(--text-md); border:1px solid var(--line-2); font:inherit; font-size:max(calc(.14 * var(--utility-text, var(--t))),12px); }
 .profile-avatar-filters .is-on { color:var(--mint-400); border-color:var(--mint-400); }

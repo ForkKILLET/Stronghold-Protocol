@@ -77,14 +77,14 @@ export function ProfileEditor({user}){
   ${error?html`<p class="profile-error" role="alert">${error}</p>`:null}
   <div class="profile-summary"><${AvatarFrame} name=${name} animation=${profileAvatarAnimationUrl(data.get('assets'),selected)} src=${selected?profileAvatarUrl(data.get('assets'),selected):null} size="lg" />
    <${TextField} label=${t('昵称')} value=${name} maxLength=${NAME_MAX_LEN} onInput=${setName} /></div>
-  <div class="profile-avatar-heading"><span>${selected?avatars[selected].name:t('默认')}</span><${Button} variant="secondary" size="sm" onClick=${()=>setAvatar(null)}>${t('使用默认头像')}<//></div>
+  <div class="profile-avatar-heading"><span>${t('当前头像：{name}',{name:selected?avatars[selected].name:t('默认')})}</span><${Button} variant="secondary" size="sm" onClick=${()=>setAvatar(null)}>${t('使用默认头像')}<//></div>
   <${TextField} label=${t('搜索头像')} value=${query} onInput=${value=>{setQuery(value);setShown(48);}} />
+  <p class="profile-note profile-avatar-source"><a href="https://prts.wiki/w/%E4%B8%AA%E4%BA%BA%E5%A4%B4%E5%83%8F%E4%B8%80%E8%A7%88" target="_blank" rel="noopener noreferrer">${t('头像来源：PRTS')}</a> · ${t('可在资源管理中随可选资源预载。')}</p>
   <div class="profile-avatar-filters" role="group" aria-label=${t('头像分类')}>${groups.map(([id,label])=>html`<button type="button" key=${id} class=${group===id?'is-on':''} aria-pressed=${group===id} onClick=${()=>{setGroup(id);setShown(48);}}>${label}</button>`)}</div>
   <p class="profile-note">${catalogReady?t('共 {n} 个头像',{n:choices.length}):data.status('profile-avatars')==='missing'?t('头像库暂不可用，请刷新后重试。'):t('正在读取头像库…')}</p>
   <div class="profile-avatars" role="group" aria-label=${t('选择头像')}>
    ${choices.slice(0,shown).map(a=>html`<button type="button" key=${a.id} class=${selected===a.id?'is-on':''} aria-pressed=${selected===a.id} aria-label=${a.name} title=${a.name} onClick=${()=>setAvatar(a.id)}><${AvatarImage} animation=${profileAvatarAnimationUrl(data.get('assets'),a.id)} src=${profileAvatarUrl(data.get('assets'),a.id)} alt="" fallback=${html`<span>?</span>`} /><span>${a.name}</span></button>`)}
   </div>${choices.length>shown?html`<div class="doctor-actions"><${Button} variant="secondary" onClick=${()=>setShown(shown+48)}>${t('显示更多')}<//></div>`:null}
-  <p class="profile-note"><a href="https://prts.wiki/w/%E4%B8%AA%E4%BA%BA%E5%A4%B4%E5%83%8F%E4%B8%80%E8%A7%88" target="_blank" rel="noopener noreferrer">${t('头像来源：PRTS')}</a> · ${t('可在资源管理中随可选资源预载。')}</p>
   <div class="doctor-actions"><${Button} variant="primary" icon="check" disabled=${busy||!name.trim()||!catalogReady} onClick=${save}>${t('保存资料')}<//></div>
  </section>`;
 }
