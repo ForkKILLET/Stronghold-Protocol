@@ -32,8 +32,9 @@
 需要支持 `node:sqlite` 的 Node 22.13+（本部署 Node 22.23.3 已核对支持）。
 配置 `SP_USER_DB=/var/lib/stronghold-users/users.sqlite`，并将整个目录绑定到持久化宿主机路径。
 服务仍可使用只读根文件系统，但这个目录必须可写，SQLite 的 WAL／SHM 文件也在这里。
-本地开发可使用 `SP_USER_DB=.state/users.sqlite npm run dev`；`.state/` 不进入 Git。
-未配置时旧有游戏、Redis 恢复和本机设置照常可用，档案入口仍可查看本机统计，不展示资料编辑和恢复码。
+`npm run dev` 和 `npm run dev:source` 默认使用仓库下的 `.state/users.sqlite`，个人资料、恢复码、统计与回放可以直接本机调试，重启后保留；`.state/` 不进入 Git。
+显式 `SP_USER_DB` 优先，可指定另一份数据库；设为空字符串可在开发时关闭账户功能。该默认值仅用于源码模式的命令行启动，不影响生产启动或 `startServer()` 的默认行为，也不会自动读取生产档案。
+生产未配置时旧有游戏、Redis 恢复和本机设置照常可用，档案入口仍可查看本机统计，不展示资料编辑和恢复码。
 配置后若数据库无法打开或 schema 比代码新，启动失败，不降级为另一份空档案。
 
 ### 使用生产档案的本机副本调试

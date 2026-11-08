@@ -469,5 +469,10 @@ export function roomCodeFromArgv(argv = process.argv.slice(2)) {
   return null;
 }
 
+/** Source-client CLI development keeps a local account database; production and programmatic defaults stay opt-in. */
+export function userFileFromArgv(argv = process.argv.slice(2), env = process.env) {
+  return env.SP_USER_DB ?? (argv.includes('--source-client') ? path.join(ROOT, '.state', 'users.sqlite') : undefined);
+}
+
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).
-if (isProcessEntry(import.meta.url)) runMain(() => startServer({ roomCode: roomCodeFromArgv() }));
+if (isProcessEntry(import.meta.url)) runMain(() => startServer({ roomCode: roomCodeFromArgv(), userFile: userFileFromArgv() }));
