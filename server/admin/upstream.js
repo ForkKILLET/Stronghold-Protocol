@@ -7,7 +7,7 @@ export function createAdminUpstream({url,token,now=Date.now,fetch:doFetch=fetch,
   async function request(route,body){
     const response=await doFetch(new URL(route,target),{headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},
       ...(body?{method:'POST',body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(4000)});
-    if(!response.ok)throw Object.assign(Error('UNAVAILABLE'),{status:[400,409,413,429].includes(response.status)?response.status:503});
+    if(!response.ok)throw Object.assign(Error('UNAVAILABLE'),{status:[400,404,409,413,429].includes(response.status)?response.status:503});
     let size=0;const chunks=[];
     for await(const chunk of response.body){size+=chunk.byteLength;if(size>maxBytes)throw Error('SIZE');chunks.push(chunk);}
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
@@ -43,13 +43,20 @@ export function createAdminUpstream({url,token,now=Date.now,fetch:doFetch=fetch,
   return {
     async overview(){const value=await current();return {at:value.at,server:value.server,counts:value.counts,resources:value.resources,history:[...history],capabilities:value.capabilities || {},serverMessage:value.serverMessage || null,connection:connection()};},
     async list(kind,{page=1,query='',status='all'}={}){
-      const value=await current();let rows=value[kind];
+      const value=await current();
+      if(kind==='players'&&value.capabilities?.players){
+        // Fetch fresh state; a stale snapshot must not label accounts offline or enable recovery.
+        const result=await request('/v1/players?'+new URLSearchParams({page:String(page),q:query,status}));
+        return {...result,connection:{ok:true,checkedAt:now(),lastSuccessAt:now(),error:null}};
+      }
+      let rows=value[kind];
       if(!Array.isArray(rows))throw Error('Invalid list kind');
       if(status!=='all')rows=rows.filter(r=>status==='online'?r.connected:status==='disconnected'?!r.connected:r.state===status);
       if(query){const q=query.toLocaleLowerCase();rows=rows.filter(row=>[row.id,row.roomCode,row.name,row.host,...(row.players||[]).flatMap(p=>[p.name,p.playerId])].some(v=>typeof v==='string'&&v.toLocaleLowerCase().includes(q)));}
       const pages=Math.max(1,Math.ceil(rows.length/50));page=Math.min(page,pages);
       return {at:value.at,items:rows.slice((page-1)*50,page*50),total:rows.length,page,pages,connection:connection()};
     },
+    async playerRecovery(input){if(closed)throw Error('Panel closed');return request('/v1/player-recovery',input);},
     async serverMessage(){if(closed)throw Error('Panel closed');return request('/v1/server-message');},
     async updateServerMessage(input){
       if(closed)throw Error('Panel closed');

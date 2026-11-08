@@ -1,5 +1,6 @@
 import {installReplays} from './replays.js';
 import {installCombat} from './combat.js';
+import {installAdminUsers} from './admin.js';
 import {installPublicProfiles,PUBLIC_PROFILE_SCHEMA_VERSION} from './publicProfiles.js';
 import {publicReplay} from '../replays/public.js';
 import {gzipSync} from 'node:zlib';
@@ -38,17 +39,26 @@ if(version===1 && workerData.file!==':memory:' && publicVersion<PUBLIC_PROFILE_S
 const replays=installReplays(db,workerData.replays);
 const publicProfiles=installPublicProfiles(db);
 const combat=installCombat(db);
+const adminUsers=installAdminUsers(db);
 const q=sql=>db.prepare(sql);
 const profile=id=>{const user=q('SELECT id,name,avatar_id AS avatarId,created_at AS createdAt FROM users WHERE id=?').get(id);return user?{...user,...publicProfiles.ensure(id)}:null;};
 function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
 function credential(userId){const token=secret();q('INSERT INTO credentials(hash,user_id) VALUES(?,?)').run(hash(token),userId);return token;}
+function recoveryCode(id){const code='SP-'+secret();q('DELETE FROM recovery WHERE user_id=?').run(id);q('INSERT INTO recovery(hash,user_id) VALUES(?,?)').run(hash(code),id);return {code};}
 const methods={
+ adminPlayers(args){return adminUsers.list(args);},
+ adminRecovery({publicId,name}){return transaction(()=>{
+  const user=publicProfiles.find(publicId);
+  if(!user)return {error:'NOT_FOUND'};
+  if(user.name!==name)return {error:'CONFLICT'};
+  return {...recoveryCode(user.id),doctor:{publicId:user.publicId,name:user.name}};
+ });},
  authenticate({token}){if(typeof token!=='string'||token.length!==43)return null;const row=q('SELECT user_id FROM credentials WHERE hash=?').get(hash(token));return row?profile(row.user_id):null;},
  create(){return transaction(()=>{const id=randomUUID();q('INSERT INTO users(id,created_at) VALUES(?,?)').run(id,Date.now());return {user:profile(id),token:credential(id)};});},
  profile({id}){return profile(id);},
  rename({id,name}){q('UPDATE users SET name=? WHERE id=? AND name<>?').run(name,id,name);return true;},
  update({id,name,avatarId}){q('UPDATE users SET name=?,avatar_id=? WHERE id=?').run(name,avatarId,id);return profile(id);},
- recovery({id}){return transaction(()=>{const code='SP-'+secret();q('DELETE FROM recovery WHERE user_id=?').run(id);q('INSERT INTO recovery(hash,user_id) VALUES(?,?)').run(hash(code),id);return {code};});},
+ recovery({id}){return transaction(()=>recoveryCode(id));},
  recover({code}){return transaction(()=>{const row=q('SELECT user_id FROM recovery WHERE hash=?').get(hash(code));if(!row)return null;q('DELETE FROM recovery WHERE hash=?').run(hash(code));return {user:profile(row.user_id),token:credential(row.user_id)};});},
  record({id,endedAt,mode,difficulty,source,rows,replay,combat:manifest}){return transaction(()=>{
   const fresh=Number(q('INSERT OR IGNORE INTO games(id,ended_at,mode,difficulty,source) VALUES(?,?,?,?,?)').run(id,endedAt,mode,difficulty,source).changes);

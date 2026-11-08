@@ -322,7 +322,7 @@ export async function startServer(opts = {}) {
   // The address actually bound. The default may fall back to IPv4; the returned host and url follow that.
   let boundHost;
   try {
-    admin=await startTelemetry({token:administratorToken,health,diagnostics,data,
+    admin=await startTelemetry({token:administratorToken,health,diagnostics,data,users,log,
       port:opts.adminPort ?? Number(process.env.SP_ADMIN_PORT || 8001),
       host:opts.adminHost ?? process.env.SP_ADMIN_HOST ?? '127.0.0.1'});
     // A host with IPv6 switched off refuses '::'. Fall back to IPv4 rather than not booting. Only the default is

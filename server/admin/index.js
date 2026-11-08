@@ -7,6 +7,7 @@ import {adminBody as body} from './body.js';
 import {sendJson,sendError} from '../http/common.js';
 import {clientAddress,limitKeyOf,isLocalIp} from '../net.js';
 import {sameOrigin} from '../users/http.js';
+import {PLAYER_STATES,playerQuery,recoveryInput} from './players.js';
 
 const derive = promisify(scrypt);
 export const ADMIN_COOKIE = 'sp_admin';
@@ -88,6 +89,12 @@ export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now
         if (pathname==='/admin/api/logout' && req.method==='POST') {
           sessions.delete(hash(tokenOf(req)));cookie(req,res,'');json(req,res,200,{ok:true});return;
         }
+        if(pathname==='/admin/api/player-recovery'){
+          if(req.method!=='POST'){json(req,res,405,{error:'METHOD'});return;}
+          if(!current.recoveryUntil||current.recoveryUntil<=now()){current.recoveryUntil=now()+60000;current.recoveryWrites=0;}
+          if(++current.recoveryWrites>6){res.setHeader('Retry-After','60');json(req,res,429,{error:'RATE'});return;}
+          json(req,res,200,await snapshot.playerRecovery(recoveryInput(await body(req,1024))));return;
+        }
         if (pathname==='/admin/api/server-message') {
           if(!['GET','POST'].includes(req.method)){json(req,res,405,{error:'METHOD'});return;}
           if(!readAllowed(current)){json(req,res,429,{error:'RATE'});return;}
@@ -104,10 +111,10 @@ export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now
           const params=new URL(req.url,'http://local').searchParams;
           const kind=params.get('kind'),page=Number(params.get('page') || 1),query=params.get('q') || '',status=params.get('status') || 'all';
           if (!['matches','queue','players','rooms'].includes(kind) || !Number.isInteger(page) || page<1 || page>100000 || query.length>80 ||
-              !['all','online','disconnected','match','queue','waiting','lobby','spectating'].includes(status) || status!=='all' && kind!=='players') {
+              !PLAYER_STATES.includes(status) || status!=='all' && kind!=='players') {
             json(req,res,400,{error:'INPUT'});return;
           }
-          json(req,res,200,await snapshot.list(kind,{page,query,status}));return;
+          json(req,res,200,await snapshot.list(kind,kind==='players'?playerQuery(params):{page,query,status}));return;
         }
         json(req,res,404,{error:'NOT_FOUND'});
       } catch(error) {json(req,res,error.status || 503,{error:error.status===409?'CONFLICT':error.status?'INPUT':'UNAVAILABLE'});}
