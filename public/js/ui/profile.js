@@ -1,6 +1,6 @@
 import {useState,useRef} from '../../vendor/hooks.module.js';
 import {html,Button,TextField,AvatarFrame} from './components.js';
-import {Img} from './gameComponents.js';
+import {AvatarImage} from './avatarImage.js';
 import {filterProfileAvatars} from '../../../shared/profileAvatars.js';
 import {createStore,useStore,loadPref,savePref} from '../store.js';
 import {data,useData} from '../data.js';
@@ -9,7 +9,7 @@ import {toast} from './toasts.js';
 import {copyText} from './clipboard.js';
 import {t,tc} from '../../../shared/i18n.js';
 import {NAME_MAX_LEN} from '../../../shared/constants.js';
-import {profileAvatarUrl} from './assetUrls.js';
+import {profileAvatarUrl,profileAvatarAnimationUrl} from './assetUrls.js';
 import {doctorLink,openPublicDoctor} from './doctorLinks.js';
 import {formatDoctorId,PRIVATE_PROFILE} from '../../../shared/publicProfiles.js';
 
@@ -54,7 +54,7 @@ export async function persistProfileName(name){
 export function openProfile(tab='overview'){profileStore.set({open:true,tab});}
 export function DoctorAvatar({size='sm',name,seat=0,self=true}){
  const user=useStore(s=>s.user,Object.is,profileStore);useData('assets');
- return html`<${AvatarFrame} size=${size} name=${user?.name || name} seat=${seat} self=${self} src=${user?.avatarId?profileAvatarUrl(data.get('assets'),user.avatarId):null} />`;
+ return html`<${AvatarFrame} size=${size} name=${user?.name || name} seat=${seat} self=${self} animation=${profileAvatarAnimationUrl(data.get('assets'),user?.avatarId)} src=${user?.avatarId?profileAvatarUrl(data.get('assets'),user.avatarId):null} />`;
 }
 function useOperation(){
  const [busy,setBusy]=useState(false);const [error,setError]=useState('');const inFlight=useRef(false);
@@ -70,19 +70,19 @@ export function ProfileEditor({user}){
  const selected=Object.hasOwn(avatars,avatar)?avatar:null;
  const [query,setQuery]=useState('');const [group,setGroup]=useState('all');const [shown,setShown]=useState(48);
  const choices=filterProfileAvatars(avatars,group,query);
- const groups=[['all',t('全部')],['default',t('默认头像')],['special',t('特殊头像')],['event',t('活动头像')],['dynamic',t('动态头像（静态）')]];
+ const groups=[['all',t('全部')],['default',t('默认头像')],['special',t('特殊头像')],['event',t('活动头像')],['dynamic',t('动态头像')]];
  const save=()=>run(async()=>{const {user:next}=await userRequest('/api/user/profile',{name,avatarId:selected});remember(next);if(net.status==='online')net.setName(next.name);toast(t('个人档案已保存'),'ok');});
  return html`<section class="doctor-editor"><h3 class="st-sec__h">${t('个人资料')}</h3>
   <p class="profile-note">${t('无需登录，档案自动保存。头像和昵称将在下一局完整生效。')}</p>
   ${error?html`<p class="profile-error" role="alert">${error}</p>`:null}
-  <div class="profile-summary"><${AvatarFrame} name=${name} src=${selected?profileAvatarUrl(data.get('assets'),selected):null} size="lg" />
+  <div class="profile-summary"><${AvatarFrame} name=${name} animation=${profileAvatarAnimationUrl(data.get('assets'),selected)} src=${selected?profileAvatarUrl(data.get('assets'),selected):null} size="lg" />
    <${TextField} label=${t('昵称')} value=${name} maxLength=${NAME_MAX_LEN} onInput=${setName} /></div>
   <div class="profile-avatar-heading"><span>${selected?avatars[selected].name:t('默认')}</span><${Button} variant="secondary" size="sm" onClick=${()=>setAvatar(null)}>${t('使用默认头像')}<//></div>
   <${TextField} label=${t('搜索头像')} value=${query} onInput=${value=>{setQuery(value);setShown(48);}} />
   <div class="profile-avatar-filters" role="group" aria-label=${t('头像分类')}>${groups.map(([id,label])=>html`<button type="button" key=${id} class=${group===id?'is-on':''} aria-pressed=${group===id} onClick=${()=>{setGroup(id);setShown(48);}}>${label}</button>`)}</div>
   <p class="profile-note">${catalogReady?t('共 {n} 个头像',{n:choices.length}):data.status('profile-avatars')==='missing'?t('头像库暂不可用，请刷新后重试。'):t('正在读取头像库…')}</p>
   <div class="profile-avatars" role="group" aria-label=${t('选择头像')}>
-   ${choices.slice(0,shown).map(a=>html`<button type="button" key=${a.id} class=${selected===a.id?'is-on':''} aria-pressed=${selected===a.id} aria-label=${a.name} title=${a.name} onClick=${()=>setAvatar(a.id)}><${Img} src=${profileAvatarUrl(data.get('assets'),a.id)} alt="" fallback=${html`<span>?</span>`} /><span>${a.name}</span></button>`)}
+   ${choices.slice(0,shown).map(a=>html`<button type="button" key=${a.id} class=${selected===a.id?'is-on':''} aria-pressed=${selected===a.id} aria-label=${a.name} title=${a.name} onClick=${()=>setAvatar(a.id)}><${AvatarImage} animation=${profileAvatarAnimationUrl(data.get('assets'),a.id)} src=${profileAvatarUrl(data.get('assets'),a.id)} alt="" fallback=${html`<span>?</span>`} /><span>${a.name}</span></button>`)}
   </div>${choices.length>shown?html`<div class="doctor-actions"><${Button} variant="secondary" onClick=${()=>setShown(shown+48)}>${t('显示更多')}<//></div>`:null}
   <p class="profile-note"><a href="https://prts.wiki/w/%E4%B8%AA%E4%BA%BA%E5%A4%B4%E5%83%8F%E4%B8%80%E8%A7%88" target="_blank" rel="noopener noreferrer">${t('头像来源：PRTS')}</a> · ${t('可在资源管理中随可选资源预载。')}</p>
   <div class="doctor-actions"><${Button} variant="primary" icon="check" disabled=${busy||!name.trim()||!catalogReady} onClick=${save}>${t('保存资料')}<//></div>

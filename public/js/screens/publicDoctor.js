@@ -6,7 +6,7 @@ import {userRequest} from '../ui/profile.js';
 import {useStore,selectRoute,store} from '../store.js';
 import {data,useData} from '../data.js';
 import {makeLookups,BandIcon} from '../ui/gameComponents.js';
-import {profileAvatarUrl} from '../ui/assetUrls.js';
+import {profileAvatarUrl,profileAvatarAnimationUrl} from '../ui/assetUrls.js';
 import {Overview,Bands,CombatSums,StatCard,dateTime,ReplayStatus,HistoryMenu} from './stats.js';
 import {AchievementMark} from '../ui/achievements.js';
 import {ACHIEVEMENT_GROUPS} from '../../../shared/achievementStats.js';
@@ -68,7 +68,7 @@ function PublicDoctorScreen({publicId,replayId,standalone,preview}){
  const permitted=tab==='overview'?visibility.statistics:['bands','totals'].includes(tab)?visibility.statistics:visibility[tab];
  return html`<div class="st public-doctor" role="dialog" aria-modal="true" aria-label=${t('公开博士档案')} tabindex="-1" ref=${box}>
   <div class="st__bg" aria-hidden="true"></div><${PageHeader} onBack=${close} title=${t('博士档案')} micro="PUBLIC DOCTOR ARCHIVE" visitor=${standalone} />
-  <header class="st-top doctor-top"><div class="doctor-identity"><${AvatarFrame} name=${doctor?.name || t('博士')} size="md" src=${profileAvatarUrl(data.get('assets'),doctor?.avatarId)} />
+  <header class="st-top doctor-top"><div class="doctor-identity"><${AvatarFrame} name=${doctor?.name || t('博士')} size="md" animation=${profileAvatarAnimationUrl(data.get('assets'),doctor?.avatarId)} src=${profileAvatarUrl(data.get('assets'),doctor?.avatarId)} />
    <div><h2>${doctor?.name || t('博士')}</h2><span class="doctor-number num">${formatDoctorId(publicId)}</span></div><span class="doctor-public-tag">${preview?t('公开预览'):t('只读档案')}</span></div>
    <div class="st-top__right"><${Button} variant="secondary" size="sm" icon="copy" disabled=${!doctor} onClick=${async()=>{const ok=await copyText(doctorLink(publicId));toast(ok?t('已复制档案链接'):t('复制失败，请手动复制'),ok?'success':'warn');}}>${t('复制档案链接')}<//>
     <${Button} variant="secondary" size="sm" icon="refresh" disabled=${loading} onClick=${()=>refresh(n=>n+1)}>${t('刷新')}<//></div>

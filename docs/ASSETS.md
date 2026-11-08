@@ -1098,7 +1098,12 @@ The 40th local token model is the original champagne bomb (`token_10031_swire2_g
 ## 原版个人头像库
 
 个人头像目录来自 [PRTS 个人头像一览](https://prts.wiki/w/个人头像一览)，固定页面修订 441454；
-196 个静态 PNG，合计 6,271,951 字节，包含默认／特殊／活动及动态头像的静态版本。
+196 个头像 ID，各保留静态 PNG（合计 6,271,951 字节）。八个动态头像从原版客户端的
+`arts/dynavatars_0.ab` 提取，离线渲染为 192×192、约 30 fps 的循环无损 WebP；六个使用原始 Spine，猫／狗使用原始 Sprite 与 AnimationClip 时间轴。
+不使用 PRTS 演示 GIF，避免录屏中的等级角标及头像外框。动态内容以原版背景方形为视口，不能按所有动画部件的外接框缩放，否则移出视口的图案会挤压头像。
+列表中的可见头像、个人预览、公共档案、房间和局内名牌共用动画实现。
+动画下载期间／失败、页面后台、头像移出可见区域及系统减少动态效果时使用静态图；恢复可见后重新播放。
+客户端只需要原生图片播放，不新增 Pixi／Spine 首屏依赖。
 `data/profile-avatars.json` 为可审阅目录与 SHA-256 清单；不复制获取条件、介绍等页面正文。
 游戏图片版权仍归鹰角及相关权利人，PRTS 整理信息遵循其原站条款，参见 THIRD-PARTY-NOTICES.md。
 二进制素材仍不进入 Git。
@@ -1112,18 +1117,35 @@ node tools/profile-avatars.mjs --refresh --revision 441454  # 维护时显式审
 ```
 
 普通获取只使用清单中的固定 `media.prts.wiki` 原图路径，不重新抓取页面。
-刷新要求实际页面修订与参数一致；文件名／来源域名有白名单，PNG 完整性／尺寸受限，普通获取必须通过已记录的 SHA-256／大小校验。
+刷新要求实际页面修订与参数一致；文件名／来源域名有白名单，PNG 完整性／尺寸受限；派生动画检查循环 WebP 容器、帧数和画布，限制 512×512、900 帧及 24 MiB，必须通过已记录的 SHA-256／大小校验。
+页面包含模板，页面修订号相同也不代表模板内容未变；刷新时仍须审阅目录差异，本轮只为既有八个动态 ID 补动画，不扩充静态目录。
 下载复用原 Downloader 的代理、重试、并发与原子写入（头像快速路径并发 2）；损坏／改变的图像不静默替换清单。
 
-本地图片位于 `/assets/profile-avatars/`，`assets.json.profileAvatars` 映射头像 ID 到站内 URL。
+本地图片位于 `/assets/profile-avatars/`，`assets.json.profileAvatars` 的静态头像仍映射 ID 到 URL，有动画时映射到 `{url, animation}`（均为本站素材路径，可由 CDN 重写）。
+目录中可选 `animation` 同样记录来源包与包 SHA-256、渲染器版本、文件、SHA-256 与大小；账户仍只保存原头像 ID，不增加用户数据格式。
 既有资源清单会把该根节点分为可选资源（tier 2）；资源管理显示「个人头像」分类。
 勾选「同时预载」即可预载，选择「不预载语音」不影响头像；未勾选时只按页面实际需要请求。
 逐文件哈希、增量替换、暂停／继续、Cache Storage、CDN 路径重写和 ZIP 导入／导出沿用原实现。
 更新 shared preload common 模块时同时改变 resource-sw.js，触发已有浏览器更新 Worker。
 完整资源包也通过 assets.json 收集头像，不额外复制未列入清单的文件。
 
-Docker 复用旧素材镜像时，须在复制旧 assets/fonts 后、生成资源哈希前运行 `npm run assets:avatars`；
-仅复用旧图片无法提供新增头像，不必重下整套游戏素材。本次源码更新未部署。
+离线生成需要已有 UnityPy／Pillow 提取环境、Chrome、ffmpeg（libwebp_anim）及本地 Windows AB 根目录；这些不是游戏服务器的运行依赖。
+Linux 本机仍须通过 OOM 保护，一次只跑一个提取／浏览器／构建任务：
+
+```sh
+npm run check:local -- --small env LP_NUM_THREADS=2 taskset -c 0,1 \
+  node tools/profile-avatar-animations.mjs --game '<Windows AB root>' --python .venv-extract/bin/python
+npm run check:local -- --small npm run assets:avatars
+```
+
+第一个命令只提取头像包，按原始时间轴离线渲染并更新可审阅动画收据；不修改账户、静态头像来源或其它素材。
+第二个命令校验全部安装文件，更新素材清单和预载哈希。普通 `assets`／`assets:avatars` 不会自行寻找客户端或启动浏览器；
+已安装的派生动画即使启用 GitHub 来源验证也按本清单的独立 SHA-256 校验，不伪造 Git blob 来源。
+缺少动画文件时保留静态头像并明确报告，不能发布不存在的 URL；哈希不符时失败，不静默替换收据。
+
+部署须先将生成的八个 `public/assets/profile-avatars/Avatar_dyn_*.webp` 复制进固定部署素材源，再更新镜像／资源包。
+Docker 复用旧素材镜像时，在复制素材后、生成哈希前运行 `npm run assets:avatars`；日志应为 `8/8 local animations installed`。
+仅拉取源码不会自动得到本地客户端提取的二进制，未安装时只能显示静态。二进制仍不提交 Git。
 
 ## 0.3.0 官方特效与分支素材管线
 

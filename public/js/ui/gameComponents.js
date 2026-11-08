@@ -6,6 +6,7 @@ import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
 import { parseRichText } from './richText.js';
 import { TermMarkup } from './termHelp.js';
+import {AvatarImage} from './avatarImage.js';
 import {openPublicDoctor} from './doctorLinks.js';
 import { t as tr } from '../../../shared/i18n.js';
 import { useStore } from '../store.js';
@@ -13,7 +14,7 @@ import { skinsStore } from './skins.js';
 import { portraitSkin } from '../../../shared/skins.js';
 import { settingsStore } from './settingsStore.js';
 import {
-  uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, profileAvatarUrl, bandIconUrl,
+  uiUrl, chessAvatarUrl, chessPortraitUrl, itemIconUrl, tokenAvatarUrl, enemyIconUrl, bondIconUrl, profileAvatarUrl, profileAvatarAnimationUrl, bandIconUrl,
 } from './assetUrls.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -297,7 +298,7 @@ export function PlayerAvatar({ player, size = 'md', self = false, class: cls, av
     onClick=${link?e=>{e.stopPropagation();openPublicDoctor(player.publicId);}:undefined} class=${cx('pavatar', `pavatar--${size}`, link&&'doctor-avatar-link', self && 'is-self', dead && 'is-dead', left && 'is-left', player?.isBot && 'is-bot',
       player?.connected === false && !player?.isBot && 'is-offline', cls)} style=${`--seat-hue:${hue}`}>
     <span class="pavatar__img">
-      <${Img} src=${src} fallback=${player?.isBot ? html`<${Icon} name="robot" class="pavatar__bot" />` : html`<span class="pavatar__glyph">${glyph}</span>`} />
+      <${AvatarImage} src=${src} animation=${profileAvatarAnimationUrl(data.get('assets'),player?.avatarId)} fallback=${player?.isBot ? html`<${Icon} name="robot" class="pavatar__bot" />` : html`<span class="pavatar__glyph">${glyph}</span>`} />
     </span>
     ${dead ? html`<span class="pavatar__x" aria-label=${tr('已淘汰')}><${Icon} name="close" /></span>` : null}
     ${left ? html`<span class="pavatar__door" aria-label=${tr('已离开')}><${Icon} name="exit" /></span>` : null}

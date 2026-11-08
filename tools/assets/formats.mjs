@@ -31,6 +31,29 @@ export function isCompletePng(buf) {
   return buf.length >= 12 && buf.toString('latin1', buf.length - 8, buf.length - 4) === 'IEND';
 }
 
+/** Complete animated WebP container, bounded for personal avatars (pixels decode in the browser). */
+export function avatarWebpInfo(buf) {
+  if (!Buffer.isBuffer(buf) || buf.length < 44 || buf.length > 24 * 1024 * 1024 || buf.toString('ascii',0,4)!=='RIFF' || buf.toString('ascii',8,12)!=='WEBP' || buf.readUInt32LE(4)+8!==buf.length) return null;
+  let width=0,height=0,frames=0,duration=0,loop=null,p=12;
+  while(p+8<=buf.length){
+    const tag=buf.toString('ascii',p,p+4),size=buf.readUInt32LE(p+4);p+=8;
+    if(p+size>buf.length)return null;
+    if(tag==='VP8X'){
+      if(size!==10||width||!(buf[p]&2))return null;
+      width=buf.readUIntLE(p+4,3)+1;height=buf.readUIntLE(p+7,3)+1;
+      if(width>512||height>512)return null;
+    }else if(tag==='ANIM'){
+      if(size!==6||loop!==null)return null;loop=buf.readUInt16LE(p+4);
+    }else if(tag==='ANMF'){
+      if(!width||loop===null||size<24||++frames>900)return null;
+      if(buf.readUIntLE(p,3)*2+buf.readUIntLE(p+6,3)+1>width||buf.readUIntLE(p+3,3)*2+buf.readUIntLE(p+9,3)+1>height)return null;
+      duration+=buf.readUIntLE(p+12,3);
+    }
+    p+=size+(size&1);
+  }
+  return p===buf.length&&frames>1&&duration>0&&loop===0?{width,height,frames,duration}:null;
+}
+
 /**
  * True when the buffer looks like an MP3 (ID3v2 tag or MPEG audio frame sync).
  * @param {Buffer} buf
@@ -87,13 +110,14 @@ export function isSkelBinary(buf) {
 
 /**
  * Validate a buffer for the given asset kind.
- * @param {'png'|'mp3'|'font'|'atlas'|'skel'|'json'|'bin'} kind
+ * @param {'png'|'avatar-webp'|'mp3'|'font'|'atlas'|'skel'|'json'|'bin'} kind
  * @param {Buffer} buf
  * @returns {boolean}
  */
 export function validate(kind, buf) {
   switch (kind) {
     case 'png': return isCompletePng(buf);
+    case 'avatar-webp': return !!avatarWebpInfo(buf);
     case 'mp3': return isMp3(buf);
     case 'font': return isSfnt(buf) || isWoff2(buf);
     case 'atlas': return isAtlasText(buf);

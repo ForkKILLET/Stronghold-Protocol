@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {verifyProfileAvatars} from './assets/profile-avatars.mjs';
+import {verifyProfileAvatars,profileAvatarFiles} from './assets/profile-avatars.mjs';
 // Downloads, post-processes and indexes every art/audio/font asset the game
 // needs, from community dumps of the official client (research 07):
 //   public/assets/**   images, Spine models, audio   (git-ignored)
@@ -351,7 +351,7 @@ function countStats(m, bytes, files) {
     files,
     bytes,
     profileAvatars:Object.keys(m.profileAvatars||{}).length,
-    profileAvatarBytes:totalBytes(ASSETS,Object.values(m.profileAvatars||{}).map(url=>url.replace(/^\/assets\//,''))),
+    profileAvatarBytes:totalBytes(ASSETS,profileAvatarFiles(m.profileAvatars).map(url=>url.replace(/^\/assets\//,''))),
     chars: Object.keys(m.chars || {}).length,
     charsWithBack: vals(m.chars).filter((c) => c.spine?.back).length,
     enemies: Object.keys(m.enemies || {}).length,

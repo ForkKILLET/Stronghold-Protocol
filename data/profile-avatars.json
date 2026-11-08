@@ -145,7 +145,17 @@
       "source": "https://media.prts.wiki/c/cb/Avatar_dyn_01.png",
       "url": "/assets/profile-avatars/Avatar_dyn_01.png",
       "sha256": "7e17f937bfe48e3933f87f4fc64e543be3be5d60bb9be65b667fb7116dbcca00",
-      "bytes": 17879
+      "bytes": 17879,
+      "animation": {
+        "file": "Avatar_dyn_01.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_01.webp",
+        "sha256": "8b8941152136d70d23d2363b4c07219a5ba7527a3a03d858dc5cbff4d933688b",
+        "bytes": 1802712
+      }
     },
     "avatar:Avatar_dyn_02": {
       "name": "情感",
@@ -154,7 +164,17 @@
       "source": "https://media.prts.wiki/5/56/Avatar_dyn_02.png",
       "url": "/assets/profile-avatars/Avatar_dyn_02.png",
       "sha256": "eed59dfc6c92773c64255f4b58c5bf89ccc98df98d6db5f77d8197cfa6afd465",
-      "bytes": 48921
+      "bytes": 48921,
+      "animation": {
+        "file": "Avatar_dyn_02.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_02.webp",
+        "sha256": "8a5928719c2c99950a50cff45f97423f7584a0e30177351c4a52d1f04ccae6c8",
+        "bytes": 6649552
+      }
     },
     "avatar:Avatar_dyn_03": {
       "name": "褪色追忆",
@@ -163,7 +183,17 @@
       "source": "https://media.prts.wiki/6/62/Avatar_dyn_03.png",
       "url": "/assets/profile-avatars/Avatar_dyn_03.png",
       "sha256": "95ad333ab06b16bb9f806b0ba4f6bb7913d8f5937896df646860ea742f5e5f46",
-      "bytes": 52542
+      "bytes": 52542,
+      "animation": {
+        "file": "Avatar_dyn_03.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_03.webp",
+        "sha256": "497559d829f03dbd1bc9718c9d6e6f60ca28ec220ef7d08415ffef55079a2c95",
+        "bytes": 7722894
+      }
     },
     "avatar:Avatar_dyn_04": {
       "name": "兔兔许愿星",
@@ -172,7 +202,17 @@
       "source": "https://media.prts.wiki/2/2e/Avatar_dyn_04.png",
       "url": "/assets/profile-avatars/Avatar_dyn_04.png",
       "sha256": "ada52ba2f700484161b0eb2e16dcadfc579f98fc69d17a666ebfd7f436487aad",
-      "bytes": 41662
+      "bytes": 41662,
+      "animation": {
+        "file": "Avatar_dyn_04.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_04.webp",
+        "sha256": "dfa15dcd622f785348f12e4fc9b9bcc4fef5d72b19fbd81ff12f41ed80caa7fb",
+        "bytes": 3758700
+      }
     },
     "avatar:Avatar_dyn_05": {
       "name": "很调皮的狗",
@@ -181,7 +221,17 @@
       "source": "https://media.prts.wiki/4/47/Avatar_dyn_05.png",
       "url": "/assets/profile-avatars/Avatar_dyn_05.png",
       "sha256": "b4f9e57aa2d4974ad5adda960246ea7bd2e70078ae3ca9dd7110449ab790270f",
-      "bytes": 33254
+      "bytes": 33254,
+      "animation": {
+        "file": "Avatar_dyn_05.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_05.webp",
+        "sha256": "4ad765c265e9067a8de0733d3677b5ea1ae209f65f4de27e846cdbc933b918f8",
+        "bytes": 468312
+      }
     },
     "avatar:Avatar_dyn_06": {
       "name": "很好奇的猫",
@@ -190,7 +240,17 @@
       "source": "https://media.prts.wiki/3/38/Avatar_dyn_06.png",
       "url": "/assets/profile-avatars/Avatar_dyn_06.png",
       "sha256": "c6bb32c60b651e6d25305e978811098a59fe8230fceafbf409180d5e900d2eb7",
-      "bytes": 36817
+      "bytes": 36817,
+      "animation": {
+        "file": "Avatar_dyn_06.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_06.webp",
+        "sha256": "d23b175cfda7195bc8231b32aeaa901fe03a166485910d9b672789f1225232a9",
+        "bytes": 280610
+      }
     },
     "avatar:Avatar_dyn_07": {
       "name": "坠入清醒",
@@ -199,7 +259,17 @@
       "source": "https://media.prts.wiki/3/3b/Avatar_dyn_07.png",
       "url": "/assets/profile-avatars/Avatar_dyn_07.png",
       "sha256": "44dda1835a539f7f64bc1185a5719a0985050905dc8ed4f74e72397b1b365f28",
-      "bytes": 26471
+      "bytes": 26471,
+      "animation": {
+        "file": "Avatar_dyn_07.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_07.webp",
+        "sha256": "551744a0888563d84ebf193cef293160d8be8f1c06160270b885c1d623fd3d88",
+        "bytes": 5613062
+      }
     },
     "avatar:Avatar_dyn_08": {
       "name": "凝视映像",
@@ -208,7 +278,17 @@
       "source": "https://media.prts.wiki/f/f5/Avatar_dyn_08.png",
       "url": "/assets/profile-avatars/Avatar_dyn_08.png",
       "sha256": "245af2634fa03528dd58f5912fbef8cf2e67ec5e792c9cdde0a41d80679c37e8",
-      "bytes": 29067
+      "bytes": 29067,
+      "animation": {
+        "file": "Avatar_dyn_08.webp",
+        "source": "local-client",
+        "bundle": "arts/dynavatars_0.ab",
+        "bundleSha256": "76ef00cdd4b10e58d14b39b3ded7f0674c71a12642aca48667f9b421793d5272",
+        "renderer": "profile-avatar-v1",
+        "url": "/assets/profile-avatars/Avatar_dyn_08.webp",
+        "sha256": "6a1aee8bb8b826767565b77324f957179fe12f47780a52c9433b01ed35d35744",
+        "bytes": 2763074
+      }
     },
     "avatar:Avatar_special_01": {
       "name": "黎明前奏",

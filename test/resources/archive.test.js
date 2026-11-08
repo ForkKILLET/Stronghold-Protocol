@@ -894,3 +894,14 @@ test('personal avatars join optional preload and survive ZIP export/import witho
  const response=await handleResourceRequest(new Request('https://other.example'+url),{caches:target.caches});
  assert.equal(response.headers.get('content-type'),'image/png');assert.equal(await response.text(),'personal-avatar');
 });
+
+test('animated profile avatars and static fallbacks survive optional preload and ZIP import without network',async()=>{
+ const files=[file('/assets/profile-avatars/Avatar_dyn_01.png','still',2),file('/assets/profile-avatars/Avatar_dyn_01.webp','RIFF-WEBP-animation-bytes',2)];
+ const source=store(files);assert.equal((await source.store.download({tiers:[2]})).count,2);
+ const exported=await exportResourceZip(source.store);assert.equal(exported.count,2);
+ const target=store(files,{origin:'https://new.example'});
+ assert.equal((await importResourceZip(target.store,exported.blob)).imported,2);
+ assert.deepEqual(target.calls,[]);
+ const response=await handleResourceRequest(new Request('https://new.example'+files[1].url),{caches:target.caches});
+ assert.equal(response.headers.get('content-type'),'image/webp');assert.equal(await response.text(),files[1].body);
+});

@@ -1,5 +1,5 @@
 import { PageHeader, PageHeading } from '../ui/pageHeader.js';
-import {profileAvatarUrl} from '../ui/assetUrls.js';
+import {profileAvatarUrl,profileAvatarAnimationUrl} from '../ui/assetUrls.js';
 import {useData as useAvatarData} from '../data.js';
 import { CommunicationDock, CommunicationBubble } from '../ui/communication.js';
 import { PreparationReady } from '../ui/preparationReady.js';
@@ -228,6 +228,7 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
   const failed = (src) => Array.isArray(bad) ? bad.includes(src) : bad === src;
   const src = failed(preferred) ? base : preferred;
   const canPick = isMe && !seat.isBot && !facts.spectating && !room.inMatch;
+  const animation=seat.isBot?null:profileAvatarAnimationUrl(portraits?.m,seat.avatarId);
   const avatar = seat.isBot || !seat.avatarId ? null : profileAvatarUrl(portraits?.m, seat.avatarId);
   const readyLabel = ready ? isHostSeat ? t('待命中') : t('已就绪') : t('准备中');
   return html`<article class=${`rseat${ready ? ' is-ready' : ''}${flash ? ' is-flash' : ''}${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${offline ? ' is-offline' : ''}${seat.isBot ? ' is-bot' : ''}`}
@@ -253,8 +254,8 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
       onClick=${() => onRemoveBot(index)} title=${t('移除该 AI 队友')} aria-label=${t('移除 AI 队友')}><${Icon} name="close" /></button>` : null}
     <div class="rseat__plate">
       ${canPick && onPickAvatar ? html`<button type="button" class="rseat__avatar" onClick=${onPickAvatar} title=${t('更换头像')} aria-label=${t('更换头像')}>
-        <${AvatarFrame} src=${avatar} size="sm" name=${seat.name} seat=${index} self=${true} />
-      </button>` : html`<${AvatarFrame} src=${avatar} size="sm" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} />`}
+        <${AvatarFrame} src=${avatar} animation=${animation} size="sm" name=${seat.name} seat=${index} self=${true} />
+      </button>` : html`<${AvatarFrame} src=${avatar} animation=${animation} size="sm" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} />`}
       <div class="rseat__identity"><span class="rseat__who">
         <${DoctorName} player=${seat} class="rseat__name" />
         ${isHostSeat || isMe ? html`<span class="rseat__roles">

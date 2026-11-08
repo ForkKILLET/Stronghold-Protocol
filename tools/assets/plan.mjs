@@ -1,4 +1,4 @@
-import {profileAvatarJobs} from './profile-avatars.mjs';
+import {profileAvatarJobs,profileAvatarManifest} from './profile-avatars.mjs';
 // Builds the asset plan: which files the game needs, where they come from and
 // where they go, as a *manifest template* that mirrors data/assets.json.
 //
@@ -425,6 +425,7 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
   voiceJp = true, voiceSlots = VOICE_BATTLE_SLOTS, optionalVoice = false,
   extraEnemyIds = [], extraTokenIds = [], extraHandbook = {}, localEnemySpines = {}, localTokenSpines = {}, extraOperators = {},
   moduleTypes = [], profileAvatars = {}, statsTemplate = [], charModes = null, extraBands = {}, extraItems = {}, extraBonds = {} }) {
+  const avatarJobs=new Map(profileAvatarJobs(profileAvatars).map(job=>[job.rel.split('/').pop(),job]));
   const notes = [];
   /** @type {Map<string, any>} */
   const models = new Map();
@@ -855,7 +856,7 @@ export function buildPlan({ assets07, ops03, enemies05, maps05, audio, modelsDat
 
   const template = {
     chars, enemies, tokens, bonds, items, bands, skills, skillsById, modules, ui, prof,
-    profileAvatars:Object.fromEntries(profileAvatarJobs(profileAvatars).map(job=>['avatar:'+job.rel.split('/').pop().slice(0,-4),{alts:[job]}])),
+    profileAvatars:profileAvatarManifest(profileAvatars,a=>({alts:[avatarJobs.get(a.file)]})),
     audio: {
       bgm,
       bossBgm: Object.fromEntries(Object.entries(bossBgm).sort(([a], [b]) => a.localeCompare(b, 'en', { numeric: true }))),

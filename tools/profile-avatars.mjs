@@ -13,6 +13,7 @@ async function main(){
  if(!refresh&&args.includes('--revision'))throw new Error('--revision requires --refresh');
  const revision=args[args.indexOf('--revision')+1];
  const file=path.join(root,'data/profile-avatars.json');let catalog;
+ const existing=JSON.parse(await fs.readFile(file,'utf8'));
  if(refresh){
   if(!args.includes('--revision')||!/^\d+$/.test(revision))throw new Error('--refresh requires --revision N');
   const response=await fetch('https://prts.wiki/w/'+encodeURIComponent('个人头像一览'),{signal:AbortSignal.timeout(30000)});
@@ -20,11 +21,14 @@ async function main(){
   const html=await response.text();
   if(Number(html.match(/"wgCurRevisionId":(\d+)/)?.[1])!==Number(revision))throw new Error('Wiki revision differs; review the current revision before refresh');
   catalog={version:1,source:AVATAR_SOURCE,revision:Number(revision),avatars:parseProfileAvatars(html)};
- }else catalog=JSON.parse(await fs.readFile(file,'utf8'));
+  for(const [id,a] of Object.entries(catalog.avatars))if(existing.avatars[id]?.animation)a.animation=existing.avatars[id].animation;
+ }else catalog=existing;
  await fetchProfileAvatars(catalog.avatars,path.join(root,'public/assets'),{force:args.includes('--force'),recordHashes:refresh});
  if(refresh){await fs.writeFile(file+'.tmp',JSON.stringify(catalog,null,2)+'\n');await fs.rename(file+'.tmp',file);}
- await mergeProfileManifest(root,catalog.avatars);
+ const manifest=await mergeProfileManifest(root,catalog.avatars);
  await fs.writeFile(path.join(root,'data/asset-hashes.json'),JSON.stringify(hashesDoc(await collectHashes({root})),null,2)+'\n');
- console.log('Verified '+Object.keys(catalog.avatars).length+' profile avatars; asset manifest and preload hashes updated.');
+ const expected=Object.values(catalog.avatars).filter(a=>a.animation).length,installed=Object.values(manifest.profileAvatars).filter(a=>a?.animation).length;
+ console.log('Verified '+Object.keys(catalog.avatars).length+' profile avatars; '+installed+'/'+expected+' local animations installed; asset manifest and preload hashes updated.');
+ if(installed<expected)console.warn('Missing derived animations: install the prepared WebP files or run tools/profile-avatar-animations.mjs; static avatars remain available.');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)&&!restartForEnvProxy())main().catch(e=>{console.error(e.message);process.exitCode=1;});

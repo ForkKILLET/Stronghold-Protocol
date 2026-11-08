@@ -20,6 +20,7 @@ import { store, serverNow } from '../store.js';
 import { data, useData, localAsset } from '../data.js';
 import { uiUrl } from './assetUrls.js';
 import { useAssetImage } from './useAssetImage.js';
+import { useAvatarImage } from './useAvatarImage.js';
 import { PixBot } from './pixbots.js';
 import { managementLength } from './managementScale.js';
 
@@ -836,15 +837,15 @@ export function Spinner({ size = 'md', label, tone = 'mint', class: cls }) {
 const SEAT_HUES = [162, 196, 38, 280];
 /**
  * Square avatar frame with bracket corners. Falls back to a glyph (first letter / robot).
- * @param {{ name?: string, src?: string, size?: 'sm'|'md'|'lg'|'xl', seat?: number, host?: boolean, bot?: boolean,
+ * @param {{ name?: string, src?: string, animation?: string, size?: 'sm'|'md'|'lg'|'xl', seat?: number, host?: boolean, bot?: boolean,
  *   self?: boolean, ready?: boolean, offline?: boolean, dead?: boolean, empty?: boolean, class?: string }} props
  */
-export function AvatarFrame({ name = '', src, size = 'md', seat = 0, host, bot, self, ready, offline, dead, empty, class: cls }) {
-  const picture = useAssetImage(src);
+export function AvatarFrame({ name = '', src, animation, size = 'md', seat = 0, host, bot, self, ready, offline, dead, empty, class: cls }) {
+  const picture = useAvatarImage(src,animation);
   const imgOk = !!picture.src;
   const hue = SEAT_HUES[((seat | 0) % 4 + 4) % 4];
   const glyph = [...(name || '').trim()][0] || '?';
-  return html`<div class=${cx('avatar', `avatar--${size}`, 'brackets', host && 'is-host', bot && 'is-bot', self && 'is-self',
+  return html`<div ref=${picture.ref} class=${cx('avatar', `avatar--${size}`, 'brackets', host && 'is-host', bot && 'is-bot', self && 'is-self',
       ready && 'is-ready', offline && 'is-offline', dead && 'is-dead', empty && 'is-empty', cls)} style=${`--seat-hue:${hue}`}>
     <div class="avatar__img">
       ${empty ? html`<${Icon} name="plus" class="avatar__empty" />`

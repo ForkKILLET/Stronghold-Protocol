@@ -19,13 +19,14 @@
 //   every existing file as it is; `written` = the files this run wrote.
 
 import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { MirrorPolicy } from './network.mjs';
 import { validate } from './formats.mjs';
 import { guardDefaultFetch } from './env-proxy.mjs';
 
 /**
- * @typedef {{ rel: string, urls: string[], kind: string, bytes?: number, mutable?: boolean }} Job
+ * @typedef {{ rel: string, urls: string[], kind: string, bytes?: number, mutable?: boolean, sha256?: string }} Job
  * @typedef {{ status: 'ok'|'skip'|'miss'|'error', bytes: number, url?: string, error?: string, sizeChanged?: boolean }} JobResult
  */
 
@@ -169,6 +170,18 @@ export class Downloader {
    * @returns {Promise<JobResult>}
    */
   async runJob(job) {
+    // Offline-rendered official avatars have no remote alternative. Publish only the catalog's exact receipt;
+    // this also works with GitHub source verification enabled, without treating derived art as a Git blob.
+    if (job.kind === 'avatar-webp' && job.urls.length === 0) {
+      try {
+        const bytes = await readFile(join(this.root, job.rel));
+        if (!validate(job.kind, bytes) || bytes.length !== job.bytes || createHash('sha256').update(bytes).digest('hex') !== job.sha256) return {status:'error',bytes:0,error:'derived avatar integrity mismatch'};
+        return {status:'skip',bytes:bytes.length};
+      } catch(e) {
+        if(e.code==='ENOENT')return {status:'miss',bytes:0,error:'run tools/profile-avatar-animations.mjs or install the prepared avatar resources'};
+        throw e;
+      }
+    }
     const kept = this.verifier ? -1 : await this.existingSize(job);
     if (kept >= 0) return { status: 'skip', bytes: kept };
     let lastError = null;
@@ -275,7 +288,7 @@ export class Downloader {
         // without provenance, but publish only a revalidated fallback.
         const succeeded = r.status === 'ok' || r.status === 'skip';
         if (succeeded) this.preserved.delete(job.rel);
-        if (succeeded || (this.verifier && await this.retainExisting(job))) this.accepted.add(job.rel);
+        if (succeeded || (job.kind !== 'avatar-webp' && this.verifier && await this.retainExisting(job))) this.accepted.add(job.rel);
         else this.accepted.delete(job.rel);
         counts[r.status]++;
         this.totals[r.status]++;
