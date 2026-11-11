@@ -193,6 +193,19 @@ rule governs the shared pool, 自选 stock, shop, rewards and grants. INFO_CHECK
 provisional pool and 自选 stock before the draft, without drawing RNG. Reroll resets the groups/pick and stocks;
 public snapshots, reconnects and input replay retain the choice. Covenant draws and exclusion are unchanged.
 
+Equipment capacity follows the chess form's official `equipSlotNum`, falling back to the mode's ordinary capacity.
+“暴躁铁皮” has 4 normal / 6 elite slots (pinned regulation client table, confirmed against the player's screenshot,
+2026-11-11). The same value governs regular and consume-on-equip replacement, AI placement, temporary command
+equipment and invariants, as well as drag/drop, replacement choices and own/spectated detail counts. MorphPairing
+occupancy remains independent. Only a full carrier replaces an item; promotion still returns all equipment.
+
+The regulation first-bond communicator may recruit a special carrier's own normal form above shop level when
+the profile explicitly marks it `recruitTierExempt` (Ironhide only, player clarification 2026-11-11; [ASSUMED] until
+an original-game recording verifies it). Other candidates remain limited by shop level and ordinary stock. Extra
+special copies never enter the shop; their real tier stays intact and exact-tier draws do not inherit the bypass.
+The paging module, other hidden operators and older seasons remain unchanged. Mixed candidate weights retain
+the existing copy-weighted assumption. A gift-triggered promotion returns the carrier's equipment normally.
+
 ### 6.6 AI players (bot.js)
 
 Match selects a trusted server-side implementation through `botStrategies.js`: `opts.botStrategy` (registered ID

@@ -35,6 +35,17 @@ test('regulation bond display parameters use the effect-keyed official bindings 
   assert.equal(parameters, 35);
 });
 
+test('official per-form equipment slot counts survive the regulation build', {
+  skip: !existsSync(join(ROOT, activityPin)) && 'pinned official activity table is not installed',
+}, () => {
+  const act = readJson(activityPin).activity.AUTOCHESS.act3autochess.V3_1;
+  const chess = readJson('data/versions/act3autochess-v3_1/chess.json');
+  for (const [id, rec] of Object.entries(chess)) assert.equal(rec.equipSlotNum ?? 2, act.charChessDataDict[id].equipSlotNum, id);
+  assert.equal(chess.chess_char_5_22_a.equipSlotNum, 4);
+  assert.equal(chess.chess_char_5_22_b.equipSlotNum, 6);
+  assert.deepEqual(Object.values(chess).filter(c => c.recruitTierExempt).map(c => c.chessId), ['chess_char_5_22_a', 'chess_char_5_22_b']);
+});
+
 test('normalizeMirror: an empty {} becomes [] / null / stays {} by the key, its table siblings and the reference', () => {
   const mirror = {
     table: { a: { list: [1], dict: { k: 1 } }, b: { list: {}, dict: {} } },              // the key elsewhere decides

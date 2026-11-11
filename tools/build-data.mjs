@@ -403,6 +403,9 @@ function buildChess(ctx) {
       sellPrice: priceRow.chessSoldPrice ?? null,
       upgradeNum: cd.upgradeNum,
       upgradeChessId: cd.upgradeChessId || null,
+      // Ordinary 2-slot records inherit the mode default; retain official per-form exceptions (e.g. 4/6 slots).
+      ...(Number.isInteger(cd.equipSlotNum) && cd.equipSlotNum > 0 && cd.equipSlotNum !== 2 && { equipSlotNum: cd.equipSlotNum }),
+      ...(PROFILE.recruitTierExempt?.includes(baseId) && { recruitTierExempt: true }),
       status: { phase, level, skillLevel: status.skillLevel, equipLevel: status.equipLevel || 0 },
       stats: null, immunities: null, rangeId: null, rangeGrid: null,
       dmgType: null, attackKind: null, projectile: null, canHitFly: false, targetPriority: null,
@@ -1440,7 +1443,9 @@ function buildItems(ctx, effects) {
       buffs: (eff?.buffs || []).map((b) => ({ key: b.key, countType: b.countType, bb: b.bb, bbStr: b.bbStr })),
       params: eff?.params || {},
       category: ri?.category || null, kind, family: ri?.family || null,
-      implFormula: rule?.implFormula || ri?.implFormula || null,
+      implFormula: eff?.buffs?.some(b => b.key === 'equip_destory_first_bond_char')
+        ? 'On equip: destroy item; grant count NORMAL operators of the carrier\'s FIRST bond. Ordinary candidates stay within shop level and stock; an explicitly marked special carrier can recruit its own base form outside shop stock and above shop level [ASSUMED: player report; mixed-pool weights follow the existing copy model].'
+        : rule?.implFormula || ri?.implFormula || null,
       note: rule?.note || null,
       rangeGrid: Array.isArray(ri?.rangeGrids) ? ri.rangeGrids.map((g) => [g.row, g.col]) : null,
       flavor: ri?.flavor || null,
@@ -3412,6 +3417,10 @@ function validateAll(f) {
     }
   }
   const { chess, bonds, bands, items, tokens, backups, stages } = f;
+  for (const id of PROFILE.recruitTierExempt || []) {
+    const rec = chess[id];
+    if (!rec?.isHidden || rec.isGolden || rec.isDiy || rec.baseId !== id) err(`invalid special recruitment base chess: ${id}`);
+  }
   for (const [id, bond] of Object.entries(bonds)) {
     for (const p of bond.effectDescParams || []) {
       if (!p.base && !p.perStack) err(`bond ${id}: description parameter ${p.index} has no blackboard binding`);

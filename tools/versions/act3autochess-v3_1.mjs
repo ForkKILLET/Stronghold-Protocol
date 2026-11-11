@@ -31,6 +31,9 @@ export default Object.freeze({
   adapters: Object.freeze([]),
   research: 'docs/research/versions/act3autochess-v3_1/',
   tables: Object.freeze({ stock: null, shopDraft: null, tacticDraft: null, bountyDrafts: null }),
+  // [ASSUMED: player report 2026-11-11] A communicator used on Ironhide can recruit its normal form above shop level.
+  // This opt-in is only for the carrier's own special copy, not every hidden operator or every recruitment effect.
+  recruitTierExempt: Object.freeze(['chess_char_5_22_a']),
   // Pool members follow this season's official trait/bond text. Exact server-side weights are unpublished:
   // [ASSUMED] 小概率 = 10% total, split equally within the common/rare category; specials are uniform.
   equipmentPools: Object.freeze({

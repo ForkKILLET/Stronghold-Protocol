@@ -1,5 +1,5 @@
 // server/sim/content/kits/ops/ver-acrbot.js — “暴躁铁皮” (char_618_acrbot), 规程·序列Ⅰ.
-// 无法被友方治疗 is the unyield profession. The equipment-slot sentence is not simulated (no equip grid here).
+// 无法被友方治疗 is the unyield profession. Equipment slots are enforced by the match from official equipSlotNum.
 // 荒蛮之心 splashes from the stripped base ATK. S1 cleanses 异常 already on her and refuses new ones
 // [ASSUMED: the immunity covers a stun she is opened under, and every 异常 while the skill runs].
 // She swings at allies in range: appended when the swing already has an enemy, and forced on the tick when it does not.
