@@ -164,6 +164,11 @@ history and the open points: DESIGN §32.14.25.
   against a depth pre-pass of the board's tile heights. The Pixi canvas is transparent over the three.js board, so the
   blend factors are rewritten for premultiplied compositing: a straight alpha blend becomes (One, OneMinusSrcAlpha),
   additive blends keep the destination alpha, and the Multiply family darkens through (Zero, SrcColor).
+  Civilight Eterna S3's verified standing background (`cetsyr_skill_03_buff_01/beijing_01`) is an owner-local
+  exception: `system.js unitBack` inserts a raw-GL draw container before that UnitView root's model children.
+  This preserves the owner's depth ordering after its raised tile row; the global ground pass precedes those
+  rows and would hide the background behind the high ground. Its authored order 0 and foreground remain intact;
+  per-owner entries never batch across owners, and finished effects / clear release their containers.
 - **Shaders.** `glsl.js` holds GLSL ES 3.0 programs written for the client's particle shader families (no official
   source is in the repository): basic, legacy premultiplied / alpha-blended, standard unlit, dissolve (tween, vertex
   colour, double, custom data), disturb (origin, anchor, custom data, ramp), ramp, mask, rim, flipbook and multiply,
