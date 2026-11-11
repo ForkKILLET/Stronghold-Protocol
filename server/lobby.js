@@ -1359,6 +1359,7 @@ export class Lobby {
       if (room.consoleEnabled) return fail(ERR.MATCHING, 'console and matchmaking are mutually exclusive');
       if (room.prepSeconds != null || room.prepMultiplier != null || room.battleSpeed !== 2) return fail(ERR.MATCHING, 'custom preparation time cannot join public matchmaking');
       if (room.modded || room.recoveryContentMissing) return fail(ERR.MATCHING, t('插件房间不能参加公共匹配'));
+      if (room.version !== DEFAULT_VERSION) return fail(ERR.MATCHING, 'public matchmaking only supports the default simulation version');
       if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
       if (room.seats.some((s) => s?.isBot)) return fail(ERR.BAD_MSG, t('请先移除 AI 队友，再匹配真人队友'));
       const humans = room.activeHumans();
@@ -1858,7 +1859,7 @@ export class Lobby {
     return OK;
   }
 
-  setOptions(session, { difficulty, prepMultiplier, battleSpeed }) {
+  setOptions(session, { difficulty, modeId: askedMode, prepMultiplier, battleSpeed }) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
@@ -1866,15 +1867,24 @@ export class Lobby {
     if (room.matching) return fail(ERR.MATCHING);
     if (!DIFFICULTIES.includes(difficulty) || !isPrepMultiplier(prepMultiplier)
       || ![1, 2, 3, 4].includes(battleSpeed)) return fail(ERR.BAD_MSG);
+    if (!this.offered(room.version, room.mode).includes(difficulty)) return fail(ERR.BAD_TARGET, 'not a mode of this version');
+    const laddered = this.laddered(room.version, room.mode);
+    const modeId = laddered ? this.ladderMode(room.version, room.mode, difficulty,
+      askedMode ?? (difficulty === room.difficulty ? room.modeId : null)) : null;
+    if (askedMode != null && (!laddered || !this.versionModes(room.version, room.mode).some(m => m.id === askedMode))) return fail(ERR.BAD_TARGET);
+    if (modeId) {
+      const selected = this.versionModes(room.version, room.mode).find(m => m.id === modeId);
+      difficulty = DIFFICULTIES.includes(selected.difficulty) ? selected.difficulty : 'FUNNY';
+    }
     const prep = room.mode === 'coop' ? normalizePrepMultiplier(prepMultiplier) : null;
-    if (room.difficulty !== difficulty || room.prepMultiplier !== prep
+    if (room.difficulty !== difficulty || room.modeId !== modeId || room.prepMultiplier !== prep
       || room.prepSeconds != null || room.battleSpeed !== battleSpeed) {
       this.dropReplay(room, session.playerId);
       // Changing pacing preserves a plugin mode; choosing another official difficulty leaves it.
       if (room.difficulty !== difficulty && room.content?.modeId) {
         const {modeId:_modeId,...content}=room.content;room.content=Object.freeze(content);
       }
-      Object.assign(room, {difficulty, prepMultiplier: prep, prepSeconds: null, battleSpeed});
+      Object.assign(room, {difficulty, modeId, prepMultiplier: prep, prepSeconds: null, battleSpeed});
       for (const seat of room.seats) if (seat && !seat.isBot && seat.playerId !== room.hostId) seat.ready = false;
       this.broadcastState(room);
     }

@@ -5,6 +5,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeMatch, DATA } from './harness.js';
+import { getVersionData } from '../../server/data.js';
+import { VERSIONS } from '../../shared/versions.js';
 import { GameData } from '../../server/match/gamedata.js';
 import { bossPoolHp, SharedBossPool } from '../../server/match/finalAssault.js';
 import { makeBattle } from '../helpers/battleHarness.js';
@@ -95,5 +97,22 @@ test('only the leader\'s pool scales: escorts and the Hidden Core\'s parts keep 
     assert.equal(four[0].atk, one[0].atk);
     assert.equal(four[0].def, one[0].def);
     assert.deepEqual(four.slice(1), one.slice(1), `${kind}: escort and part unchanged`);
+  }
+});
+
+test('pinned official versions use the same per-survivor pool without changing their data format', () => {
+  for (const version of VERSIONS.filter(v => v.dir)) {
+    const raw = getVersionData(version.id);
+    for (const [modeId, mode] of Object.entries(raw.config.modes)) {
+      const gd = new GameData(raw, modeId);
+      for (const [bossId, boss] of Object.entries(raw.bosses)) {
+        const base = boss.bloodByMode?.[modeId] ?? boss.bloodPoint?.[mode.difficulty];
+        if (!Number.isFinite(base)) continue;
+        for (const n of [1, 2, 3, 4]) {
+          const expected = Math.round(base * (gd.isSolo ? 1 : n));
+          assert.equal(gd.bossPoolHp(bossId, n), expected, `${version.id}/${modeId}/${bossId}/${n}`);
+        }
+      }
+    }
   }
 });

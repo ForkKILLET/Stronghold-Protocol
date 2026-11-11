@@ -68,6 +68,8 @@ test('regulation mode survives cold recovery and AI takeover executes in the iso
  const version='act3autochess@V3_1';
  assert.equal((await host.request({t:'room.create',mode:'coop',difficulty:'NORMAL',version})).t,'ok');
  const room=srv.lobby.roomOf(srv.registry.byId(host.id)),cs=room.content.cs;
+ assert.equal((await host.request({t:'match.join',mode:'coop',difficulty:'NORMAL'})).t,'error');
+ assert.equal(srv.lobby.queueByPlayer.has(host.id),false);
  await host.request({t:'room.contentReady',cs});
  await host.request({t:'room.setAiTakeover',on:true});
  await mate.request({t:'room.join',code:room.code});await mate.request({t:'room.contentReady',cs});
@@ -94,6 +96,11 @@ test('regulation mode survives cold recovery and AI takeover executes in the iso
  // A solo ladder uses an explicit ID, not mode_single_normal inferred from difficulty.
  const solo=await player('Ladder');await solo.request({t:'room.create',mode:'solo',difficulty:'NORMAL',version,modeId:'mode_single_12'});
  const ladder=srv.lobby.roomOf(srv.registry.byId(solo.id));
+ assert.equal((await solo.request({t:'room.setOptions',difficulty:'NORMAL',modeId:'mode_single_13',prepMultiplier:null,battleSpeed:3})).t,'ok');
+ assert.equal(ladder.modeId,'mode_single_13');assert.equal(ladder.battleSpeed,3);
+ assert.equal((await solo.request({t:'room.setOptions',difficulty:'NORMAL',modeId:'mode_single_invalid',prepMultiplier:null,battleSpeed:2})).t,'error');
+ assert.equal(ladder.modeId,'mode_single_13');assert.equal(ladder.battleSpeed,3);
+ assert.equal((await solo.request({t:'room.setOptions',difficulty:'NORMAL',modeId:'mode_single_12',prepMultiplier:null,battleSpeed:2})).t,'ok');
  await solo.request({t:'room.contentReady',cs});assert.equal((await solo.request({t:'room.start'})).t,'ok');
  const checkpoint=(await ladder.match.captureSnapshot()).doc;assert.equal(checkpoint.modeId,'mode_single_12');
  const saved=snapshotServer({registry:srv.registry,lobby:srv.lobby,matchDocs:new Map([[ladder.code,checkpoint]])});

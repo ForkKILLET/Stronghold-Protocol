@@ -515,7 +515,7 @@ export const C2S = {
   'room.emote': { id: (v) => EMOTES.includes(v) },
   'room.chat': { text: validChatText },
   'room.ready': { ready: isBool },
-  'room.setOptions': { difficulty: (v) => DIFFICULTIES.includes(v), prepMultiplier: isPrepMultiplier, battleSpeed: (v) => [1, 2, 3, 4].includes(v) },
+  'room.setOptions': { modeId: isId, $optional: ['modeId'], difficulty: (v) => DIFFICULTIES.includes(v), prepMultiplier: isPrepMultiplier, battleSpeed: (v) => [1, 2, 3, 4].includes(v) },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v) },
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast

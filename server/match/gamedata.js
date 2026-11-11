@@ -78,9 +78,13 @@ export function bossPoolShareOf(modeScale, cfgScale, isSolo, aliveCount) {
   if (isSolo) return pick('solo', 1);
   const full = Math.max(1, Math.floor(pick('aliveFull', 4)));
   const n = Number(aliveCount);
+  const perPlayer = typeof ms.perPlayer === 'boolean' ? ms.perPlayer : cs.perPlayer === true;
+  const alive = Number.isFinite(n) && n >= 1 ? Math.min(full, Math.floor(n)) : full;
+  // Official version data expresses the same pool as per-player shares (1 × alive), while the fork's default
+  // config uses the full-team pool (4 × alive / 4). Respect both without rewriting pinned version data.
+  if (perPlayer) return pick('coop', 1) * alive;
   const scaling = typeof ms.aliveScaling === 'boolean' ? ms.aliveScaling : cs.aliveScaling === true;
-  const alive = scaling && Number.isFinite(n) && n >= 1 ? Math.min(full, Math.floor(n)) : full;
-  return pick('coop', 4) * alive / full;
+  return pick('coop', 4) * (scaling ? alive / full : 1);
 }
 
 /** Strip the _a/_b suffix of an item id (the registry key of an item family). */

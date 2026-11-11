@@ -3117,9 +3117,10 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
       lastRound, bossRound, hiddenRound,
       rounds, spRounds: roundNums.filter((r) => rounds[r].isSpPrepare),
       combatTimeLimit, enemyScale,
-      bossHpScale: type === 'SINGLE'
+      // Keep pinned versions' upstream representation; the reader accepts the equivalent per-player form.
+      bossHpScale: IS_DEFAULT ? (type === 'SINGLE'
         ? { bloodPointKey: DIFF_KEYS[m.modeDifficulty] || null, solo: 1, soloAssumed: false, unaffectedByEnemyScale: true }
-        : { bloodPointKey: DIFF_KEYS[m.modeDifficulty] || null, coop: 4, aliveScaling: true, aliveFull: 4, aliveAssumed: false, unaffectedByEnemyScale: true },
+        : { bloodPointKey: DIFF_KEYS[m.modeDifficulty] || null, coop: 4, aliveScaling: true, aliveFull: 4, aliveAssumed: false, unaffectedByEnemyScale: true }) : { bloodPointKey: DIFF_KEYS[m.modeDifficulty] || null, unaffectedByEnemyScale: true },
       upgradePrices: levels.slice(0, -1).map((l) => shopLv[l].initialUpgradePrice),
       maxShopLevel: levels.length ? levels[levels.length - 1] : 6,
       shopSlots: Object.fromEntries(levels.map((l) => [l, { chess: shopLv[l].charChessCount, item: shopLv[l].itemCount }])),
@@ -3196,9 +3197,12 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
     lpCapPerRound: act.constData.costPlayerHpLimit ?? 10,
     bossOvertimeAfter: 150, bossOvertimeDrainPerSec: 1,
     // The branch's shared Boss pool uses bloodPoint per surviving player; mode settings above take precedence.
-    bossHpScale: {
+    bossHpScale: IS_DEFAULT ? {
       formula: 'solo: bloodPoint[difficulty] × 1; co-op: bloodPoint[difficulty] × 4 × min(alive players at round start, 4) / 4; one shared pool for every boss field; user configuration 2026-10-06',
       coop: 4, solo: 1, soloAssumed: false, aliveScaling: true, aliveFull: 4, aliveAssumed: false, unaffectedByEnemyScale: true,
+    } : {
+      formula: 'one pool for every boss field ("所有人将一起对敌方领袖造成伤害"; the mirrored copies of a pair field share it, "两侧的敌方领袖共享生命值（敌方领袖的总生命值不变）") = bloodPoint[difficulty] × share. perPlayer true (the owner\'s decision of 2026-10-06, PR #209): co-op share = coop × the players alive when the fight starts (bots and AI 托管 seats count, eliminated and departed seats do not), at most aliveFull; solo share = solo (1). perPlayer false (the fixed pool of 0.1.x, 「保持固定血量」): co-op share = coop whatever the count (× alive / aliveFull with aliveScaling, the alive / 4 proportion [ASSUMED]: 巴哈姆特 12294); solo was 0.25 [ASSUMED]',
+      perPlayer: true, coop: 1, solo: 1, aliveFull: 4, aliveScaling: false, aliveAssumed: true, unaffectedByEnemyScale: true,
     },
     // minTeamLpExclusive 1 = LP > 1 (at least 2 left): PRTS's user-contributed text, which the community's measurement
     // (Bilibili 路标月报#2, cited on GitHub #645) matches — kept by the owner on 2026-10-15
