@@ -656,6 +656,12 @@ is not consumed: PRTS 下半 记录 备注 "生效时，原干员销毁，获得
 0.1.0), 画卷 (copy the operator in range with its
 items — the copied items arrive unequipped in the hand, PRTS 画卷 备注 "获得的装备为未装备状态"), 教鞭 (a personal choice of three 战术特训 cards), “神秘顾客” (a random bounty is added).
 
+伊桑's `SERVER_MOST_BOND` sale variant (`SERVER_CHESS_SOLD`, both forms) excludes `BOARD_ALL_CHESS` bonds
+from the member-count comparison: 绝技 counts elites but has no recruitable members. Its roll uses the current
+shop level and filters out the source operator's base id, including copies returned to the pool by this sale.
+Ties keep the seeded shuffle and try only tied maxima; an empty highest-member pool does not allow a lower-count
+bond. The prep-start variant (余, including previous seasons) keeps its original conditions and unrestricted tier.
+
 人事部记录 (`equip_use_main_bond`) special-refreshes both rows (owner verified official footage, 2026-11-11).
 The current mode/level's `shopSlots.chess` boundary separates operator draws (first-bond preference and ordinary
 fallback) from equipment draws (`rollItem({ maxTier: shopLevel })`, existing eligible-item pool and stock gate).

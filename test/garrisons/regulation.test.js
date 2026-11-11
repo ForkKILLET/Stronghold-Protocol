@@ -13,6 +13,7 @@ import { underframeActions } from '../../public/js/ui/facing.js';
 import { buildBattleSpec, compactResult, resultDigest } from '../../server/sim/spec.js';
 import { validateClientResult } from '../../server/match/fields.js';
 import { isBattleResult } from '../../shared/protocol.js';
+import { SharedPool } from '../../server/match/pool.js';
 
 const QUIET = { warn() {}, error() {}, info() {} };
 const RAW = getVersionData('act3autochess@V3_1', { log: QUIET });
@@ -79,6 +80,67 @@ const living = (n, extra = []) => {
   for (let i = 0; i < n; i++) unitsEnd.push({ defId: 'chess_char_1_06_a', alive: true });
   return { unitsEnd: unitsEnd.concat(extra) };
 };
+
+function saleSetup(t, seed = 70) {
+  const s = setup(seed);
+  t.after(() => { assert.equal(s.m.errorCount, 0); s.m.dispose(); });
+  s.m.disabledBonds = []; s.m.bannedChess = [];
+  s.m.pool = new SharedPool(s.m.gd);
+  return s;
+}
+
+test('伊桑 sale: replay 40:53 grants a 莱塔尼亚 operator when 4 elites outnumber its 3 real members', t => {
+  for (const seed of [1, 2, 3, 4]) for (const form of ['a', 'b']) {
+    const { m, ps } = saleSetup(t, seed);
+    ps.shop.level = 6;
+    // Public formation from R13 of the reported replay; no account or replay identifiers are needed.
+    for (const [id, r, c] of [
+      ['chess_char_4_02_b', 11, 6], ['chess_char_1_04_a', 11, 7], ['chess_char_6_20_a', 11, 8],
+      ['chess_char_5_01_b', 10, 5], ['chess_char_4_26_a', 10, 6], ['chess_char_6_20_b', 10, 7],
+      ['chess_char_5_11_b', 10, 8],
+    ]) give(m, ps, id, 'board', [r, c]);
+    const ethan = give(m, ps, `chess_char_3_18_${form}`, 'hand');
+    assert.equal(ps.bonds.suntShip.count, 4);
+    assert.equal(ps.bonds.lethaniaShip.count, 3);
+    const old = new Set(ps.allChess().map(p => p.uid));
+    assert.deepEqual(m.handle('p_0', { t: 'g.sell', uid: ethan.uid }), { ok: true });
+    const gained = ps.allChess().filter(p => !old.has(p.uid));
+    assert.equal(gained.length, 1);
+    assert.ok(ps.gd.chess(gained[0].id).bonds.includes('lethaniaShip'));
+  }
+});
+
+test('伊桑 sale: both forms respect shop level and exclude their own base id even after copies return', t => {
+  for (const form of ['a', 'b']) for (const level of [1, 3, 5]) {
+    const { m, ps } = saleSetup(t);
+    ps.shop.level = level;
+    ps.bondCountBonus.arcaneShip = 10; ps.recompute();
+    const ethan = give(m, ps, `chess_char_3_18_${form}`, 'hand');
+    const allowed = 'chess_char_1_09_a'; // 卡达: a stocked arcane operator within every tested shop level.
+    for (const [id, entry] of m.pool.entries) if (id !== allowed) m.pool.take(id, entry.left);
+    assert.deepEqual(m.handle('p_0', { t: 'g.sell', uid: ethan.uid }), { ok: true });
+    assert.deepEqual(ps.allChess().map(p => p.id), [allowed], 'returned Ethan copies cannot be granted back');
+    assert.ok(ps.gd.tierOf(ps.allChess()[0].id) <= level);
+  }
+});
+
+test('伊桑 sale: only self or above-level stock leaves no reward and does not fall back to a smaller bond', t => {
+  for (const form of ['a', 'b']) {
+    const { m, ps } = saleSetup(t);
+    ps.shop.level = 3;
+    ps.bondCountBonus.arcaneShip = 10;
+    ps.bondCountBonus.lethaniaShip = 5;
+    const ethan = give(m, ps, `chess_char_3_18_${form}`, 'hand');
+    // Keep a T5 arcane operator and a T3 operator of the smaller bond in stock; neither qualifies.
+    for (const [id, entry] of m.pool.entries) {
+      if (!['chess_char_5_11_a', 'chess_char_3_02_a'].includes(id)) m.pool.take(id, entry.left);
+    }
+    const funds = ps.funds;
+    assert.deepEqual(m.handle('p_0', { t: 'g.sell', uid: ethan.uid }), { ok: true });
+    assert.equal(ps.allChess().length, 0);
+    assert.ok(ps.funds > funds, 'sale payment is independent of reward availability');
+  }
+});
 
 test('SERVER_SELF_SELL_PRICE_DELTA: stacks to the text cap, skips the hand, never lowers a higher price; sell pays it', () => {
   const s = setup();
