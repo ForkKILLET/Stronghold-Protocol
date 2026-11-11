@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-11 盟约实时说明保留分赛季参数来源：旧版 descParamBaseList／descParamPerStackList，三期 effectDescParamDataDict[effectId].descParamInfos。按 base + perStack × 所属玩家实时层数显示，读取正数 descParamMax（0 表示无上限），保留概率上限与百分比／小数／负数格式。生成时拒绝无映射或非数值黑板键；运行时缺失显示 —，不能冒充 0。不改战斗黑板或公式。回归全部赛季参数覆盖、三期 35 处绑定、莱塔尼亚 40 层 +70%／34% 及实际战斗攻击力与 Firefox 浮窗。
+
 - 2026-11-11 商店已有卡片必须按自身 kind 分栏，保留原始 slot 索引及价格；shop.layout 只判断空栏位归属，不能因布局数量与位置不一致把干员画成装备，或丢弃布局范围外的有效卡片。保留第一期五级解锁的空装备栏、冻结／已购买样式及两次点击的详情与购买目标。回归 shop-slot-kind、shop-levelslots、version-equipment 及桌面 Firefox。
 
 - 2026-11-11 三期干员禁用按核心优先判定：有核心盟约时仅在全部核心盟约被禁用时排除，附加盟约不参与；无核心盟约时仅在存在附加盟约且全部被禁用时排除，无盟约不禁用。商店、奖励、直接授予、自选库存和禁用人数共用 GameData.bondsExclude；多核心（如自选煌）保留任一核心即可出现。界面说明与原因同步，历史赛季继续全部盟约联合判定。本条修正此前核心 OR 附加盟约的错误解释，回归 bond-groups／diy-bring／match-info 及三期整局 golden。
