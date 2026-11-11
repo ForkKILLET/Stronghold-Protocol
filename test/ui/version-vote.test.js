@@ -116,7 +116,7 @@ test('the room screen: vote blocks starting, and the toolbar and picker explain 
   assert.match(src, /<\$\{SpectatorBar\}[^\n]*\/>\n\s*<\$\{VersionVote\} room=\$\{room\} \/>/);
   assert.match(src, /data-testid="room-version"/);
   assert.match(src, /disabled=\$\{!facts\.canStart \|\| !online \|\| !!vote \|\| busy === 'start'\}/);
-  assert.match(src, /t\('请先关闭改变玩法的插件'\)/);
+  assert.doesNotMatch(src, /facts\.modded \? t\('请先关闭改变玩法的插件'\)/);
   assert.match(src, /<\$\{Tooltip\} text=\$\{versionCtl\.why\}/);
   assert.match(src, /note=\$\{\[bannerText,/);
   assert.match(src, /t\('\{name\}邀请你加入卫戍协议：盟约·\{version\}【\{difficulty\}】'/);

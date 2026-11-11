@@ -38,12 +38,12 @@ import { prepChoiceMultiplier } from '../ui/prepTime.js';
 // The version pill beside the difficulty (and ⚙'s 版本 row in co-op) opens the version picker (ui/versionPicker.js): the
 // host's pick proposes the switch (room.proposeVersion: a lone human's room switches at once; otherwise the seated humans
 // vote — ui/versionVote.js, the strip between the 观战席 and the footer); everybody else reads it (由创建者发起). It is off
-// during a vote, with gameplay plugins on (they play 第二期下半 only) and offline. A switch is told to everybody (a toast,
+// during a vote and offline; gameplay plugins must support the target. A switch is told to everybody (a toast,
 // never on entering a room), and a room whose version is not this browser's lobby choice says that leaving restores it.
 // Texts go through t() (docs/I18N.md).
 
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
+import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, MAX_SEATS, MAX_SPECTATORS } from '../../../shared/constants.js';
 import {
   html, Button, Icon, MicroLabel, AvatarFrame, DifficultyTag, DifficultyIcon, Tooltip, TextField, doctorNo, PingPill, Modal, confirmDialog,
 } from '../ui/components.js';
@@ -55,11 +55,11 @@ import { LoadoutButton } from './loadout.js';
 import { PluginTag, VersionTag, isModdedRoom, roomRulesLabel } from '../ui/pluginTag.js';
 import { VersionVote, versionVoteOf } from '../ui/versionVote.js';
 import { VersionPicker } from '../ui/versionPicker.js';
-import { DEFAULT_VERSION, lobbyVersion, needsContent, offeredDifficulties, roomVersion, serverDefaultVersion, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
+import { DEFAULT_VERSION, ladderModes, lobbyVersion, needsContent, offeredDifficulties, roomVersion, seasonOf, serverDefaultVersion, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
 import { hasScriptConsent, rememberScriptConsent, pageVersion } from '../content.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating, savePref } from '../store.js';
-import { difficultyInfo, ProtocolSelect } from './lobby.js';
+import { difficultyInfo, modeInfo, ProtocolSelect } from './lobby.js';
 import { data, useData, getConfig } from '../data.js';
 import { cardOperators, seatPortrait } from '../ui/seatArt.js';
 import { useMyCard, setCardOperator } from '../ui/playerCard.js';
@@ -128,6 +128,22 @@ export function roomFacts(room, myId) {
 }
 
 /**
+ * Why 「转为观战」 is disabled, or '' when a seated player may switch.
+ * The same predicates as server/lobby.js becomeSpectator: another seated human must be connected
+ * (`s.connected`); a full spectator strip and a running match refuse on their own.
+ * @param {any} room
+ * @param {{ humans?: { playerId: any, connected?: boolean }[], spectators?: unknown[] }} facts
+ * @param {any} myId
+ * @returns {string}
+ */
+export function spectateSwitchReason(room, facts, myId) {
+  if (room?.inMatch) return t('模拟已开始');
+  if ((facts?.spectators?.length || 0) >= MAX_SPECTATORS) return t('观战席已满');
+  if (!facts?.humans?.some((s) => s.playerId !== myId && s.connected)) return t('至少保留一名参赛博士');
+  return '';
+}
+
+/**
  * The co-op room option 「AI 队友最后选择」 (GitHub #338; room.setAiPicksLast, room.state.aiPicksLast): in the strategy and
  * 机变 drafts every human picks before the AI teammates. null in a solo room (no AI teammates); otherwise its state (off
  * when the server sends none) and whether this player may switch it — the host only, the others see it read-only.
@@ -140,9 +156,9 @@ export function aiLastOption(room, myId) {
   return { on: room.aiPicksLast === true, editable: room.hostId != null && room.hostId === myId };
 }
 
-/** Spectator handover is available only in original default-version co-op rooms, with a host opt-in. */
+/** Spectator handover in an original-content co-op room of any official version, with a host opt-in. */
 export function aiTakeoverOption(room, myId) {
-  if (!room || room.mode === 'solo' || roomVersion(room) !== DEFAULT_VERSION || room.content?.vanilla === false) return null;
+  if (!room || room.mode === 'solo' || room.content?.vanilla === false) return null;
   return { on: room.aiTakeoverEnabled === true, editable: room.hostId != null && room.hostId === myId && !room.inMatch };
 }
 
@@ -276,8 +292,7 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
 function SpectatorBar({ facts, room, myId, busy, onRemove, onSit, onSpectate }) {
   if (room.mode === 'solo') return null;
   const reason = room.inMatch ? t('模拟已开始') : room.matching ? t('请先取消匹配')
-    : facts.spectators.length >= MAX_SPECTATORS ? t('观战席已满')
-      : facts.humans.length < 2 ? t('至少保留一名参赛博士') : '';
+    : spectateSwitchReason(room, facts, myId);
   return html`<section class="specbar" aria-label=${t('观战席')}>
     <span class="specbar__label"><${Icon} name="eye" />${t('观战席')}<b class="num">${facts.spectators.length}</b><span class="num t-dim">/${MAX_SPECTATORS}</span></span>
     ${facts.spectators.map((s) => html`<span key=${s.playerId} class=${`specbar__who${s.playerId === myId ? ' is-me' : ''}${s.connected === false ? ' is-offline' : ''}`}>
@@ -519,7 +534,8 @@ export function RoomScreen() {
   const hasBots = facts.occupied.some((s) => s.isBot);
   const canManageConsole = facts.isHost || (room.mode === 'solo' && !!facts.mine);
   const myReady = !!facts.mine?.ready;
-  const info = difficultyInfo(room.mode, room.difficulty);
+  // a laddered room (规程's solo) shows its official mode (规程等级 n · AC-SP-n) instead of the difficulty
+  const info = room.modeId ? modeInfo(room.modeId) : difficultyInfo(room.mode, room.difficulty);
 
   /** Runs one request at a time; resolves true once the server took it (false: not sent, or refused — toasted). */
   const run = async (kind, fn) => {
@@ -576,7 +592,7 @@ export function RoomScreen() {
     const ok = await confirmDialog({ utility: true, title: t('转为观战'),
       text: facts.isHost ? t('转入观战席后，创建者身份将移交给其他博士。有空位时可以重新入座。')
         : t('转入观战席后仅观看模拟，有空位时可以重新入座。'), okText: t('转为观战') });
-    if (ok) run('spectate', () => net.request('room.spectate', { code: room.code }));
+    if (ok) run('spectate', () => net.request('room.spectate', { code: room.code, ...(room.test ? { testAck: true } : {}) }));
   };
   const leave = async () => {
     if (inFlight.current) return;
@@ -626,7 +642,6 @@ export function RoomScreen() {
   const showVersion = Array.isArray(versions) || curVersion !== DEFAULT_VERSION;
   const versionWhy = !online ? t('连接中断，请稍候重试')
     : vote ? t('切换版本投票进行中，请等投票结束')
-    : facts.modded ? t('请先关闭改变玩法的插件')
     : !Array.isArray(versions) || versions.length < 2 ? t('本服务器只启用了这一个版本') : null;
   const versionEditable = facts.isHost && !facts.spectating && !room.inMatch;
   // Keep version details in the existing toolbar control and picker, without adding another row above the seats.
@@ -656,20 +671,20 @@ export function RoomScreen() {
     note=${[bannerText, versionEditable ? versionWhy || (facts.humans.length > 1 ? t('其他博士同意后才会切换；切换后需要重新准备。') : null) : t('由创建者发起')].filter(Boolean).join(' ')}
     onPick=${proposeVersion} onClose=${() => setVersionOpen(false)} />` : null;
 
-  const currentDraft=(tab='basic')=>({difficulty:room.difficulty,prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier),battleSpeed:room.battleSpeed??2,tab});
+  const currentDraft=(tab='basic')=>({difficulty:room.difficulty,modeId:room.modeId,prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier),battleSpeed:room.battleSpeed??2,tab});
   if (configDraft) {
     const readOnly = !facts.isHost || !!room.matching;
     const change = (key, value) => setConfigDraft(d => ({...d, [key]:value}));
     const switchTab=tab=>{
       if(tab===(configDraft.tab||'basic'))return;
-      if(tab==='plugins'&&!readOnly)return run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(d=>({...d,tab}));});
+      if(tab==='plugins'&&!readOnly)return run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,...(configDraft.modeId?{modeId:configDraft.modeId}:{}),prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(d=>({...d,tab}));});
       setConfigDraft(currentDraft(tab));
     };
-    return html`<${RoomOptionsPage} soloTimeLabel=${t(soloBrief)} difficulties=${offeredDifficulties(getConfig(),room.mode)} tab=${configDraft.tab||'basic'} onTabChange=${switchTab}
+    return html`<${RoomOptionsPage} ladder=${ladderModes(getConfig(),room.mode)} modeId=${readOnly?room.modeId:configDraft.modeId} onMode=${id=>{const m=getConfig()?.modes?.[id];change('modeId',id);change('difficulty',DIFFICULTIES.includes(m?.difficulty)?m.difficulty:'FUNNY');}} soloTimeLabel=${t(soloBrief)} difficulties=${offeredDifficulties(getConfig(),room.mode)} tab=${configDraft.tab||'basic'} onTabChange=${switchTab}
       pluginContent=${PluginView?html`<${PluginView} open=${true} room=${room} myId=${me.playerId} embedded=${true} />`:html`<p>${t('正在读取插件列表…')}</p>`} mode=${room.mode} difficulty=${readOnly?room.difficulty:configDraft.difficulty} onDifficultyChange=${v=>change('difficulty',v)}
       prepChoice=${readOnly?(room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier)):configDraft.prepChoice} onPrepChange=${v=>change('prepChoice',v)}
       battleSpeed=${readOnly?room.battleSpeed:configDraft.battleSpeed} onSpeedChange=${v=>change('battleSpeed',v)} readOnly=${readOnly} disabled=${!!busy || !online}
-      onBack=${()=>setConfigDraft(null)} onSave=${()=>run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(null);})}>
+      onBack=${()=>setConfigDraft(null)} onSave=${()=>run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,...(configDraft.modeId?{modeId:configDraft.modeId}:{}),prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(null);})}>
       ${(configDraft.tab || 'basic') === 'basic' ? html`<section class="prep-setting">
         <div class="prep-setting__title"><${Icon} name="book" /><span>${t('游戏版本')}</span></div>
         ${versionCtl ? html`<${Tooltip} text=${versionCtl.why}><${Button} size="sm" variant="secondary" icon="book" data-testid="room-version" disabled=${versionCtl.disabled} onClick=${versionCtl.onOpen}>${versionLabel(curVersion)}<//><//>` : null}
@@ -683,7 +698,7 @@ export function RoomScreen() {
   return html`<div class=${`screen room-screen${coop ? ' room-screen--coop' : ''}`}>
     <${PageHeader} onBack=${leave} backTitle=${t('离开同盟')} backBusy=${busy === 'leave'}
       heading=${html`<${PageHeading} title=${coop ? t('同盟模拟') : t('独立模拟')} micro=${coop ? 'ALLIANCE LOBBY' : 'SOLO SIMULATION'}>
-        <span class="app-header__separator" aria-hidden="true"></span><${DifficultyTag} difficulty=${room.difficulty} size="lg" />
+        <span class="app-header__separator" aria-hidden="true"></span><${DifficultyTag} difficulty=${room.difficulty} name=${room.modeId?info.name:null} size="lg" />
         ${room.content?.modeId ? html`<span class="room-mode" data-testid="room-mode">${(room.content.modes || []).find((m) => m.id === room.content.modeId)?.name || room.content.modeId}</span>` : null}
       <//>`} />
     ${coop ? html`<section class="room-invitation" aria-label=${t('同盟密钥')}><${InviteBox} code=${room.code} name=${me.name} difficulty=${room.difficulty} version=${curVersion} /></section>` : null}
@@ -696,7 +711,7 @@ export function RoomScreen() {
         onPickCard=${artReady ? () => setPicking('op') : null} onPickAvatar=${openStats} />`)}
       ${coop ? null : html`<aside class="solo-brief brackets">
         <${MicroLabel} tone="mint">BRIEFING<//>
-        <h2>${DIFFICULTY_NAMES[room.difficulty] ? t(DIFFICULTY_NAMES[room.difficulty]) : ''} <span class="num t-dim">${info.code}</span></h2>
+        <h2>${room.modeId ? info.name : DIFFICULTY_NAMES[room.difficulty] ? t(DIFFICULTY_NAMES[room.difficulty]) : ''} <span class="num t-dim">${info.code}</span></h2>
         <p>${info.desc}</p>
         <ul>
           ${info.effects.map((e) => html`<li key=${e}>${e}</li>`)}
@@ -711,7 +726,7 @@ export function RoomScreen() {
 
     <footer class="room-bar">
       <div class="room-bar__left">
-        <${RoomConfigSummary} soloTimeLabel=${soloTimeMsgid('short', {timed:soloTimedOf(getConfig(),curVersion),unlimited:room.soloUnlimited===true})} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
+        <${RoomConfigSummary} modeName=${room.modeId?info.name:null} soloTimeLabel=${soloTimeMsgid('short', {timed:soloTimedOf(getConfig(),curVersion),unlimited:room.soloUnlimited===true})} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
           contentLabel=${curVersion === DEFAULT_VERSION ? roomRulesLabel(room) : facts.modded ? `${versionLabel(curVersion)} ${roomRulesLabel(room)}` : versionLabel(curVersion)}
           editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft(currentDraft())} />
         <div class="room-bar__tools">

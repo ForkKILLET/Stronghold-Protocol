@@ -267,3 +267,9 @@
  /* The ready button gives the count its context; keep the label for screen readers. */
  .brief-ready__label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 }
+
+/* The regulation solo choice shares the briefing's scroll area and touch targets. */
+.brief-bond-groups { display: grid; gap: 16px; }
+.brief-bond-groups__hint { margin: 0; color: var(--text-dim); }
+.brief-bond-group { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.brief-bond-group > .brief-bonds { flex: 1 1 240px; }

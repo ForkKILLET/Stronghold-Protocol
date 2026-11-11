@@ -1,6 +1,7 @@
 import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 // Game screen — every in-match screen, dispatched by m.public.phase (DESIGN §10):
 //   INFO_CHECK → Briefing (screens/briefing.js), BAND_DRAFT → Band draft (screens/bandDraft.js),
+//   CUSTOM_CHECK → 选择自编 (screens/diyCheck.js),
 //   RESULT / m.result → the settlement flow (screens/settle.js), everything else → MatchScreen below.
 //
 // MatchScreen = full-screen field view (render engine per DESIGN §9, DOM fallback when it can't load)
@@ -75,8 +76,8 @@ import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 // "👁 name"); 联防 / 最终攻势 → the player on the ‹ › half (全景: yours when you fight there, else the teammate picked
 // with 前往查看 — `watchWho` — or the field's first player, never the viewer's own); in battle with the live layers of
 // the battle on screen (battle/runner.js state().bondLayers). Picking a teammate on such a field (a 联防 leaker, an
-// eliminated spectator) frames their half and keeps the ‹ › pill (with 返回战场); an open bond popup closes when the
-// strip changes hands.
+// eliminated spectator) frames their half and keeps the ‹ › pill (with 返回战场); a bond popup opened from the strip
+// or from 本局信息 closes when the strip changes hands.
 // Spectator seats (community report #26, a remake feature): a spectator has no m.private and plays like an ELIMINATED
 // player — no shop, no ready, no emotes (▸ [ASSUMED] off), the server auto-observes the first field of every battle, a
 // team row → 前往查看 any player; in 休整期 / 机变 / round start it is shown the first player's board by itself (once per
@@ -100,9 +101,10 @@ import { DownedPlate, downedDue, preloadDownedArt, downedArtReady } from '../ui/
 import { OfferOverlay, offerBlocksPrep } from '../ui/offerOverlay.js';
 import { ChoiceOverlay, spMarks, choiceVisibilityKey } from '../ui/choiceOverlay.js';
 import { EnemyDrawer } from '../ui/enemyDrawer.js';
-import { MatchBondDialog } from '../ui/matchInfo.js';
+import { MatchBondDialog, matchInfoModel, regulationCoreAbsent } from '../ui/matchInfo.js';
 import { Ticker } from '../ui/ticker.js';
 import { EmoteWheel } from '../ui/emotes.js';
+import { BandCommand, CommandDraft } from '../ui/bandCommand.js';
 import { EffectsList } from '../ui/effectsList.js';
 import { watchingTeammate } from '../ui/gameLogic/watch.js';
 import { CombatHud } from '../ui/combatHud.js';
@@ -135,6 +137,7 @@ import { toast } from '../ui/toasts.js';
 import { LoadoutButton } from './loadout.js';
 import { BriefingScreen } from './briefing.js';
 import { BandDraftScreen } from './bandDraft.js';
+import { DiyCheckScreen } from './diyCheck.js';
 import { ResultScreen } from './settle.js';
 import { ProtocolBoot, preloadBootArt, bootArtReady, BOOT_LEAVE_MS } from '../ui/protocolBoot.js';
 
@@ -193,15 +196,15 @@ export function GameScreen() {
   useEffect(() => { if (gd.ready) preloadBootArt(); }, [gd.ready]);
   // 已选定策略 (PR #643, the event's draft end, video 7:36–7:44): once the draft is over the screen stays DRAFT_HOLD_MS on
   // 策略选择完成 · 正在进入模拟… with the pick, from the last draft snapshot (m.public.draft is gone after BAND_DRAFT),
-  // then 协议启动！ — both inside BATTLE_CHECK's official 3 s (see DRAFT_HOLD_MS). Decided while rendering, so the match
-  // screen mounts once; none with reduced motion or into a result.
+  // then 协议启动！ — both inside BATTLE_CHECK's official 3 s (see DRAFT_HOLD_MS). The hold is only into 协议启动, not
+  // into 选择自编. Decided while rendering, so the match screen mounts once; none with reduced motion or into a result.
   const liveMode = pub ? phaseMode(pub.phase) : null;
   const lastDraft = useRef(null);
   const hold = useRef(null);                             // { until, pub } while the draft screen is held
   const [, endHold] = useState(0);
   if (liveMode === 'draft' && pub?.draft) { lastDraft.current = pub; hold.current = null; }
   else if (lastDraft.current && pub) {
-    if (liveMode !== 'result' && !reducedMotion()) hold.current = { until: Date.now() + DRAFT_HOLD_MS, pub: heldDraftPub(lastDraft.current, pub) };
+    if (liveMode === 'boot' && !reducedMotion()) hold.current = { until: Date.now() + DRAFT_HOLD_MS, pub: heldDraftPub(lastDraft.current, pub) };
     lastDraft.current = null;
   }
   const held = hold.current && hold.current.until > Date.now() && liveMode !== 'result' ? hold.current.pub : null;
@@ -221,6 +224,7 @@ export function GameScreen() {
   let body;
   if (over) body = html`<${ResultScreen} />`;
   else if (mode === 'briefing') body = html`<${BriefingScreen} />`;
+  else if (mode === 'diy') body = html`<${DiyCheckScreen} />`;
   else if (mode === 'draft' || held) body = html`<${BandDraftScreen} held=${held} />`;
   else body = html`<${MatchScreen} />`;
   return html`${body}
@@ -344,7 +348,7 @@ function MatchScreen() {
   const scoutBandOwner = scoutPid ? (players.find((p) => p.playerId === scoutPid)?.name || null) : null;
   const viewedEffects = watchingOther && field ? (field.effects ?? null) : priv?.effects;
   const personalChoice = !spectator && alive ? normalizePersonalChoice(pub, priv, myId) : null;
-  const hasPersonalChoice = !!personalChoice;
+  const hasPersonalChoice = !!personalChoice || !!priv?.commandDraft;
   const roomRules = useStore((s) => s.room?.content?.rules ?? null);
   const morphMode = ruleOption(roomRules, 'morphPairing');
   const unequipAllow = ruleOption(roomRules, 'unequip') === 'allow';
@@ -415,7 +419,7 @@ function MatchScreen() {
   // `data.locale()`: getChess reads the localized record. Without it a language switch mid-match keeps this context,
   // and anything that memoizes on it keeps the previous language's placement (GitHub #676).
   const placeCtx = useMemo(() => placementContext({
-    priv, stage: gd.stage(pub?.stageId), editable, field: deployField,
+    priv, stage: gd.stage(pub?.stageId), editable, field: deployField, config: data.get('config'),
     getChess: (id) => { const c = gd.chess(id); return ownDiyRecord(c, priv, { chess: data.get('chess'), backups: data.get('backups') }) || c; },
     getToken: gd.token, getItem: gd.item, getEffect: gd.effect, backups: gd.backups, morphMode,
   }), [priv, pub?.stageId, editable, gd.ready, deployField, data.locale(), morphMode]);
@@ -1428,13 +1432,13 @@ function MatchScreen() {
     return () => host.removeEventListener('pointerdown', onDown, true);
   }, []);
 
-  // Close the bond popup on an outside press. Bond-strip discs and detail-card chips open/toggle
-  // it themselves, so leave those interactions to openBond.
+  // Close the bond popup on an outside press. Bond-strip discs, detail-card chips and the 本局信息
+  // chips open/toggle it themselves, so leave those interactions to openBond.
   useEffect(() => {
     const screen = hudElRef.current?.parentElement;
     if (!screen) return undefined;
     const onDown = (e) => {
-      if (!live.current.bondOpen || e.target?.closest?.('.bpop, .bslot, .dbond')) return;
+      if (!live.current.bondOpen || e.target?.closest?.('.bpop, .bslot, .dbond, .ibond')) return;
       setBondOpen(null);
     };
     screen.addEventListener('pointerdown', onDown, true);
@@ -1663,7 +1667,7 @@ function MatchScreen() {
         if (act !== 'escape') e.preventDefault();
         if (act === 'ready') {
           audio.sfx('error', { volume: 0.5 });
-          toast(shopBlockReason('ready', { priv: L.priv, editable: true }), 'warn');
+          toast(shopBlockReason('ready', { config: data.get('config'), priv: L.priv, editable: true }), 'warn');
         }
         return; // ChoiceOverlay handles Escape without cancelling the server's pending choice.
       }
@@ -1694,7 +1698,7 @@ function MatchScreen() {
       e.preventDefault(); // a focused HUD button must not also activate (Space, or any key bound) — see shortcutFor
       if (act === 'ready' && e.target instanceof HTMLElement && e.target.closest('button, [role="button"]')) e.target.blur();
       if (act === 'ready') {
-        const refused = !L.priv.ready ? shopBlockReason('ready', { priv: L.priv, editable: true }) : null;
+        const refused = !L.priv.ready ? shopBlockReason('ready', { config: data.get('config'), priv: L.priv, editable: true }) : null;
         // the temp overflow row blocks it: say why (the button shows it too — user playtest #3 item 3)
         if (refused) { audio.sfx('error', { volume: 0.5 }); toast(tempReadyReason(L.priv) || refused, 'warn'); return; }
         toggleReady(!L.priv.ready);
@@ -1708,7 +1712,7 @@ function MatchScreen() {
         else retreatSel();
         return;
       }
-      const reason = shopBlockReason(act, { priv: L.priv, editable: L.editable });
+      const reason = shopBlockReason(act, { config: data.get('config'), priv: L.priv, editable: L.editable });
       if (reason) { audio.sfx('error', { volume: 0.5 }); return; }
       if (act === 'refresh') actions.refresh();
       else if (act === 'freeze') actions.freeze();
@@ -1760,13 +1764,13 @@ function MatchScreen() {
   const watchedP = watchingOther ? (players.find((p) => p.playerId !== myId && (watching === ownFieldId(p.playerId) || (watching === p.fieldId && String(watching).startsWith('n:')))) || null) : null;
   const watchedName = watchingOther ? (watchedP?.name || players.find((p) => watching === p.fieldId)?.name || t('队友')) : null;
   const stripBonds = strip.bonds;
-  // a popup opened from the strip closes when the strip changes hands (another teammate scouted / a ‹ › half / back to
-  // the own bonds); one opened from a card's chip keeps its unit owner (it carries its own player either way)
+  // a popup opened from the strip or from 本局信息 closes when the strip changes hands (another teammate scouted /
+  // a ‹ › half / back to the own bonds); one opened from a card's chip keeps its unit owner
   const stripOwnerRef = useRef(strip.ownerId);
   useEffect(() => {
     if (stripOwnerRef.current === strip.ownerId) return;
     stripOwnerRef.current = strip.ownerId;
-    setBondOpen((b) => (b && b.from === 'strip' ? null : b));
+    setBondOpen((b) => (b && (b.from === 'strip' || b.from === 'info') ? null : b));
   }, [strip.ownerId]);
   // the popup shows the player it was opened for (ui/watchBonds.js popupView): their entry + live layers, their name,
   // and as members your pieces or their operators on the field on screen — under client-side combat the battle's own
@@ -1779,7 +1783,8 @@ function MatchScreen() {
   const ufShown = !!(selEntry && editable && !facing && !drag && showPrep && ufGeo);
   // the temp overflow row holds pieces (user playtest #3 item 3): framed and labelled on the own prep board
   const temp = tempInfo(priv);
-  const tempNotice = temp.count > 0 && !!view && viewKind !== 'loading' && showPrep && alive && !pen && !sp;
+  const equipHand = data.get('config')?.version?.rules?.equipHand === true;
+  const tempNotice = (equipHand || temp.count > 0) && !!view && viewKind !== 'loading' && showPrep && alive && !pen && !sp;
   // the ready button shows why it is refused under it (ui/hud.js ReadyToggle): the effects column moves down a line
   const readyWhy = phase === PHASE.PREP && alive && !priv?.ready && (hasPersonalChoice || temp.count > 0);
   // the frame the panels are laid out in: the HUD layer (client px; inside the safe-area insets of a notched phone),
@@ -1846,15 +1851,19 @@ function MatchScreen() {
   // cards read the strip's (ui/watchBonds.js detailBondOwner)
   const detailOwner = detailBondOwner(detailTarget, { pub, myId, stripOwnerId: strip.ownerId });
   const detailBonds = detailOwner === strip.ownerId ? stripBonds : playerBonds({ pub, priv, myId, ownerId: detailOwner, live: liveLayers });
-  // bonds this mode never activates (标准: 10 of 23, 奥术 among them) — shown 本局禁用 on cards, chips and the popup
+  // bonds this mode never activates (标准: 10 of 23, 奥术 among them) — shown 本局禁用 on cards, chips and the popup.
+  // A greyed regulation core uses another sentence (its operators cannot appear); covenant add-ons keep `off`.
   const offBonds = modeOffBonds(getMode(pub?.modeId));
+  const bondInfo = bondPop ? matchInfoModel(pub, {
+    bonds: data.list('bonds'), chess: (id) => data.lookup('chess', id), mode: getMode(pub?.modeId),
+  }) : null;
 
   return html`<div class=${cx('screen', 'gm', `gm--${mode}`, drag && 'is-dragging', barCollapsed && 'is-collapsed', roomConsole && !spectator && 'has-console', (sp && !choiceHidden || hasPersonalChoice || offerBlocksPrep(pub?.offers)) && 'has-sp', sp && !choiceHidden && 'has-spdraft', pen && 'is-pen', readyWhy && 'has-readywhy')}
       data-camera=${pen ? 'pen' : camKind}>
     <div class="gm__field" ref=${hostRef} onContextMenu=${(e) => e.preventDefault()}></div>
     ${viewKind === 'loading' ? html`<div class="gm__loading"><${Spinner} label="LOADING FIELD" /></div>` : null}
     <div class="gm__vignette" aria-hidden="true"></div>
-    ${tempNotice ? html`<${TempRowNotice} view=${view} count=${temp.count} items=${temp.items} label=${!drag && !facing}
+    ${tempNotice ? html`<${TempRowNotice} equipHand=${equipHand} view=${view} count=${temp.count} items=${temp.items} label=${!drag && !facing}
       ready=${phase === PHASE.PREP && !!priv?.ready} />` : null}
     ${showPrep && view && viewKind !== 'loading' && priv && !pen ? html`<${StandInTags} view=${view} priv=${priv} getChess=${gd.chess} backups=${gd.backups} diyData=${{ chess: data.get('chess'), backups: data.get('backups') }} />` : null}
 
@@ -1891,7 +1900,7 @@ function MatchScreen() {
         self=${Number.isFinite(priv?.lp) ? { lp: priv.lp, pending: liveLpNow.pending, unite: liveLpNow.unite, left: liveLpNow.left } : null}
         observe=${cc ? { canObserve: (p) => observeTarget(p, pub, myId, { observing: watchingOther, ownDone: localDone }), observing: watchingOther, onBack: backHome } : null} />
 
-      <div class="gm__effects"><${EffectsList} effects=${viewedEffects} /></div>
+      <div class="gm__effects"><${EffectsList} effects=${viewedEffects} command=${showPrep && priv?.command && !spectator && !watchingOther ? html`<${BandCommand} command=${priv.command} priv=${priv} view=${view} editable=${editable} />` : null} /></div>
 
       ${watchingOther && !combat && mode !== 'settle' ? html`<${WatchHint} class="gm__watching"
         dismissed=${watchHintDismissed} onDismiss=${() => setWatchHintDismissed(true)}
@@ -1954,8 +1963,8 @@ function MatchScreen() {
         onBond=${id => openBond(id, strip.ownerId, 'info')}
         onEnemy=${(k, n) => setDetail({ kind: 'enemy', id: k, count: n })} onChess=${(id) => setDetail({ kind: 'chess', id, foreign: true })} />` : null}
 
-      ${bondPop ? html`<${bondOpen?.from === 'info' ? MatchBondDialog : BondPopup} bondId=${bondPop.bondId} entry=${bondPop.entry} priv=${bondPop.priv} banned=${pub?.bannedChess || []} owner=${bondPop.name} ownerId=${bondPop.ownerId} morphMode=${morphMode}
-        off=${offBonds.has(bondPop.bondId)}
+      ${bondPop ? html`<${bondOpen?.from === 'info' ? MatchBondDialog : BondPopup} bondId=${bondPop.bondId} entry=${bondPop.entry} priv=${bondPop.priv} banned=${pub?.bannedChess || []} owner=${bondPop.name} ownerId=${bondPop.ownerId}
+        off=${offBonds.has(bondPop.bondId)} coreAbsent=${regulationCoreAbsent(bondInfo, bondPop.bondId)} morphMode=${morphMode}
         place=${bpPlace} over=${!!resolved && bpPlace === dSide}
         onClose=${() => setBondOpen(null)} onMember=${(id, items, standInFor, diy) => {
           if (bondOpen?.from === 'info') { setBondOpen(null); setDrawer(null); }
@@ -1974,6 +1983,7 @@ function MatchScreen() {
         onRetreat=${retreatSel} onSell=${sellSel} onDestroy=${sellSel} />` : null}
     </div>
 
+    ${showPrep && priv?.commandDraft && !spectator ? html`<${CommandDraft} key=${priv.commandDraft.id} draft=${priv.commandDraft} />` : null}
     ${hasOffers && !sp && !personalChoice ? html`<${OfferOverlay} pub=${pub} myId=${myId} readOnly=${spectator || !alive} onAction=${actions.offer} />` : null}
     ${sp ? html`<${ChoiceOverlay} minimized=${choiceHidden} onMinimize=${(hidden) => setChoiceHiddenKey(hidden ? choiceKey : null)} pub=${pub} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy} total=${total}
       pause=${canPause ? { paused, requested:pauseRequested, votes:pub.pauseRequests?.length || 0, required:pub.pauseRequired?.length || 1, busy:pauseBusy, onToggle:()=>togglePause(!pauseRequested) } : null}

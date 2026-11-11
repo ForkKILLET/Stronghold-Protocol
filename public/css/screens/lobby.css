@@ -1812,3 +1812,16 @@ button.sw-eth:hover { border-color: #fff; }
  .hub-dialog .join-row { grid-template-columns:minmax(0,1fr) auto; }
  .hub-dialog .join-row .field { grid-column:1/-1; }
 }
+
+/* Shared, compact regulation ladder in creation and room configuration. */
+.ladder-options { display:grid; gap:8px; width:100%; }
+.ladder-options__row { display:grid; grid-template-columns:max(5em,70px) minmax(0,1fr); align-items:center; gap:12px; }
+.ladder-options__label { display:flex; align-items:center; gap:6px; color:var(--d-color); white-space:nowrap; font-size:calc(.16 * var(--t)); }
+.ladder-options__cells { display:flex; flex-wrap:wrap; gap:6px; }
+.ladder-options button { border:1px solid var(--line-2); background:rgba(0,0,0,.3); color:var(--text-md); border-radius:0; padding:8px 12px; min-width:38px; min-height:38px; }
+.ladder-options button:hover:not(:disabled), .ladder-options button:focus-visible { border-color:var(--d-color); color:var(--d-color); }
+.ladder-options button.is-on { border-color:var(--d-color); color:var(--d-color); background:color-mix(in srgb,var(--d-color) 16%,transparent); }
+.proto-list:has(.ladder-options) { display:block; }
+
+.ladder-options__row { grid-template-columns:8em minmax(0,1fr); }
+.ladder-options__label .icon { width:18px; height:18px; flex:none; }

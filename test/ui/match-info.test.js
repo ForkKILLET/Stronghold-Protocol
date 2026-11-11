@@ -24,7 +24,8 @@ globalThis.fetch = async (url) => {
   }
 };
 
-const { matchInfoModel, MatchBondRow, MatchLegend, BannedOperators, MatchInfo, MatchInfoDialog } = await import('../../public/js/ui/matchInfo.js');
+const { matchInfoModel, MatchBondGroups, MatchBondRow, MatchLegend, BannedOperators, MatchInfo, MatchInfoDialog, regulationCoreAbsent } = await import('../../public/js/ui/matchInfo.js');
+const { BondPopup } = await import('../../public/js/ui/bondStrip.js');
 const { MatchEnemies, factionDescId, leaderBlockOf } = await import('../../public/js/ui/matchEnemies.js');
 const { enemyIconUrl, factionIconUrl } = await import('../../public/js/ui/assetUrls.js');
 const { setLang, setMessages } = await import('../../shared/i18n.js');
@@ -147,7 +148,7 @@ test('BannedOperators: the count and dimmed avatars in tier order; none ⇒ 本�
 
 test('MatchInfo = 核心盟约, 附加盟约, the legend, 本局禁用干员 (one model); MatchInfoDialog = the same in a Modal with 关闭 and the status line', () => {
   const m = model();
-  const parts = MatchInfo({ model: m }).filter((v) => v && typeof v === 'object');
+  const parts = MatchInfo({ model: m }).filter((v) => v && typeof v === 'object').map(v => v.type === MatchBondGroups ? MatchBondGroups(v.props) : v);
   assert.deepEqual(parts.map((v) => v.type), [MatchBondRow, MatchBondRow, MatchLegend, BannedOperators]);
   assert.deepEqual(parts.slice(0, 2).map((v) => [v.props.title, v.props.bonds]), [['核心盟约', m.core], ['附加盟约', m.addon]]);
   assert.ok(parts.every((v) => v.props.model === m));
@@ -208,13 +209,13 @@ test('draftInfoStatus: the dialog repeats the turn and its seconds (warning at �
 
 test('the briefing, the strategy draft and the in-game 本局信息 tab all read ui/matchInfo.js (no second copy to drift)', () => {
   const brief = read('public/js/screens/briefing.js');
-  assert.match(brief, /import \{ MatchInfo, matchInfoModel, MatchBondDialog \} from '\.\.\/ui\/matchInfo\.js';/);
-  assert.match(brief, /<\$\{MatchInfo\} model=\$\{info\} onBond=\$\{setBondId\} \/>/, 'briefing uses the shared blocks regardless of layout wrappers');
+  assert.match(brief, /import \{ MatchInfo, matchInfoModel, MatchBondDialog, regulationCoreAbsent \} from '\.\.\/ui\/matchInfo\.js';/);
+  assert.match(brief, /<\$\{MatchInfo\} model=\$\{info\} onBond=\$\{setBondId\} onGroup=\$\{pickGroup\}/, 'briefing uses the shared blocks regardless of layout wrappers');
   // (+ the viewer's 自选 pieces out of the shop: priv / diyData, 0.2.0 WE2)
   assert.match(brief, /const info = matchInfoModel\(pub, \{ bonds: gd\.list\('bonds'\), chess: gd\.chess, mode, priv, diyData: \{ chess: data\.get\('chess'\), backups: data\.get\('backups'\) \} \}\);/);
   assert.doesNotMatch(brief, /brief-legend|brief-banned|function BondRow|bannedPerBond|disabledBondSets/, 'no own copy of the blocks');
   const draft = read('public/js/screens/bandDraft.js');
-  assert.match(draft, /import \{ MatchInfoDialog, matchInfoModel, MatchBondDialog \} from '\.\.\/ui\/matchInfo\.js';/);
+  assert.match(draft, /import \{ MatchInfoDialog, matchInfoModel, MatchBondDialog, regulationCoreAbsent \} from '\.\.\/ui\/matchInfo\.js';/);
   assert.match(draft, /const info = infoOpen \? matchInfoModel\(pub, \{ bonds: gd\.list\('bonds'\), chess: gd\.chess, mode, priv, diyData: \{ chess: data\.get\('chess'\), backups: data\.get\('backups'\) \} \}\) : null;/);
   assert.match(draft, /data-testid="match-info-open"[\s\S]*?onClick=\$\{\(\) => setInfoOpen\(true\)\}[\s\S]*?title=\$\{t\('本局信息'\)\}/);
   assert.match(draft, /<\$\{MatchInfoDialog\} open=\$\{infoOpen\} onClose=\$\{\(\) => setInfoOpen\(false\)\} model=\$\{info\}/);
@@ -232,7 +233,7 @@ test('the briefing, the strategy draft and the in-game 本局信息 tab all read
 
 test('MatchInfoDialog retains the briefing bonds, enemy information, 关闭 and the status line', () => {
   const m = model();
-  const parts = MatchInfo({ model: m }).filter((v) => v && typeof v === 'object');
+  const parts = MatchInfo({ model: m }).filter((v) => v && typeof v === 'object').map(v => v.type === MatchBondGroups ? MatchBondGroups(v.props) : v);
   assert.deepEqual(parts.map((v) => v.type), [MatchBondRow, MatchBondRow, MatchLegend, BannedOperators]);
   assert.deepEqual(parts.slice(0, 2).map((v) => [v.props.title, v.props.bonds]), [['核心盟约', m.core], ['附加盟约', m.addon]]);
   assert.ok(parts.every((v) => v.props.model === m));
@@ -401,4 +402,107 @@ test('#484: missing enemy data stays readable and UI labels follow the language'
     assert.match(translated, /No Tactical Training Enemies this match/);
     assert.doesNotMatch(translated, /未知领袖|本局没有特训敌人/);
   } finally { setLang('zh'); setMessages('en', {}); }
+});
+
+test('regulation groups render two choices, disable waiting controls and settle to the normal bond row', () => {
+  const pub = { ...PUB, bondDraw: 'regulation', bondChoice: { groups: [['yanShip'], ['sargonShip']], picked: null } };
+  const m = matchInfoModel(pub, SRC('mode_single_normal'));
+  let picked = null;
+  const v = MatchBondGroups({ model: m, onPick: idx => { picked = idx; } });
+  assert.match(textOf(v), /可选择一组激活/);
+  const buttons = [...walk(v)].filter(v => v.type === Button);
+  assert.equal(buttons.length, 2);
+  buttons[1].props.onClick();
+  assert.equal(picked, 1);
+  const blocked = MatchBondGroups({ model: m, onPick() {}, disabled: true });
+  assert.ok([...walk(blocked)].filter(v => v.type === Button).every(v => v.props.disabled));
+  const settled = MatchBondGroups({ model: { ...m, choice: { ...m.choice, picked: 1 } }, onPick() {} });
+  assert.equal(settled.type, MatchBondRow);
+  assert.match(textOf(MatchLegend({ model: m })), /灰色核心盟约的所有干员无法出现/);
+  assert.equal(briefingBondTip('炎', 'drawn', 10, true), '炎：该核心盟约的所有干员无法出现');
+});
+
+test('MatchBondGroups passes onBond to every core disc: both groups, the always-lit rest, the row after the pick, and a match with no choice', () => {
+  const seen = [];
+  const onBond = (id) => { seen.push(id); };
+  const pub = { bondDraw: 'regulation', bondChoice: { groups: [['yanShip'], ['sargonShip']], picked: null }, drawnDisabledBonds: [], disabledBonds: [], bannedChess: [] };
+  const m = matchInfoModel(pub, SRC('mode_single_normal'));
+  const open = MatchBondGroups({ model: m, onPick() {}, onBond });
+  // MatchBondRow is a function component and its vnode has no children, so walk() stops on the row.
+  // Calling it is what builds the discs (it uses no hooks).
+  const rows = [...walk(open)].filter((v) => v.type === MatchBondRow);
+  assert.ok(rows.length >= 3, 'both groups and the cores that sit in neither');
+  assert.ok(rows.every((row) => row.props.onBond === onBond));
+  const cells = rows.flatMap((row) => [...walk(row.type(row.props))].filter((v) => typeof v.props?.['data-bond'] === 'string' && [...walk(v)].some((x) => x.type === BondDisc)));
+  const ids = cells.map((cell) => cell.props['data-bond']);
+  assert.ok(ids.includes('yanShip') && ids.includes('sargonShip') && ids.includes('victoriaShip'));
+  for (const cell of cells) {
+    const disc = [...walk(cell)].find((v) => v.type === BondDisc);
+    assert.equal(typeof disc.props.onClick, 'function', cell.props['data-bond']);
+    disc.props.onClick();
+  }
+  assert.deepEqual(seen, ids);
+  const settled = MatchBondGroups({ model: { ...m, choice: { ...m.choice, picked: 1 } }, onPick() {}, onBond });
+  assert.equal(settled.type, MatchBondRow);
+  assert.equal(settled.props.onBond, onBond);
+  const plainModel = matchInfoModel({ ...PUB, bondChoice: null }, SRC('mode_multi_hard'));
+  const plain = MatchBondGroups({ model: plainModel, onPick() {}, onBond });
+  assert.equal(plain.type, MatchBondRow);
+  assert.equal(plain.props.onBond, onBond);
+  assert.equal(plain.props.bonds, plainModel.core);
+});
+
+test('a greyed regulation core card says its operators cannot appear; an unpicked group and an add-on do not', () => {
+  const priv = { board: [], hand: [] };
+  const card = (model, bondId, entry = null) => textOf(BondPopup({
+    bondId, entry, priv, onClose() {}, banned: model.banned,
+    off: model.sets.off.has(bondId), coreAbsent: regulationCoreAbsent(model, bondId),
+  }));
+  const before = matchInfoModel({
+    bondDraw: 'regulation', bondChoice: { groups: [['yanShip'], ['sargonShip']], picked: null },
+    drawnDisabledBonds: [], disabledBonds: [], bannedChess: [],
+  }, SRC('mode_single_normal'));
+  assert.equal(regulationCoreAbsent(before, 'yanShip'), false);
+  assert.equal(regulationCoreAbsent(before, 'sargonShip'), false);
+  const comparing = card(before, 'yanShip', { count: 0, layers: 0, tier: 0, active: false });
+  assert.match(comparing, /当前效果/);
+  assert.match(comparing, /成员/);
+  assert.doesNotMatch(comparing, /该核心盟约的所有干员无法出现/);
+  assert.doesNotMatch(comparing, /本模式下该盟约不会激活/);
+
+  const funny = matchInfoModel({
+    bondDraw: 'regulation', bondChoice: { groups: [['yanShip'], ['sargonShip']], picked: null },
+    drawnDisabledBonds: [], disabledBonds: [], bannedChess: [], modeId: 'mode_single_funny',
+  }, SRC('mode_single_funny'));
+  assert.equal(funny.stateOf('egirShip'), 'drawn');
+  assert.equal(regulationCoreAbsent(funny, 'egirShip'), true);
+  assert.equal(regulationCoreAbsent(funny, 'arcaneShip'), false, 'an add-on keeps the covenant rule');
+  const modeOff = card(funny, 'egirShip', { count: 0, layers: 0, tier: 0, active: false });
+  assert.match(modeOff, /阿戈尔：该核心盟约的所有干员无法出现/);
+  assert.match(modeOff, /当前效果/, 'the covenant off branch, which hides the effect, is not used');
+  assert.doesNotMatch(modeOff, /本模式下该盟约不会激活/);
+  assert.doesNotMatch(modeOff, /仍可能因所属的其他盟约出现/);
+  const addon = card(funny, 'arcaneShip');
+  assert.doesNotMatch(addon, /本模式下该盟约不会激活/);
+  assert.doesNotMatch(addon, /该核心盟约的所有干员无法出现/);
+  assert.match(addon, /当前效果/, 'the fork does not disable an add-on effect when its chess pool is incomplete');
+
+  const after = matchInfoModel({
+    bondDraw: 'regulation', bondChoice: { groups: [['yanShip'], ['sargonShip']], picked: 0 },
+    drawnDisabledBonds: ['sargonShip'], disabledBonds: ['sargonShip'], bannedChess: [],
+  }, SRC('mode_single_normal'));
+  assert.equal(after.stateOf('sargonShip'), 'drawn');
+  assert.equal(regulationCoreAbsent(after, 'sargonShip'), true);
+  assert.equal(regulationCoreAbsent(after, 'yanShip'), false);
+  const drawn = card(after, 'sargonShip', { count: 0, layers: 0, tier: 0, active: false });
+  assert.match(drawn, /萨尔贡：该核心盟约的所有干员无法出现/);
+  assert.match(drawn, /当前效果/);
+  assert.doesNotMatch(drawn, /仍可能因所属的其他盟约出现/);
+  assert.doesNotMatch(card(after, 'yanShip', { count: 1, layers: 2, tier: 1, active: true }), /该核心盟约的所有干员无法出现/);
+
+  const cov = model();
+  assert.equal(cov.regulation, false);
+  assert.equal(regulationCoreAbsent(cov, 'sargonShip'), false);
+  assert.equal(regulationCoreAbsent(cov, 'arcaneShip'), false);
+  assert.doesNotMatch(card(cov, 'sargonShip', { count: 0, layers: 0, tier: 0, active: false }), /该核心盟约的所有干员无法出现/);
 });

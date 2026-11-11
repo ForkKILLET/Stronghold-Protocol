@@ -1,3 +1,4 @@
+import { LadderOptions } from '../ui/ladderOptions.js';
 import { PageHeader, PageHeading } from '../ui/pageHeader.js';
 import { prepChoiceMultiplier, validPrepChoice } from '../ui/prepTime.js';
 import { Emblem } from './title.js';
@@ -53,7 +54,7 @@ import { scriptOf } from '../../../shared/i18nPacks.js';
 import { NoticesButton } from '../ui/notices.js';
 import { VersionSwitch } from '../ui/versionPicker.js';
 import { contentSet, retryContentSet } from '../content.js';
-import { DEFAULT_VERSION, lobbyVersion, offeredDifficulties, fallbackDifficulty, seasonOf, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
+import { DEFAULT_VERSION, lobbyVersion, offeredDifficulties, fallbackDifficulty, ladderModes, ladderPick, seasonOf, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
 export const MODE_TEXT = {
@@ -143,6 +144,36 @@ export function difficultyInfo(roomMode, difficulty) {
     rounds,
     hidden: difficulty !== 'FUNNY',
     stageNote: stageNote(Array.isArray(m?.stages) && m.stages.length ? m.stages : STAGE_POOL[difficulty]),
+  };
+}
+
+/**
+ * Text for one official mode of a laddered room mode (规程's 极速模拟 / 规程等级 n: data/config.json `modes[modeId]`), in
+ * difficultyInfo's shape plus its own name, colour and difficulty (FAST, 极速模拟's, shows as 标准 where a difficulty is needed).
+ * @param {string} modeId
+ * @returns {{ name: string, color: string, difficulty: string, code: string, desc: string, effects: string[], rounds: number, hidden: boolean, stageNote: string, offBonds: string[] }}
+ */
+export function modeInfo(modeId) {
+  const m = getMode(modeId) || {};
+  const difficulty = DIFFICULTIES.includes(m.difficulty) ? m.difficulty : 'FUNNY';
+  // the rounds / battlefield fallbacks of the difficulty (its desc and effects are the mode's own below: a laddered solo's
+  // mode_single_funny is 极速模拟, whose 「时长较短的模拟训练」 is no 规程等级's)
+  const base = difficultyInfo('coop', difficulty);
+  const off = Array.isArray(m.inactiveBondIds) ? m.inactiveBondIds : [];
+  return {
+    ...base,
+    name: typeof m.name === 'string' ? m.name : modeId,
+    color: typeof m.color === 'string' && /^#?[0-9a-f]{6}$/i.test(m.color) ? (m.color.startsWith('#') ? m.color : `#${m.color}`) : DIFFICULTY_COLORS[difficulty],
+    difficulty,
+    code: typeof m.code === 'string' ? m.code : '',
+    // its own text (规程等级5 追加更多盟约, 9 追加更多敌人 …), else the difficulty's general one — never another mode's own,
+    // which names that mode's unlocks (险境模拟: 「解锁时可开放至【规程等级3】」)
+    desc: typeof m.desc === 'string' && m.desc ? m.desc : t(MODE_TEXT.multi[difficulty]?.desc || ''),
+    effects: Array.isArray(m.effectDescList) ? m.effectDescList.map((e) => String(e).replace(/^[·•・･\s]+/, '')).filter(Boolean) : [],
+    rounds: Number.isFinite(m.lastRound) ? m.lastRound : base.rounds,
+    hidden: Number.isFinite(m.hiddenRound),
+    stageNote: stageNote(Array.isArray(m.stages) ? m.stages : []),
+    offBonds: off.map((id) => data.lookup('bonds', id)?.name || id),
   };
 }
 
@@ -326,8 +357,9 @@ function ProtocolPage(props) {
 }
 
 /** Full secondary page with the fork's visual treatment and this branch's protocol. */
-export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{}, difficulties = DIFFICULTIES, soloTime = null, loading = false }) {
-  const info = difficultyInfo(roomMode, difficulty);
+export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{}, difficulties = DIFFICULTIES, soloTime = null, loading = false, ladder = null, modeId = null, onMode = ()=>{} }) {
+  const info = ladder && modeId ? modeInfo(modeId) : difficultyInfo(roomMode, difficulty);
+  difficulty = info.difficulty || difficulty;
   return html`<main ref=${pageRef} class="screen protocol-screen" aria-label=${`${t(card.name)} · ${t('选择模拟协议')}`}>
     <${PageHeader} onBack=${onClose} backTitle=${t('返回大厅')}
       heading=${html`<${PageHeading} title=${t('选择模拟协议')} micro=${card.en} subtitle=${t(card.name)} />`} />
@@ -336,13 +368,13 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
 
       <div class="proto-body">
         <section class="proto-stage"><${ProtocolScene} key=${difficulty} difficulty=${difficulty} />
-          <div class="proto-brief"><span class="proto-brief__code num">${info.code}</span><b class="proto-brief__name">${t(DIFFICULTY_NAMES[difficulty])}</b><p>${t(card.desc, card.params)}</p></div>
+          <div class="proto-brief"><span class="proto-brief__code num">${info.code}</span><b class="proto-brief__name">${info.name || t(DIFFICULTY_NAMES[difficulty])}</b><p>${t(card.desc, card.params)}</p></div>
         </section>
         <section class="proto-side">
           <div class="proto-controls">
           <section class="prep-setting proto-difficulty" aria-label=${t('模拟难度')}><div class="prep-setting__title"><${Icon} name="rook" /><span>${t('模拟难度')}</span><${MicroLabel}>DIFFICULTY<//></div>
           <div class="proto-list" aria-label=${t('模拟难度')}>
-            ${difficulties.map((d) => html`<${ProtoCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} disabled=${!!queue || !!busy} onSelect=${onDifficulty} />`)}
+            ${ladder ? html`<${LadderOptions} ladder=${ladder} modeId=${modeId} onMode=${onMode} disabled=${!!queue || !!busy || loading} />` : difficulties.map((d) => html`<${ProtoCard} key=${d} roomMode=${roomMode} difficulty=${d} selected=${difficulty === d} disabled=${!!queue || !!busy} onSelect=${onDifficulty} />`)}
           </div>
           <section class="proto-details" aria-live="polite"><strong>${info.desc}</strong>
             <div class="proto-facts"><span>${t('共')} <b class="num">${info.rounds}</b> ${tc('rounds','回合')}${info.hidden?t(' + 隐秘核心'):''}</span><span>${info.stageNote}</span></div>
@@ -539,6 +571,7 @@ export function LobbyScreen() {
     const saved = loadPref('lobby.mode', 'coop');
     return saved === 'solo' || saved === 'match' ? saved : 'coop';
   });
+  const [ladderMode, setLadderMode] = useState(() => loadPref('lobby.ladderMode', null));
   const [difficulty, setDifficulty] = useState(() => {
     const d = loadPref('lobby.difficulty', 'FUNNY');
     return DIFFICULTIES.includes(d) ? d : 'FUNNY';
@@ -607,8 +640,11 @@ export function LobbyScreen() {
   const coop = offeredDifficulties(versionLoading ? null : cfg, 'coop');
   const shownSolo = fallbackDifficulty(solo, difficulty);
   const shownCoop = fallbackDifficulty(coop, difficulty);
+  const ladder = ladderModes(versionLoading ? null : cfg, 'solo');
+  const shownMode = ladder ? ladderPick(ladder, ladderMode, shownSolo) : null;
 
   const pickDifficulty = (d) => { setDifficulty(d); savePref('lobby.difficulty', d); };
+  const pickMode = (id) => { setLadderMode(id); savePref('lobby.ladderMode', id); };
   const setSoloFreePref = (on) => { const next = on === true; setSoloFree(next); savePref('lobby.soloUnlimited', next); };
 
   const run = async (kind, fn) => {
@@ -623,7 +659,7 @@ export function LobbyScreen() {
   };
   const create = () => {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
-    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
   };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
@@ -659,13 +695,13 @@ export function LobbyScreen() {
   };
 
   if (optionsOpen) return html`<${RoomOptionsPage} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${setPrepChoice}
-    difficulty=${difficulty} onDifficultyChange=${pickDifficulty} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
+    ladder=${roomMode === 'solo' ? ladder : null} modeId=${shownMode} onMode=${pickMode} difficulty=${difficulty} onDifficultyChange=${pickDifficulty} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
   const card = MODE_CARDS.find((c) => c.id === roomMode) || MODE_CARDS[1];
   const openMode = (mode) => { setRoomMode(mode); savePref('lobby.mode', mode); setPanel('protocol'); };
   // Replace the lobby instead of covering an interactive lobby with a dialog/backdrop.
   if (panel === 'sweep') return sweepModule ? html`<${sweepModule.SweepReport} onClose=${() => setPanel(null)} />`
     : html`<${SweepLoadingPage} onClose=${() => setPanel(null)} />`;
-  if (panel === 'protocol') return html`<${ProtocolPage} card=${card} roomMode=${roomMode} difficulty=${roomMode === 'solo' ? shownSolo : shownCoop} onDifficulty=${pickDifficulty}
+  if (panel === 'protocol') return html`<${ProtocolPage} ladder=${roomMode === 'solo' ? ladder : null} modeId=${shownMode} onMode=${pickMode} card=${card} roomMode=${roomMode} difficulty=${roomMode === 'solo' ? shownSolo : shownCoop} onDifficulty=${pickDifficulty}
     online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
     difficulties=${roomMode === 'solo' ? solo : coop} loading=${versionLoading} soloTime=${roomMode === 'solo' && soloTimed ? { on: soloFree, onToggle: setSoloFreePref, text:t(soloTimeMsgid('brief',{timed:soloTimed,unlimited:soloFree})) } : null} queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} />`;
   return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
@@ -675,7 +711,7 @@ export function LobbyScreen() {
       <div class="hub-center" aria-hidden="true">
         <div class="hub-center__mark"><${HubRadar} bg=${bg} /><${Emblem} /></div>
         <span class="hub-center__en">STRONGHOLD <b>PROTOCOL</b></span>
-        <h1 class="hub-center__title">${t('卫戍协议：盟约')}</h1>
+        <h1 class="hub-center__title">${seasonOf(version) === 'act3autochess' ? t('卫戍协议·规程') : t('卫戍协议：盟约')}</h1>
       </div>
       <aside class="hub-side">
         <${AchievementEntry} onOpen=${() => { openStats('achievements'); }} />

@@ -1661,3 +1661,16 @@
 @media (prefers-reduced-motion: reduce) {
   .downm__face.is-out, .downm__title { animation: none; }
 }
+
+/* 规程 command: the strategy badge remains the anchor for click and drag interactions. */
+.effects__row { display: flex; align-items: center; gap: .12rem; }
+.band-command { display: flex; align-items: center; gap: .12rem; padding: .1rem .14rem; min-width: min(2.4rem, 30vw); max-width: min(3rem, 30vw); min-height: .65rem;
+  color: var(--mint-400); background: #122722ed; border: 1px solid #7fffc988; border-radius: 0; text-align: left; touch-action: none; cursor: grab; }
+.band-command > .bandicon { width: .4rem; height: .4rem; flex-shrink: 0; }
+.band-command b, .band-command small { display: block; font-size: max(12px, calc(.18 * var(--t))); line-height: 1.35; }
+.band-command small { color: var(--text-lo); font-size: max(11px, calc(.15 * var(--t))); }
+.band-command.is-unavailable { opacity: .65; cursor: default; }
+.band-command.is-dragging { box-shadow: 0 0 .12rem #7fffc9; }
+[data-shop-slot].is-command-target { outline: 2px solid #7fffc9; outline-offset: -2px; }
+.command-draft { display: flex; gap: .16rem; flex-wrap: wrap; }
+.command-draft__card { flex: 1 1 1.8rem; padding: .16rem; border: 1px solid #7fffc966; }

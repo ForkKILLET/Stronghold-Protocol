@@ -831,3 +831,6 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
   .offerov .spov__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .offerov .spcard__icon { width: .6rem; height: .6rem; }
+
+.tempnote--equipment .tempnote__label { border-color:var(--line-2); color:var(--text-hi); background:rgba(18,33,30,.92); }
+.tempnote--equipment .tempnote__rule { color:var(--text-md); }

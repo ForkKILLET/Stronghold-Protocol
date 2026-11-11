@@ -13,10 +13,10 @@ import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.
 import { html, Button, Icon, MicroLabel, useTicker, secondsLeft } from '../ui/components.js';
 import { useGameData, BandIcon, RichText, PlayerAvatar, LpTower, Sprite } from '../ui/gameComponents.js';
 import { StepHeader, ExitModal } from '../ui/matchChrome.js';
-import { MatchInfoDialog, matchInfoModel, MatchBondDialog } from '../ui/matchInfo.js';
+import { MatchInfoDialog, matchInfoModel, MatchBondDialog, regulationCoreAbsent } from '../ui/matchInfo.js';
 import { MatchEnemies } from '../ui/matchEnemies.js';
 import { actions, act } from '../ui/gameActions.js';
-import { normalizeDraft, sortedPlayers } from '../ui/gameLogic.js';
+import { normalizeDraft, sortedPlayers, pregameStepCount, pregameStepIndex } from '../ui/gameLogic.js';
 import { useStore } from '../store.js';
 import { data } from '../data.js';
 import { audio } from '../audio.js';
@@ -295,7 +295,7 @@ export function BandDraftScreen({ held = null } = {}) {
   // open dialogs the match screen tears down a moment later
   return html`<div class=${cx('screen draft', `draft--${view}`, held && 'is-held')} inert=${held ? true : undefined} aria-busy=${held ? 'true' : undefined}>
     <div class="brief__bg" aria-hidden="true"></div>
-    <${StepHeader} step=${2} of=${2} title=${t('选择策略')} micro="STRATEGY // BAND CHECK" pub=${clock ? { ...pub, deadline: clock.deadline } : { ...pub, deadline: 0 }}
+    <${StepHeader} step=${pregameStepIndex(gd.config, 'BAND_CHECK')} of=${pregameStepCount(gd.config)} title=${t('选择策略')} micro="STRATEGY // BAND CHECK" pub=${clock ? { ...pub, deadline: clock.deadline } : { ...pub, deadline: 0 }}
       total=${clock ? clock.total : null} onExit=${() => setExit(true)} />
     <main class="draft__main">
       <aside class="draft-order">
@@ -369,7 +369,7 @@ export function BandDraftScreen({ held = null } = {}) {
       status=${infoStatus ? html`<span class=${cx('minfo-dlg__turn', `is-${infoStatus.tone}`)}>
         <${Icon} name=${infoStatus.tone === 'mint' ? 'check' : 'hourglass'} />${infoStatus.text}${infoStatus.secs != null ? html`<b class="num">${infoStatus.secs}s</b>` : null}
       </span>` : null} />
-    <${MatchBondDialog} bondId=${infoOpen ? bondId : null} onClose=${() => setBondId(null)} priv=${priv} banned=${info?.banned} off=${!!info?.sets.off.has(bondId)} />
+    <${MatchBondDialog} bondId=${infoOpen ? bondId : null} onClose=${() => setBondId(null)} priv=${priv} banned=${info?.banned} off=${!!info?.sets.off.has(bondId)} coreAbsent=${regulationCoreAbsent(info, bondId)} />
     ${turnBanner ? html`<${TurnBanner} key=${turnBanner} onDone=${() => setTurnBanner(0)} />` : null}
   </div>`;
 }

@@ -44,7 +44,7 @@ export class PlayerViews {
   }
 
   bandProgressView() {
-    return bandProgressView(this);
+    return this.command ? {} : bandProgressView(this);
   }
 
   effectsView() {

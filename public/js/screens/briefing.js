@@ -3,13 +3,13 @@ import { useState } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, MicroLabel } from '../ui/components.js';
 import { useGameData, Img, RichText } from '../ui/gameComponents.js';
 import { StepHeader, ExitModal } from '../ui/matchChrome.js';
-import { MatchInfo, matchInfoModel, MatchBondDialog } from '../ui/matchInfo.js';
+import { MatchInfo, matchInfoModel, MatchBondDialog, regulationCoreAbsent } from '../ui/matchInfo.js';
 import { LoadoutButton } from './loadout.js';
 import { SetupReroll } from '../ui/setupReroll.js';
 import { PreparationTools } from '../ui/preparationTools.js';
 import { PreparationReady } from '../ui/preparationReady.js';
 import { actions } from '../ui/gameActions.js';
-import { factionTypes, sortedPlayers, phaseTotalSeconds } from '../ui/gameLogic.js';
+import { factionTypes, sortedPlayers, phaseTotalSeconds, pregameStepCount, pregameStepIndex } from '../ui/gameLogic.js';
 import { enemyIconUrl, factionIconUrl } from '../ui/assetUrls.js';
 import { useStore } from '../store.js';
 import { data } from '../data.js';
@@ -51,9 +51,16 @@ export function BriefingScreen() {
     setBusy(false);
   };
 
+  const pickGroup = async (idx) => {
+    if (busy || !me || pub.rerollVote) return;
+    setBusy(true);
+    try { await actions.bondGroup(idx, pub.setupRevision ?? 0); }
+    finally { setBusy(false); }
+  };
+
   return html`<div class="screen brief">
     <div class="brief__bg" aria-hidden="true"></div>
-    <${StepHeader} step=${1} of=${2} title=${t('确认本局信息')} micro="BRIEFING // INFO CHECK" pub=${pub}
+    <${StepHeader} step=${pregameStepIndex(gd.config, 'INFO_CHECK')} of=${pregameStepCount(gd.config)} title=${t('确认本局信息')} micro="BRIEFING // INFO CHECK" pub=${pub}
       total=${phaseTotalSeconds(pub, gd.config)} onExit=${() => setExit(true)} />
     <main class="brief__main">
       <section class="brief__left">
@@ -88,7 +95,7 @@ export function BriefingScreen() {
         <div class="brief-communication"><${PreparationTools} players=${players} disabled=${!me} /></div>
       </section>
       <section class="brief__right">
-        <div class="brief__bonds"><${MatchInfo} model=${info} onBond=${setBondId} /></div>
+        <div class="brief__bonds"><${MatchInfo} model=${info} onBond=${setBondId} onGroup=${pickGroup} disabled=${!me || !!me.ready || !!pub.rerollVote} busy=${busy} /></div>
         <footer class="brief__foot setup-action-group">
           <div class="brief__tools">
             <${LoadoutButton} from="briefing" size="xl" class="brief-loadout" />
@@ -97,12 +104,12 @@ export function BriefingScreen() {
           <div class="brief__decision">
             <${PreparationReady} players=${players} myId=${myId} />
             <${Button} variant="primary" size="xl" class="brief-go" icon=${me?.ready ? 'check' : me ? 'play' : 'eye'} active=${!!me?.ready} loading=${busy}
-              disabled=${!!me?.ready || !me || !!pub.rerollVote} onClick=${ready}>${me?.ready ? t('已就绪') : me ? t('准备就绪') : t('观战中')}<//>
+              disabled=${!!me?.ready || !me || !!pub.rerollVote || info.choice?.picked === null} onClick=${ready}>${me?.ready ? t('已就绪') : me ? t('准备就绪') : t('观战中')}<//>
           </div>
         </footer>
       </section>
     </main>
     <${ExitModal} open=${exit} onClose=${() => setExit(false)} solo=${solo} />
-    <${MatchBondDialog} bondId=${bondId} onClose=${() => setBondId(null)} priv=${priv} banned=${info.banned} off=${info.sets.off.has(bondId)} />
+    <${MatchBondDialog} bondId=${bondId} onClose=${() => setBondId(null)} priv=${priv} banned=${info.banned} off=${info.sets.off.has(bondId)} coreAbsent=${regulationCoreAbsent(info, bondId)} />
   </div>`;
 }

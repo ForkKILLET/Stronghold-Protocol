@@ -1,10 +1,11 @@
+import { commandText, commandStatus } from '../ui/bandCommand.js';
 import {useReplayVersion} from '../ui/replayVersion.js';
 import {useEffect,useMemo,useRef,useState} from '../../vendor/hooks.module.js';
 import {html,Button,MicroLabel,Spinner} from '../ui/components.js';
 import {Select} from '../ui/select.js';
 import {PageHeader} from '../ui/pageHeader.js';
 import {chessAvatarUrl} from '../ui/assetUrls.js';
-import {Img,GAME_FILES} from '../ui/gameComponents.js';
+import {Img,GAME_FILES,RichText} from '../ui/gameComponents.js';
 import {data,useData} from '../data.js';
 import {ReplayTimeline} from '../../../shared/replays.js';
 import {ReplayCanvas} from '../replays/canvas.js';
@@ -15,9 +16,10 @@ const ACTIONS={
  'g.sell':N_('出售'), 'g.move':N_('调整部署'), 'g.equip':N_('配发装备'), 'g.art':N_('使用战术道具'),
  'g.destroy':N_('销毁'), 'g.reward':N_('领取奖励'), 'g.choice':N_('选择奖励'), 'g.band':N_('选择策略'),
  'g.bandSkip':N_('跳过策略'), 'g.ready':N_('准备就绪'), 'g.infoReady':N_('确认情报'),
+ 'g.bondGroup':N_('选择盟约组'), 'g.diyBring':N_('确认自编'), 'g.command':N_('使用指令'), 'g.commandChoice':N_('更换指令'),
  'g.autoplay':N_('调整托管'), 'g.pause':N_('暂停／继续'),
 };
-const PHASES={INFO_CHECK:N_('情报确认'),BAND_DRAFT:N_('策略选择'),BATTLE_CHECK:N_('协议启动'),ROUND_START:N_('回合开始'),PREP:N_('休整期'),SP_DRAFT:N_('选择奖励'),COMBAT:N_('作战'),UNITE:N_('联防'),SETTLE:N_('回合结算'),FINAL_ASSAULT:N_('最终攻势'),HIDDEN_CORE:N_('隐秘核心'),RESULT:N_('对局结算')};
+const PHASES={INFO_CHECK:N_('情报确认'),BAND_DRAFT:N_('策略选择'),CUSTOM_CHECK:N_('选择自编'),BATTLE_CHECK:N_('协议启动'),ROUND_START:N_('回合开始'),PREP:N_('休整期'),SP_DRAFT:N_('选择奖励'),COMBAT:N_('作战'),UNITE:N_('联防'),SETTLE:N_('回合结算'),FINAL_ASSAULT:N_('最终攻势'),HIDDEN_CORE:N_('隐秘核心'),RESULT:N_('对局结算')};
 const stamp=ms=>{const s=Math.floor(ms/1000);return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;};
 function Piece({piece}){
  if(!piece)return html`<span class="replay-piece is-empty">—</span>`;
@@ -44,7 +46,7 @@ export function ReplayScreen({replay,selfId,onBack,visitor=false}){
   raf=requestAnimationFrame(step);return()=>cancelAnimationFrame(raf);
  },[replay]);
  const state=useMemo(()=>timeline.at(cursor),[timeline,cursor]);
- const pub=state.public || {},priv=state[playerId],prep=['PREP','ROUND_START','INFO_CHECK','BAND_DRAFT','SP_DRAFT','BATTLE_CHECK','RESULT'].includes(pub.phase);
+ const pub=state.public || {},priv=state[playerId],prep=['PREP','ROUND_START','INFO_CHECK','CUSTOM_CHECK','BAND_DRAFT','SP_DRAFT','BATTLE_CHECK','RESULT'].includes(pub.phase);
  const candidates=prep?[]:replay.fields.filter(f=>f.at<=cursor&&f.round===pub.round);
  const field=candidates.findLast(f=>f.fieldId===fieldId) || candidates.findLast(f=>f.spec.players.some(p=>p.playerId===playerId)) || candidates.at(-1) || null;
  const actions=timeline.actions.filter(a=>a.at<=cursor&&a.playerId===playerId).slice(-12).reverse();
@@ -68,6 +70,10 @@ export function ReplayScreen({replay,selfId,onBack,visitor=false}){
     <dl><div><dt>${t('目标生命')}</dt><dd class="num">${priv?.lp ?? '—'}</dd></div><div><dt>${t('资金')}</dt><dd class="num">${priv?.funds ?? '—'}</dd></div><div><dt>${t('调度中心')}</dt><dd class="num">${priv?.shop?.level ?? '—'}</dd></div></dl>
     <p class="replay-band">${data.lookup('bands',priv?.bandId)?.name || t('未选择策略')}</p>
     ${pub.draft?html`<div class="replay-choices">${t('策略选择')}<pre>${replay.players.map(p=>p.name+': '+(data.lookup('bands',pub.draft.picks?.[p.playerId] || pub.draft.focus?.[p.playerId])?.name || t('尚未选择'))).join('\n')}</pre></div>`:null}
+    ${pub.bondChoice ? html`<div class="replay-choices"><b>${t('选择盟约组')}</b><span>${pub.bondChoice.picked==null?t('尚未选择'):t('第 {n} 组',{n:pub.bondChoice.picked+1})}</span></div>`:null}
+    ${pub.diyCheck ? html`<div class="replay-choices"><b>${t('选择自编')}</b><span>${Array.isArray(pub.diyCheck.picks?.[playerId])?pub.diyCheck.picks[playerId].map(id=>data.lookup('backups', 'units')?.[priv?.diy?.[id]?.charId]?.name || priv?.diy?.[id]?.charId || id).join('、') || t('不带入自选'):t('尚未选择')}</span></div>`:null}
+    ${priv?.command ? html`<div class="replay-choices"><b>${t('指令')}</b><${RichText} as="p" text=${commandText(priv.command)} /><span>${commandStatus(priv.command)}</span></div>`:null}
+    ${priv?.commandDraft?.cards ? html`<div class="replay-choices"><b>${t('更换指令')}</b>${priv.commandDraft.cards.map(c=>html`<${RichText} as="p" text=${commandText(c)} />`)}</div>`:null}
     ${pub.sp?html`<div class="replay-choices">${pub.sp.name || t('选择奖励')}${pub.sp.cards.map(c=>html`<span>${c.name || c.id}${pub.sp.taken?.[c.idx]?t('（已选）'):''}</span>`)}</div>`:null}
     ${priv?.personalChoice?.cards?html`<div class="replay-choices">${t('选择奖励')}${priv.personalChoice.cards.map(c=>html`<span>${c.name || c.id}</span>`)}</div>`:null}
     ${priv?.board?.length?html`<h4>${t('阵容')}</h4><div class="replay-roster">${priv.board.map(p=>html`<${Piece} key=${p.uid} piece=${p} />`)}</div>`:null}
@@ -76,7 +82,7 @@ export function ReplayScreen({replay,selfId,onBack,visitor=false}){
   </main>
   <section class="replay-prep" aria-label=${t('经营记录')}>
    <div class="replay-stock"><span>${priv?.shop?.rewardOffer?t('领取奖励'):t('调度中心')} ${priv?.shop?.frozen?t('已冻结'):''}</span><div>${slots.map((p,i)=>html`<${Piece} key=${i} piece=${p} />`)}</div></div>
-   <div class="replay-stock"><span>${t('手牌／临时区')}</span><div>${[...(priv?.hand || []),...(priv?.temp || [])].filter(Boolean).map((p,i)=>html`<${Piece} key=${i} piece=${p} />`)}</div></div>
+   <div class="replay-stock"><span>${data.get('config')?.version?.rules?.equipHand?t('手牌／装备区'):t('手牌／临时区')}</span><div>${[...(priv?.hand || []),...(priv?.temp || [])].filter(Boolean).map((p,i)=>html`<${Piece} key=${i} piece=${p} />`)}</div></div>
   </section>
   <footer class="replay-controls">
    <div><${Button} size="sm" variant="secondary" icon="chevronLeft" disabled=${!previous} aria-label=${t('上一步操作')} onClick=${()=>seek(previous.at)} />

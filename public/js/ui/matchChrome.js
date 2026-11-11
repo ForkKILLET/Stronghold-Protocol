@@ -16,6 +16,7 @@ import { GIcon } from './gameComponents.js';
 import { recordQuit } from './stats.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { TestMark } from './testConsole.js';
+import { ladderName } from './hud.js';
 
 /**
  * Exit dialog lines. 放弃模拟 ends the run on the server as 'abandoned' and returns to the
@@ -140,7 +141,7 @@ export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
       <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label=${t('离开')} title=${t('离开 / 暂离')} class="gtop__exit tapx" />
       <div class="gtop__meta">
         <${PingPill} ms=${conn.ping} online=${conn.status === 'online'} />
-        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} size="sm" />` : null}
+        ${pub?.difficulty ? html`<${DifficultyTag} difficulty=${pub.difficulty} name=${ladderName(pub)} size="sm" />` : null}
         ${pub?.test ? html`<${TestMark} class="gtop__test" />` : null}
         <div class="preparation-hud__rules"><${UnofficialMark} room=${room} compact=${true} /><${VersionTag} room=${room} compact=${true} /></div>
       </div>

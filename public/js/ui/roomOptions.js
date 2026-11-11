@@ -1,3 +1,4 @@
+import { LadderOptions } from './ladderOptions.js';
 import { PageHeader } from './pageHeader.js';
 import { html, Fragment, Button, MicroLabel, DifficultyIcon, DifficultyTag, Icon } from './components.js';
 import { PrepTimePicker } from './prepTime.js';
@@ -7,7 +8,7 @@ import { prepTimeLabel } from './prepTime.js';
 import { t } from '../../../shared/i18n.js';
 
 /** A dedicated page; draft values belong to LobbyScreen and survive going back. */
-export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disabled=false, children, battleSpeed=2, onSpeedChange=()=>{}, difficulty='NORMAL', onDifficultyChange=()=>{}, onSave=onBack, readOnly=false, tab='basic', onTabChange=null, pluginContent=null,difficulties=DIFFICULTIES,soloTimeLabel=null}) {
+export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disabled=false, children, battleSpeed=2, onSpeedChange=()=>{}, difficulty='NORMAL', onDifficultyChange=()=>{}, onSave=onBack, readOnly=false, tab='basic', onTabChange=null, pluginContent=null,difficulties=DIFFICULTIES,soloTimeLabel=null,ladder=null,modeId=null,onMode=()=>{}}) {
  return html`<div class="screen room-options-screen">
   <${PageHeader} onBack=${onBack} title=${t('模拟配置')} micro="ROOM CONFIGURATION" />
   ${onTabChange?html`<nav class="room-options__tabs" aria-label=${t('模拟配置')}>
@@ -17,7 +18,7 @@ export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disable
   <main class="room-options__frame brackets"><div class=${`room-options__body${tab==='basic'?' room-options__body--basic':''}`}>
    ${tab==='plugins'?pluginContent:html`<${Fragment}>
    <section class="prep-setting" aria-label=${t('模拟难度')}><div class="prep-setting__title"><${Icon} name="rook" /><span>${t('模拟难度')}</span><${MicroLabel}>DIFFICULTY<//></div>
-    <div class="prep-setting__choices prep-setting__choices--speed">${difficulties.map(d => html`<button type="button" key=${d} disabled=${disabled || readOnly} class=${d===difficulty?'is-active':''} aria-pressed=${d===difficulty} style=${`--d-color:${DIFFICULTY_COLORS[d]}`} onClick=${()=>onDifficultyChange(d)}><${DifficultyIcon} difficulty=${d} />${t(DIFFICULTY_NAMES[d])}</button>`)}</div>
+    ${ladder ? html`<${LadderOptions} ladder=${ladder} modeId=${modeId} onMode=${onMode} disabled=${disabled || readOnly} />` : html`<div class="prep-setting__choices prep-setting__choices--speed">${difficulties.map(d => html`<button type="button" key=${d} disabled=${disabled || readOnly} class=${d===difficulty?'is-active':''} aria-pressed=${d===difficulty} style=${`--d-color:${DIFFICULTY_COLORS[d]}`} onClick=${()=>onDifficultyChange(d)}><${DifficultyIcon} difficulty=${d} />${t(DIFFICULTY_NAMES[d])}</button>`)}</div>`}
    </section>
    <${RoomPacingControls} soloTimeLabel=${soloTimeLabel} mode=${mode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${disabled || readOnly} />
    <//>`}
@@ -30,9 +31,9 @@ export function RoomOptionsPage({mode, prepChoice, onPrepChange, onBack, disable
 import { validPrepChoice as valid } from './prepTime.js';
 
 
-export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSeconds=null, battleSpeed=2, onOpen, editable=true, disabled=false, contentLabel=null,soloTimeLabel=null}) {
+export function RoomConfigSummary({mode, difficulty, prepMultiplier=null, prepSeconds=null, battleSpeed=2, onOpen, editable=true, disabled=false, contentLabel=null,soloTimeLabel=null,modeName=null}) {
  return html`<div class="room-config-summary setup-action-group">
-  <div class="room-config-summary__values"><${DifficultyTag} difficulty=${difficulty} size="sm" />
+  <div class="room-config-summary__values"><${DifficultyTag} difficulty=${difficulty} name=${modeName} size="sm" />
    <span>${t('休整期')} ${mode==='solo'?(soloTimeLabel||t('不限时')):prepSeconds!=null?t('每回合 {seconds} 秒',{seconds:prepSeconds}):prepTimeLabel(prepMultiplier)}</span>
    <span>${t('战斗倍速')} ${battleSpeed}×</span>
    ${contentLabel?html`<span>${contentLabel}</span>`:null}</div>

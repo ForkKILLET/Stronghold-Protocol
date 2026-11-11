@@ -84,8 +84,7 @@ function InfoTab({ pub, priv, onChess, onBond, bandId = null, bandOwner = null, 
     ${stage ? html`<p class="istage"><${Icon} name="rook" />${t('战场：')}<b>${stage.name || stage.id}</b></p>` : null}
     <h4 class="ihead">${t('本局禁用干员情况')} <small class="num">${banned.length}</small></h4>
     <div class="ibonds">
-      ${withBans.length ? withBans.map((b) => html`<button key=${b.bondId} type="button" class=${cx('ibond', disabled.has(b.bondId) && 'is-off')} data-bond=${b.bondId}
-        onClick=${() => onBond(b.bondId)} title=${briefingBondTip(b.name, stateOf(b.bondId), perBond.get(b.bondId) || 0)}>
+      ${withBans.length ? withBans.map((b) => html`<button key=${b.bondId} type="button" class=${cx('ibond', disabled.has(b.bondId) && 'is-off')} data-bond=${b.bondId} onClick=${() => onBond(b.bondId)} title=${briefingBondTip(b.name, stateOf(b.bondId), perBond.get(b.bondId) || 0, model.regulation && b.isCore)}>
         <${BondGlyph} bondId=${b.bondId} /><span>${b.name}</span>
         ${perBond.get(b.bondId) ? html`<span class="ibond__ban num" title=${t('该盟约中被禁用的干员数')}><${Icon} name="user" />${perBond.get(b.bondId)}</span>` : null}
       </button>`) : html`<span class="t-dim">${t('本局没有禁用盟约')}</span>`}
