@@ -2,7 +2,7 @@
 import {diffState} from '../../shared/stateDelta.js';
 import {buildBattleSpec} from '../sim/spec.js';
 import {captureCombatSpec,captureCombatEnd} from '../users/combatCapture.js';
-const ACTIONS=new Set(['g.buy','g.refresh','g.freeze','g.levelUp','g.sell','g.move','g.equip','g.art','g.destroy','g.reward','g.choice','g.band','g.bandSkip','g.ready','g.infoReady','g.autoplay','g.pause','g.unequip','g.morph','g.aiTakeover']);
+const ACTIONS=new Set(['g.buy','g.refresh','g.freeze','g.levelUp','g.sell','g.move','g.equip','g.art','g.destroy','g.reward','g.choice','g.band','g.bandSkip','g.ready','g.infoReady','g.autoplay','g.pause','g.unequip','g.morph','g.aiTakeover','g.bondGroup','g.diyBring','g.command','g.commandChoice']);
 const clone=value=>JSON.parse(JSON.stringify(value));
 function archive(m){
  if(!m.replayMaxBytes)return null;

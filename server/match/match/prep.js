@@ -6,6 +6,7 @@
 import { PHASE } from '../../../shared/constants.js';
 import { testSlice } from '../testTrace.js';
 import { DELAYS } from './common.js';
+import { beginCommandPrep } from '../bandCommands.js';
 
 export class MatchPrep {
   enterPrep() {
@@ -15,6 +16,7 @@ export class MatchPrep {
     const alive = this.alivePlayers();
     for (const ps of alive) {
       ps.ready = false;
+      beginCommandPrep(ps);
       // Items gained as the previous prep ended waited unmerged (acquireItem deferMerge). Merge them now, before
       // this prep's onPrepStart grants and before the player acts — not in endPrep, which runs in the same prep
       // that granted them and would take an equipped copy off for the fight about to start.
@@ -77,6 +79,7 @@ export class MatchPrep {
     };
     const ready = () => {
       if (!ps.ready) {
+        ps.autoPickCommands();
         this.autoPickPersonalChoice(ps, 'random');
         ps.resolveTemp();
         ps.setReady(true);
@@ -166,6 +169,7 @@ export class MatchPrep {
     if (this.phase !== PHASE.PREP) return;
     for (const ps of this.alivePlayers()) {
       if (ps.ready) continue;
+      ps.autoPickCommands();
       this.autoPickPersonalChoice(ps, 'random');
       ps.resolveTemp();
       ps.ready = true;

@@ -42,6 +42,8 @@ const metaOf = (match) => ({
   round: match.round,
   startedAt: match.startedAt,
   mode: match.mode,
+  modeId: match.modeId,
+  version: match.version,
   difficulty: match.difficulty,
   _battleSeq: match._battleSeq,
   ended: !!match.ended,

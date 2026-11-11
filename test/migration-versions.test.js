@@ -62,3 +62,44 @@ test('historical room content and checkpoint restore use the same isolated versi
  assert.equal(again.version,version);assert.equal(again.cs,cs);assert.equal(again.seed,checkpoint.seed);
  assert.deepEqual(again.players.map(p=>p.playerId),checkpoint.players.map(p=>p.playerId));
 });
+
+test('regulation mode survives cold recovery and AI takeover executes in the isolated version owner', async t => {
+ const {srv,player}=await fixture(t),host=await player('RHost'),mate=await player('RMate');
+ const version='act3autochess@V3_1';
+ assert.equal((await host.request({t:'room.create',mode:'coop',difficulty:'NORMAL',version})).t,'ok');
+ const room=srv.lobby.roomOf(srv.registry.byId(host.id)),cs=room.content.cs;
+ await host.request({t:'room.contentReady',cs});
+ await host.request({t:'room.setAiTakeover',on:true});
+ await mate.request({t:'room.join',code:room.code});await mate.request({t:'room.contentReady',cs});
+ await mate.request({t:'room.ready',ready:true});
+ await host.request({t:'room.addBot'});await host.request({t:'room.addBot'});
+ assert.equal((await host.request({t:'room.start'})).t,'ok');
+ const m=room.match;assert.equal(m.hosted,true);
+ // These are internal test calls to the real owner, never writable proxy metadata.
+ await m._request('startRound',[1]);await m._request('enterPrep',[]);await m._request('setDeadline',[0]);
+ await m._request('flush',[true]);
+ assert.equal(m.phase,'PREP');
+ const late=await player('RLate'),session=srv.registry.byId(late.id),{userId,publicId}=session;
+ assert.equal((await late.request({t:'room.spectate',code:room.code})).t,'ok');
+ let before;
+ for(let i=0;i<100;i++){before=(await m.captureSnapshot())?.doc;if(before)break;await new Promise(r=>setTimeout(r,20));}
+ assert.ok(before);const bot=before.players.find(p=>p.isBot);
+ assert.equal((await late.request({t:'room.aiRequest',botId:bot.playerId})).t,'ok');
+ const vote=room.aiTakeoverVotes[0];await host.request({t:'room.aiVote',voteId:vote.id,approve:true});
+ assert.equal((await mate.request({t:'room.aiVote',voteId:vote.id,approve:true})).t,'ok');
+ const after=(await m.captureSnapshot()).doc,owner=after.players.find(p=>p.playerId===bot.playerId);
+ assert.equal(owner.isBot,false);assert.equal(owner.userId,userId);assert.equal(owner.publicId,publicId);
+ assert.deepEqual(owner.hand,bot.hand);assert.equal(owner.funds,bot.funds);
+ assert.equal(after.version,version);assert.equal(after.modeId,'mode_multi_normal');
+ // A solo ladder uses an explicit ID, not mode_single_normal inferred from difficulty.
+ const solo=await player('Ladder');await solo.request({t:'room.create',mode:'solo',difficulty:'NORMAL',version,modeId:'mode_single_12'});
+ const ladder=srv.lobby.roomOf(srv.registry.byId(solo.id));
+ await solo.request({t:'room.contentReady',cs});assert.equal((await solo.request({t:'room.start'})).t,'ok');
+ const checkpoint=(await ladder.match.captureSnapshot()).doc;assert.equal(checkpoint.modeId,'mode_single_12');
+ const saved=snapshotServer({registry:srv.registry,lobby:srv.lobby,matchDocs:new Map([[ladder.code,checkpoint]])});
+ const next=await startServer(options);t.after(()=>next.close());
+ const pending=restoreServer({doc:saved,registry:next.registry,lobby:next.lobby,log:{warn(){},info(){},error(){}}});
+ const result=pending.ready?await pending.ready:pending;assert.equal(result.matches,1);
+ const recovered=next.lobby.rooms.get(ladder.code);assert.equal(recovered.modeId,'mode_single_12');
+ assert.equal((await recovered.match.captureSnapshot()).doc.modeId,'mode_single_12');
+});

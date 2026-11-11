@@ -66,7 +66,10 @@ const isPerPlayer = (p) => isPlain(p) && isInt(p.killed, 0, 1e5) && isInt(p.tota
   && optional((x) => isInt(x, 0, 1e9))(p.creditedKills)
   && isList(p.leaked, RESULT_LIMITS.leaked, isLeak) && isBool(p.perfect)
   && isMap(p.layerGains, RESULT_LIMITS.layerGains, isId, (v) => isNum(v, 0, 1e4))
+  // 规程: temporary layers converted at settle. Absent on every result that has none.
+  && (p.tempLayerGains === undefined || isMap(p.tempLayerGains, RESULT_LIMITS.layerGains, isId, (v) => isNum(v, 0, 1e4)))
   && isStat(p.coins) && isStat(p.damageDealt) && isStat(p.bossDamage) && isStat(p.healingDone) && isStat(p.deaths)
+  && optional(v => isList(v, 64, c => isPlain(c) && isUid(c.id) && isBool(c.alive)))(p.commandChests)
   && isList(p.unitsEnd, RESULT_LIMITS.unitsEnd, isUnitEnd)
   && (p.unitStats === undefined || isList(p.unitStats, RESULT_LIMITS.unitStats, isUnitStat));
 const isUnspawned = (u) => isPlain(u) && isId(u.enemyKey) && nullable(isId)(u.sourcePlayerId) && nullable((v) => isStr(v, 16))(u.tag)
@@ -378,17 +381,17 @@ export function checkNotOwned(list, getChess) {
 
 /**
  * `room.diy { picks }`: the player's 自选编队 — `{ [slotBaseId]: { charId, skillIndex?, uniEquipId? } | null }` for the
- * four DIY slots (data/backups.json `diy.slots`: two at tier 5, two at tier 6; shared/diy.js). An out-of-match setting
- * like 干员持有: stored per session / seat, a match takes the picks its seat had at its start. Structural limit below
- * (room for more slots in a later season); the semantic check (`checkDiyPicks`) is LENIENT, like checkNotOwned: an
+ * DIY slots (data/backups.json `diy.slots`: 盟约 is two at tier 5 and two at tier 6; 规程 is six at each. shared/diy.js).
+ * An out-of-match setting like 干员持有: stored per session / seat, a match takes the picks its seat had at its start.
+ * Structural limit below (12: the 规程 roster); the semantic check (`checkDiyPicks`) is LENIENT, like checkNotOwned: an
  * illegal pick — not a pick of the slot's tier, an operator without a kit, a prototype off its locked skill, an unknown
  * skill / module, the same operator twice in a tier, an owned operator in a second slot, an unknown slot — is dropped,
  * never the whole roster; only malformed input is BAD_MSG.
  */
-export const DIY_LIMITS = Object.freeze({ slots: 8 });
+export const DIY_LIMITS = Object.freeze({ slots: 12 });
 const isDiyPickWire = (p) => p === null || (isPlain(p) && isId(p.charId)
   && nullable((v) => isInt(v, 0, 9))(p.skillIndex) && nullable(isId)(p.uniEquipId));
-/** Structural check of `room.diy.picks`: a map of ≤ 8 slot ids → a pick `{ charId, skillIndex?, uniEquipId? }` or null. */
+/** Structural check of `room.diy.picks`: a map of ≤ 12 slot ids → a pick `{ charId, skillIndex?, uniEquipId? }` or null. */
 export const isDiyPicks = (v) => isMap(v, DIY_LIMITS.slots, isId, isDiyPickWire);
 
 /**
@@ -485,6 +488,7 @@ const target = (v) => {
   if (!v || typeof v !== 'object') return false;
   if (v.area === 'board') return isInt(v.row, 0, GEO.ROWS - 1) && isInt(v.col, 0, GEO.COLS - 1);
   if (v.area === 'hand') return isInt(v.idx, 0, GEO.HAND_SIZE - 1);
+  if (v.area === 'temp') return isInt(v.idx, 0, GEO.TEMP_SIZE - 1);
   return false;
 };
 
@@ -505,7 +509,7 @@ export const C2S = {
   // the server applies `true` solely to a solo room of a version whose solo is timed, and ignores it otherwise, so a
   // default create stays the message it was.
   'state.resync': {},
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), test: (v) => v === true, version: isVersionId, soloUnlimited: isBool, prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, battleSpeed: isBattleSpeed, $optional: ['test', 'difficulty', 'version', 'soloUnlimited', 'prepSeconds', 'prepMultiplier', 'battleSpeed'] },
+  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), test: (v) => v === true, version: isVersionId, soloUnlimited: isBool, modeId: isId, prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, battleSpeed: isBattleSpeed, $optional: ['test', 'difficulty', 'version', 'soloUnlimited', 'modeId', 'prepSeconds', 'prepMultiplier', 'battleSpeed'] },
   'room.join': { $optional: ['testAck'], testAck: (v) => v === true, code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
   'room.emote': { id: (v) => EMOTES.includes(v) },
@@ -584,9 +588,18 @@ export const C2S = {
   'room.contentReady': { cs: isContentHash, ok: isBool, $optional: ['ok'] },
 
   // match
+  'g.bondGroup': { idx: (v) => isInt(v, 0, 1), setupRevision: (v) => isInt(v, 0, 2 ** 31) },
   'g.infoReady': { setupRevision: (v) => isInt(v, 0, 2 ** 31), $optional: ['setupRevision'] },
   'g.rerollVote': { voteId: (v) => isInt(v, 1, 2 ** 31), agree: isBool },
   'g.band': { bandId: isId },
+  // 规程 选择自编: the slots this match brings (0–2 per tier). Shape only; the match re-checks caps, bans and the roster.
+  'g.diyBring': { slots: (v) => isList(v, DIY_LIMITS.slots, isId) },
+  'g.command': { effectId: isId, target: (v) => isPlain(v) && (
+    Object.keys(v).length === 0
+    || (Object.keys(v).length === 1 && (isUid(v.uid) || isInt(v.slot, 0, 15)))
+    || (Object.keys(v).length === 2 && isInt(v.row, GEO.FIELD.r0, GEO.FIELD.r1) && isInt(v.col, GEO.FIELD.c0, GEO.FIELD.c1))
+  ) },
+  'g.commandChoice': { choiceId: isId, idx: v => isInt(v, 0, 2) },
   'g.bandSkip': {},
   // the strategy highlighted in the draft screen (user playtest #4 item 4): a turn that runs out takes it while it is
   // free (Match.timeoutBand); absent / null clears it

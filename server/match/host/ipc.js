@@ -44,6 +44,7 @@ export function validHostMessage(m) {
       // falls through to the shared match-frame validation below
       return object(m.msg) && matchFrames.has(m.msg.t) && boundedJson(m, HOST_IPC_LIMITS.message);
     case 'broadcast': return object(m.msg) && matchFrames.has(m.msg.t) && boundedJson(m, HOST_IPC_LIMITS.message);
+    // Match commands, including takeoverAiSeat, answer on this frame.
     case 'reply': return Number.isSafeInteger(m.id) && m.id > 0 && object(m.result)
       && (m.result.error === undefined || str(m.result.error, 80))
       && (m.result.ok === undefined || typeof m.result.ok === 'boolean') && boundedJson(m, HOST_IPC_LIMITS.reply);

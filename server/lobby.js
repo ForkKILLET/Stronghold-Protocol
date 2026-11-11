@@ -208,7 +208,7 @@ import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatar
 //     offers below, else its lowest: 终极 → 绝境). A room of 第二期下半 (act2autochess, the code constant DEFAULT_VERSION)
 //     is exactly the room of before: no new key in its room.state, its match in this process. Another version's room:
 //     room.state.version, its content `{ cs: <the version's cs>, vanilla: true, version, plugins }` (official — never
-//     unofficial; cosmetic plugins only: gameplay plugins play 第二期下半 only, VERSION_UNSUPPORTED), every member's page
+//     unofficial without gameplay plugins; supported gameplay plugins compose over this base), every member's page
 //     loads and checks that version's data like a gameplay plugin's set (room.needsContent: seats[].content, contentReady,
 //     CONTENT_NOT_READY), room.setDifficulty / room.setMode accept only the version's modes (BAD_TARGET), settings are
 //     checked against its data, and its match runs in that version's match host (server/match/host/, kind 'version':
@@ -216,10 +216,10 @@ import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatar
 //     without one, unless a test gave its own MatchClass).
 //     The version switch, before the match, modelled on 重刷 (server/match/match/setupVote.js): the host proposes
 //     (room.proposeVersion { version }: refused NOT_IN_ROOM, SPECTATOR, NOT_HOST, ROOM_STARTED, VERSION_UNKNOWN,
-//     VERSION_UNSUPPORTED — the room mode, or gameplay plugins on and the target not 第二期下半 —, ALREADY, VERSION_VOTE,
+//     VERSION_UNSUPPORTED — the room mode —, ALREADY, VERSION_VOTE,
 //     RATE — `versionProposeGapMs` (300 ms) since the last proposal, `versionRetryMs` (5 s) after a declined or expired
 //     vote [ASSUMED] —, NOT_READY — a seated human offline —, VERSION_UNSUPPORTED when the target's data failed to load,
-//     and VERSION_UNSUPPORTED again when the room's cosmetic plugins do not resolve on the target, checked last);
+//     and VERSION_UNSUPPORTED again when the room's plugins do not support or resolve on the target, checked last);
 //     ▸ a lone active human switches at once; otherwise a vote opens: voters = the seated humans then (seat order; AI and
 //     spectators never vote), the host counted as agreed, `versionVoteMs` (60 s [ASSUMED]: a room has no clock to pause,
 //     unlike 重刷) to answer. room.versionVote { voteId, agree }: a decline cancels (toast to every member), the last
@@ -412,6 +412,13 @@ export class Room {
      * opts.soloUnlimited. room.state omits the key unless this is true.
      */
     this.soloUnlimited = false;
+    /**
+     * The official mode of a laddered room (header "Official versions": 规程's solo plays 规程等级 1–20 and 极速模拟, more
+     * modes than one per difficulty — versions.laddered); null elsewhere, where the difficulty names the mode. room.state
+     * omits the key while null.
+     * @type {string | null}
+     */
+    this.modeId = null;
     /** @type {string | null} */
     this.hostId = null;
     /** @type {(Seat | null)[]} */
@@ -522,6 +529,8 @@ export class Room {
       ...(this.test ? { test: true } : {}),
       // 「不限时」 (header): omitted unless on, so a default room.state stays identical
       ...(this.soloUnlimited === true ? { soloUnlimited: true } : {}),
+      // a laddered room's official mode (规程's solo): omitted elsewhere, so a default room.state stays identical
+      ...(this.modeId ? { modeId: this.modeId } : {}),
     };
   }
 }
@@ -537,10 +546,10 @@ export class Lobby {
    *   now?: () => number,
    *   seedFn?: () => number,
    *   content?: { cs: string } | null,
-   *   plugins?: { resolve: (ids: string[], opts?: { scope?: 'room' | 'personal', settings?: object, replacing?: object | null }) => any,
+   *   plugins?: { resolve: (ids: string[], opts?: { scope?: 'room' | 'personal', settings?: object, replacing?: object | null, version?: string }) => any,
    *     hold?: (vs: string) => void, release?: (vs: string) => void, holdContent?: (cs: string) => void,
    *     releaseContent?: (cs: string) => void, onContentStale?: (fn: (cs: string, ids: string[]) => void) => () => void, onStale?: (fn: (vs: string, ids: string[]) => void) => () => void,
-   *     unofficial?: () => number, hasNotices?: () => boolean, defaults?: () => string[], dataOf?: (cs: string) => any, kittedOf?: (cs: string) => any,
+   *     unofficial?: () => number, hasNotices?: () => boolean, defaults?: () => string[], defaultsFor?: (version: string) => { ids: string[], skipped: string[] }, dataOf?: (cs: string) => any, kittedOf?: (cs: string) => any,
    *     contentInUse?: () => number } | null,
    *   hosts?: { create: (cs: string, opts: object) => any, stats?: () => object } | null,
    *   versions?: ReturnType<typeof import('./versions.js').createVersionSets> | null,
@@ -1057,6 +1066,7 @@ export class Lobby {
       room.test = d.test === true;
       room.aiTakeoverEnabled = d.aiTakeoverEnabled === true;
       room.soloUnlimited = d.soloUnlimited === true;
+      room.modeId = this.laddered(room.version, mode) ? this.ladderMode(room.version, mode, difficulty, d.modeId) : null;
       if (!this.versions?.available(room.version) && room.version !== DEFAULT_VERSION) room.recoveryContentMissing = true;
       if (d.content?.plugins?.length) {
         const ids = d.content.plugins.filter(p => !p.auto).map(p => p.id);
@@ -1178,7 +1188,7 @@ export class Lobby {
     }
     const mode = checkpoint.mode === 'solo' ? 'solo' : 'coop';
     const difficulty = DIFFICULTIES.includes(checkpoint.difficulty) ? checkpoint.difficulty : room?.difficulty || 'NORMAL';
-    const modeId = checkpoint.requireCs && room?.modded ? room.content?.modeId || modeIdFor(mode, difficulty) : modeIdFor(mode, difficulty);
+    const modeId = checkpoint.modeId || room?.content?.modeId || room?.modeId || modeIdFor(mode, difficulty);
     return { doc: { ...checkpoint, mode, difficulty, modeId, players }, departed };
   }
 
@@ -1226,7 +1236,7 @@ export class Lobby {
     const difficulty = typeof checkpoint.difficulty === 'string' && checkpoint.difficulty ? checkpoint.difficulty : 'NORMAL';
     try {
       const match = new this.MatchClass({
-        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats,
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode, mode, difficulty, modeId: checkpoint.modeId || modeIdFor(mode, difficulty), seats,
         consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast, seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
         data: this.safeData(), workerPool: this.workerPoolFor(room?.code || roomCode), log: this.log, now: this.now,
         send: (playerId, msg, encoded) => (ctx.live ? this.queueMatchSend(ctx, playerId, msg, encoded) : false),
@@ -1278,7 +1288,7 @@ export class Lobby {
       members: seats, lastPublic: null, sharedResult: null, results: new Map(), profileUsers:Object.fromEntries(seats.map(s=>[s.playerId,s.userId || this.registry.byId(s.playerId)?.userId || null])) };
     try {
       const match = await this.matchWorkerPool.create(roomCode, {
-        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode, mode, difficulty, modeId: modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode, mode, difficulty, modeId: checkpoint.modeId || modeIdFor(mode, difficulty), seats, consoleEnabled: false, aiPicksLast: !!checkpoint.aiPicksLast,
         seed: Number(checkpoint.seed) >>> 0, matchNo: room ? Math.max(1, room.matchCount) : 1,
       }, {
         created: (match) => this.attachQueuedWorker(ctx, room, match),
@@ -1594,7 +1604,7 @@ export class Lobby {
     }
   }
 
-  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, prepSeconds = null, prepMultiplier = null, battleSpeed = 2 } = {}) {
+  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, modeId: askedMode, prepSeconds = null, prepMultiplier = null, battleSpeed = 2 } = {}) {
     // A test room exists only when the process switch allowed it. The check runs before the room is built.
     if (test === true && this.testEnabled !== true) return fail(ERR.TEST_DISABLED);
     // the official version (header "Official versions"): left out, the server's default
@@ -1641,22 +1651,30 @@ export class Lobby {
     if (!code) return fixed ? fail(ERR.ROOM_CODE_TAKEN, 'the fixed alliance key is in use')
       : fail(ERR.INTERNAL, 'no room code available');
     // the server owner's default plugins (plugins/config.json `default`; header "Gameplay plugins"): none — the original
-    // game. On another official version (header "Official versions") gameplay plugins are refused: a server whose rooms
-    // must play them (rooms: fixed) cannot make that version's room; otherwise the room starts without them. Resolved
+    // game. Keep the defaults that support the room's official version; fixed rooms must support the entire list. Resolved
     // before the creator leaves the old room (a refusal keeps them there), so a set that room alone holds counts as freed
     // (limits.maxSets), as when the room went first before M1
     let initial = this.baseContent(version);
-    const defaults = this.plugins?.defaults?.() || [];
+    const selected = this.plugins?.defaultsFor?.(version);
+    const defaults = selected?.ids || this.plugins?.defaults?.() || [];
+    if (selected?.skipped.length) this.warnOnce(`[lobby] default plugins (${selected.skipped.join(', ')}) do not support ${version}: skipped`);
     if (defaults.length) {
       const r = this.resolveContent(null, defaults, {}, version, leaving ? cur.content : null);
       if ('error' in r) {
         const fixed = (() => { try { return this.plugins?.fixed?.() || null; } catch { return null; } })();
-        if (fixed && fixed.length && version !== DEFAULT_VERSION) return fail(ERR.VERSION_UNSUPPORTED, `this server fixes every room's plugins (plugins/config.json rooms: fixed): ${r.error}`);
+        if (fixed && fixed.length && r.error === ERR.VERSION_UNSUPPORTED) return r;
         this.warnOnce(`[lobby] the default plugins (${defaults.join(', ')}) cannot be applied${version !== DEFAULT_VERSION ? ` to ${version}` : ''}: ${r.error}${r.detail ? ` (${r.detail})` : ''}`);
       } else initial = r.content;
     }
     if (cur) this.removeMember(cur, session.playerId);
     const room = new Room(code, mode, difficulty, this.now(), version);
+    // a laddered version (规程's solo): the asked official mode, else the first of the difficulty (标准 → 规程等级1); the
+    // room's difficulty follows the mode (极速模拟's FAST counts as 标准)
+    if (this.laddered(version, mode)) {
+      room.modeId = this.ladderMode(version, mode, difficulty, askedMode ?? null);
+      const m = this.versionModes(version, mode).find((x) => x.id === room.modeId);
+      if (m) room.difficulty = DIFFICULTIES.includes(m.difficulty) ? m.difficulty : 'FUNNY';
+    }
     room.test = test === true;
     room.prepSeconds = mode === 'coop' ? normalizePrepSeconds(prepSeconds) : null;
     room.prepMultiplier = mode === 'coop' ? normalizePrepMultiplier(prepMultiplier) : null;
@@ -1872,9 +1890,12 @@ export class Lobby {
     // the room's version offers it (header "Official versions": 第二期上半 / 第一期 have no 终极)
     if (!this.offered(room.version, room.mode).includes(difficulty)) return fail(ERR.BAD_TARGET, 'not a mode of this version');
     this.dropReplay(room, session.playerId);
+    // a laddered room (规程's solo) moves to the first official mode of that difficulty
+    const modeId = this.laddered(room.version, room.mode) ? this.ladderMode(room.version, room.mode, difficulty, null) : null;
     // a plugin mode chosen (header "Gameplay plugins") carries its own difficulty: picking one leaves it
-    if (room.difficulty !== difficulty || room.content?.modeId) {
+    if (room.difficulty !== difficulty || room.content?.modeId || room.modeId !== modeId) {
       room.difficulty = difficulty;
+      room.modeId = modeId;
       if (room.content?.modeId) { const rest = { ...room.content }; delete rest.modeId; room.content = Object.freeze(rest); }
       for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
       this.broadcastState(room);
@@ -1921,7 +1942,7 @@ export class Lobby {
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
-    if (room.mode === 'solo' || (on && (room.modded || room.version !== DEFAULT_VERSION))) return fail(ERR.BAD_TARGET);
+    if (room.mode === 'solo' || (on && room.modded)) return fail(ERR.BAD_TARGET);
     if (room.aiTakeoverEnabled !== on) {
       this.dropReplay(room, session.playerId);
       room.aiTakeoverEnabled = on;
@@ -2013,8 +2034,7 @@ export class Lobby {
    * The content a room gets for the plugins `ids` (header "The room's plugins", "Gameplay plugins"): the vanilla set for
    * none, else what the room sets resolve — cosmetic plugins only: the vanilla cs with their `vs`; content plugins: the
    * content set's own cs (`vanilla: false`). Nothing is held yet (holdContent). On another official version (header
-   * "Official versions") the base is that version's content (its cs, `version`) and gameplay plugins are refused
-   * (VERSION_UNSUPPORTED).
+   * "Official versions") the base is that version's content (its cs, `version`); every gameplay plugin must support it.
    * @param {Room | null} room @param {string[]} ids @param {Record<string, Record<string, unknown>>} [settings]
    * @param {string} [version] the version the content is for (default: the room's)
    * @param {Room['content'] | null} [replacing] the content this change frees (default: the room's — room.create passes
@@ -2030,17 +2050,14 @@ export class Lobby {
       return { content: base };
     }
     if (!this.vanilla || !this.plugins || !base) return fail(ERR.PLUGIN_UNKNOWN, 'this server applies no plugins');
-    const gameplay = version === DEFAULT_VERSION;
     let r;
-    try { r = this.plugins.resolve(ids, { scope: 'room', settings, replacing, gameplay }); } catch (e) {
+    try { r = this.plugins.resolve(ids, { scope: 'room', settings, replacing, version }); } catch (e) {
       this.log.error(`[lobby] ${room?.code ?? '----'} plugin set failed`, e);
       return fail(ERR.INTERNAL);
     }
     if (!r || !r.ok) return fail(r && isErrCode(r.error) ? r.error : ERR.INTERNAL, r && typeof r.detail === 'string' ? r.detail.slice(0, 200) : undefined);
     const { cs, vs, plugins: list, warnings, bytes, dataBytes, modes, kitted, trusted, execution, rules } = r.set;
-    const modded = isContentHash(cs) && cs !== this.vanilla.cs;
-    // (roomSets refuses them itself; a room-sets object that does not know the option must not slip one through)
-    if (modded && !gameplay) return fail(ERR.VERSION_UNSUPPORTED, 'gameplay plugins play the default version (act2autochess) only');
+    const modded = isContentHash(cs) && cs !== base.cs;
     const frozen = (a) => Object.freeze((Array.isArray(a) ? a : []).map((p) => Object.freeze({ ...p })));
     // the operators its plugins add to a 自选 slot's list (welcome.diyKitted holds the server's own): the pages' pickers
     const extra = modded && Array.isArray(kitted) ? kitted.filter((id) => typeof id === 'string' && !VANILLA_KITTED.has(id)).slice(0, 200) : [];
@@ -2084,7 +2101,23 @@ export class Lobby {
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.versionVote) return fail(ERR.VERSION_VOTE);
-    const official = DIFFICULTIES.find((d) => modeIdFor(room.mode, d) === modeId);
+    // a laddered room (规程's solo): any official mode of the version's room mode; the room's difficulty follows it
+    // (极速模拟's FAST counts as 标准 FUNNY for the difficulty-keyed parts of the room)
+    const laddered = this.laddered(room.version, room.mode);
+    const ladder = laddered ? this.versionModes(room.version, room.mode).find((m) => m.id === modeId) : null;
+    if (ladder) {
+      const difficulty = DIFFICULTIES.includes(ladder.difficulty) ? ladder.difficulty : 'FUNNY';
+      if (room.modeId === ladder.id && room.difficulty === difficulty && !room.content?.modeId) return OK;
+      room.modeId = ladder.id;
+      room.difficulty = difficulty;
+      if (room.content?.modeId) { const rest = { ...room.content }; delete rest.modeId; room.content = Object.freeze(rest); }
+      this.dropReplay(room, session.playerId);
+      for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
+      this.broadcastState(room);
+      return OK;
+    }
+    // a laddered room's official modes are the ones above: mode_single_<difficulty> is no mode there (规程 has none)
+    const official = laddered ? undefined : DIFFICULTIES.find((d) => modeIdFor(room.mode, d) === modeId);
     let difficulty = room.difficulty;
     let content = room.content;
     if (official) {
@@ -2193,6 +2226,22 @@ export class Lobby {
     return this.versions.offered(v, /** @type {'solo' | 'coop'} */ (mode));
   }
 
+  /** The official modes of a version's room mode (versions.modesOf), [] without the service. */
+  versionModes(v, mode) { return this.versions?.modesOf?.(v, /** @type {'solo' | 'coop'} */ (mode)) ?? []; }
+
+  /** Does a room of this version and mode keep its own mode id (规程's solo ladder; versions.laddered)? */
+  laddered(v, mode) { return v !== DEFAULT_VERSION && !!this.versions?.laddered?.(v, /** @type {'solo' | 'coop'} */ (mode)); }
+
+  /**
+   * A laddered room's official mode: `asked` when the version offers it, else the first mode of `difficulty` (sortId
+   * order: 标准 → 规程等级1, 险境 → 规程等级5 …), else the first mode.
+   * @param {string} v @param {string} mode @param {string} difficulty @param {string | null} asked
+   */
+  ladderMode(v, mode, difficulty, asked) {
+    const list = this.versionModes(v, mode);
+    return list.find((m) => m.id === asked)?.id ?? list.find((m) => m.difficulty === difficulty)?.id ?? list[0]?.id ?? null;
+  }
+
   /**
    * Does this version's solo use the official per-round timers (`config.version.rules.soloTimed`)? 第二期下半, a server
    * without the versions service, and a version whose data cannot be read: no.
@@ -2232,7 +2281,6 @@ export class Lobby {
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (!this.versionEnabled(version)) return fail(ERR.VERSION_UNKNOWN);
     if (!this.offered(version, room.mode).length) return fail(ERR.VERSION_UNSUPPORTED, `${version} has no ${room.mode} rooms`);
-    if (room.modded && version !== DEFAULT_VERSION) return fail(ERR.VERSION_UNSUPPORTED, 'gameplay plugins play the default version (act2autochess) only');
     if (version === room.version) return fail(ERR.ALREADY);
     if (room.versionVote) return fail(ERR.VERSION_VOTE);
     const now = this.now();
@@ -2241,14 +2289,14 @@ export class Lobby {
     if (humans.some((s) => !s.connected)) return fail(ERR.NOT_READY);
     if (!this.versionAvailable(version)) return fail(ERR.VERSION_UNSUPPORTED, 'the data of this version is not available');
     room.versionProposeAt = now;
-    // the room's cosmetic plugins must resolve on the target (the server owner's policy, a plugin refused there)
+    // the room's plugins must resolve on the target (the server owner's policy, a plugin refused there)
     const ids = (room.content?.plugins || []).filter((p) => !p.auto).map((p) => p.id);
     if (ids.length) {
       const r = this.resolveContent(room, ids, this.pluginSettings(room.content), version);
-      if ('error' in r) return fail(ERR.VERSION_UNSUPPORTED, `the room's plugins do not apply to ${version}: ${r.error}`);
+      if ('error' in r) return fail(ERR.VERSION_UNSUPPORTED, `the room's plugins do not apply to ${version}: ${r.detail || r.error}`);
     }
     this.dropReplay(room, session.playerId);
-    if (humans.length === 1) { this.applyVersion(room, version, 'alone'); return OK; }
+    if (humans.length === 1) return this.applyVersion(room, version, 'alone');
     room.versionVoteSeq = room.versionVoteSeq >= 2 ** 31 ? 1 : room.versionVoteSeq + 1;
     const id = room.versionVoteSeq;
     const ms = Math.max(0, Number(this.opts.versionVoteMs) || 0);
@@ -2280,7 +2328,7 @@ export class Lobby {
     }
     if (vote.agreed.has(session.playerId)) return OK;
     vote.agreed.add(session.playerId);
-    if (vote.voters.every((id) => vote.agreed.has(id))) this.applyVersion(room, vote.version, 'vote');
+    if (vote.voters.every((id) => vote.agreed.has(id))) return this.applyVersion(room, vote.version, 'vote');
     else this.broadcastState(room);
     return OK;
   }
@@ -2333,7 +2381,7 @@ export class Lobby {
 
   /**
    * Switch the room to `version` (header "Official versions"): its difficulty, its content (the version's base with the
-   * room's cosmetic plugins again — none when they no longer resolve), every member's page loading it, the other humans
+   * room's plugins composed again — a gameplay failure preserves the original room), every member's page loading it, the other humans
    * un-readied, the whole result replay and every human seat's stored settings dropped, a seat card the version lacks
    * dropped. Broadcast.
    * @param {Room} room @param {string} version @param {'vote' | 'alone'} how
@@ -2341,18 +2389,23 @@ export class Lobby {
   applyVersion(room, version, how) {
     if (room.versionVote) { clearTimeout(room.versionVote.timer); room.versionVote = null; }
     const before = room.content;
+    let next = this.baseContent(version);
+    const ids = (before?.plugins || []).filter((p) => !p.auto).map((p) => p.id);
+    if (ids.length) {
+      const r = this.resolveContent(room, ids, this.pluginSettings(before), version);
+      if ('content' in r && r.content) next = r.content;
+      else if (room.modded) {
+        // A changed plugin or a newly full pool during the vote must not silently turn the match vanilla.
+        this.broadcastState(room);
+        return 'error' in r ? r : fail(ERR.VERSION_UNSUPPORTED);
+      } else this.warnOnce(`[lobby] ${room.code} plugins (${ids.join(', ')}) dropped on the switch to ${version}: ${'error' in r ? r.error : '?'}${'detail' in r && r.detail ? ` (${r.detail})` : ''}`);
+    }
     room.version = version;
     // 「不限时」 belongs to a timed solo only (header): a co-op room, or a version whose solo is not timed, drops it.
     // Switching between the two 第一期 versions keeps it.
     if (room.mode !== 'solo' || !this.versionSoloTimed(version)) room.soloUnlimited = false;
     room.difficulty = this.fallbackDifficulty(version, room.mode, room.difficulty);
-    let next = this.baseContent(version);
-    const ids = (before?.plugins || []).filter((p) => !p.auto).map((p) => p.id);
-    if (ids.length) {
-      const r = this.resolveContent(room, ids, this.pluginSettings(before));
-      if ('content' in r && r.content && r.content.vanilla !== false) next = r.content;
-      else this.warnOnce(`[lobby] ${room.code} plugins (${ids.join(', ')}) dropped on the switch to ${version}: ${'error' in r ? r.error : '?'}${'detail' in r && r.detail ? ` (${r.detail})` : ''}`);
-    }
+    room.modeId = this.laddered(version, room.mode) ? this.ladderMode(version, room.mode, room.difficulty, room.modeId) : null;
     room.content = next;
     this.holdContent(next);
     this.releaseContent(before);
@@ -2376,6 +2429,7 @@ export class Lobby {
     }
     this.log.info(`[lobby] ${room.code} version → ${version} (${how})`);
     this.broadcastState(room);
+    return OK;
   }
 
   addBot(session) {
@@ -2787,7 +2841,7 @@ export class Lobby {
     if (room.recoveryContentMissing || (checkpoint?.requireCs && checkpoint.cs !== room.content?.cs)) return fail(ERR.CONTENT_NOT_READY);
     if (room.test && !this.testEnabled) return fail(ERR.TEST_DISABLED);
     const versioned = room.version !== DEFAULT_VERSION;
-    if (versioned && !this.versionHosts && this.MatchClass === DefaultMatch) return fail(ERR.INTERNAL, 'no match host for this version');
+    if (versioned && !(room.modded ? this.hosts : this.versionHosts) && this.MatchClass === DefaultMatch) return fail(ERR.INTERNAL, 'no match host for this version');
     if (room.versionVote) this.voidVersionVote(room, 'members');
     if (this.matchWorkerPool && !room.modded && !versioned) return this.startMatchWithWorker(room, key, checkpoint, { departedPlayerIds });
     return this.startMatchWithLocal(room, key, checkpoint, { departedPlayerIds });
@@ -2814,7 +2868,7 @@ export class Lobby {
     const matchNo = checkpoint ? Math.max(1, room.matchCount) : room.matchCount + 1;
     try {
       const match = await this.matchWorkerPool.create(room.code, {
-        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: modeIdFor(room.mode, room.difficulty),
+        userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: room.code, mode: room.mode, difficulty: room.difficulty, modeId: checkpoint?.modeId || room.content?.modeId || room.modeId || modeIdFor(room.mode, room.difficulty),
         seats, spectators: room.spectators.map((s) => s.playerId), consoleEnabled: !!room.consoleEnabled,
         hostId: room.hostId, ...(room.test === true ? { test: true } : {}), ...(room.content ? { cs: room.content.cs } : {}),
         seed, matchNo, aiPicksLast: !!room.aiPicksLast,
@@ -2888,8 +2942,9 @@ export class Lobby {
         userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: room.code,
         mode: room.mode,
         difficulty: room.difficulty,
-        // a plugin mode the host chose (header "Gameplay plugins"), else the official mode of the difficulty
-        modeId: room.content?.modeId || modeIdFor(room.mode, room.difficulty),
+        // a plugin mode the host chose (header "Gameplay plugins"), a laddered room's official mode (规程's solo), else the
+        // official mode of the difficulty
+        modeId: room.content?.modeId || room.modeId || modeIdFor(room.mode, room.difficulty),
         // 「AI 队友最后选择」 (GitHub #338): fixed for the match
         aiPicksLast: room.mode !== 'solo' && room.aiPicksLast === true,
         seats,
@@ -3811,7 +3866,22 @@ export class Lobby {
 
   broadcastState(room) {
     if (room.disposed) return;
-    reconcileAiTakeover(this, room);
+    const rec = reconcileAiTakeover(this, room);
+    // A version host answers the eligibility read later. Publish once that read has cancelled what it should.
+    // An in-process match returns a boolean, so this send stays synchronous.
+    if (rec && typeof rec.then === 'function') {
+      rec.then(() => { if (!room.disposed) this.emitRoomState(room); }, (e) => {
+        this.log.error(`[lobby] ${room.code} AI handover reconcile failed`, e);
+        if (!room.disposed) this.emitRoomState(room);
+      });
+      return;
+    }
+    this.emitRoomState(room);
+  }
+
+  /** room.state after AI-handover votes have been reconciled. */
+  emitRoomState(room) {
+    if (room.disposed) return;
     if (this.trustedRuntime) {
       const state = room.toState(this.now()), prev = room.trustedPrevious;
       const event = (name,extra={}) => this.trustedRuntime.event(name,{room:state,...extra});

@@ -10,6 +10,7 @@ import { bondList, offBondCounts } from '../bondsMeta.js';
 import { bountyText, bountyCard } from '../choices.js';
 import { itemProgress } from '../itemProgress.js';
 import { bandProgressView } from '../bandProgress.js';
+import { commandView, commandDraftView } from '../bandCommands.js';
 
 export class PlayerViews {
   pieceView(p, rc = null) {
@@ -29,6 +30,9 @@ export class PlayerViews {
       // 皮肤: the prep board / hand / temp views carry it too, so a piece shows its appearance before it is deployed and
       // the deploy wheel's preview matches the model that will actually fight
       ...(skinId ? { skin: skinId } : {}),
+      // Only an effect-resolved price. The table price stays on the chess record, so a default view omits this.
+      ...(p.meta && typeof p.meta.sellPrice === 'number' && Number.isFinite(p.meta.sellPrice)
+        ? { sellPrice: Math.max(0, Math.trunc(p.meta.sellPrice)) } : {}),
     };
     if (rc) { v.row = rc[0]; v.col = rc[1]; v.dir = pieceDir(p); }
     return v;
@@ -84,8 +88,9 @@ export class PlayerViews {
       lp: this.lp,
       funds: this.funds,
       bandId: this.bandId,
+      ...(this.command ? { command: commandView(this), commandDraft: commandDraftView(this) } : {}),
       ready: this.ready,
-      canReady: this.alive && this.tempEmpty && !this.personalChoice && this.m.phase === PHASE.PREP,
+      canReady: this.alive && this.tempEmpty && !this.personalChoice && !this.commandDrafts.length && this.m.phase === PHASE.PREP,
       personalChoice: this.personalChoice ? {
         id: this.personalChoice.id,
         round: this.personalChoice.round,
@@ -106,7 +111,8 @@ export class PlayerViews {
         rewardOffer: offer ? { tier: offer.tier, source: offer.source === 'merge' ? 'merge' : 'special', label: offer.label || null, queued: this.offers.length - 1, slots: offer.slots.map((s) => ({ kind: s.kind === 'item' ? 'item' : 'chess', id: s.id, price: s.price, sold: !!s.sold })) } : null,
       },
       hand: this.hand.map((p) => (p ? this.pieceView(p) : null)),
-      temp: this.temp.map((p) => (p ? this.pieceView(p) : null)),
+      temp: (this.equipHand ? this.temp.slice(0, this.gd.tempSize) : this.temp).map((p) => (p ? this.pieceView(p) : null)),
+      ...(this.equipHand ? { stashCount: this.tempPieces().length } : {}),
       board,
       // The stage's 外勤医疗 reserve medic is present during prep, but is not a draggable board piece.
       prepMapChars: this.m.prepMapChars(this),
@@ -132,6 +138,9 @@ export class PlayerViews {
       // switched off)
       diy: this.diy,
       diyBanned: this.diyBanned,
+      // 选择自编: omitted on a season without the step, so those private views stay byte-identical.
+      // null = not confirmed yet; an array (possibly empty) is the confirmation.
+      ...(this.m.gd.diyBringLimits ? { diyBring: this.diyBring != null ? [...this.diyBring] : null } : {}),
       // 最终攻势 / 隐秘核心 prep (community report of 2026-10-06, item 51): `{ playerId, side, units }` — the pair partner's
       // board pieces as UnitInfo on its half of the boss field (mirrored on the right half, as the battle places them);
       // the own prep view draws them beside the own half, read-only. Absent otherwise.

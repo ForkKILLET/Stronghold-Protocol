@@ -295,6 +295,7 @@ function handle(m) {
     else if (m.method === 'diag') result = diag(match);
     else {
       try {
+        // State-changing calls, including takeoverAiSeat, execute only on this match owner.
         const fn = match[m.method];
         result = typeof fn === 'function' ? fn.apply(match, Array.isArray(m.args) ? m.args : []) : fallback(match, m.method, m.args || []);
       } catch (e) {

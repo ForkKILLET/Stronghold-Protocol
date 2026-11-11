@@ -32,6 +32,7 @@ import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prep
 //                    for the match; those chess fight as their stand-ins (PlayerState setNotOwned; bots own everything).
 //                    `diy` (0.2.0 自选编队, optional): the human's 自选 picks (shared/protocol.js checkDiyPicks) — fixed for
 //                    the match; the slotted operators join the human's own shop (PlayerState setDiy / initDiyStock).
+//                    A version with diyBringLimits waits for 选择自编 and stocks only the confirmed slots.
 //   opts.kitted      string[] (optional)        the operators a 自选 slot may field in this room (the content set's
 //                                              list, lobby.kittedFor). Absent on a vanilla match, so setDiy keeps
 //                                              KITTED_CHARS and a normal match stays byte-identical. A modded room
@@ -78,6 +79,14 @@ import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prep
 //   → { ok: true }          platform turns into onLeave). Return { error: ERR code (shared/constants.js),
 //   | { error, detail? }    detail?: string } to reject. Must not throw (if it does, the platform logs and
 //                           replies ERR.INTERNAL). Replies ('ok'/'error' with rid) are sent by the platform.
+// aiHandoverView()          Spectator AI handover, read by the lobby (in-process or through the version match
+//   → { ok: true, ... }     host). Phase, round, ended, disposed, emergencyFrozen, and per player isBot / left /
+//                           alive / autoplay. funds and pieceUids ride along so a test can see the inherited
+//                           inventory; the lobby does not vote on them. Same { error, detail } refusal as handle.
+// acceptAiHandover(botId, name) → { ok: true } | { error, detail? }
+//                           Match half of inheriting that bot seat: cancel its prep token and its rehearsal only,
+//                           clear bot/autoplay, set the spectator's name, loneHuman, aiTakeoverRound. The lobby
+//                           rebinds the session, seat and token. A version match host answers this like handle.
 // onDisconnect(playerId)    A human's socket dropped. The seat is kept; apply the auto-play policy.
 // onReconnect(playerId)     The human is back (new socket with its token) or re-sent hello on a live socket
 //                           (a resync request). May be called without a preceding onDisconnect. Resend full
@@ -200,7 +209,7 @@ import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prep
 //   watch.js         spectator seats, g.watch, who is shown which field, resend on reconnect, prep-scout pushes
 //   intents.js       the g.* / b.* router, emotes, AI 托管, g.unitStats
 //   pause.js         the solo pause
-//   phases.js        INFO_CHECK, BAND_DRAFT (the strategy draft), BATTLE_CHECK, ROUND_START
+//   phases.js        INFO_CHECK, BAND_DRAFT (the strategy draft), CUSTOM_CHECK (选择自编, when diyBringLimits is set), BATTLE_CHECK, ROUND_START
 //   spDraft.js       SP_DRAFT (机变) and the rolls the meta effects ask for (bounties, item ids, pools)
 //   prep.js          PREP: its start, the AI seats' sliced preps, Ready, the deadline, its end
 //   combat.js        battle construction, COMBAT (both modes), the per-field results, then 联防 or SETTLE
@@ -491,13 +500,15 @@ export class Match {
     this.bossId = setup.bossId;
     this.hiddenBossId = setup.hiddenBossId;
     const bans = drawDisabledBonds(this.gd, this.rngSetup);
+    this.bondChoice = bans.choice ?? null;
     this.disabledBonds = bans.drawn;
     this.staticInactiveBonds = bans.staticOff;
     this.bannedChess = bans.banned;
     this.pool = new SharedPool(this.gd, { banned: bans.banned });
     this.itemPool = new SharedItemPool(this.gd, () => this.order);
-    // 自选编队 (0.2.0): each human's slotted DIY pieces get their own stock — none for one whose bonds are all off this
-    // match (player/diy.js initDiyStock); no randomness is drawn here
+    // Each human's 自选 stock uses the same exclusion rule (player/diy.js initDiyStock), without randomness.
+    // A bring-limited season stocks nothing until 选择自编 confirms; diyBanned is still the bond-excluded slots.
+    // Solo regulation's provisional stocks are rebuilt when its INFO_CHECK group choice settles.
     const off = new Set([...bans.drawn, ...bans.staticOff]);
     for (const ps of this.order) ps.initDiyStock(off);
 

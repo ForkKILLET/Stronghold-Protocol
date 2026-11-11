@@ -149,7 +149,7 @@ test('handover preserves negotiated deltas and cancels only the inherited seat r
   assert.equal(m._rehearsalTasks.has('other'), true);
 });
 
-for (const kind of ['plugin', 'hosted', 'historical']) {
+for (const kind of ['plugin']) {
   test(`takeover refuses ${kind} matches even with an enabled room flag`, async t => {
     const { room, m, late } = await fixture(t);
     const oldContent = room.content, oldVersion = room.version;
@@ -159,5 +159,19 @@ for (const kind of ['plugin', 'hosted', 'historical']) {
     try {
       assert.equal((await late.request({ t: 'room.aiRequest', botId: m.order[2].playerId })).t, 'error');
     } finally { room.content = oldContent; room.version = oldVersion; m.hosted = false; }
+  });
+}
+
+// Official versions use the same owner-authoritative operation, not a mutation of parent metadata.
+for (const version of ['act1autochess', 'act3autochess@V3_1']) {
+  test(`official version ${version} permits the existing takeover protocol`, async t => {
+    const { room, m, host, mate, late } = await fixture(t);
+    room.version = version;
+    await late.request({ t: 'room.aiRequest', botId: m.order[2].playerId });
+    const vote = room.aiTakeoverVotes[0];
+    assert.ok(vote);
+    await host.request({ t: 'room.aiVote', voteId: vote.id, approve: true });
+    assert.equal((await mate.request({ t: 'room.aiVote', voteId: vote.id, approve: true })).t, 'ok');
+    assert.equal(m.order[2].isBot, false);
   });
 }

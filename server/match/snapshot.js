@@ -30,7 +30,7 @@ import { buildNormalWave } from './waves.js';
 export const SNAPSHOT_VERSION = 1;
 
 /** Phases whose state is fully serializable (see the header). */
-export const SNAPSHOT_PHASES = Object.freeze([PHASE.INFO_CHECK, PHASE.BAND_DRAFT, PHASE.SP_DRAFT, PHASE.ROUND_START, PHASE.PREP]);
+export const SNAPSHOT_PHASES = Object.freeze([PHASE.INFO_CHECK, PHASE.BAND_DRAFT, PHASE.CUSTOM_CHECK, PHASE.SP_DRAFT, PHASE.ROUND_START, PHASE.PREP]);
 
 /** A restored round's battle gets ids far above the interrupted ones (stale reports can never match a new battle). */
 export const RESTORE_SEQ_GAP = 1000;
@@ -184,7 +184,7 @@ const MATCH_FIELDS = Object.freeze([
   'version', 'test', 'testActions', 'testLog', 'testReplayable', 'aiTakeoverEnabled', 'soloUnlimited',
   'combatArchive', 'replayArchive', 'userMatchId', 'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
   'botRehearsal', 'clientCombat', 'verifyMode', 'headlessSliceMs', 'verifyStats', '_battleSeq', 'pausedMs',
-  'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
+  'bondChoice', 'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'aiPicksLast', 'setupRevision', '_setupVoteSeq',
   'round', 'uidSeq', 'loneHuman', 'hiddenLayerSum', 'hiddenReached', 'errors', 'errorCount', 'simErrors',
   'cs', 'vs', 'requireCs', 'hostId', 'simErrorLog', 'draft', 'sp', 'wave', 'bossWaves', 'bossPairs',
@@ -193,10 +193,10 @@ const MATCH_FIELDS = Object.freeze([
 /** PlayerState fields of a checkpoint (bonds/deploy map are recomputed on restore). */
 const PLAYER_FIELDS = Object.freeze([
   'aiTakeoverRound', 'userId', 'avatarId', 'publicId', 'playerId', 'seat', 'name', 'isBot', 'connected', 'left', 'autoplay', 'consoleRoundUses', 'consoleTotalUses', 'alive', 'lp', 'bandId', 'funds',
-  'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'skins', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
+  'command', 'commandMarks', 'commandDrafts', 'commandDiscounts', 'tempLayers', 'pendingFunds', 'ready', 'infoReady', 'lastEmoteAt', 'loadout', 'skins', 'shop', 'offers', 'hand', 'temp', 'prepsEnded',
   '_tempDue', 'board', 'layers', 'pendingLayerGains', 'bondCountBonus', 'effects', 'bounties', 'counters', 'round',
   'deployCapBonus', 'deployCapMin', 'deviceOverrides', 'tileOverrides', 'stats', 'eliminatedRound', 'lpAtFinal',
-  'ops', 'personalChoice', 'lastResult', 'standIns', 'diy', 'diyStock', 'diyBanned',
+  'ops', 'personalChoice', 'lastResult', 'standIns', 'diy', 'diyStock', 'diyBanned', 'diyBring',
 ]);
 
 /** The RNG streams the match owns (server/sim/rng.js createRng, state()/setState). */
@@ -387,6 +387,7 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
   m._lastPubAt = -Infinity;
   m._lastPubJson = '';
   m._privDirty.clear();
+  m._diyAdvanceTimer = null;
   m._prepEndQueued = false;
   m._turnToken = 0;
   m._progressTimer = null;
@@ -575,6 +576,15 @@ function enterPhase(m, doc, now) {
       if (!m.draft || typeof m.draft !== 'object') { m.draft = null; m.phase = PHASE.INFO_CHECK; m.markPublic(); break; }
       m.draft.turnDeadline = 0;
       m.startDraftTurn();
+      break;
+    }
+    case PHASE.CUSTOM_CHECK: {
+      // Restore confirmed brings and depleted stocks; never re-enter and restock the step.
+      if (m.soloUntimed) m.setDeadline(0);
+      else m.setDeadline(Math.max(5, Math.round(remaining / 1000)), () => m.finishCustomCheck(true));
+      for (const ps of m.order) if (ps.botControlled && ps.diyBring == null) m._applyDiyBring(ps, m._diyChoice(ps));
+      m.markPublic();
+      m.maybeEndCustom();
       break;
     }
     case PHASE.SP_DRAFT: {

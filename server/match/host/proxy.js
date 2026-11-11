@@ -5,8 +5,9 @@
 //
 //   start()                                  the worker creates the match and starts it (the worker may still be booting:
 //                                            the host queues the messages; the match exists for the lobby at once)
-//   handle / setLoadout / requestSetupReroll / cancelSetupReroll → Promise of the match's answer ({ ok } | { error, detail })
-//                                            — the lobby answers the request when it settles (server/net.js)
+//   handle / setLoadout / requestSetupReroll / cancelSetupReroll / takeoverAiSeat
+//                                            → Promise of the match's answer ({ ok } | { error, detail })
+//                                            — the lobby answers the request when it settles (server/net.js).
 //   onDisconnect / onReconnect / onLeave / addSpectator / removeSpectator → posted, no answer
 //   dispose()                                posted; nothing of this match reaches the lobby afterwards
 //   diag()                                   → Promise of the match's diagnostics (verifyStats, errors, fields — tests,
@@ -79,6 +80,8 @@ export class MatchProxy {
     this.startedAt = Date.now() - Math.max(0, opts.checkpoint?.startedAtAgoMs || 0);
     this.mode = opts.mode;
     this.difficulty = opts.difficulty;
+    this.version = opts.version;
+    this.modeId = opts.modeId;
     /** @type {Map<number, { resolve: (r: any) => void, timer: any }>} */
     this.pending = new Map();
     this.seq = 0;
@@ -138,6 +141,7 @@ export class MatchProxy {
   setSkins(playerId, skins) { return this._request('setSkins', [playerId, skins]); }
 
   handle(playerId, msg) { return this._request('handle', [playerId, msg]); }
+  takeoverAiSeat(...args) { return this._request('takeoverAiSeat', args); }
   setLoadout(playerId, loadout, ops) { return this._request('setLoadout', [playerId, loadout, ops]); }
   requestSetupReroll(playerId, revision) { return this._request('requestSetupReroll', [playerId, revision]); }
   cancelSetupReroll(playerId, voteId) { return this._request('cancelSetupReroll', [playerId, voteId]); }
@@ -197,7 +201,12 @@ export class MatchProxy {
     }
     if (this.disposed) return;
     if (m.type === 'send') { try { this.opts.send(m.playerId, m.msg); } catch (e) { this.log.error?.(`[match ${this.roomCode}] send failed`, e); } return; }
-    if (m.type === 'broadcast') { try { this.opts.broadcast(m.msg); } catch (e) { this.log.error?.(`[match ${this.roomCode}] broadcast failed`, e); } return; }
+    if (m.type === 'broadcast') {
+      if (m.msg?.t === 'm.public') {
+        this.phase = m.msg.phase; this.round = m.msg.round; this.order = m.msg.players || [];
+        this.emergencyFrozen = !!m.msg.emergencyFrozen;
+      }
+      try { this.opts.broadcast(m.msg); } catch (e) { this.log.error?.(`[match ${this.roomCode}] broadcast failed`, e); } return; }
     if (m.type === 'end') {
       let replay=null;try{if(m.replayJson)replay=JSON.parse(m.replayJson);}catch{}
       this._end(m.summary?{...m.summary,replay}:null); return;

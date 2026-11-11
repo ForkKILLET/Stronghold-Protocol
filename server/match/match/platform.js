@@ -296,6 +296,7 @@ export class MatchPlatform {
       return;
     }
     if (phase === PHASE.SP_DRAFT && this.sp && this.spTurn() === ps.playerId) this.startSpTurn();
+    else if (phase === PHASE.CUSTOM_CHECK) this.maybeEndCustom();
     else if (phase === PHASE.PREP) this.maybeEndPrep();
   }
 

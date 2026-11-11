@@ -48,6 +48,7 @@ export class MatchViews {
     if (!ps.alive) return 'dead';
     switch (this.phase) {
       case PHASE.INFO_CHECK: return ps.infoReady ? 'ready' : 'deciding';
+      case PHASE.CUSTOM_CHECK: return ps.diyBring != null ? 'ready' : 'deciding';
       case PHASE.BAND_DRAFT:
         if (this.draft && this.draft.picks[ps.playerId]) return 'ready';
         return this.draft && this.draftTurn() === ps.playerId ? 'deciding' : 'acting';
@@ -101,6 +102,8 @@ export class MatchViews {
       disabledBonds: [...new Set([...this.disabledBonds, ...this.staticInactiveBonds])].sort(),
       drawnDisabledBonds: this.disabledBonds.slice(),
       bannedChess: this.bannedChess.slice(),
+      ...(this.gd.regulationBondDraw ? { bondDraw: 'regulation' } : {}),
+      ...(this.bondChoice ? { bondChoice: { groups: this.bondChoice.groups.map(g => g.slice()), picked: this.bondChoice.picked } } : {}),
       bossId: this.bossId,
       hiddenBossId: this.hiddenBossId,
       bossRound: this.gd.bossRound,
@@ -129,7 +132,7 @@ export class MatchViews {
         bandId: ps.bandId,
         shopLevel: ps.shop.level,
         boardCount: ps.deployCount,
-        ready: this.phase === PHASE.INFO_CHECK ? ps.infoReady : ps.ready,
+        ready: this.phase === PHASE.INFO_CHECK ? ps.infoReady : this.phase === PHASE.CUSTOM_CHECK ? ps.diyBring != null : ps.ready,
         // the strip of a teammate watching this player (DESIGN §20.15): every bond with members, layers or an active tier
         // (= the player's own m.private list without thresholds / countsHand — the client reads those from bonds.json),
         // this round's in-battle gains included once the COMBAT phase ended (PlayerState.bondsView); [] once eliminated —
@@ -159,6 +162,11 @@ export class MatchViews {
     // 最终攻势 / 隐秘核心: when the overtime drain starts (ms epoch; `deadline` is the level's 120 s countdown)
     if ((this.phase === PHASE.FINAL_ASSAULT || this.phase === PHASE.HIDDEN_CORE) && this.overtimeAt) v.overtimeAt = this.overtimeAt;
     if (this.bossPool) v.bossHp = { hp: Math.max(0, Math.round(this.bossPool.hp)), max: Math.round(this.bossPool.maxHp) };
+    if (this.phase === PHASE.CUSTOM_CHECK && this.gd.diyBringLimits) {
+      const picks = {};
+      for (const ps of this.order) picks[ps.playerId] = ps.diyBring != null ? [...ps.diyBring] : null;
+      v.diyCheck = { limits: this.gd.diyBringLimits, picks, untimed: !!this.soloUntimed };
+    }
     if (this.phase === PHASE.BAND_DRAFT && this.draft) {
       const d = this.draft;
       // turnSeconds: the length of a turn (the countdown gauge's total; 0 when untimed) — deadline = turnDeadline

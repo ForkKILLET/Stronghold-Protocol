@@ -80,6 +80,7 @@
 // of kill rate and rehearsal adds ≈ 5 more; see docs/META.md §1.5. Old vs new decisions on the same seeds:
 // tools/botbench.mjs.
 
+import { botBondUnavailable } from './botBondGroups.js';
 import { advisorPlan, planContains, planUnitWeight, planPlacementWeight, planBuyTarget, ownsElite } from './aiPlan.js';
 import { economyPlan, advisorWanted, advisorBanks, fundAdvisorPurchase, advisorFreezeTarget, advisorProtected, advisorSaleRank } from './aiEconomy.js';
 import { createPrepSteps } from './botPrep.js';
@@ -90,6 +91,7 @@ import { deriveSeed } from '../sim/rng.js';
 import { freeSlot, countFree, legalTiles, canPlace, positionClass, placeClass, basePositionClass, parseKey, tileKey, FIELD, pieceDir, boardTileOf, BOSS_MIRROR_COL } from './board.js';
 import { rotateOffset, normDir, mirrorDir, oppositeDir } from '../sim/dir.js';
 import { itemKey } from './gamedata.js';
+import { commandSkill, commandView, keepsFunds } from './bandCommands.js';
 import { computeBonds } from './bondsMeta.js';
 import { isFlyKey, bountySpawns } from './waves.js';
 import { previewPlayer } from './preview.js';
@@ -99,6 +101,7 @@ import { mitigate } from '../sim/attack.js';
 import { HOVER_KEYS } from '../sim/content/enemies.js';
 import { attackRangeGrid, loadoutRecord, resolveRecordLoadout } from '../../shared/loadoutRecord.js';
 import { morphSlotPolicy, ruleOption } from '../../shared/plugins/rules.js';
+import { chessIsDiy, itemForbidsDiy } from '../../shared/itemRules.js';
 
 /**
  * Drive a step generator (planLayoutSteps, createRehearsalSteps, arrangeSteps, botPrepBeginSteps …) to its end in one
@@ -188,7 +191,9 @@ const DEFAULT_MELEE_RANGE = [[0, 0], [0, 1]];
 const SOFT_BAND_RESERVE = 0.25;
 export function botPickBand(m, ps) {
   const gd = ps?.gd || m.gd;
-  const ids = gd.bandIds();
+  const offered = gd.bandIds();
+  const live = gd.regulationBondDraw ? offered.filter(id => !gd.bandBondIds(id).some(b => botBondUnavailable(m, b))) : offered;
+  const ids = live.length ? live : offered;
   if (!ids.length) return gd.defaultBandId;
   const lateFunds = (id) => /暂存/.test(String(gd.band(id)?.desc || ''));
   const reserved = new Set(ps && typeof m.alivePlayers === 'function'
@@ -408,7 +413,7 @@ function mainCoreBond(m, p) {
 export function bondPlan(m, ps, owned = ownedBonds(m, ps)) {
   const livingBands = m.alivePlayers().filter((p) => p !== ps).flatMap((p) => m.gd.bandBondIds(p.bandId)).sort().join();
   const planMain = (advisorPlan(m, ps)?.bonds || []).slice().sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))
-    .map((b) => b.id).find((id) => m.gd.bond(id)?.isCore && !m.gd.modeInactiveBonds.has(id)) ?? null;
+    .map((b) => b.id).find((id) => m.gd.bond(id)?.isCore && !botBondUnavailable(m, id)) ?? null;
   const key = `${m.round}|${ps.shop.level}|${[...owned.counts.entries()].map(([k, v]) => k + v).join()}|${livingBands}|${planMain}`;
   if (ps._botFocus && ps._botFocus.key === key) return ps._botFocus;
   const prev = ps._botFocusId ?? null;
@@ -424,7 +429,7 @@ export function bondPlan(m, ps, owned = ownedBonds(m, ps)) {
   const pool = bondPoolStats(m, ps, owned);
   for (const id of m.gd.bondIds) {
     const b = m.gd.bond(id);
-    if (!b || !b.isCore) continue;
+    if (!b || !b.isCore || botBondUnavailable(m, id)) continue;
     const k = owned.counts.get(id) || 0;
     if (!k) continue;
     const s = k * 10 + Math.min(4, pool.reach.get(id) || 0) + Math.min(6, (ps.layers[id] || 0) / 10)
@@ -435,7 +440,7 @@ export function bondPlan(m, ps, owned = ownedBonds(m, ps)) {
   let second = null;
   let bestK = 0;
   for (const id of m.gd.bondIds) {
-    if (id === focus) continue;
+    if (id === focus || botBondUnavailable(m, id)) continue;
     const b = m.gd.bond(id);
     if (!b || b.thresholdTemplate === 'count_threshold_downward' || !Array.isArray(b.thresholds) || !b.thresholds.length) continue;
     const k = owned.counts.get(id) || 0;
@@ -468,7 +473,7 @@ function gainLayers(gd, c) {
   return n;
 }
 function tradeOnce(m, ps, ctxOf) {
-  if (m.round < TRADE_FROM || m.gd.leftoverKeptBands.includes(ps.bandId) || freeSlot(ps.hand) < 0) return false;
+  if (m.round < TRADE_FROM || keepsFunds(ps) || freeSlot(ps.hand) < 0) return false;
   const gd = ps.gd || m.gd;
   // the buy loop's context is built only when the shop shows an affordable layer unit (it runs every loop step)
   if (!ps.shop.slots.some((sl) => sl && !sl.sold && sl.kind === 'chess' && ps.priceOf(sl) <= ps.funds && gainLayers(gd, gd.chess(sl.id) || {}))) return false;
@@ -553,7 +558,7 @@ function bondValue(m, c, owned, focus, second = null) {
   const committed = focus && (owned.counts.get(focus) || 0) >= 3;
   for (const b of (c && c.bonds) || []) {
     const bond = m.gd.bond(b);
-    if (!bond) continue;
+    if (!bond || botBondUnavailable(m, b)) continue;
     const n = owned.counts.get(b) || 0;
     const th = Array.isArray(bond.thresholds) && bond.thresholds.length ? bond.thresholds : [bond.activeCount || 2];
     const w = bond.isCore ? 1.4 : 1;
@@ -671,7 +676,7 @@ function chooseLineup(m, ps, ctx) {
   let best = climbLineup(m, ps, ctx, seed.slice(0, cap), seed.slice(cap));
   for (const id of gd.bondIds) {
     const bond = gd.bond(id);
-    if (!bond || !bond.isCore || gd.modeInactiveBonds.has(id) || !Array.isArray(bond.thresholds)) continue;
+    if (!bond || !bond.isCore || botBondUnavailable(m, id) || !Array.isArray(bond.thresholds)) continue;
     const members = [];
     const bases = new Set();
     for (const p of seed) {
@@ -968,12 +973,12 @@ function dpsOf(rec) {
   return rec.attackKind === 'none' ? d * 0.4 : d;
 }
 
-/** Damage per second of a record against one enemy's DEF / RES (one hit mitigated like the sim, attack.js mitigate). */
-function dpsVs(rec, def, res) {
+/** Damage per second of a record against one enemy's DEF / RES (one hit mitigated like the sim, attack.js mitigate), at its ATK or `atk`. */
+function dpsVs(rec, def, res, atk = rec?.stats?.atk || 0) {
   const st = rec && rec.stats;
   if (!st || isHealer(rec)) return 0;
   const interval = Math.max(0.2, (st.bat || 1) * 100 / Math.max(ASPD_MIN, st.aspd || 100));
-  const d = (mitigate(st.atk || 0, rec.dmgType === 'arts' ? 'arts' : 'phys', { def, res }) / interval) * crowdOf(rec);
+  const d = (mitigate(atk, rec.dmgType === 'arts' ? 'arts' : 'phys', { def, res }) / interval) * crowdOf(rec);
   return rec.attackKind === 'none' ? d * 0.4 : d;
 }
 
@@ -1692,7 +1697,7 @@ function takeOffers(m, ps, policy = null) {
       if (sc > bestS) { bestS = sc; best = i; }
     });
     if (best < 0) break;
-    if (freeSlot(ps.hand) < 0) sellWeakestHand(m, ps, { keepPairs: false });
+    if (ps.handSlot(offer.slots[best].kind) < 0) sellWeakestHand(m, ps, { keepPairs: false });
     if (!tryDo(() => ps.pickReward(best))) {
       // could not take it (sold out / no room): drop the offer
       ps.offers.shift();
@@ -1718,6 +1723,8 @@ export function botPrepBegin(m, ps) {
  * Returns the rehearsal job (or null).
  */
 export function* botPrepBeginSteps(m, ps, options = {}) {
+  ps.autoPickCommands();
+  botUseCommand(m, ps, false);
   return yield* LEGACY_PREP.prepBegin(m, ps, options);
 }
 
@@ -1738,7 +1745,7 @@ export function* botPrepEndSteps(m, ps, job = null) {
  */
 export function freeHandSlot(m, ps) {
   if (economyPlan(m, ps) && advisorRoomStep(m, ps, { handOnly: true })) return true;
-  if (ps.isBot && !ps.autoplay) {
+  if (!ps.equipHand && ps.isBot && !ps.autoplay) {
     const art = ps.hand.find((p) => p && p.kind === 'item' && isBountyArt(m.gd, p.id));
     if (art && tryDo(() => ps.destroy(art.uid))) return true;
   }
@@ -1872,8 +1879,8 @@ export function levelUp(m, ps, { spare = false, policy = null } = {}) {
  * leftover is lost at the prep end, so spending it all is free value).
  */
 function fundsReserve(m, ps) {
-  if (!m.gd.leftoverKeptBands.includes(ps.bandId)) return 0;
-  const band = m.gd.band(ps.bandId);
+  if (!keepsFunds(ps)) return 0;
+  const band = commandSkill(ps) || m.gd.band(ps.bandId);
   const buff = band && Array.isArray(band.buffs) ? band.buffs.find((b) => b && b.key === 'coin_carry_over') : null;
   const policy = advisorPlan(m, ps)?.economy;
   if (policy?.reserve != null) return policy.reserve;
@@ -1888,8 +1895,8 @@ function fundsReserve(m, ps) {
  * keeps for the next round. Never refreshes away such a copy or a frozen shop; banking bands keep their funds. [ASSUMED]
  * At most 4 refreshes. Measured: funds lost per prep 0.78 → 0.25 (终极 solo, seeds 1–100, with the other §35.63 rules).
  */
-function spendDown(m, ps) {
-  if (economyPlan(m, ps) || m.gd.leftoverKeptBands.includes(ps.bandId)) return;
+export function spendDown(m, ps) {
+  if (economyPlan(m, ps) || keepsFunds(ps)) return;
   const gd = ps.gd || m.gd;
   for (let guard = 0; guard < 4; guard++) {
     if (ps.shop.frozen || ps.shop.slots.some((s) => s && !s.sold && s.kind === 'chess' && ps.completesChessMerge(s.id))) return;
@@ -2017,7 +2024,7 @@ export function* buyLoopSteps(m, ps, { fillOnly = false, maxRefreshes = 0, polic
           && policy.searchTargets(m, ps).some(t => ps.funds >= refreshCost
             + ps.priceOf({ kind: 'chess', id: t.base, basePrice: gd.chessPrice(t.base) }))))) return;
         if (!canUseItem(m, ps, { id: s.id })) return;
-        if (freeSlot(ps.hand) < 0) return;
+        if (ps.handSlot('item') < 0) return;
         if (ps.funds - price < reserve && !ps.completesItemMerge(s.id)) return;
         const carriers = [...ps.board.values()].filter((p) => p.kind === 'chess' && slotFree(m, ps, p, gd.item(s.id))).length;
         const requested = advisor?.items?.buy?.includes(s.id);
@@ -2410,13 +2417,16 @@ export function itemTarget(m, ps, item, ctx = context(m, ps), usePlan = true) {
   const planned = usePlan ? advisorPlan(m, ps)?.items : null;
   if (planContains(m, planned?.keep, item.id)) return null;
   const equip = planned?.equip?.find(e => e.id === item.id);
+  const forbidsDiy = itemForbidsDiy(rec);
+  const diyCarrier = (p) => chessIsDiy(chessRec(m, p.id, ps));
   const preferred = equip && ps.allChess().find(p => gd.baseIdOf(equip.target) === gd.baseIdOf(p.id) && slotFree(m, ps, p, rec));
-  if (preferred) return preferred;
+  // a plan that names a 自选 carrier for 信标 (or any item the text forbids) falls through to someone else
+  if (preferred && !(forbidsDiy && diyCarrier(preferred))) return preferred;
   const key = itemEffect(rec);
   const value = new Map();
   const val = (p) => { if (!value.has(p.uid)) value.set(p.uid, pieceValue(m, ps, p, ctx)); return value.get(p.uid); };
-  const deployed = [...ps.board.values()].filter((p) => p.kind === 'chess');
-  const owned = ps.allChess();
+  const deployed = [...ps.board.values()].filter((p) => p.kind === 'chess' && !(forbidsDiy && diyCarrier(p)));
+  const owned = forbidsDiy ? ps.allChess().filter((p) => !diyCarrier(p)) : ps.allChess();
   const normal = (p) => !gd.isGolden(p.id);
   const byVal = (list, dir = -1) => list.slice().sort((a, b) => dir * (val(a) - val(b)) || a.uid - b.uid);
   const rel = (p) => { let r = 0; for (const b of chessRec(m, p.id, ps)?.bonds || []) r += b === ctx.focus ? 3 : b === ctx.second ? 2 : ps.bonds[b] && ps.bonds[b].active ? 1 : 0; return r; };
@@ -2507,7 +2517,7 @@ function equipItems(m, ps) {
   const gd = ps?.gd || m.gd;
   const tried = new Set();
   for (let guard = 0; guard < 12; guard++) {
-    const item = [...ps.hand, ...ps.temp].find((p) => p && p.kind === 'item' && canUseItem(m, ps, p) && !tried.has(p.uid));
+    const item = ps.itemCards().find((p) => p && p.kind === 'item' && canUseItem(m, ps, p) && !tried.has(p.uid));
     if (!item) break;
     tried.add(item.uid);
     if (planContains(m, advisorPlan(m, ps)?.items?.keep, item.id)) continue;
@@ -2531,6 +2541,18 @@ function equipItems(m, ps) {
  * the hand stays full (summon cards only).
  */
 function makeHandRoom(m, ps, piece = null) {
+  if (ps.equipHand && piece?.kind === 'item') {
+    const room = () => ps.handSlot('item') >= 0 || !ps.tempPieces().includes(piece);
+    if (room()) return true;
+    // equipping a card of the row frees its slot for the stashed one (a seat under AI 托管 too: nothing is lost)
+    equipItems(m, ps);
+    if (room()) return true;
+    if (!ps.isBot || ps.autoplay) return false;
+    const gd = ps.gd || m.gd;
+    const junk = ps.itemCards().filter((p) => p !== piece && !ps.tempPieces().includes(p) && !isMutationCell(gd, p.id))
+      .sort((a, b) => (gd.item(a.id)?.price || 0) - (gd.item(b.id)?.price || 0) || a.uid - b.uid)[0];
+    return !!junk && tryDo(() => ps.destroy(junk.uid)) && room();
+  }
   const room = () => freeSlot(ps.hand) >= 0 || (piece != null && !ps.temp.includes(piece));
   if (room()) return true;
   if (sellWeakestHand(m, ps, { handOnly: true }) && room()) return true;
@@ -2550,38 +2572,39 @@ function makeHandRoom(m, ps, piece = null) {
 export function resolveTemp(m, ps) {
   // Track pieces, not indices: draining an extended queue refills and compacts its visible window.
   for (const p of ps.tempPieces()) {
-    if (!ps.temp.includes(p)) continue;
-    const idx = freeSlot(ps.hand); // (a recompute pulls it in; a state set up without one)
-    if (idx >= 0 && tryDo(() => ps.move(p.uid, { area: 'hand', idx }))) continue;
+    if (!(ps.equipHand ? ps.tempPieces() : ps.temp).includes(p)) continue;
+    const idx = ps.handSlot(p.kind); // (a recompute pulls it in; a state set up without one)
+    const area = ps.equipHand && p.kind === 'item' ? 'temp' : 'hand';
+    if (idx >= 0 && tryDo(() => ps.move(p.uid, { area, idx }))) continue;
     if (p.kind === 'chess') {
       if (economyPlan(m, ps)) {
         // Temp auto-refills after each action. Drain cheaper alternatives before considering this piece.
         for (let guard = 0; guard < 32 && ps.temp.includes(p); guard++) {
           if (!advisorRoomStep(m, ps)) break;
         }
-        if (!ps.temp.includes(p)) continue;
+        if (!(ps.equipHand ? ps.tempPieces() : ps.temp).includes(p)) continue;
       }
       if (!sellWeakestHand(m, ps)) tryDo(() => ps.sell(p.uid));
     } else if (p.kind === 'item') {
       // 突变细胞 comes back after every transformation (昆图斯's strategy item), and a human's item under AI 托管 is theirs:
       // make room in the hand (sell a bench operator) rather than lose it — only a hand of nothing but items still drops it
       if ((isMutationCell(m.gd, p.id) || ps.autoplay) && makeHandRoom(m, ps, p)) {
-        if (!ps.temp.includes(p)) continue;
-        const j = freeSlot(ps.hand);
-        if (j >= 0 && tryDo(() => ps.move(p.uid, { area: 'hand', idx: j }))) continue;
+        if (!(ps.equipHand ? ps.tempPieces() : ps.temp).includes(p)) continue;
+        const j = ps.handSlot(p.kind);
+        if (j >= 0 && tryDo(() => ps.move(p.uid, { area, idx: j }))) continue;
       }
       tryDo(() => ps.destroy(p.uid));
     }
   }
   // anything left (e.g. sells failed): final sweep — tokens cannot be sold, they are dropped with the temp slot (and
   // come back at the next round start, PlayerState.startRound)
-  for (const p of [...ps.temp]) {
-    if (!p || !ps.temp.includes(p)) continue;
+  for (const p of ps.equipHand ? ps.tempPieces() : [...ps.temp]) {
+    if (!p || !(ps.equipHand ? ps.tempPieces() : ps.temp).includes(p)) continue;
     if (economyPlan(m, ps) && p.kind === 'chess') {
       for (let guard = 0; guard < 32 && ps.temp.includes(p); guard++) {
         if (!advisorRoomStep(m, ps)) break;
       }
-      if (!ps.temp.includes(p)) continue;
+      if (!(ps.equipHand ? ps.tempPieces() : ps.temp).includes(p)) continue;
     }
     if (p.kind === 'chess') tryDo(() => ps.sell(p.uid));
     else if (p.kind === 'item') tryDo(() => ps.destroy(p.uid));
@@ -2591,7 +2614,8 @@ export function resolveTemp(m, ps) {
 
 // Explicit operation references keep the default policy and RNG consumption unchanged.
 const LEGACY_PREP_ACTIONS = Object.freeze({
-  takeOffers, sellJunk, buyLoopSteps, levelUp, advisorSpendSteps, spendDown, economyPlan, maybeFreeze, arrangeSteps, equipItems,
+  takeOffers, sellJunk, buyLoopSteps, levelUp, advisorSpendSteps, spendDown, economyPlan, maybeFreeze, arrangeSteps,
+  equipItems: (m, ps) => { equipItems(m, ps); if (ps.command) { botUseCommand(m, ps, true); takeOffers(m, ps); } },
   applyPlanSteps, resolveTemp, freeHandSlot, rememberOwned,
   hasHandRoom: (ps) => freeSlot(ps.hand) >= 0,
   ready: (ps) => tryDo(() => ps.setReady(true)),
@@ -2613,3 +2637,26 @@ export function createBotPrepSteps(actions = {}, policy = null) {
 }
 
 const LEGACY_PREP = createBotPrepSteps();
+
+/** Bounded command decisions: economy before shopping, battle marks after the lineup. No default-season RNG draws. */
+export function botUseCommand(m, ps, battleMarks = false) {
+  const skill = commandSkill(ps), view = commandView(ps);
+  if (!view?.usable || !view.targets.length) return false;
+  const keys = new Set(skill.buffs.map(b => b.key));
+  const mark = ['skill_mark_char_inst_tag', 'skill_mark_pos_grow_use_cnt', 'skill_add_pos_effect_enemy',
+    'skill_mark_shop_equip_tag', 'skill_layer_limit_grow_round', 'skill_garr_event_extra_exec'].some(k => keys.has(k));
+  if (mark !== battleMarks) return false;
+  // [ASSUMED] Avoid irreversible health/sale commands and paying for shop equipment the bot cannot buy this prep.
+  if (keys.has('skill_drop_hp_to_low_gain_coin') || keys.has('skill_sell_char_bond_layer')) return false;
+  if (keys.has('skill_next_equip_buy_discount') && ps.funds < view.currentCost + 1) return false;
+  let target = view.targets[0];
+  if (view.targetType === 'COMMON_CHESS') {
+    const transform = keys.has('skill_transform_char_up_tier') || keys.has('skill_remove_gain_bond_char');
+    const score = t => {
+      const p = ps.find(t.uid)?.piece;
+      return p ? ps.gd.tierOf(p.id) * 10 + (p.items?.length || 0) + ([...ps.board.values()].includes(p) ? 100 : 0) : 0;
+    };
+    target = [...view.targets].sort((a, b) => transform ? score(a) - score(b) : score(b) - score(a))[0];
+  }
+  return !!ps.useCommand(view.effectId, target).ok;
+}
