@@ -156,7 +156,7 @@ export function aiLastOption(room, myId) {
   return { on: room.aiPicksLast === true, editable: room.hostId != null && room.hostId === myId };
 }
 
-/** Spectator handover in an original-content co-op room of any official version, with a host opt-in. */
+/** Host-controlled spectator handover in an original-content co-op room of any official version. */
 export function aiTakeoverOption(room, myId) {
   if (!room || room.mode === 'solo' || room.content?.vanilla === false) return null;
   return { on: room.aiTakeoverEnabled === true, editable: room.hostId != null && room.hostId === myId && !room.inMatch };

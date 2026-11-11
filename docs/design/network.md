@@ -497,7 +497,7 @@ and keep full replay records. Version negotiation/votes and hello identity owner
 
 ### Spectator AI handover (PR #691, §35.100, [ASSUMED])
 
-The host may opt in before the match with `room.setAiTakeover {on}` (default off, co-op only); changing it clears human ready flags. Off, both option/vote keys are omitted from room.state, the client hides the panel, and requests/votes/transfers are refused.
+The host may change handover before the match with `room.setAiTakeover {on}` (co-op only); changing it clears human ready flags. New original-content co-op rooms inherit the startup setting `rooms.aiTakeoverDefault` (default true); restored rooms keep their saved choice. Off, both option/vote keys are omitted from room.state, the client hides the panel, and requests/votes/transfers are refused.
 In an enabled original-content default-version co-op room during PREP, a spectator may send `room.aiRequest {botId}`.
 `room.aiVote {voteId, approve}` records one replaceable vote per online, non-autoplay human teammate.
 Strict majority accepts/rejects; an online host decides if there are no eligible human teammates.

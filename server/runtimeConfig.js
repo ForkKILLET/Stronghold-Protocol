@@ -12,6 +12,8 @@ import {workerSettings} from './workers/pool.js';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const integer=(min,max)=>value=>Number.isSafeInteger(value)&&value>=min&&value<=max;
 const limit=integer(0,1_000_000),duration=integer(1,7*86400_000);
+const boolean=value=>typeof value==='boolean';
+const parseBoolean=value=>value.trim()==='true'||value.trim()==='1'?true:value.trim()==='false'||value.trim()==='0'?false:undefined;
 const workerDefaults=()=>workerSettings({});
 // JSON path, existing startServer option, env name, default, validator. Keep defaults owned by upstream modules.
 export const SERVER_FIELDS=Object.freeze([
@@ -51,6 +53,7 @@ export const SERVER_FIELDS=Object.freeze([
  ['rooms.versionVoteMs','versionVoteMs','SP_VERSION_VOTE_MS',LOBBY_DEFAULTS.versionVoteMs,duration],
  ['rooms.versionRetryMs','versionRetryMs','SP_VERSION_RETRY_MS',LOBBY_DEFAULTS.versionRetryMs,duration],
  ['rooms.versionProposeGapMs','versionProposeGapMs','SP_VERSION_PROPOSE_GAP_MS',LOBBY_DEFAULTS.versionProposeGapMs,duration],
+ ['rooms.aiTakeoverDefault','aiTakeoverDefault','SP_AI_TAKEOVER_DEFAULT',LOBBY_DEFAULTS.aiTakeoverDefault,boolean,parseBoolean],
  ['shutdown.timeoutMs','shutdownTimeoutMs','SP_SHUTDOWN_TIMEOUT_MS',60_000,integer(1000,300_000)],
 ].map(Object.freeze));
 const object=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);

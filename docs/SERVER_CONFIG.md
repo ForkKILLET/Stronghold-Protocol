@@ -25,6 +25,7 @@ npm start
 | `replays` | `perUser`、`maxBytes` | `SP_REPLAY_LIMIT`、`SP_REPLAY_MAX_BYTES` |
 | `versions` | `enabled`、`default`、`maxHosts` | `SP_VERSIONS`、`SP_VERSION_DEFAULT`、`SP_MAX_VERSION_HOSTS` |
 | `rooms` | `versionVoteMs`、`versionRetryMs`、`versionProposeGapMs` | `SP_VERSION_VOTE_MS`、`SP_VERSION_RETRY_MS`、`SP_VERSION_PROPOSE_GAP_MS` |
+| `rooms` | `aiTakeoverDefault` | `SP_AI_TAKEOVER_DEFAULT` |
 | `shutdown` | `timeoutMs` | `SP_SHUTDOWN_TIMEOUT_MS` |
 
 容量范围为 0–1000000，`maxSessions` 至少 1。每网络容量的 0 表示不限；全局连接／房间的 0 禁止新接入／新建，不代表不限。时间通常为 1 毫秒至 7 天；存档周期至少 1000 毫秒。Worker 数量 0–32，房间 lane 不能超过模拟 Worker 总数；队列 0–10000，Worker 超时 1–3600000 毫秒。退出超时 1000–300000 毫秒，默认 60000；超时退出状态为失败，避免将未完成保存误报为成功。
@@ -49,6 +50,11 @@ npm start
 修改服务器版本范围后重启生效；新增或替换版本数据还需要重新构建、发布和验证内容指纹、历史回放以及对应版本的客户端模拟。
 
 ## 查看生效值
+
+`rooms.aiTakeoverDefault` 为布尔值，默认 `true`，决定新建原版同盟房间的「观战可接管 AI」初值。
+配置 `false` 可恢复默认关闭；环境变量接受 `true`／`false` 或 `1`／`0`。重启后仅影响新房间，
+已保存房间继续使用原选择；创建者仍可在开局前单独切换。单人和玩法插件对局不因此开放接管，
+申请、真人过半投票及接管后的个人统计排除规则不变。
 
 ```sh
 node tools/server-config.mjs /absolute/path/server.json

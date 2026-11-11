@@ -63,6 +63,33 @@ test('actual server uses the file for admission, registry, lobby, worker setting
  assert.equal(server.lobby.opts.maxRooms,2);
  const publicConfig=await fetch(server.url+'/config/server.json');assert.equal(publicConfig.status,404,'operator config is never a public game file');
 });
+test('AI takeover defaults obey boolean configuration precedence and initialize new co-op rooms',async t=>{
+ const f=fixture(t,{rooms:{aiTakeoverDefault:false},workers:{simulation:0}});
+ assert.equal(resolveServerConfig({serverConfigFile:null},{env:{}}).options.aiTakeoverDefault,true);
+ assert.equal(resolveServerConfig({},{root:f.root,env:{}}).options.aiTakeoverDefault,false);
+ for(const value of ['true','1'])assert.equal(resolveServerConfig({},{root:f.root,env:{SP_AI_TAKEOVER_DEFAULT:value}}).options.aiTakeoverDefault,true);
+ for(const value of ['false','0'])assert.equal(resolveServerConfig({},{root:f.root,env:{SP_AI_TAKEOVER_DEFAULT:value}}).options.aiTakeoverDefault,false);
+ assert.equal(resolveServerConfig({aiTakeoverDefault:false},{root:f.root,env:{SP_AI_TAKEOVER_DEFAULT:'true'}}).options.aiTakeoverDefault,false);
+ assert.equal(resolveServerConfig({},{root:f.root,env:{SP_AI_TAKEOVER_DEFAULT:'invalid'}}).options.aiTakeoverDefault,false);
+ for(const value of [0,1,'true',null])assert.throws(()=>validateServerConfig({rooms:{aiTakeoverDefault:value}}));
+ for(const enabled of [false,true]){
+  f.write({rooms:{aiTakeoverDefault:enabled},workers:{simulation:0}});
+  const srv=await startServer({serverConfigFile:f.file,port:0,host:'127.0.0.1',quiet:true,announcementsFile:null});
+  const client=await TestClient.connect(srv.url.replace('http:','ws:')+'/ws');
+  try{
+   const me=await client.hello('Config');
+   for(const version of ['act2autochess','act3autochess@V3_1']){
+    assert.equal((await client.request({t:'room.create',mode:'coop',difficulty:'NORMAL',version},10000)).t,'ok');
+    const room=srv.lobby.roomOf(srv.registry.byId(me.playerId));
+    assert.equal(room.aiTakeoverEnabled,enabled);assert.equal(room.toState().aiTakeoverEnabled===true,enabled);
+    assert.equal((await client.request({t:'room.setAiTakeover',on:!enabled})).t,'ok');
+    assert.equal(room.aiTakeoverEnabled,!enabled,'host may override the server default');
+   }
+   assert.equal((await client.request({t:'room.create',mode:'solo',difficulty:'NORMAL'})).t,'ok');
+   assert.equal(srv.lobby.roomOf(srv.registry.byId(me.playerId)).aiTakeoverEnabled,false);
+  }finally{await client.terminate();await srv.close();}
+ }
+});
 test('configuration validation happens before listening and the process honors its configured shutdown deadline',async t=>{
  const f=fixture(t,{shutdown:{timeoutMs:1000},workers:{simulation:0}});
  // Windows kill('SIGTERM') terminates immediately instead of delivering a catchable signal. Exercise the same

@@ -49,6 +49,7 @@
     "maxHosts": 3
   },
   "rooms": {
+    "aiTakeoverDefault": true,
     "versionVoteMs": 60000,
     "versionRetryMs": 5000,
     "versionProposeGapMs": 300

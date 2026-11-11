@@ -30,12 +30,12 @@ test('a spectator requests an AI in the browser, receives majority approval and 
   }finally{await browser.close();for(const c of clients)await c.terminate().catch(()=>{});await srv.close();}
 });
 
-test('the host can enable the default-off takeover setting through the room UI', {
+test('the host can enable a configured default-off takeover setting through the room UI', {
   skip: process.env.SP_E2E !== '1' || !chrome || !existsSync(chrome), timeout: 60000,
 }, async t => {
   const { startServer } = await import('../../server/index.js');
   const { default: puppeteer } = await import('puppeteer-core');
-  const srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, botRehearsal: 0 });
+  const srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, botRehearsal: 0, aiTakeoverDefault: false });
   t.after(() => srv.close());
   const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox', `--explicitly-allowed-ports=${srv.port}`] });
   t.after(() => browser.close());

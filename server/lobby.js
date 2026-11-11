@@ -275,6 +275,7 @@ export const LOBBY_DEFAULTS = Object.freeze({
   versionVoteMs: 60_000,  // an open version vote is cancelled after this long (header "Official versions") [ASSUMED]
   versionRetryMs: 5_000,  // no new version proposal this long after a declined or expired vote [ASSUMED]
   versionProposeGapMs: 300, // nor this soon after the last proposal (重刷's debounce)
+  aiTakeoverDefault: true, // initial host-controlled handover option for new official co-op rooms
   roomCode: null,         // --room-code / roomCode: a fixed alliance key for every new room (null = random per room)
 });
 
@@ -405,7 +406,7 @@ export class Room {
      * put every human seat before every AI seat (Match opts.aiPicksLast). Kept across the room's matches.
      */
     this.aiPicksLast = false;
-    // [ASSUMED] Remake cooperation option, approved 2026-10-24; host opt-in before the match.
+    // Remake cooperation option: new rooms inherit the server policy; restore uses only the saved choice.
     this.aiTakeoverEnabled = false;
     /**
      * 「不限时」 (room.setSoloUnlimited, DESIGN §35.23.10; a timed solo only, off by default): the match is built with
@@ -1684,6 +1685,7 @@ export class Lobby {
     // stray true cannot change a default or co-op create.
     if (mode === 'solo' && soloUnlimited === true && this.versionSoloTimed(version)) room.soloUnlimited = true;
     room.content = initial;
+    room.aiTakeoverEnabled = mode === 'coop' && initial?.vanilla !== false && this.opts.aiTakeoverDefault === true;
     if (initial !== this.baseContent(version)) this.holdContent(initial);
     room.ownerKey = key;
     room.seats[0] = this.humanSeat(0, session, room);
@@ -1946,7 +1948,7 @@ export class Lobby {
   }
 
   /** 「AI 队友最后选择」 (GitHub #338): host-only, before the match, co-op rooms only (a solo room has no AI seat). */
-  /** Host-only opt-in, fixed before play; inherited seat metrics never become personal rewards (§35.100). */
+  /** Host-controlled before play; inherited seat metrics never become personal rewards (§35.100). */
   setAiTakeover(session, { on }) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);

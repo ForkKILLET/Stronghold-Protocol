@@ -2,8 +2,27 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startServer} from '../server/index.js';
 import {TestClient} from './helpers/wsClient.js';
+import {SessionRegistry} from '../server/net.js';
+import {Lobby} from '../server/lobby.js';
+import {snapshotServer,restoreServer} from '../server/persist.js';
+
+test('restored rooms retain their saved handover choice independently of the new-room default',async t=>{
+ const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,workers:0,aiTakeoverDefault:true}),clients=[];
+ t.after(async()=>{for(const c of clients)await c.terminate();await srv.close();});
+ for(const enabled of [false,true]){
+  const c=await TestClient.connect(srv.url.replace('http:','ws:')+'/ws');clients.push(c);await c.hello('Saved');
+  await c.request({t:'room.create',mode:'coop',difficulty:'NORMAL'});await c.request({t:'room.setAiTakeover',on:enabled});
+ }
+ const saved=snapshotServer({registry:srv.registry,lobby:srv.lobby});
+ for(const defaultValue of [false,true]){
+  const registry=new SessionRegistry(),lobby=new Lobby({registry,options:{aiTakeoverDefault:defaultValue}});
+  t.after(()=>lobby.shutdown());
+  restoreServer({doc:structuredClone(saved),registry,lobby,now:Date.now()});
+  for(const room of saved.rooms)assert.equal(lobby.getRoom(room.code).aiTakeoverEnabled,room.aiTakeoverEnabled);
+ }
+});
 async function fixture(t,testRoom=false,enabled=true){
-  const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,botRehearsal:0}),clients=[];
+  const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,botRehearsal:0,aiTakeoverDefault:enabled}),clients=[];
   t.after(async()=>{for(const c of clients)await c.terminate().catch(()=>{});await srv.close();});
   if(testRoom){srv.lobby.testMode='local';srv.lobby.setTestHost('127.0.0.1');}
   const player=async(name,token)=>{const c=await TestClient.connect(srv.url.replace('http','ws')+'/ws');clients.push(c);const w=await c.hello(name,token,{delta:1});c.id=w.playerId;c.token=w.token;return c;};
@@ -103,7 +122,7 @@ test('handover keeps seat results distinct from personal achievements and preser
   const replayed=await again.waitFor('m.result');assert.equal(replayed.playerId,bot.playerId);
 });
 
-test('takeover is default off, only the host can opt in before play, and changing it clears ready', async t => {
+test('a configured default-off room requires host opt-in before play, and changing it clears ready', async t => {
   const { room, m, host, mate, late, srv } = await fixture(t, false, false);
   assert.equal(room.aiTakeoverEnabled, false);
   assert.equal(Object.hasOwn(room.toState(), 'aiTakeoverEnabled'), false);
