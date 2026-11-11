@@ -62,7 +62,7 @@ export function isProcessEntry(metaUrl) {
 
 /**
  * Print the boot banner of a started server.
- * @param {{ url: string, host: string, port: number, studio?: { pageUrl: (base: string) => string | null } | null }} srv
+ * @param {{ url: string, host: string, port: number, target?: string, studio?: { pageUrl: (base: string) => string | null } | null }} srv
  */
 export function printBanner(srv) {
   console.log(`\n  卫戍协议：盟约 · Stronghold Protocol: Alliance v${APP_VERSION}`);
@@ -74,7 +74,7 @@ export function printBanner(srv) {
   // the plugin studio with its key: what a change in it needs (a raw TCP tunnel looks like this machine; the key does not)
   const studio = srv.studio?.pageUrl?.(srv.url);
   if (studio) console.log(`  Studio:  ${studio}  (插件工作台 · plugin studio — this machine and the LAN; the link carries its key)`);
-  console.log('  Internet: cloudflared tunnel --url ' + `http://localhost:${srv.port}` + '\n');
+  if (!srv.target) console.log('  Internet: cloudflared tunnel --url ' + `http://localhost:${srv.port}` + '\n');
 }
 
 /**

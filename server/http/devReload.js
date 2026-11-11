@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-export function createDevReload({ publicDir, sharedDir, simDir, log = console }) {
+export function createDevReload({ publicDir, sharedDir, simDir, log = console, indexHead = '' }) {
   const instance = randomUUID(), clients = new Set(), watchers = [], pending = new Set();
   let revision = 0, timer, closed = false;
   const send = (res, payload) => {
@@ -24,7 +24,8 @@ export function createDevReload({ publicDir, sharedDir, simDir, log = console })
   const roots = [
     [publicDir, '/', false], [path.join(publicDir, 'css'), '/css/', true],
     [path.join(publicDir, 'js'), '/js/', true], [path.join(publicDir, 'i18n'), '/i18n/', true],
-    [sharedDir, '/shared/', true], [simDir, '/sim/', true],
+    ...(sharedDir ? [[sharedDir, '/shared/', true]] : []),
+    ...(simDir ? [[simDir, '/sim/', true]] : []),
   ];
   for (const [dir, prefix, recursive] of roots) {
     try {
@@ -58,7 +59,7 @@ export function createDevReload({ publicDir, sharedDir, simDir, log = console })
       }
       if (rawPath !== '/' && rawPath !== '/index.html') return false;
       const source = await readFile(path.join(publicDir, 'index.html'), 'utf8');
-      const body = Buffer.from(source.replace('</head>', '<script type="module" src="/js/devReload.js"></script>\n</head>'));
+      const body = Buffer.from(source.replace('</head>', `${indexHead}<script type="module" src="/js/devReload.js"></script>\n</head>`));
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Length': body.length });
       res.end(req.method === 'HEAD' ? undefined : body);
       return true;

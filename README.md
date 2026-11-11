@@ -254,6 +254,7 @@ npm start          # 启动服务器：http://localhost:3000
 ```bash
 npm run dev                 # CSS 热替换；前端代码自动刷新；后端代码自动重启
 npm run dev:source          # 关闭前端自动更新，保留后端 watch
+npm run dev -- --remote https://genshin.asm.ms:7999  # 本地前端 + 远程真实后端（独立测试身份）
 npm test                    # 本机 Linux 自动限额/串行；CI 按分片运行，缺少素材/浏览器的用例跳过
 SP_E2E=1 node --test test/ui/mock.e2e.test.js        # 浏览器端到端测试，需要本机 Chrome（CHROME_PATH 可指定路径）
 SP_REAL_E2E=1 node --test test/ui/real.e2e.test.js   # 需要 Chrome + 已下载的素材
@@ -263,6 +264,7 @@ node tools/perfbench.mjs --cpu 1,4,6 --profile             # 真实战斗的帧�
 ```
 
 - 游戏数据由 `npm run build-data`（`tools/build-data.mjs`）从官方数据表生成，不要手工修改 `data/*.json`。
+- 远程开发支持手动指定服务器地址及 `SP_DEV_REMOTE`；本地热更新页面，档案、对局和模拟数据连接指定服务器，操作会修改真实远程数据。请打开启动时打印的独立本地地址；普通开发和生产启动默认行为不变。详见 [远程前端调试](docs/DEV_REMOTE.md)。
 - 性能测试：`/dev/battle-perf.html` 在浏览器里跑一场真实战斗（对局用的战斗运行器、模拟和渲染），实时显示帧率与逐帧耗时；在手机上打开后点击「开始测量（10 秒）」，生成的报告可以复制后附在反馈中。用到的战斗来自 `node tools/capture-specs.mjs` 从固定种子的机器人对局里截取的数据（`public/dev/perf/`）。
 - 只重构、不改玩法的提交不能改变 `test/golden/*.json`；有意改变玩法时运行 `npm run golden:update`，检查差异后随改动一起提交（见 [test/golden/README.md](test/golden/README.md)）。
 - GitHub Actions（[.github/workflows/ci.yml](.github/workflows/ci.yml)）在 Ubuntu 与 Windows 上以 Node 22 运行四个测试分片、构建与服务器冒烟；Node 24 单独验证 CI 守卫。

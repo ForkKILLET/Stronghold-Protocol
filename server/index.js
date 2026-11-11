@@ -475,4 +475,9 @@ export function userFileFromArgv(argv = process.argv.slice(2), env = process.env
 }
 
 // `node server/index.js` / npm start: listen, print the banner, stop on SIGINT / SIGTERM (http/boot.js).
-if (isProcessEntry(import.meta.url)) runMain(() => startServer({ roomCode: roomCodeFromArgv(), userFile: userFileFromArgv() }));
+if (isProcessEntry(import.meta.url)) runMain(async () => {
+  const { remoteTargetFromArgv, startRemoteDev } = await import('./http/devRemote.js');
+  const target = remoteTargetFromArgv();
+  if (target) return startRemoteDev({ target, hot: process.argv.includes('--hot') });
+  return startServer({ roomCode: roomCodeFromArgv(), userFile: userFileFromArgv() });
+});
