@@ -1,0 +1,22 @@
+{
+  "source": "Owner-supplied original-game screenshot, 2026-11-11",
+  "mode": "act3autochess@V3_1 multiplayer 终极模拟, explicitly confirmed by owner",
+  "sha256": "c1138b30238ba38b642fb820e9885d39f5391e0e218db5690668b05de1a10026",
+  "width": 1280,
+  "height": 786,
+  "disabledCore": [
+    "炎",
+    "谢拉格",
+    "阿戈尔",
+    "卡西米尔",
+    "伊比利亚"
+  ],
+  "disabledAddon": [
+    "灵巧",
+    "奇迹",
+    "突袭",
+    "聚合",
+    "奥术"
+  ],
+  "scope": "Establishes 5+5 for multiplayer 终极模拟 only; does not prove other mode counts or operator eligibility priority."
+}
