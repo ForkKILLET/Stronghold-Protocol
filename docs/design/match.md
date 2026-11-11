@@ -181,6 +181,10 @@ in INFO_CHECK (`g.bondGroup { idx: 0|1, setupRevision }`), greying the other. Le
 use 5 + 5, 标准 co-op greys 4 of 8, and an odd leftover stays active. A bot prefers its plan/strategy core, otherwise
 the seeded first group; [ASSUMED] a human leaving the briefing without a choice keeps that first group.
 Add-on counts stay editable in `config.bans`: [ASSUMED] FUNNY/FAST 1, NORMAL/HARD/ABYSS 4, TRAINING 0.
+Exception confirmed by the owner's official multiplayer 终极模拟 screenshot on 2026-11-11: 5 core + 5 add-on bans.
+The regulation profile's `config.modeBans.mode_multi_abyss` emits `config.modes.mode_multi_abyss.bans.ABYSS`
+with 5 add-ons, using GameData's existing mode-level inheritance. This does not change other multiplayer modes,
+solo levels or covenant. The same screenshot is not evidence for those other counts.
 An operator with core bonds is excluded only when ALL of its core bonds are grey/inactive; its add-on bans do not
 affect availability. An operator with no core bonds is excluded only when it has add-ons and ALL are grey/inactive.
 Operators with no bonds remain available. This corrects the earlier independent core OR add-on interpretation

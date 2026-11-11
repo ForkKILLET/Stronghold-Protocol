@@ -859,7 +859,13 @@ index; M1 reads `shared/versions.js`), and a version's directory is named by its
 every file system and URL).
 
 **Profiles** (`tools/versions/<slug>.mjs`, loaded by `tools/versions/profiles.mjs loadProfile`, which checks `id` and
-`season` against the registry): `{ id, season, section?, source?, layout?, pins, adapters, research, tables, config: { hiddenCore, bans?, rules? }, expect }` (`tools/versions/profiles.mjs` documents each field).
+`season` against the registry): `{ id, season, section?, source?, layout?, pins, adapters, research, tables, config: { hiddenCore, bans?, modeBans?, rules? }, expect }` (`tools/versions/profiles.mjs` documents each field).
+
+`config.modeBans[modeId]` supplies a per-difficulty `bans` override on the generated mode, using GameData's existing
+mode-level inheritance. The 2026-11-11 official screenshot, confirmed by the owner as multiplayer 终极模拟, establishes
+5 core + 5 add-on bans for `act3autochess@V3_1` / `mode_multi_abyss`. Only that mode overrides `ABYSS.addon` to 5;
+the shared difficulty defaults and other modes remain unchanged pending evidence. Core bans still use half of the
+eligible cores. This does not change the core-first operator exclusion rule or bounty pools.
 
 - **`pins`**: the Kengxxiao/ArknightsGameData commit each file group is read from (`pins[group] ?? pins.default`;
   `null` = master; the default version is pinned too since 2026-11-02, DESIGN §37.91). Groups: `activity` (`excel/activity_table.json`), `character` (character / skill /
