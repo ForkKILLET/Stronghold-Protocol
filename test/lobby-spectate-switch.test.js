@@ -48,3 +48,22 @@ test('party and standalone queue tickets cannot move seats while waiting; cancel
  assert.equal(lobby.matchLeave(host).ok,true);assert.equal(lobby.spectate(host,{code:room.code}).ok,true);
  assert.equal(room.hostId,guest.playerId);assert.equal(lobby.queueByPlayer.has(guest.playerId),false);
 });
+
+test('an offline human cannot be the only remaining player after a role change',t=>{
+ for(const hostLeaves of [true,false]){
+  const {lobby,room,players:[host,guest]}=setup(t);lobby.join(guest,{code:room.code});
+  const leaving=hostLeaves?host:guest,offline=hostLeaves?guest:host;
+  offline.connected=false;room.seatOf(offline.playerId).connected=false;
+  assert.equal(lobby.spectate(leaving,{code:room.code}).error,'NOT_READY');
+  assert.equal(room.hostId,host.playerId);assert.equal(room.spectators.length,0);
+  assert.ok(room.seatOf(leaving.playerId));
+ }
+});
+
+test('a spectator role change keeps the verified content report',t=>{
+ const {lobby,room,players:[host,guest]}=setup(t);lobby.join(guest,{code:room.code});
+ Object.assign(room.seatOf(guest.playerId),{content:'ready',contentGen:7});
+ assert.equal(lobby.spectate(guest,{code:room.code}).ok,true);
+ assert.equal(room.spectatorOf(guest.playerId).content,'ready');
+ assert.equal(room.spectatorOf(guest.playerId).contentGen,7);
+});

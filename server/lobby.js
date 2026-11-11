@@ -192,7 +192,13 @@ import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatar
 //     only g.watch (the heavy bucket, like every watcher), g.leave / room.leave, and room.loadout / room.ownership /
 //     room.diy (stored for its session, never handed to the match); anything else → SPECTATOR (▸ emotes too). Host: room.removeSpectator { playerId } any
 //     time → room.closed {kicked} to it. A spectator in a LOBBY room may take a free player seat with room.join of the same
-//     code; a player never switches to spectating in place (ALREADY). Disconnect / grace / reconnect / expiry work as for
+//     code. Before a match a player may switch to a free spectator seat if another connected human remains (a
+//     disconnected seat does not count — NOT_READY 'at least one player must remain seated', so the host is never handed
+//     to a seat that cannot start, kick or open a version vote). A full strip is ROOM_FULL 'no free spectator seat'; a
+//     solo room stays ROOM_FULL 'solo room'. The spectator record keeps that seat's content and contentGen, so a
+//     needsContent room still stamps a loadout sent while watching with the room's cs. The
+//     host migrates, a version vote is cancelled, and the session keeps its preferences (#76). Readiness and plugin
+//     consent reset on the new seat. Disconnect / grace / reconnect / expiry work as for
 //     a player seat (the seat is kept and given back on resume).
 //   * Official versions (DESIGN §35.23, M1; shared/versions.js, server/versions.js): a room plays one official version,
 //     `room.version` — room.create { version? } (omitted: the server's default version; refused VERSION_UNKNOWN when this
@@ -410,7 +416,7 @@ export class Room {
     this.hostId = null;
     /** @type {(Seat | null)[]} */
     this.seats = new Array(MAX_SEATS).fill(null);
-    /** @type {{ playerId: string, name: string, connected: boolean }[]} spectator seats, ≤ MAX_SPECTATORS (header) */
+    /** @type {{ playerId: string, name: string, connected: boolean, content?: 'ready' | 'failed' | null, contentGen?: number }[]} spectator seats, ≤ MAX_SPECTATORS (header) */
     this.spectators = [];
     /** @type {any} running Match instance */
     this.match = null;
@@ -470,7 +476,7 @@ export class Room {
     return null;
   }
 
-  /** @param {string} playerId @returns {{ playerId: string, name: string, connected: boolean } | null} */
+  /** @param {string} playerId @returns {{ playerId: string, name: string, connected: boolean, content?: 'ready' | 'failed' | null, contentGen?: number } | null} */
   spectatorOf(playerId) { return this.spectators.find((s) => s.playerId === playerId) || null; }
 
   /** Lowest free seat index, or -1. */
@@ -1751,13 +1757,19 @@ export class Lobby {
     if (room.spectators.length >= MAX_SPECTATORS) return fail(ERR.ROOM_FULL, 'no free spectator seat');
     const seat = room.seatOf(session.playerId);
     if (!seat || seat.left || seat.isBot) return fail(ERR.NOT_IN_ROOM);
-    if (!room.activeHumans().some(p => p.playerId !== session.playerId)) return fail(ERR.NOT_READY, 'at least one player must remain seated');
+    // A disconnected seat is not a successor: the room would have nobody online who can start or vote.
+    if (!room.activeHumans().some((s) => s.playerId !== session.playerId && s.connected)) return fail(ERR.NOT_READY, 'at least one player must remain seated');
     this.clearGrace(session.playerId);
     this.dropReplay(room, session.playerId);
     room.seats[seat.seat] = null;
-    room.spectators.push({ playerId: session.playerId, name: session.name, connected: session.connected });
+    room.spectators.push({
+      playerId: session.playerId, name: session.name, connected: session.connected,
+      // Keep the content report so settingsCs still stamps a needsContent room's cs while they watch.
+      content: seat.content ?? null, contentGen: seat.contentGen || 0,
+    });
     session.notice = null;
     session.pendingResult = null;
+    if (room.versionVote) this.voidVersionVote(room, 'members');
     if (room.hostId === session.playerId) this.migrateHost(room);
     this.broadcastState(room);
     return OK;
@@ -2641,6 +2653,8 @@ export class Lobby {
    * The stamp of a setting a player sends now (loadout / ownership / diy): csOf(room) — but in a room whose pages must
    * load its content (needsContent) only once the sender's page reported that content ready; before, UNVERIFIED_CS: the
    * page may still show another version's data, whose chess ids name other operators (header "Official versions").
+   * A player who switches to a spectator seat keeps that report on the spectator record (becomeSpectator), so a setting
+   * sent while watching stays on the room's cs. The seat they take again starts without one.
    * @param {Room | null} room @param {string} playerId
    */
   settingsCs(room, playerId) {
