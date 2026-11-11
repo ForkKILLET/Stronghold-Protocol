@@ -1,0 +1,20 @@
+[
+  {
+    "label": "co-op-normal",
+    "source": "user-provided original-game screenshot, 2026-11-12",
+    "sha256": "1c186f073838f7709576be8b7e3ba4eede88ca3e39aaeb71831a9c2c6bf4b243",
+    "dimensions": [
+      2111,
+      1656
+    ]
+  },
+  {
+    "label": "co-op-standard",
+    "source": "user-provided original-game screenshot, 2026-11-12",
+    "sha256": "7456d885bd435d36acfa088f857b2aa157574cb2652527be9b22df375a9935d0",
+    "dimensions": [
+      1280,
+      736
+    ]
+  }
+]
