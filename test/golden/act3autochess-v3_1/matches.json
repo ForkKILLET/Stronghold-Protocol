@@ -63,7 +63,7 @@
       "combat": "client",
       "boost": null,
       "setup": {"stageId":"act3autochess_m01","bossId":"boss_12","hiddenBossId":null,"factions":["DOT","CRITIC"]},
-      "end": {"victory":false,"roundsPassed":8,"hiddenReached":false,"hiddenCleared":false,"reason":"defeat","teamLp":0,"bossPoolLeft":113613,"virtualMs":70100},
+      "end": {"victory":true,"roundsPassed":9,"hiddenReached":false,"hiddenCleared":false,"reason":"victory","teamLp":23,"bossPoolLeft":0,"virtualMs":70100},
       "rng": {"setup":23,"shop":219,"waves":0,"draft":0,"bots":6151,"meta":3},
       "errors": {"engine":0,"logged":0,"sim":0,"dispatcher":0},
       "rounds": [
@@ -82,16 +82,16 @@
       "players": {
         "ai_0": {
           "alive": true,
-          "victory": false,
-          "roundsPassed": 8,
+          "victory": true,
+          "roundsPassed": 9,
           "eliminatedRound": null,
-          "lp": 0,
+          "lp": 23,
           "bandId": "band_fund",
-          "title": {"id":"comment_2","name":"坚实盟约","picId":"comment_icon_1_1","text":"激活的盟约层数总和最高"},
+          "title": {"id":"comment_1","name":"百花齐放","picId":"comment_icon_1_0","text":"对敌方领袖造成伤害最高（仅胜利时）"},
           "trophies": 0,
           "reward": 0,
-          "stats": {"activatedLayers":71,"bossDamage":125427,"dmgDealt":523712,"gold":83,"itemsEquipped":8,"kills":134,"leaks":0,"lpLost":0,"merges":2,"perfectRounds":8,"refreshes":28},
-          "lineup": ["2_04_a@12,3","1_02_a@11,3[1_05_e_a+3_14_e_b]","1_10_b@11,4","3_02_a@11,6","3_25_a@11,7","4_08_a@10,4[3_04_e_a+3_07_e_a]","1_09_b@10,7","2_03_a@9,8[3_10_e_a+2_08_e_a]"],
+          "stats": {"activatedLayers":71,"bossDamage":162154,"dmgDealt":551614,"gold":83,"itemsEquipped":8,"kills":134,"leaks":0,"lpLost":0,"merges":2,"perfectRounds":8,"refreshes":28},
+          "lineup": ["4_08_a@12,7[3_04_e_a+3_07_e_a]","1_10_b@12,8","2_04_a@11,3","3_25_a@11,6","3_02_a@11,7","1_02_a@11,8[1_05_e_a+3_14_e_b]","1_09_b@10,7","2_03_a@10,8[3_10_e_a+2_08_e_a]"],
           "bonds": ["indomShip 1/20","preciShip 0/2","sargonShip 2/21","soloShip 1/0","steadShip 1/30","suntShip 1/0"]
         }
       }

@@ -631,7 +631,7 @@ states, traps, "所在格" effects, the PRTS notes that say so, a `rangeTiles` p
 (`roundHalfEven(y)`, `roundHalfEven(x)` — PRTS 作战机制 "四舍六入五成双"; `Math.round` would take 2.5 to 3) is that tile —
 `bodyKeys` / `bodyInKeys` / `bodyOnTile`, `Battle.enemiesOnTiles` —; in a radius when its position is (DESIGN §3), or,
 for the radius effects PRTS marks 碰撞判定, when its circle overlaps the radius (`Battle.foesInColliderRadius`). An enemy held on the field edge is inset by `FIELD_EDGE_INSET` (1/1048576) [ASSUMED] so that rounding keeps it on the edge tile; movement, knockback and a unit's standing tile for range keys still use `Math.round` (§30.27). A huge enemy (巨型单位:
-`enemy.hitArea` from data/enemies.json `hitArea` — 假想敌：胄 / 管 / 盐风主教昆图斯 / 阿利斯泰尔 / “萨米的意志”, PRTS
+`enemy.hitArea` from data/enemies.json `hitArea` — 假想敌：胄 / 管 / 茧（普通及隐秘核心） / 盐风主教昆图斯 / 阿利斯泰尔 / “萨米的意志”, PRTS
 "受击判定区域为长4.95、宽2.95的长方形，向上偏移1.0") is hit anywhere on a rectangle `w` × `h` tiles centred on its position
 moved `dx` columns right / `dy` rows up: it occupies every tile the rectangle overlaps (`bodyKeys` — 5 × 3 tiles; PRTS
 作战机制 "巨型BOSS单位的每一个占据的格子都可以让其本身通过格子判定"), and radius rules measure to the rectangle (`bodyDist`, 0
@@ -639,9 +639,11 @@ inside) [ASSUMED: PRTS 作战机制 calls collider tests the most common one] �
 target**, a 中点判定 (PRTS 作战机制 "中点判定…案例：阻挡，酒神1天赋的1.3溅射半径"): `enemiesInRadius(x, y, r, true)` counts
 every enemy, a huge one too, by its position (the engine's profession splash and 炮手 aftershocks, and the kits' splash
 centred on an enemy — 焰影苇草 S3's 灼痕 burst, 新约能天使 火力电台, 仇白 S1 留羽). Its position stays its 判定中心 (projectiles fly to it; its own
-attacks, and splash centred on it, measure from it); body size plays no part in blocking or movement: every huge leader is 自缚 + 无法被阻挡 (PRTS 天赋; content/bosses.js
+attacks, and splash centred on it, measure from it); body size plays no part in blocking or movement: the legacy huge leaders listed in `SELF_BOUND` are 自缚 + 无法被阻挡 (PRTS 天赋; content/bosses.js
 `SELF_BOUND` gives it a persistent `noMove` + `unblockable` buff at spawn — it stands where it spawns, its route is never
-walked, so the rectangle stays on the pipe block). Content tests enemies only through the engine
+walked, so the rectangle stays on the pipe block). 三期茧的两形态同为 4.95×2.95、向上偏移 1，
+来源是官方客户端根 BoxCollider2D；`test/sim/cocoon-body.test.js` 核对全部 15 格、四侧越界及客户端预览。
+Content tests enemies only through the engine
 queries above or `body.js` (`bodyInRange` for a range, `bodyInKeys` / `bodyOnTile` for a tile rule, `bodyInRadius`,
 `bodyDist`, `bodyTileReach`; wave-B modules via `support/index.js` `onKeys` / `inRange` — ranges), never
 `rangeKeySet.has(tileKey(enemy))`; distance-scaled numbers (farther
