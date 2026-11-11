@@ -5,6 +5,7 @@ import { useState, useMemo } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
 import { parseRichText } from './richText.js';
+import { formatShowTags } from '../../../shared/showTags.js';
 import { TermMarkup } from './termHelp.js';
 import {AvatarImage} from './avatarImage.js';
 import {openPublicDoctor} from './doctorLinks.js';
@@ -117,10 +118,10 @@ export function LocalSprite({ group = 'ui/battle', name, class: cls, fallback = 
 
 /**
  * Rich text (official markup) → spans. Newlines become <br>.
- * @param {{ text: any, class?: string, as?: string }} props
+ * @param {{ text: any, class?: string, as?: string, showTags?: any }} props
  */
-export function RichText({ text, class: cls, as = 'span' }) {
-  const segs = useMemo(() => parseRichText(text), [text]);
+export function RichText({ text, class: cls, as = 'span', showTags = null }) {
+  const segs = useMemo(() => parseRichText(formatShowTags(text, showTags)), [text, showTags]);
   const Tag = as;
   return html`<${Tag} class=${cx('rt', cls)}><${TermMarkup} segments=${segs} /><//>`;
 }

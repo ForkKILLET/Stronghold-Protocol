@@ -11,12 +11,14 @@ import { bountyText, bountyCard } from '../choices.js';
 import { itemProgress } from '../itemProgress.js';
 import { bandProgressView } from '../bandProgress.js';
 import { commandView, commandDraftView } from '../bandCommands.js';
+import { pieceGarrisonTags, pieceItemTags } from '../showTags.js';
 
 export class PlayerViews {
   pieceView(p, rc = null) {
     const rec = p.kind === 'item' ? this.gd.item(p.id) : p.kind === 'token' ? this.gd.token(p.id) : this.gd.chess(p.id);
     // 皮肤 (docs/SKINS.md): skinFor resolves the effective body, including stand-ins and 自选 picks, on every surface.
     const skinId = p.kind === 'chess' ? this.skinFor(rec) : null;
+    const garrisonTags = pieceGarrisonTags(this, p);
     const v = {
       uid: p.uid,
       kind: p.kind,
@@ -25,6 +27,7 @@ export class PlayerViews {
       tier: rec && Number.isInteger(rec.tier) ? rec.tier : null,
       items: p.kind === 'chess' ? (p.items || []).map((it) => ({ uid: it.uid, id: it.id, ...this._itemProgressView(it) })) : [],
       ...(p.kind === 'item' ? this._itemProgressView(p) : {}),
+      ...(garrisonTags ? { garrisonTags } : {}),
       count: p.kind === 'token' ? (p.count || 1) : 1,
       ownerUid: p.kind === 'token' ? p.ownerUid ?? null : null,
       // 皮肤: the prep board / hand / temp views carry it too, so a piece shows its appearance before it is deployed and
@@ -40,7 +43,8 @@ export class PlayerViews {
 
   _itemProgressView(item) {
     const progress = itemProgress(this, item);
-    return progress ? { progress } : {};
+    const showTags = pieceItemTags(this, item);
+    return { ...(progress ? { progress } : {}), ...(showTags ? { showTags } : {}) };
   }
 
   bandProgressView() {

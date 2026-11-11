@@ -14,6 +14,7 @@ import { timelineAt } from '../fields.js';
 import { bossFieldPlacement } from '../finalAssault.js';
 import { battleProgress } from '../../sim/spec.js';
 import { equippedItemProgress, itemProgress } from '../itemProgress.js';
+import { pieceGarrisonTags, pieceItemTags } from '../showTags.js';
 
 /** Milliseconds since the match started. A stamp before the start, or a bad stamp, is 0. The stored log keeps the epoch. */
 function auditClock(at, startedAt) {
@@ -349,6 +350,7 @@ export class MatchViews {
         // the equipped items (like the sim's UnitInfo): a 变形同构体 wearer shows as a member of the bond it grants
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
         itemProgress: equippedItemProgress(ps, piece),
+        garrisonTags: pieceGarrisonTags(ps, piece),
         standInFor: rec && rec.standInFor ? rec.standInFor : undefined,
         diy,
         // 皮肤 (docs/SKINS.md): built per player (the owner of the scouted board), so a teammate's piece shows THEIR
@@ -419,6 +421,8 @@ export class MatchViews {
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
         itemProgress: equippedItemProgress(ps, piece),
         progress: piece.kind === 'item' ? itemProgress(ps, piece) : undefined,
+        garrisonTags: pieceGarrisonTags(ps, piece),
+        showTags: pieceItemTags(ps, piece),
         standInFor: standIn && standIn.standInFor ? standIn.standInFor : undefined,
         diy,
         // 皮肤 (docs/SKINS.md): the scouted player's own appearance (see the prep view above)

@@ -47,7 +47,7 @@ tiers III–VI normal E2 Lv.1, elite E2 Lv.60. This is a data observation, not a
 | Convention | Meaning |
 |---|---|
 | ids | Always the official ids: `chess_char_1_01_a` (normal) / `_b` (精锐 golden), `chess_item_1_01_e_a`, `garrison_16_a`, `bondeffect_yan`, `enemy_1422_lrsldr`, `band_bldsk`, `boss_1`, `act1autochess_03` (wave template = level file name, lower-case), `act2autochess_m01` (stage). |
-| `desc` / `descRaw` | `descRaw` keeps the official rich-text markup (`<@ba.vup>+15%</>`, `<$ba.sluggish>停顿</>`), `desc` is plain text. Literal trigger labels such as `<获得时>`, `<在场6名不同【炎】干员>` are part of the text and kept in both. `\n` escapes are real newlines. Placeholders (`{atk:0%}`, `{-x}`, `{x:0.0}`) are already **resolved** at the record's level, except bond `effectDesc` (see bonds). |
+| `desc` / `descRaw` | `descRaw` keeps the official rich-text markup (`<@ba.vup>+15%</>`, `<$ba.sluggish>停顿</>`), `desc` is plain text. Literal trigger labels such as `<获得时>`, `<在场6名不同【炎】干员>` are part of the text and kept in both. `\n` escapes are real newlines. Placeholders (`{atk:0%}`, `{-x}`, `{x:0.0}`) are already **resolved** at the record's level, except bond `effectDesc` (see bonds) and runtime `showtag_value_*` slots (see garrisons). |
 | `bb` / `bbStr` | Flattened official blackboard. `bb[key]` = number; `bbStr[key]` = the official `valueStr` when present. A string-valued entry (value 0 + valueStr) appears **only** in `bbStr`. Duplicate keys get `_1`, `_2` suffixes. Numbers are float-noise-cleaned (6 decimals). |
 | `params` | Effects/items/bands: `{…bb, …bbStr}` of all buffs merged, first occurrence wins (convenience; use `buffs` for exact semantics). |
 | positions | `[row, col]`, **row 0 = bottom**, col 0 = left, 19 × 21 grid (DESIGN §3). |
@@ -311,6 +311,8 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 | `spec` | `{"tiers":[{"need":"…","effect":"…"}],"formulas":{…},"layerGain":"…",…}` | research 02 implementer spec (null without research) |
 
 ## 4. `garrisons.json` — `{ [garrisonId]: Garrison }` (249; 43 distinct `effectKey`s)
+
+规程的 `{showtag_value_1}` 是运行时展示槽，不在生成时替换为常数。`shared/showTags.js` 与真实升级处理共用下次发放计算；本人 piece 和侦察 UnitInfo 的可选 `garrisonTags[garrisonId]` 提供所属玩家的回合计数或该副本的下次触发值，战斗输入保留准备期快照。定期存折使用 item piece 的 `showTags` 展示实际可兑现资金。浏览器在富文本解析前填入数值；百科／调配预览使用初始值，未知槽显示不可用，不输出模板语法。展示读取不初始化、递增或重置计数，不新增持久化字段。
 
 | Field | Example | Meaning |
 |---|---|---|
