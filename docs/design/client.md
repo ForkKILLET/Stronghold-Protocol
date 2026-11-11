@@ -7,6 +7,10 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
 ## 9. Client rendering contract (public/js/render)
 
+Shop cards are grouped by each existing slot's `kind`, preserving its original purchase index.
+`shop.layout` classifies only empty positions (including the first-season equipment unlock); a stale layout must
+not reinterpret an operator as equipment, lose a card outside its declared range, or change its detail/buy target.
+
 本分支 #915（2026-11-03）：本局信息的盟约标签以及确认／策略信息中的圆盘可以直接打开既有盟约卡片，
 保留效果、成员和本局禁用标记。`MatchBondDialog` 将 `BondPopup` 放入现有模态焦点栈，关闭只返回原信息面板；
 策略阶段／回合准备页面离开时一同卸载。局内卡片复用 `popupView` 的所查看玩家、成员及实时层数；点击成员时
