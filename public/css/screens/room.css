@@ -439,10 +439,11 @@
 .room-screen .rseat__identity { flex:1; min-width:0; max-width:100%; }
 .room-screen .rseat__who { flex-direction:column; align-items:flex-start; min-width:0; gap:3px; line-height:1.2; font-size:max(14px,calc(.18 * var(--utility-text,var(--utility-text, var(--t))))); }
 .room-screen .rseat__name { min-width:0; max-width:100%; }
-.room-screen .rseat__roles { display:flex; flex-wrap:wrap; align-items:center; gap:4px; max-width:100%; }
+.room-screen .rseat__meta { display:flex; align-items:center; gap:6px; min-width:0; min-height:16px; margin-top:3px; }
+.room-screen .rseat__roles { display:flex; flex:none; align-items:center; gap:4px; max-width:100%; }
 .room-screen .rseat__role { box-sizing:border-box; flex:none; display:inline-flex; align-items:center; min-height:16px; padding:1px 3px; border:1px solid var(--mint-700); background:transparent; color:var(--mint-400); font-size:10px; font-weight:600; line-height:1.2; white-space:nowrap; }
 .room-screen .rseat__host { border-color:var(--mint-500); background:var(--mint-500); color:var(--text-on-mint); }
-.room-screen .rseat__identity .seat__content { position:static; display:block; max-width:100%; margin-top:3px; padding:0; overflow-wrap:anywhere; font-size:10px; }
+.room-screen .rseat__identity .seat__content { position:static; display:block; flex:1; min-width:0; max-width:100%; padding:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
 
 /* Two aligned rows: configuration+readiness, then room switches+match actions. */
 .room-bar {

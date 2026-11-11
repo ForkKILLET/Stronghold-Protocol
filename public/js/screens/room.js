@@ -247,6 +247,9 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
   const animation=seat.isBot?null:profileAvatarAnimationUrl(portraits?.m,seat.avatarId);
   const avatar = seat.isBot || !seat.avatarId ? null : profileAvatarUrl(portraits?.m, seat.avatarId);
   const readyLabel = ready ? isHostSeat ? t('待命中') : t('已就绪') : t('准备中');
+  const contentLabel = facts.needsContent && !seat.isBot
+    ? seat.content === 'ready' ? facts.versionRoom ? t('版本数据就绪') : t('插件内容就绪')
+      : seat.content === 'failed' ? t('插件内容校验失败') : t('插件内容载入中') : null;
   return html`<article class=${`rseat${ready ? ' is-ready' : ''}${flash ? ' is-flash' : ''}${isMe ? ' is-me' : ''}${isHostSeat ? ' is-host' : ''}${offline ? ' is-offline' : ''}${seat.isBot ? ' is-bot' : ''}`}
       style=${`--i:${index}`}>
     <span class="rseat__clip" aria-hidden="true"></span>
@@ -274,15 +277,15 @@ export function SeatCardView({ seat, index, room, facts, myId, busy, onAddBot, o
       </button>` : html`<${AvatarFrame} src=${avatar} animation=${animation} size="sm" name=${seat.name} seat=${index} bot=${seat.isBot} self=${isMe} />`}
       <div class="rseat__identity"><span class="rseat__who">
         <${DoctorName} player=${seat} class="rseat__name" />
+      </span>
+      <div class="rseat__meta">
         ${isHostSeat || isMe ? html`<span class="rseat__roles">
           ${isHostSeat ? html`<span class="rseat__role rseat__host">${t('创建者')}</span>` : null}
           ${isMe ? html`<span class="rseat__role rseat__me">${t('我')}</span>` : null}
         </span>` : null}
-      </span>
+        ${contentLabel ? html`<span class=${`seat__content is-${seat.content || 'loading'}`} title=${contentLabel} data-testid="seat-content">${contentLabel}</span>` : null}
+      </div>
       <span class="rseat__compact-state">${readyLabel}</span>
-      ${facts.needsContent && !seat.isBot ? html`<span class=${`seat__content is-${seat.content || 'loading'}`} data-testid="seat-content">
-      ${seat.content === 'ready' ? facts.versionRoom ? t('版本数据就绪') : t('插件内容就绪') : seat.content === 'failed' ? t('插件内容校验失败') : t('插件内容载入中')}
-    </span>` : null}
       </div>
     </div>
   </article>`;
