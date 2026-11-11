@@ -28,6 +28,8 @@ function setup(t, rules = null) {
   return { h, m: h.m, ps, equip };
 }
 
+// Original-game video BV1FVWN6VEAr (~01:15–01:19) verifies NORMAL + PHONE at shop II.
+// The elite target / advanced phone rows are regression coverage, not separately recorded observations.
 for (const id of [NORMAL, ELITE]) for (const [phone, n] of [[PHONE, 1], [GOLD_PHONE, 2]]) {
   test(`${id} + ${phone}: shop II grants ${n} special copies without destroying free-slot equipment`, t => {
     const { h, m, ps, equip } = setup(t);

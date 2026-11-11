@@ -881,8 +881,11 @@ default). The pinned regulation table gives “暴躁铁皮” 4 normal / 6 elit
 The match and browser share `equipmentCapacity`; morph slot occupancy remains a separate policy.
 
 `profile.recruitTierExempt` marks special chess base ids that a first-bond communicator used on that carrier can
-recruit above shop level. Only regulation Ironhide opts in, based on the player's 2026-11-11 clarification
-[ASSUMED pending original-game recording]. `chess.recruitTierExempt` survives identity composition; the explicit
+recruit above shop level. Only regulation Ironhide opts in. The player's 2026-11-11 clarification is now backed by
+[original-game video BV1FVWN6VEAr](https://www.bilibili.com/video/BV1FVWN6VEAr/?t=74), verified 2026-11-12:
+at approximately 01:15–01:19 a normal 简易通讯机 on tier-V Ironhide in a level-II shop grants a normal Ironhide copy.
+This confirms eligibility above shop level, not mixed-pool probabilities or the advanced variant's outcome.
+`chess.recruitTierExempt` survives identity composition; the explicit
 extra candidate keeps its actual tier and bypasses only a maximum-tier filter, never an exact-tier draw.
 Normal candidates retain their stock and level gates; neither shop stock nor the paging module gains the exception.
 Mixed draws reuse the existing per-tier copy model [ASSUMED weights], not a newly claimed official probability.

@@ -205,8 +205,11 @@ equipment and invariants, as well as drag/drop, replacement choices and own/spec
 occupancy remains independent. Only a full carrier replaces an item; promotion still returns all equipment.
 
 The regulation first-bond communicator may recruit a special carrier's own normal form above shop level when
-the profile explicitly marks it `recruitTierExempt` (Ironhide only, player clarification 2026-11-11; [ASSUMED] until
-an original-game recording verifies it). Other candidates remain limited by shop level and ordinary stock. Extra
+the profile explicitly marks it `recruitTierExempt` (currently Ironhide only). The original-game
+[video BV1FVWN6VEAr](https://www.bilibili.com/video/BV1FVWN6VEAr/?t=74), approximately 01:15–01:19,
+confirms a normal communicator granting a normal tier-V Ironhide at shop II (verified 2026-11-12).
+It does not independently verify the advanced variant, elite targets or mixed-pool probabilities.
+Other candidates remain limited by shop level and ordinary stock. Extra
 special copies never enter the shop; their real tier stays intact and exact-tier draws do not inherit the bypass.
 The paging module, other hidden operators and older seasons remain unchanged. Mixed candidate weights retain
 the existing copy-weighted assumption. A gift-triggered promotion returns the carrier's equipment normally.
