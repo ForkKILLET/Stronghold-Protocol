@@ -312,7 +312,14 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 
 ## 4. `garrisons.json` — `{ [garrisonId]: Garrison }` (249; 43 distinct `effectKey`s)
 
-规程的 `{showtag_value_1}` 是运行时展示槽，不在生成时替换为常数。`shared/showTags.js` 与真实升级处理共用下次发放计算；本人 piece 和侦察 UnitInfo 的可选 `garrisonTags[garrisonId]` 提供所属玩家的回合计数或该副本的下次触发值，战斗输入保留准备期快照。定期存折使用 item piece 的 `showTags` 展示实际可兑现资金。浏览器在富文本解析前填入数值；百科／调配预览使用初始值，未知槽显示不可用，不输出模板语法。展示读取不初始化、递增或重置计数，不新增持久化字段。
+规程的 `{showtag_value_1}` 是运行时展示槽，不在生成时替换为常数。`shared/showTags.js` 与真实升级处理共用下次发放计算；本人 piece、商店／奖励栏和侦察 UnitInfo 的可选 `garrisonTags[garrisonId]` 提供所属玩家的回合计数或下次触发值，战斗输入保留准备期快照。定期存折使用 item piece 的 `showTags` 展示实际可兑现资金。浏览器在富文本解析前填入数值；百科／调配预览使用初始值，未知槽显示不可用，不输出模板语法。展示读取不初始化、递增或重置计数，不改变持久化结构。
+
+极光／忍冬的 `SERVER_ADD_BOND_UPGRADE_LAYER`／`SERVER_GAIN_FREE_REFRESH_UPGRADE_COUNT` 按
+`count + floor(已触发次数 / n) × delta_count` 发放，n 缺省为 1；`count + max_count` 是每次收益的上限，
+不是整局累计收益。极光为 1、2…12、12…，忍冬为 1、1、2、2、3、3…。
+数值来自固定官方表 `6f63c14e` 的 `garrison_50_a/b`／`garrison_74_a/b`；用户确认本局同名干员共享进度。
+因此使用现有玩家 `counters`（玩家＋原干员 baseId＋effectKey），普通／精锐、再次购买和复制特质沿用同一进度，
+投资人重复触发分别计数，出售和跨回合不清空。新计数随既有检查点保存，文本读取不推进；不迁移旧实现已丢弃的副本历史。
 
 | Field | Example | Meaning |
 |---|---|---|

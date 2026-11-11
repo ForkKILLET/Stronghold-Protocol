@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getVersionData } from '../../server/data.js';
 import { VERSIONS } from '../../shared/versions.js';
-import { formatShowTags, garrisonShowTags, itemShowTags, nextGarrisonUpgrade } from '../../shared/showTags.js';
+import { formatShowTags, garrisonShowTags, garrisonUpgradeKey, itemShowTags, nextGarrisonUpgrade } from '../../shared/showTags.js';
 import { pieceGarrisonTags } from '../../server/match/showTags.js';
 import { makeMatch, give, giveItem } from './harness.js';
 import { snapshotMatch, restoreMatch } from '../../server/match/snapshot.js';
@@ -50,7 +50,7 @@ test('all official dynamic trait slots have an initial value; unresolved future 
 test('owned traits show next payout and real round counts, without mutating counters or sharing owners', t => {
   const h = fixture(t, { mode: 'coop', modeId: 'mode_multi_normal', humans: 2 }), ps = h.ps('p_0'), other = h.ps('p_1');
   const aurora = give(h.m, ps, 'chess_char_3_07_a', 'board', [10, 4]);
-  aurora.meta.gar = { garrison_50_a: { fired: 2, sum: 3 } };
+  ps.counters[garrisonUpgradeKey(raw.garrisons.garrison_50_a, aurora.id)] = 2;
   const canto = give(h.m, ps, 'chess_char_3_13_a', 'hand');
   const closure = give(h.m, ps, 'chess_char_5_21_a', 'hand');
   const compare = give(h.m, other, 'chess_char_5_21_a', 'hand');
@@ -78,12 +78,13 @@ test('upgrade preview follows actual handler payouts, caps, repeated triggers an
   const p = ps.acquireChess('chess_char_3_07_a', { source: 'test' });
   assert.ok(p);
   const gid = 'garrison_50_a', bb = raw.garrisons[gid].bb;
+  const key = garrisonUpgradeKey(raw.garrisons[gid], p.id);
   for (let i = 0; i < 6; i++) {
-    const expected = nextGarrisonUpgrade(bb, p.meta.gar[gid]);
+    const expected = nextGarrisonUpgrade(bb, { fired: ps.counters[key] });
     assert.equal(ps.pieceView(p).garrisonTags[gid].showtag_value_1, expected);
-    const old = p.meta.gar[gid].sum;
+    const old = ps.layers.kjeragShip;
     h.m.dispatch(ps, 'onGain', { piece: p, kind: 'chess', source: 'test' });
-    assert.equal(p.meta.gar[gid].sum - old, expected);
+    assert.equal(ps.layers.kjeragShip - old, expected);
   }
   const doc = snapshotMatch(h.m), next = fixture(t);
   assert.equal(restoreMatch(next.m, doc, { createRngFromState }), true);

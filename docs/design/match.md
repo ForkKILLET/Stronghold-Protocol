@@ -151,6 +151,11 @@ Implementation and protocol details: [META.md](../META.md#regulation-equipment-r
 
 A registry mapping **effect keys** → handler objects `{ onRoundStart, onPrepEnd, onGain(piece), onSold(piece), onRefresh, onPrice(slot), onBuy, onMerge, onLevelUp, onBattleResult }`. Sources: garrison `SERVER_*` keys (per chess on board or hand as the key requires), band effects, item meta effects, bond meta effects (助力, 远见, 奇迹, 投资人…), choice/team cards. Content owners register handlers; the dispatcher owns ordering and the 投资人 "获得时 ×2/×3" multiplier, and only while that bond is active (标准 lists `investShip` inactive; copies of one investor are one member — §32.14.8). 娜仁图亚 见者有份 draws `pool_equip_narant` with no tier cap: every shop-eligible equip, uniform [ASSUMED] (§32.14.8). `onBuy` = a shop purchase (`g.buy`) only: a free pick or a grant never counts as 购买 (休露丝, 玛恩纳, 升华, 整备; §21.21). Equipped items run from a snapshot — the owned chess and each holder's items as that step begins (every [holder, item] pair, taken before the first item runs) — each only while it is still equipped on its still-owned holder (handlers move and destroy pieces: 突变细胞, 博士投影; §21.25).
 
+极光与忍冬的触发后升级使用现有玩家 counters，按原干员 baseId＋effectKey 隔离，同名普通／精锐及重新购买共享，
+队友、其它特质及新对局互不影响。极光每次增加 1、单次封顶 12；忍冬每两次增加 1、单次封顶 3，
+封顶不停止发放。复制特质使用原干员计数，投资人追加触发分别推进；详情／商店／奖励共用只读下次收益，
+经营回放保存对应视图，检查点保存原 counters。数值依据固定表 6f63c14e，同名共享由维护者确认，详见 [DATA.md §4](../DATA.md#4-garrisonsjson---garrisonid-garrison-249-43-distinct-effectkeys)。
+
 凯瑟琳 定向投放 draws three distinct items and grants one on each 调度中心 upgrade (official
 `activity_table.json`, `act2autochess.effectBuffInfoDataDict.aceffect_band_26`: `up_shop_add_special_goods`,
 `count: 3`, `choice: 1`, `pool: pool_equip_kathe`). Its pool is every shop-eligible item plus 突变细胞 at any level

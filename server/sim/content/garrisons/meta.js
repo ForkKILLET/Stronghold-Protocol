@@ -33,7 +33,7 @@
 // so 盟约 rows without it keep today's amount. Behaviour is keyed by effectKey, never by garrison id.
 
 import { metaBonds, frontPiece, behindPiece, distinctTiers } from '../support/meta.js';
-import { nextGarrisonUpgrade } from '../../../../shared/showTags.js';
+import { garrisonUpgradeKey, nextGarrisonUpgrade } from '../../../../shared/showTags.js';
 
 const ids = (s) => String(s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
 const num = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(+v) ? +v : d);
@@ -487,17 +487,15 @@ function textCapOf(g) {
 }
 
 /**
- * How many this trigger grants, and how much of the lifetime sum is still free.
- * `'n' in bb` (免费刷新): the first n triggers grant `count`, later ones grant `count + delta_count`.
- * Otherwise each trigger n grants `count + (n − 1) × delta_count`.
- * [ASSUMED] the sum stops at `count + max_count` when max_count is present (the text's 至多), else uncapped.
+ * Upgrade every n triggers (default 1), up to count + max_count PER trigger; rewards never run out.
+ * The owner confirmed progress belongs to the player's original operator, including rebuy / elite forms.
+ * Copied traits use the copied-from operator's progress; investor repeats each advance it once.
  */
-function nextUpgrade(piece, gid, bb) {
-  const bag = piece.meta.gar || (piece.meta.gar = {});
-  const st = bag[gid] || (bag[gid] = { fired: 0, sum: 0 });
-  const give = nextGarrisonUpgrade(bb, st);
-  st.fired += 1;
-  st.sum += give;
+function nextUpgrade(ctx) {
+  const { piece, copiedFrom, garrison, bb } = ctx.source;
+  const key = garrisonUpgradeKey(garrison, ctx.gd.baseIdOf((copiedFrom || piece).id));
+  const give = nextGarrisonUpgrade(bb, { fired: ctx.counter(key) });
+  ctx.incCounter(key);
   return give;
 }
 
@@ -589,8 +587,8 @@ H.SERVER_ADD_BOND_UPGRADE_LAYER = {
   run(ctx) {
     const piece = realPiece(ctx);
     if (!piece) return;
-    const { bb, bbStr, garrison, garrisonId } = ctx.source;
-    const give = nextUpgrade(piece, garrisonId, bb);
+    const { bbStr, garrison } = ctx.source;
+    const give = nextUpgrade(ctx);
     if (give > 0) addAll(ctx, ids(bbStr.bond), give, requireActiveOf(garrison));
   },
 };
@@ -599,7 +597,7 @@ H.SERVER_GAIN_FREE_REFRESH_UPGRADE_COUNT = {
   run(ctx) {
     const piece = realPiece(ctx);
     if (!piece) return;
-    const give = nextUpgrade(piece, ctx.source.garrisonId, ctx.source.bb);
+    const give = nextUpgrade(ctx);
     if (give > 0) ctx.grantFreeRefresh(give);
   },
 };

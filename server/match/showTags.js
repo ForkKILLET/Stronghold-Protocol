@@ -1,4 +1,4 @@
-import { garrisonShowTags, itemShowTags } from '../../shared/showTags.js';
+import { garrisonShowTags, garrisonUpgradeKey, itemShowTags } from '../../shared/showTags.js';
 
 // Derived presentation only: no meta initialisation, lazy reset or new persisted counter.
 export function pieceGarrisonTags(ps, piece) {
@@ -7,7 +7,8 @@ export function pieceGarrisonTags(ps, piece) {
   for (const id of ps.gd.chess(piece.id)?.garrisonIds || []) {
     const g = ps.gd.garrison(id);
     if (!g || !/\{showtag_value_\d+\}/.test(g.descRaw || g.desc || '')) continue;
-    const values = garrisonShowTags(g, { round: ps.round, state: piece.meta?.gar?.[id] });
+    const key = garrisonUpgradeKey(g, ps.gd.baseIdOf(piece.id));
+    const values = garrisonShowTags(g, { round: ps.round, state: key ? { fired: ps.counters[key] } : undefined });
     if (values) result[id] = values;
   }
   return Object.keys(result).length ? result : undefined;
