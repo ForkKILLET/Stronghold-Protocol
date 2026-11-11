@@ -1,5 +1,19 @@
 # Golden results
 
+## 2026-11-11 三期本分支整局基线
+
+三期 `matches.json` 原样来自主线 `54d24b2b`（blob `c3ed8f6c`），此前合入记录已注明完整黄金比对待补。
+本分支保留自己的 AI／经济规划、赠品库存和 Boss 等规则；例如 AI 仍使用原有阵容／经济规划及最高 6 级，
+不包含主线后续的 5 级上限、协作候选阵容与策略权重调整，因此不能把主线 AI 的整局结果当成本分支基线。
+在独立工作树按 `c528628b`、原有奖励池串行重算全部 14 场，最早分歧在第 1／2 回合的阵容或战斗结果，
+引擎／模拟／分发／日志错误均为零；本次先单独记录已有行为，未改变 AI 或其它玩法实现。
+
+相对原主线文件，变化场景为：`solo-FUNNY-1`、`solo-FUNNY-2`、`coop2-NORMAL-3`、`coop2-HARD-4`、
+`coop3-ABYSS-5`、`coop4-FUNNY-6`、`coop4-ABYSS-7`、`coop2-NORMAL-8-serverrun`、
+`coop2-ABYSS-10-boosted`、`coop2-NORMAL-14-standins`、`coop2-NORMAL-70-diy`、
+`coop2-NORMAL-1-coverage-standins`、`coop2-NORMAL-5-coverage-diy`、`coop2-NORMAL-1-unowned-roster`。
+没有增加或删除场景；此结果仅覆盖三期 matches，不代表其它版本／家族或完整 CI 已补跑。
+
 2026-11-05：主线 dev 精选移植重算四版共 998 个场景，无删除、无模拟异常。
 相对 `96ff8ab0` 的逐项差异见 [本轮审阅记录](../../docs/GOLDEN_DEV_2026-11-05.md)。
 
