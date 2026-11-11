@@ -2,7 +2,8 @@
   "baseline": "54d24b2b32d4a1ad8a5f43ee79b61eb562b1b5b7",
   "heads": {
     "ironhide": "b469114770ae2d7f5775afcd9f94a29fade13c76",
-    "icons": "7788e6955fef51d7a42f4f84369a85c261a6861d"
+    "icons": "7788e6955fef51d7a42f4f84369a85c261a6861d",
+    "cocoon": "8b270ab861db06684f8bf460b044ea6a4b771ec9"
   },
   "browser": "isolated headless Firefox",
   "viewport": {
@@ -16,7 +17,10 @@
     "ironhide-replacement.png": "1bb4a731e0e0362b672c474b28d13545d89622a99f16f7befd8f405a42fd3fa5",
     "icons-before.png": "75912eb966eed8b31a374cdeb5f70ca90b5b74b5b76fbe6ad67c944b57df4ef7",
     "icons-after.png": "6cbbbb77d1489dfbbc47f7f01bddd636a6ab6cb139a93a34381293a73634052c",
-    "results.json": "7e2733b8919bc1b8513bf30e1816f4ce8cc14d285a478bd1aebf92ca121f5054"
+    "results.json": "7e2733b8919bc1b8513bf30e1816f4ce8cc14d285a478bd1aebf92ca121f5054",
+    "cocoon-before.png": "027f63cf84133ff562ebfa6467e422c9032a4709cd0a2eb2279ce6f9bb7f3ef6",
+    "cocoon-after.png": "9b29a3091e6de3ce66d3b8435d93259af4ed741a9e1b0717acef21e92af89efe",
+    "cocoon-results.json": "8321cd853196bf3c0b3831b69d8af57d1c2cea2ba056084c7770afd770d695ef"
   },
   "sprites": {
     "critic_icon": {
@@ -29,5 +33,14 @@
       "sha256": "eff4d55b8919397da8c6c19cbf8a5cf6b4dd6ae005aba940cda9399f524836f0",
       "canonicalURL": "/assets/ui/enemyTypeIcon/reborn_icon.png"
     }
+  },
+  "cocoonCapture": {
+    "browser": "isolated headless Chrome",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "fixture": "mainline /dev/render-demo.html?scene=prep&fa=L&stage=act2autochess_m02&board=2d&panel=0&fx=off; actual regulation enemy records and leader preview on the existing map. Model uses its fallback icon; this verifies red hit tiles, not model playback.",
+    "assertion": "normal Cocoon leader is visible; 1 hit tile before, 15 after; zero page errors. Both forms are covered by Node body regressions."
   }
 }

@@ -4,3 +4,5 @@ See [sources.json](sources.json) for base / candidate commits, capture scope and
 The mainline components are exercised with actual generated season records, normal / elite Ironhide holding two items,
 a six-item full replacement request, and CRITIC / REBORN factions. The assertions and zero-script-error results are in
 [results.json](results.json). These are component previews; they do not claim a complete multiplayer playthrough.
+
+Cocoon: real mainline render-demo preparation preview, same camera. The fallback model icon is unchanged; only red hit tiles are checked (1 before / 15 after). Both forms are covered in Node tests.
