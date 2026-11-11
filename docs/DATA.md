@@ -377,6 +377,8 @@ Types: `BAND_INITIAL` 41, `BOND` 23, `EQUIP` 115, `ENEMY_GAIN` 129 (悬赏), `BU
 
 ## 8. `choices.json` — 机变 draft data
 
+规程的服务端赠品池由 `tools/versions/act3autochess-v3_1.mjs` 的 `equipmentPools` 覆盖，按稳定的装备 `effectId` 生成本季实际 ID；不会继承同名旧池的物品。普通凯瑟琳 `pool_equip_kathe_0` 为普通维式重锤／五种特殊重锤，精锐 `pool_equip_rockr` 为五种特殊重锤／终极重锤，维多利亚池包含电流重锤；异客池为盟约之币、萨尔贡浓茶、拟态物质，谢拉格池固定为不融冰。物品范围依据固定官方表 `6f63c14e` 的 `garrison_139`、`garrison_161` 与 `bondeffect_kjerag_2`。原表不提供服务端权重，带“小概率”的池暂按常见／稀有总权重 90／10，同组均分 `[ASSUMED]`，可在 profile 中校正；不融冰的单一物品不需要概率推定。生成器拒绝特质或效果引用未定义的奖励池。
+
 | Key | Example | Meaning |
 |---|---|---|
 | `events[id]` | `{"id":"enemy_initial_1","choiceType":"BOUNTY_HUNT","effectType":"ENEMY_GAIN","name":"悬赏决策","desc":"…","color":"#35d8b4","family":"bounty","solo":false,"training":false}` | 109 official choice events; `_s` = solo copies; `usedBy` on events opened by items (`hunter_band_1` ← 教鞭 / “神秘顾客”) |

@@ -138,6 +138,8 @@ Implementation and protocol details: [META.md](../META.md#regulation-equipment-r
 
 ### 6.4 Prep-phase effect dispatcher (effectsMeta.js)
 
+规程的装备赠品按本季独立奖励池发放：凯瑟琳普通版为普通／特殊维式重锤，精锐版为特殊／终极重锤；维多利亚的特殊重锤包含电流版本，异客为盟约之币／萨尔贡浓茶／拟态物质，谢拉格为不融冰。成员范围来自固定官方表 `6f63c14e` 的特质及盟约描述；未公开的“小概率”暂按稀有合计 10%、同组均分 `[ASSUMED]`。配置在版本 profile 的 `equipmentPools`，生成器按 `effectId` 解析并校验引用，不改变旧赛季池或现有赠品库存规则。见 [DATA.md §8](../DATA.md#8-choicesjson--机变-draft-data)。
+
 A registry mapping **effect keys** → handler objects `{ onRoundStart, onPrepEnd, onGain(piece), onSold(piece), onRefresh, onPrice(slot), onBuy, onMerge, onLevelUp, onBattleResult }`. Sources: garrison `SERVER_*` keys (per chess on board or hand as the key requires), band effects, item meta effects, bond meta effects (助力, 远见, 奇迹, 投资人…), choice/team cards. Content owners register handlers; the dispatcher owns ordering and the 投资人 "获得时 ×2/×3" multiplier, and only while that bond is active (标准 lists `investShip` inactive; copies of one investor are one member — §32.14.8). 娜仁图亚 见者有份 draws `pool_equip_narant` with no tier cap: every shop-eligible equip, uniform [ASSUMED] (§32.14.8). `onBuy` = a shop purchase (`g.buy`) only: a free pick or a grant never counts as 购买 (休露丝, 玛恩纳, 升华, 整备; §21.21). Equipped items run from a snapshot — the owned chess and each holder's items as that step begins (every [holder, item] pair, taken before the first item runs) — each only while it is still equipped on its still-owned holder (handlers move and destroy pieces: 突变细胞, 博士投影; §21.25).
 
 凯瑟琳 定向投放 draws three distinct items and grants one on each 调度中心 upgrade (official
