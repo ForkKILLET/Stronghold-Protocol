@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-12 茧普通／隐秘核心的 HP 排序索敌先经 allTargets／canTargetAlly，再按原每玩家及总名额截断，普通攻击与 Net 共用；不能只检查 unit.hidden（离场状态）而忽略 s.flags.stealth／camou 等。官方客户端 26-11-06-12-42-25 的 Attack／Net 选择器 _ignoreTargetFree=0、_forceIgnoreCamouflage=0。裁度的六叙拉古隐匿沿用真实盟约替换，不加特殊角色免疫；已有中毒继续结算，AcidRain 的独立范围效果不复用该过滤（伤害／减速选项 ignoreTargetFree=1）。不在伤害管线全局拒绝隐匿，不顺带改此前仅调查确认的茧／械受击区域。
+
 - 2026-11-11 特训敌人图标沿用 assets.ui 的 enemyTypeIcon/<icon>，三期新增 critic_icon／reborn_icon（致命／复苏）进入标准 UI plan 与原版素材提取，不仅复制到未被引用的 local/outer。跨版本 presentation 读取 factions 并合并图标身份，缺失提取按 autochessouter.ab 的 Sprite 写入规范路径；覆盖检查同时检查清单声明和实际文件，不能只检查旧赛季 7 类。二进制不入库，已安装清单的此次差异仅两图标及派生 hash／统计，保持现有预载、ZIP、CDN 链路和卡片布局。
 
 - 2026-11-11 极光／忍冬的升级按玩家＋原干员 baseId＋effectKey 记录在现有 counters，本局普通／精锐／重新买入共享，不随出售或回合清空，队友隔离；复制特质读取被复制干员的进度，投资人重复触发逐次升级。官方 count＋max_count 为单次收益上限而非累计发放预算，n 为每次升级所需触发数（默认 1）：极光 1、2…12、12…；忍冬 1、1、2、2、3、3…。详情、商店及奖励预览共用只读计算并随经营回放保存；百科仍显示初始值，不更改其它特质的副本级计数。共享范围由用户确认，数值来自固定表 6f63c14e。

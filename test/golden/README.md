@@ -1,5 +1,23 @@
 # Golden results
 
+## 2026-11-12 茧的可选性过滤
+
+茧两形态的普通攻击／淤困捕食在 HP 排名之前使用标准 `allTargets`，修复裁度六叙拉古隐匿仍被选中。
+官方客户端 Attack／Net 的 `_ignoreTargetFree`、`_forceIgnoreCamouflage` 均为 0；酸雨和已有中毒不变。
+以 `67e00cc4` 的旧过滤逻辑为对照，四个茧战场逐字段符合原基线；修复后只有下列两场变化，
+普通 `boss-boss_12-pair`／`boss-boss_12-solo` 不变。最早目标名单差异通过逐次索敌探针确认：
+
+| 场景 | 首次索敌变化及原因 |
+|---|---|
+| `hidden-boss_15-pair` | 56.2667 秒：不可选的 `token_10026_bgsnow_subbow` 不再挤占名额，转而命中下一位可选干员 |
+| `hidden-boss_15-solo` | 0 秒：两个不可选的 `token_10027_ironmn_pile3` 不再占用名额，转而命中下一位可选干员 |
+
+后续伤害、蛛网、击败数和随机流的连锁变化随该修正保留，仅更新这两场。
+三期 fields 全部 34 场通过；含普通／隐秘核心茧的整局 `solo-FUNNY-2`、
+`coop2-NORMAL-1-coverage-standins`、`coop2-NORMAL-1-unowned-roster` 与原基线完全一致。
+裁度真实盟约替换、隐匿／迷彩／不可选／沉睡／起飞、无目标恢复、已有中毒及酸雨例外
+由 `test/sim/cocoon-targeting.test.js` 覆盖，不以这两个召唤物场景替代实际策略交互验证。
+
 ## 2026-11-11 极光／忍冬特质升级
 
 按固定表 `6f63c14e` 的 count／delta_count／max_count／n 修正为逐次收益上限，并按用户确认

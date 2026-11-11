@@ -327,6 +327,13 @@ targets from the range (`beforeAttack`) adds `battle.blockedTargets` to its cand
 S2: icicles on random tiles of her range). This replaces the
 playtest #5 QA's melee-only reading (PRTS 索敌的概念 "我方索敌优先级：阻挡（近战限定）"; "远程位干员…无法攻击到这个敌人");
 DESIGN §20 keeps the one-line flip (`Battle.blockedTargets` / `sortEnemyTargets` gated on a melee position again).
+假想敌：茧's ordinary volley and 淤困捕食 (Net), in both forms, filter candidates with `allTargets` before
+ranking HP and applying the per-player / total caps. `unit.hidden` alone describes an off-field state and does not
+cover `s.flags.stealth` / `camou`; 裁度's six-member 叙拉古 replacement grants real stealth, with no boss-specific immunity.
+The official client `26-11-06-12-42-25-70182449` keeps Attack / Net selector `_ignoreTargetFree` and
+`_forceIgnoreCamouflage` at 0. AcidRain's damage / debuff options instead set `ignoreTargetFree:1`; its separate
+area effect and an already-applied poison tick remain unchanged (`test/sim/cocoon-targeting.test.js`).
+
 The parasite 假想敌：淤困 is an exception to the ordinary contact position: when it attaches, it blinks from the contact
 point to its blocker's tile centre and holds 自缚 (`selfBound` / `noMove`) until that block ends (PRTS 假想敌：淤困).
 Its route is recalculated from the new position when movement resumes. The `teleport` fx with `kind: 'parasite'`
