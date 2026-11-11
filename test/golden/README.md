@@ -1,5 +1,25 @@
 # Golden results
 
+## 2026-11-12 补全三期多人禁用数量
+
+用户官服标准／险境截图及确认：多人标准随机 0 核心＋2 附加，险境／绝境／终极随机 5＋5。
+标准原表的 2 核心＋6 附加固定移除继续保留且不占随机配额；单人待补证，不改变现状。
+三期 matches 全部 14 场串行重算，setup（地图、Boss、隐藏 Boss、敌方阵营）均不变，模拟错误计数均为零。
+单人 2 场及终极 3 场逐字段不变；标准／险境／绝境下列 9 场因禁用数量改变可用干员池而更新：
+
+- `coop2-NORMAL-3`：R2 首次改变 board, bonds, killed, layers, leaks, lp。
+- `coop2-HARD-4`：R6 首次改变 board, bonds, killed, layers, leaks。
+- `coop4-FUNNY-6`：R1 首次改变 board, bonds, deployed, killed, leaks, lp。
+- `coop2-NORMAL-8-serverrun`：R1 首次改变 board, bonds。
+- `coop2-NORMAL-14-standins`：R1 首次改变 board, bonds。
+- `coop2-NORMAL-70-diy`：R1 首次改变 board, bonds。
+- `coop2-NORMAL-1-coverage-standins`：R1 首次改变 board, bonds。
+- `coop2-NORMAL-5-coverage-diy`：R2 首次改变 board, bonds。
+- `coop2-NORMAL-1-unowned-roster`：R1 首次改变 board, bonds。
+
+后续商店抽取、阵容、盟约层数和战果随之变化；不修改敌方生成或悬赏池。其它版本／家族未在此轮重算。
+
+
 ## 2026-11-12 移动召唤者保留合法召唤物
 
 依据用户官服录屏观察，准备阶段移动／互换召唤者不再无条件收回仍合法的召唤物。

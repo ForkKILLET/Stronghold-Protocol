@@ -146,9 +146,9 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 | `rewards` | `{"itemId":"act2autochess_token_chess","baseByRoundsPassed":[{"round":1,"count":10,"dailyPoint":10},…],"formula":"…","difficultyFactor":{…},"modeFactor":{…},"milestones":[{"level":1,"tokens":100},…],"daily":{"name":"每日防卫目标","need":200,"bonus":300,"resetHour":4,"rule":"…"}}` | 卫戍认证; `milestones`: the 60 levels of the settlement's LV (milestoneList, cumulative tokens; 35 in a version at its launch, "Official versions (M0)"); `daily`: 每日防卫目标 (constData dailyMission*; the bonus and the reset hour read from its rule text) |
 | `constants` | `{"maxLevelCnt":15,"bossTrailerStartRound":3,"singleReconnectTime":86400,…,"pingConds":[…]}` | misc official constData; `singleReconnectTime` (s) = how long a dropped **solo** run stays resumable (server/lobby.js; co-op keeps the 10-minute window; `null` in a version whose constData lacks it, "Official versions (M0)") |
 
-Regulation's profile writes `config.version.rules.bondDraw: 'regulation'`: core counts are half the available cores
-(after mode exclusions), with two groups to choose between in SINGLE. Its `config.bans` add-on counts are editable
-[ASSUMED] defaults: FUNNY/FAST 1, NORMAL/HARD/ABYSS 4, TRAINING 0. A build profile may supply either one
+Regulation's profile writes `config.version.rules.bondDraw: 'regulation'`: SINGLE keeps two groups of half the
+available cores (after mode exclusions); MULTI uses explicit mode-level core/add-on counts. Shared `config.bans`
+add-on counts remain editable [ASSUMED] solo defaults: FUNNY/FAST 1, NORMAL/HARD/ABYSS 4, TRAINING 0. A build profile may supply either one
 `bans: { core, addon }` pair or a per-difficulty map. Covenant output remains byte-identical.
 
 ---
@@ -869,10 +869,11 @@ every file system and URL).
 `season` against the registry): `{ id, season, section?, source?, layout?, pins, adapters, research, tables, recruitTierExempt?, config: { hiddenCore, bans?, modeBans?, rules? }, expect }` (`tools/versions/profiles.mjs` documents each field).
 
 `config.modeBans[modeId]` supplies a per-difficulty `bans` override on the generated mode, using GameData's existing
-mode-level inheritance. The 2026-11-11 official screenshot, confirmed by the owner as multiplayer 终极模拟, establishes
-5 core + 5 add-on bans for `act3autochess@V3_1` / `mode_multi_abyss`. Only that mode overrides `ABYSS.addon` to 5;
-the shared difficulty defaults and other modes remain unchanged pending evidence. Core bans still use half of the
-eligible cores. This does not change the core-first operator exclusion rule or bounty pools.
+mode-level inheritance. The owner's 2026-11-12 screenshots / confirmation establish multiplayer 标准 0 core + 2
+add-on bans and 险境 / 绝境 / 终极 5 core + 5 add-on bans. All four multiplayer modes therefore override both counts.
+标准's eight fixed exclusions already come from `modeDataDict.inactiveBondIdList`; they are excluded before sampling,
+not counted as random bans. Solo modes and shared difficulty defaults remain unchanged pending solo evidence.
+This does not change the core-first operator exclusion rule, legacy seasons or bounty pools.
 
 Chess equipment capacity comes from `charChessDataDict[chessId].equipSlotNum`. Only non-default positive counts
 are emitted as `chess.equipSlotNum`; an omitted field inherits the mode's ordinary `economy.equipPerChess` (2 by
