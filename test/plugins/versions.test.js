@@ -271,3 +271,17 @@ test('trusted gameplay declarations use the same official-version gate', t => {
   assert.equal(r.set.trusted.plugins[0].id, 'reg-trusted');
   assert.equal(sets.resolve(['reg-trusted']).error, ERR.VERSION_UNSUPPORTED);
 });
+
+test('real server boot wires official versions into plugin compositions', async t => {
+  const f = fixture(t); add(f, 'regboot', [REG]);
+  const { startServer } = await import('../../server/index.js');
+  const srv = await startServer({ host: '127.0.0.1', port: 0, quiet: true, workers: 0, assetIndex: false,
+    pluginsDir: path.join(f.dir, 'plugins'), announcementsFile: null, studio: false, userFile: '' });
+  try {
+    const composed = srv.contents.resolve(['regboot'], { version: REG });
+    ok(composed);
+    assert.equal(composed.set.data.config.version.id, REG);
+    assert.equal(composed.set.data.config.economy.income[1], 42);
+    assert.deepEqual(composed.set.data.chess, getVersionData(REG).chess);
+  } finally { await srv.close(); }
+});

@@ -6,21 +6,22 @@ import path from 'node:path';
 import {openUserStore} from '../../server/users/store.js';
 import {DEFAULT_VERSION} from '../../shared/versions.js';
 
-test('version-scoped account history, full operation replay and public/pinned identity survive SQLite restart',async t=>{
+for(const historical of ['act1autochess','act3autochess@V3_1']) test(`${historical}: account history, full replay and public/pinned identity survive SQLite restart`,async t=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'sp-account-versions-'));
  let db=await openUserStore(path.join(root,'users.sqlite'),{backups:null});
  t.after(async()=>{await db.close();await rm(root,{recursive:true,force:true});});
  const created=await db.call('create'),{user}=created;
- const historical='act1autochess',pid='player-one';
+ const pid='player-one';
  const replay={v:1,version:historical,test:false,duration:20,players:[{playerId:pid,name:'Doctor',seat:0,isBot:false}],fields:[],events:[
   {at:0,kind:'view',key:'public',full:{t:'m.public',version:historical,round:1}},
   {at:1,kind:'view',key:pid,full:{t:'m.private',funds:10,hand:[{uid:1}]}},
   {at:2,kind:'action',playerId:pid,action:'g.buy'},
   {at:3,kind:'action',playerId:pid,action:'g.equip'},
+  ...(historical==='act3autochess@V3_1'?[{at:4,kind:'action',playerId:pid,action:'g.command'},{at:5,kind:'view',key:pid,full:{t:'m.private',command:{currentCost:2,usesLeft:1}}}]:[]),
  ]};
  const record=async(id,version,{modded=false,test=false,aiTakeoverRound}={})=>db.call('record',{id,endedAt:10,mode:'solo',difficulty:'NORMAL',source:'server',replay:version===historical?replay:null,
   rows:[{userId:user.id,playerId:pid,victory:true,rounds:3,payload:{bandId:'band_amiya',trophies:2,stats:{dmgDealt:123},aiTakeoverRound,
-   frame:{roomMode:'solo',modeId:'mode_single_normal',version,test,...(modded?{content:{cs:'a'.repeat(64)}}:{})}}}]});
+   frame:{roomMode:'solo',modeId:version==='act3autochess@V3_1'?'mode_single_12':'mode_single_normal',version,test,...(modded?{content:{cs:'a'.repeat(64)}}:{})}}}]});
  await record('current',undefined);await record('historical',historical);await record('plugin',historical,{modded:true});await record('test',historical,{test:true});await record('takeover',historical,{aiTakeoverRound:1});
  let stats=await db.call('stats',{id:user.id});
  assert.equal(stats.byVersion[DEFAULT_VERSION].aggregate.count,1);
