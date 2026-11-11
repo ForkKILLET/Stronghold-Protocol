@@ -669,6 +669,14 @@ one-facing models, the `enemy_9016_acstmr` icon and escaped-stage shared boards)
 as newly missing assets. Full illustrations and alternate outfits remain optional cosmetic-plugin art for every
 version; base/E2 avatars and half-body portraits are mandatory where the data selects them.
 
+Faction icons are included for every official version (`factions.json` → `assets.ui['enemyTypeIcon/<icon>']`),
+including regulation's `critic_icon` and `reborn_icon` (致命／复苏). These two extend the older seven-icon research
+catalogue through `UI_EXTRAS`. Missing local files are planned from the `autochessouter.ab` Sprite bundle by
+`tools/assets/versions.mjs`, into the same `public/assets/ui/enemyTypeIcon/` paths used by the normal downloader.
+They participate in the existing asset manifest, fingerprints, preload, ZIP and CDN handling; `coverage --files`
+checks the actual files as well as their manifest entries. A file left only in an extraction sample or local/outer
+does not satisfy the canonical faction URL.
+
 - **Operators:** the pool, hidden chess, backups and DIY picks of all installed official versions, keyed by charId (`tools/assets/versions.mjs`). The installed five-version union has 269 operators, all with Front models and 264 with Back models; bards, 安洁莉娜 and “暴躁铁皮” (`char_618_acrbot`) use one facing. The plan supplies base/E2 avatars and half-body portraits, default battle Spine, every skill icon and skill sound, and sub-profession icons. Extra identities use the established `patternOperator` URL patterns.
 - **Tokens:** the union of each version’s `tokens.json` and backup/DIY summons. The manifest has 60 `token_*` entries; char/enemy-backed summons resolve through those identity tables. Pictures and available default models come from the normal plan, supplemented by the official local-client overlay ("Token models from the local client"). Five effect/marker tokens have no separate Spine and keep that documented presentation.
 - **Enemies:** 352 manifest identities across the five installed versions. 心烛 remains without an entry. The set is the union of:
