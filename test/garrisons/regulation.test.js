@@ -89,6 +89,28 @@ function saleSetup(t, seed = 70) {
   return s;
 }
 
+test('伊桑 sale: official 3 elites / 2 助力 formation can grant 罗比菈塔', t => {
+  for (const seed of [1, 2, 3, 4]) for (const form of ['a', 'b']) {
+    const { m, ps } = saleSetup(t, seed);
+    ps.shop.level = 6;
+    // Match the observed bond counts, not the whole recording's roster. 绝技 has no member operators.
+    for (const [id, r, c] of [
+      ['chess_char_3_19_b', 10, 4], // 罗比菈塔: 助力 / 坚守.
+      ['chess_char_1_11_b', 10, 5], // 夏栎: 助力.
+      ['chess_char_1_09_b', 10, 6], // 卡达: 奥术.
+    ]) give(m, ps, id, 'board', [r, c]);
+    const ethan = give(m, ps, `chess_char_3_18_${form}`, 'hand');
+    assert.equal(ps.bonds.suntShip.count, 3);
+    assert.equal(ps.bonds.deputShip.count, 2);
+    // Make the observed reward deterministic; the official capture does not establish its probability.
+    const roberta = 'chess_char_3_19_a';
+    for (const [id, entry] of m.pool.entries) if (id !== roberta) m.pool.take(id, entry.left);
+    const old = new Set(ps.allChess().map(p => p.uid));
+    assert.deepEqual(m.handle('p_0', { t: 'g.sell', uid: ethan.uid }), { ok: true });
+    assert.deepEqual(ps.allChess().filter(p => !old.has(p.uid)).map(p => p.id), [roberta]);
+  }
+});
+
 test('伊桑 sale: replay 40:53 grants a 莱塔尼亚 operator when 4 elites outnumber its 3 real members', t => {
   for (const seed of [1, 2, 3, 4]) for (const form of ['a', 'b']) {
     const { m, ps } = saleSetup(t, seed);
