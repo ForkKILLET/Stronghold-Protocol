@@ -1,5 +1,31 @@
 # Golden results
 
+## 2026-11-11 三期核心优先禁用修正
+
+先前把“任一核心被禁用”与“全部附加盟约被禁用”作 OR，误禁有可用核心的干员。
+现改为有核心时仅检查核心全禁，无核心时才检查附加盟约全禁；商店、奖励、自选库存共用此判定。
+可用干员增加也改变 `bondLive` 及策略候选，因此部分场景在第一回合先表现为策略初始生命值或资金变化。
+以 `1198548d` 为对照，只更新三期 matches；14 场正序／逆序各运行一次，结果完全一致，
+引擎／模拟／分发／日志错误均为零。地图、Boss、隐藏 Boss 和敌方阵营的 setup 逐字段不变。
+以下 14 场均从第 1 回合开始分歧，其后抽取、阵容、战斗和 RNG 的连锁变化一并保留；未修改其它赛季或家族基线。
+
+| 场景 | 首回合变化 |
+|---|---|
+| `solo-FUNNY-1` | 阵容／装备摘要、盟约摘要 |
+| `solo-FUNNY-2` | 阵容／装备摘要、盟约摘要、部署人数、资金消费、目标生命值；策略候选变化（ai_0: band_upgrade → band_fund） |
+| `coop2-NORMAL-3` | 目标生命值；策略候选变化（ai_0: band_ioleta → band_survive） |
+| `coop2-HARD-4` | 目标生命值；策略候选变化（ai_1: band_cannot → band_rich） |
+| `coop3-ABYSS-5` | 目标生命值；策略候选变化（ai_0: band_price → band_dance, ai_1: band_emperor → band_qalaisa, ai_2: band_evolve → band_shield） |
+| `coop4-FUNNY-6` | 阵容／装备摘要、盟约摘要 |
+| `coop4-ABYSS-7` | 目标生命值；策略候选变化（ai_1: band_shield → band_smith, ai_3: band_protect → band_ducklord） |
+| `coop2-NORMAL-8-serverrun` | 阵容／装备摘要、盟约摘要、部署人数、资金消费、目标生命值；策略候选变化（ai_0: band_fund → band_protect） |
+| `coop2-ABYSS-10-boosted` | 资金消费；策略候选变化（ai_1: band_fund → band_protect） |
+| `coop2-NORMAL-14-standins` | 阵容／装备摘要、盟约摘要、目标生命值；策略候选变化（h_0: band_ursus → band_lethania） |
+| `coop2-NORMAL-70-diy` | 阵容／装备摘要、盟约摘要、部署人数、击败数、漏怪数、目标生命值；策略候选变化（h_0: band_breakaway → band_mess, ai_0: band_yan → band_clementia） |
+| `coop2-NORMAL-1-coverage-standins` | 阵容／装备摘要、盟约摘要 |
+| `coop2-NORMAL-5-coverage-diy` | 阵容／装备摘要、击败数、漏怪数、目标生命值；策略候选变化（h_0: band_emperor → band_qalaisa, ai_0: band_evolve → band_shield） |
+| `coop2-NORMAL-1-unowned-roster` | 阵容／装备摘要、盟约摘要 |
+
 ## 2026-11-11 三期本分支整局基线
 
 三期 `matches.json` 原样来自主线 `54d24b2b`（blob `c3ed8f6c`），此前合入记录已注明完整黄金比对待补。
