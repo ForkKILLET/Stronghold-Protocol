@@ -94,7 +94,7 @@ import { bodyOnTile, bodyInRange } from '../body.js';
 import { hasHp } from '../attack.js';
 import { textCount } from '../../../shared/plugins/textNumber.js';
 import { genericKit } from './generic.js';
-import { bardRegen } from '../professions.js';
+import { bardRegen, SUB } from '../professions.js';
 import { normDir, localOrder } from '../dir.js';
 import { SKILL_SUMMON_START_DEPLOY } from '../../../shared/constants.js';
 import { hypot } from '../detmath.js';
@@ -1771,7 +1771,8 @@ export function install(battle) {
     // tactician 援军 = its talent token: board piece first; replaces the engine's generic 援军 when that one is in use
     const tac = toks.find((t) => TACTICIAN_TOKENS.has(t));
     if (tac && owner.profile?.sub === 'tactician') {
-      const engineDefault = !!(owner.profile.install && owner.profile.install.name === 'installTactician');
+      // Function names change in production bundles; profile copies retain the installer reference.
+      const engineDefault = owner.profile.install === SUB.tactician.install;
       battle.on('deploy', (ctx) => {
         if (ctx.unit !== owner) return;
         if (engineDefault) { ensureReinforcement(battle, owner, tac); return; }

@@ -8,9 +8,10 @@ import http from 'node:http';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { createStaticHandler, computeBuildTag, COMPRESSIBLE } from '../server/index.js';
-import { getData } from '../server/data.js';
+import { getData, getVersionData, setData } from '../server/data.js';
 import * as nativeSpec from '../server/sim/spec.js';
-import { DataSource } from '../server/sim/simdata.js';
+import { DataSource, setSimData as setNativeSimData } from '../server/sim/simdata.js';
+import { setGameData as setNativeGameData } from '../server/sim/content/support/index.js';
 import { scenariosOf } from '../tools/golden.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -313,4 +314,34 @@ test('build detection follows built files and separately served worker modules',
     assert.notEqual(computeBuildTag(temp), previous, file);
   }
 
+});
+
+// New version kits must survive production bundling; a successful Vite build alone can silently use generic kits.
+test('built regulation roster and enemies match Node state and events', async t => {
+  const simulation = Object.values(manifest).find(m => m.name === 'simulation');
+  const ns = Object.values(await import(pathToFileURL(path.join(outDir, simulation.file)).href));
+  const spec = ns.find(n => typeof n?.createBattleFromSpec === 'function');
+  const simdata = ns.find(n => typeof n?.setSimData === 'function');
+  const previous = getData({ log: { warn() {} } });
+  const raw = getVersionData('act3autochess@V3_1', { log: { warn() {} } });
+  const support = ns.find(n => typeof n?.setGameData === 'function');
+  setData(raw); setNativeSimData(raw); setNativeGameData(null);
+  simdata.setSimData(raw); support.setGameData(null);
+  t.after(() => {setData(previous);setNativeSimData(previous);setNativeGameData(null);simdata.setSimData(previous);support.setGameData(null);});
+  const roster = Object.entries(raw.chess).filter(([id,c]) => c.charId && id.endsWith('_b') && !c.isDiy).map(([id,c]) => ({ ...c, id }));
+  assert.ok(roster.length > 60);
+  for (const rec of roster) {
+    const input = nativeSpec.buildBattleSpec({ seed: 823, version: 'act3autochess@V3_1', modeId: 'mode_single_12', battleId: rec.id, kind: 'normal', timeLimit: 25,
+      stageId: 'act3autochess_m01', rect: { r0: 9, r1: 12, c0: 0, c1: 10 },
+      players: [{ playerId: 'p', units: [{ uid: 1, chessId: rec.id, row: 10, col: 4, dir: 'RIGHT' }], bonds: {} }],
+      routes: [{ motion: 'WALK', start: [10, 9], end: [10, 0] }],
+      spawns: [{ enemyKey: 'enemy_9029_acfnc', count: 3, time: 0, routeIndex: 0 }] });
+    const options = { quiet: true, recordEvents: true };
+    const native = nativeSpec.createBattleFromSpec(input, new DataSource(raw), options);
+    const built = spec.createBattleFromSpec(input, new simdata.DataSource(raw), options);
+    native.runToEnd(40); built.runToEnd(40);
+    assert.equal(native.errors.length, 0, rec.id); assert.equal(built.errors.length, 0, rec.id);
+    assert.deepEqual(built.snapshot(), native.snapshot(), rec.id);
+    assert.deepEqual(built.drainEvents(), native.drainEvents(), rec.id);
+  }
 });
