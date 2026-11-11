@@ -103,11 +103,11 @@ function BondBannedAside(bond, model, banned) {
  * which (briefingBondTip). A bond with banned members lists them in a second box beside the tooltip (BondBannedAside).
  * @param {{ title: string, micro: string, bonds: any[], model: MatchInfoModel, onBond?: (id:string)=>void }} props
  */
-export function MatchBondRow({ title, micro, bonds, model, onBond }) {
+export function MatchBondRow({ title, micro, bonds, model, onBond, children }) {
   const m = data.get('assets');
   const banned = new Set(model.banned);
   return html`<div class="brief-bonds">
-    <h3 class="brief-h"><span>${title}</span><${MicroLabel}>${micro}</${MicroLabel}></h3>
+    <h3 class="brief-h"><span>${title}</span><${MicroLabel}>${micro}</${MicroLabel}>${children ? html`<span class="brief-bonds__actions">${children}</span>` : null}</h3>
     <div class="brief-bonds__row">
       ${bonds.map((b) => {
         const state = model.stateOf(b.bondId);
@@ -150,9 +150,10 @@ export function MatchBondGroups({ model, onPick, onBond, disabled = false, busy 
     <p class="brief-bond-groups__hint">${t(BOND_GROUP_HINT)}</p>
     ${model.choice.groups.map((ids, idx) => html`<div class="brief-bond-group" key=${idx}>
       <${MatchBondRow} title=${t(N_('第 {n} 组'), { n: idx + 1 })} micro="CORE BONDS"
-        bonds=${ids.map(id => model.core.find(b => b.bondId === id)).filter(Boolean)} model=${model} onBond=${onBond} />
+        bonds=${ids.map(id => model.core.find(b => b.bondId === id)).filter(Boolean)} model=${model} onBond=${onBond}>
       <${Button} variant="primary" disabled=${disabled || busy} loading=${busy} data-testid=${`bond-group-${idx}`}
         onClick=${() => onPick(idx)}>${t(N_('激活第 {n} 组'), { n: idx + 1 })}<//>
+      <//>
     </div>`)}
     ${rest.length ? html`<${MatchBondRow} title=${t('核心盟约')} micro="CORE BONDS" bonds=${rest} model=${model} onBond=${onBond} />` : null}
   </div>`;

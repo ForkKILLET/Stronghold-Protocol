@@ -269,7 +269,9 @@
 }
 
 /* The regulation solo choice shares the briefing's scroll area and touch targets. */
-.brief-bond-groups { display: grid; gap: 16px; }
+.brief-bond-groups { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: calc(.2 * var(--ui-unit, 1rem)); }
 .brief-bond-groups__hint { margin: 0; color: var(--text-dim); }
-.brief-bond-group { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-.brief-bond-group > .brief-bonds { flex: 1 1 240px; }
+.brief-bond-group { min-width: 0; }
+.brief-bonds { box-sizing: border-box; min-width: 0; }
+.brief-bonds .brief-h { min-width: 0; flex-wrap: wrap; }
+.brief-bonds__actions { display: flex; flex: none; margin-left: auto; }
