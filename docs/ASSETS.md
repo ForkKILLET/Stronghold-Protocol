@@ -639,7 +639,7 @@ To fill gaps from an installed official client without downloading art:
 ```bash
 python tools/local-extract/extract.py --only versions --game <client-or-bundle-root>
 python tools/local-extract/extract.py --only fx --fx-set used --fx-add-only --game <client-or-bundle-root>
-node tools/fetch-assets.mjs --offline --add-only --local-spines
+node tools/fetch-assets.mjs --offline --add-only
 node tools/assets/coverage.mjs --files --fx
 ```
 
@@ -652,6 +652,13 @@ It can retain legacy projectile records beside current records (`rolesVersion: 1
 role metadata); the runtime continues to read legacy behaviours. When working in a shared asset tree, stage the FX
 output with copies of the existing `fx/index.json`, `fx/textures.json` and `data/local-fx.json`, then publish absent
 files and the merged indexes. The full package and asset pack read the resulting three manifests normally.
+The Windows install root is accepted directly: `bundles.py` overlays downloaded hot-update bundles on packaged
+StreamingAssets by the current client manifest. `--only versions` also fills missing audio clips from the same
+version-aware sound plan, without replacing existing audio. Unavailable optional bundles are reported explicitly.
+Review real clip differences before using `--local-spines` to replace committed enemy/token metadata.
+On this repository's Linux development machine, run heavy extraction/build/browser commands through
+`npm run check:local -- --small <command>`, use `--fx-jobs 1`, and keep them serial (see LOCAL_TESTING.md).
+
 The official `character_table.skills[].overridePrefabKey` is recorded as a unit-local skill alias, so 万顷's shared
 S1 skill id selects `skchr_wanqin_1` without replacing that shared skill for another operator.
 
@@ -662,9 +669,9 @@ one-facing models, the `enemy_9016_acstmr` icon and escaped-stage shared boards)
 as newly missing assets. Full illustrations and alternate outfits remain optional cosmetic-plugin art for every
 version; base/E2 avatars and half-body portraits are mandatory where the data selects them.
 
-- **Operators:** the pool, hidden chess, backups and DIY picks of all installed official versions, keyed by charId (`tools/assets/versions.mjs`). The current union has 229 operators (210 in today’s data and 19 earlier-only), all with Front models and 225 with Back models. Three bards and 安洁莉娜 use one facing. The plan supplies base/E2 avatars and half-body portraits, default battle Spine, every skill icon and skill sound, and sub-profession icons. Extra identities use the established `patternOperator` URL patterns.
-- **Tokens:** the union of each version’s `tokens.json` and backup/DIY summons. The manifest has 58 `token_*` entries; char/enemy-backed summons resolve through those identity tables. Pictures and available default models come from the normal plan, supplemented by the official local-client overlay ("Token models from the local client"). Five effect/marker tokens have no separate Spine and keep that documented presentation.
-- **Enemies:** 258 manifest identities: the existing 252 plus six earlier-only enemies. 心烛 remains without an entry. The set is the union of:
+- **Operators:** the pool, hidden chess, backups and DIY picks of all installed official versions, keyed by charId (`tools/assets/versions.mjs`). The installed five-version union has 269 operators, all with Front models and 264 with Back models; bards, 安洁莉娜 and “暴躁铁皮” (`char_618_acrbot`) use one facing. The plan supplies base/E2 avatars and half-body portraits, default battle Spine, every skill icon and skill sound, and sub-profession icons. Extra identities use the established `patternOperator` URL patterns.
+- **Tokens:** the union of each version’s `tokens.json` and backup/DIY summons. The manifest has 60 `token_*` entries; char/enemy-backed summons resolve through those identity tables. Pictures and available default models come from the normal plan, supplemented by the official local-client overlay ("Token models from the local client"). Five effect/marker tokens have no separate Spine and keep that documented presentation.
+- **Enemies:** 352 manifest identities across the five installed versions. 心烛 remains without an entry. The set is the union of:
   - the 07 enemy list;
   - every enemy in the `act1autochess_*` wave, boss and 联防 levels that act2 modes use (from `05-maps.json`; the tutorial is excluded);
   - the bosses (`boss_1..10`);
@@ -674,7 +681,7 @@ version; base/E2 avatars and half-body portraits are mandatory where the data se
   - enemy units spawned by operator kits (research 03 skills/talents). For example, 隐德来希's default S3 summons 心烛 `enemy_5601_entlec` through the talent key `take_extra_enemy_key`. 心烛 has no icon and no Spine in any dump, so it has no manifest entry: it is reported as a miss, and the client must draw a glyph.
 - **Extra tokens:** any `token_*` key of an installed version’s `tokens.json` that research does not list gets the default avatar and Spine locations.
   - The non-token summons in that file (`enemy_9012_acloon` 炎佑, `char_605_cmedic`, `char_613_acmedc`) are found under `enemies` and `chars`.
-- **Skill icons:** every skill index of every planned operator (the default one first; DESIGN §16 loadouts, the 自选 picks' three skills): 557 icons across the four versions.
+- **Skill icons:** every skill index of every planned operator (the default one first; DESIGN §16 loadouts, the 自选 picks' three skills): 633 icons across the five installed versions.
 - **UI:**
   - every group from `07-assets.json → autochessUi`: rarity, elite and chess-level sprites, the shop panel and cards, HUD, bond board, equip slot, round dialog, band choose, settlement, prepare backdrop;
   - `arts` (rarity stars, elite icons, the camp logos of pool nations, the loading illustrations used by the act2 modes, battle common sprites, act2 entry backdrops and season logo, item rarity frames);
@@ -1028,10 +1035,17 @@ Other renderer rules from research 07 §5.4–5.5:
 
 ## 多版本与外观插件
 
-资源计划使用启用版本的数据并集；同名素材仍使用普通路径，由本分支的 CDN、指纹索引及预载面板管理。
+资源计划使用已安装官方版本的数据并集；同名素材仍使用普通路径，由本分支的 CDN、指纹索引及预载面板管理。
 外观插件可提供模型或仅头像／立绘；仅图片的外观继续使用原模型，失败回退原素材。
 本分支不接入主线的素材哈希路由、动态哈希清单和第二套完整素材下载／导入窗口。
 详细的分支行为和验证记录见 [MERGE_MAINLINE_2026-11-05.md](MERGE_MAINLINE_2026-11-05.md)。
+### 规程·序列Ⅰ（开发中）
+
+三期继续加入现有多版本资源并集、预载、ZIP 与 CDN 管线，不增加第二套资源管理入口。普通路径、
+个人头像及部署皮肤仍沿用原契约。动态拼装棋盘使用数据几何；没有烘焙 scene 文件不表示无法显示地图。
+`enemy_9036_acweb` 使用效果绘制茧，没有独立 Spine 或图标，不能拿别的敌人冒充。
+本轮固定来源、安装清单与覆盖验证见 [三期集成记录](MERGE_DEV_2026-11-11.md)。
+
 ## Verification
 
 `node --test test/assets.test.js` covers the pure helpers: the resolver, the atlas normalizer, the format sniffers, WOFF2, audio banks, the plan id sets, the downloader against a fake network, and the self-heal of corrupt skeletons.

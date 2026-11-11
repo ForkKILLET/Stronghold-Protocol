@@ -11,6 +11,7 @@
 // The extractor side (job table, prefab walk, alpha merge): test/local-extract.test.js.
 
 import { test, describe, before, after } from 'node:test';
+import { decodePng } from '../tools/crop-board-atlas.mjs';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -55,8 +56,9 @@ function localManifest(ids, drop = null) {
 
 describe('the 自选 summon models from the local client are an optional overlay', () => {
   test('the committed metadata: the TOKEN_SPINES of extract.py, each a skeleton + same-stem atlas + pages, its roles on its own clips', () => {
-    assert.equal(IDS.length, 40);
-    if (TOKEN_SPINES) assert.deepEqual(IDS, [...TOKEN_SPINES].sort(), 'one entry per extract.py TOKEN_SPINES id');
+    assert.equal(IDS.length, 42);
+    if (TOKEN_SPINES) assert.deepEqual(IDS, [...TOKEN_SPINES, 'token_10018_robrta_mach', 'token_10037_mitm_trshrb'].sort(),
+      'the default extraction list plus regulation-only summons');
     for (const id of IDS) {
       const m = COMMITTED[id];
       assert.match(m.skel, /\.skel$/, id);
@@ -129,7 +131,17 @@ describe('the 自选 summon models from the local client are an optional overlay
     const found = await findLocalTokenModels(ASSETS);
     const { meta, problems } = await localSpineMeta(ASSETS, Object.fromEntries(IDS.map((id) => [id, found[id]])));
     assert.deepEqual(problems, []);
-    for (const id of IDS) assert.deepEqual(meta[id], COMMITTED[id], `${id}: re-run node tools/fetch-assets.mjs --local-spines`);
+    for (const id of IDS) {
+      // ASSETS.md permits legacy premultiplied pages. Add-only installs must keep each page/atlas pair together.
+      const actual = meta[id], expected = COMMITTED[id];
+      if (actual.pma && !expected.pma) {
+        for (const page of actual.textures) {
+          const { rgba } = decodePng(readFileSync(path.join(ASSETS, found[id].dir, page)));
+          for (let i = 0; i < rgba.length; i += 4) assert.ok(Math.max(rgba[i], rgba[i+1], rgba[i+2]) <= rgba[i+3], `${id}/${page}: PMA page must contain premultiplied pixels`);
+        }
+        assert.deepEqual({ ...actual, pma: false }, expected, `${id}: legacy PMA changes no roles or timings`);
+      } else assert.deepEqual(actual, expected, `${id}: re-run node tools/fetch-assets.mjs --local-spines`);
+    }
     // and the shared data/local-assets.json lists every file of each (the client draws the model only then)
     const local = JSON.parse(readFileSync(path.join(ROOT, 'data/local-assets.json'), 'utf8'));
     for (const id of IDS) assert.ok(spineEntry(MANIFEST, id, { local })?.local, `${id}: listed in data/local-assets.json`);
