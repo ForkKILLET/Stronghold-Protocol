@@ -1,0 +1,41 @@
+[
+  {
+    "topic": "ironhide",
+    "stage": "before",
+    "counts": [
+      "EQUIP 2/2",
+      "EQUIP 2/2"
+    ],
+    "errors": []
+  },
+  {
+    "topic": "ironhide",
+    "stage": "after",
+    "counts": [
+      "EQUIP 2/4",
+      "EQUIP 2/6"
+    ],
+    "errors": []
+  },
+  {
+    "topic": "icons",
+    "stage": "before",
+    "icons": [],
+    "errors": []
+  },
+  {
+    "topic": "icons",
+    "stage": "after",
+    "icons": [
+      {
+        "src": "/assets/ui/enemyTypeIcon/critic_icon.png",
+        "loaded": true
+      },
+      {
+        "src": "/assets/ui/enemyTypeIcon/reborn_icon.png",
+        "loaded": true
+      }
+    ],
+    "errors": []
+  }
+]

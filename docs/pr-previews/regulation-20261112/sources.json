@@ -1,0 +1,33 @@
+{
+  "baseline": "54d24b2b32d4a1ad8a5f43ee79b61eb562b1b5b7",
+  "heads": {
+    "ironhide": "b469114770ae2d7f5775afcd9f94a29fade13c76",
+    "icons": "7788e6955fef51d7a42f4f84369a85c261a6861d"
+  },
+  "browser": "isolated headless Firefox",
+  "viewport": {
+    "width": 1440,
+    "height": 1100
+  },
+  "capture": "Real mainline ChessDetail equipment sections, EquipReplaceDialog, and MatchEnemies in a briefing wrapper; isolated component previews, not a live match. Mainline styles and installed art, unchanged viewport. Content-only screenshots are cropped at capture to the component root.",
+  "files": {
+    "ironhide-before.png": "79d8f8b136afa8dde46d442684cba2c9e148bdb4b8ea7a089ce233b5e3ccf104",
+    "ironhide-after.png": "d4bfc0ccf6b56a9918020da0c0645cf7ae795fd70d12c8a41e2cf020f04343ee",
+    "ironhide-replacement.png": "1bb4a731e0e0362b672c474b28d13545d89622a99f16f7befd8f405a42fd3fa5",
+    "icons-before.png": "75912eb966eed8b31a374cdeb5f70ca90b5b74b5b76fbe6ad67c944b57df4ef7",
+    "icons-after.png": "6cbbbb77d1489dfbbc47f7f01bddd636a6ab6cb139a93a34381293a73634052c",
+    "results.json": "7e2733b8919bc1b8513bf30e1816f4ce8cc14d285a478bd1aebf92ca121f5054"
+  },
+  "sprites": {
+    "critic_icon": {
+      "bytes": 22410,
+      "sha256": "f4fbf956e817a3c64ef235739fc62b6d21a88f14a7effbf060b294844e70d430",
+      "canonicalURL": "/assets/ui/enemyTypeIcon/critic_icon.png"
+    },
+    "reborn_icon": {
+      "bytes": 22987,
+      "sha256": "eff4d55b8919397da8c6c19cbf8a5cf6b4dd6ae005aba940cda9399f524836f0",
+      "canonicalURL": "/assets/ui/enemyTypeIcon/reborn_icon.png"
+    }
+  }
+}
