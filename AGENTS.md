@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-12 三期大场景的网格传输必须兼容既有 16,000,000 字节 ZIP 上限。Regulation 导出器按最多四段、每段 15,000,000 字节写入 scene.bin／scene1.bin 等，由 scene.json.binParts 的固定 bin／binN 键声明；加载器校验数量、键、各段大小与总量后顺序拼接，再复用原顶点／索引布局。只拆传输字节，不减面、不改变偏移、材质或场景几何；旧单文件与旧赛季不变，缺段／大小不符回退。不得扩大 ZIP／缓存单文件限制或只跳过必备模型。MAP10／12 还原 SHA-256 与原网格完全相同，证据见 docs/research/scene-transport-20261112.md。
+
 - 2026-11-12 用户授权先按 PRTS 截图拟合三期沙地花纹及十图粗光照，后续录屏再校准。sceneCalibration 仅作用于十个 Regulation composite pack；沙漠主材质共用部分原版顶点混色 0.625，每图同一 RGB 光照增益用于普通／联防／Boss，在发光项、clamp、focus 和输出转换之前应用。参数为经验拟合，不冒充官服运行时值；不改原版材质／贴图／规则，不影响旧赛季、缺资源回退、独立自发光、Unlit、水面、单位或 FX；半透明表面不参与拟合，保留原透明混合规则并跟随所在 lit 材质的光照，保留本服场外压暗。Float32 原始渲染分离 diffuse q=0/1 与 emission；普通及联防训练、Boss 留出、材质与空间均衡采样、Huber 和有界增益。30 场景实际渲染采样均改善，72 项定向检查通过，无浏览器／HTTP／OOM 错误，完整模拟／golden 仍暂缓。工具 tools/research/fit-regulation-light.py，证据 docs/research/map-light-calibration-20261112.md；后续同版本录屏优先验证运行时参数、阴影、反射及水面，勿凭单张截图写死每格蒙版。
 
 - 2026-11-12 地图循环使用独立 OfficialFx，不能继承 Three.js 画布深度，必须在布局变化时经 setGround 建立当前可见格面的深度高度场，含原版校准后的整备台／高台；隐藏区域为零高度，稳定帧复用。保留原版 LessEqual，不裁剪隐匿红框底边或全局调整 FX 顺序。图 9 最下方红光由前方整备台自然遮挡；普通／联防／Boss 与图 11 对照截图已核验，13 项定向检查通过，完整模拟／golden 仍暂缓。见 docs/research/terrain-fx-depth-20261112.md。

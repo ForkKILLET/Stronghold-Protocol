@@ -64,6 +64,18 @@ print(json.dumps({'verts':changed[0]['verts'],'same':expanded(records[0],blob)==
   assert.deepEqual(out, { verts: 4, same: true, smaller: true, aligned: true });
 });
 
+test('large scene transport splits fit existing ZIP packs and rejoin byte-for-byte', { skip: !PY }, () => {
+  const out = py(`import tempfile,hashlib
+from pathlib import Path
+blob=bytes(range(251))*120000
+with tempfile.TemporaryDirectory() as temp:
+ parts=s.write_scene_bins(Path(temp),blob)
+ joined=b''.join((Path(temp)/p['name']).read_bytes() for p in parts)
+ print(json.dumps({'sizes':[p['bytes'] for p in parts],'keys':[p['key'] for p in parts],
+ 'same':hashlib.sha256(joined).digest()==hashlib.sha256(blob).digest()}))`);
+  assert.deepEqual(out, { sizes: [15_000_000, 15_000_000, 120_000], keys: ['bin', 'bin1', 'bin2'], same: true });
+});
+
 test('logical group rectangles override decorative bounds only in composite packs, and reject malformed metadata', () => {
   const chunks = [{ group: 'regulation:roadRight', bounds: [-20, -10, 0, 40, 30, 3] }];
   const groupRects = { 'regulation:roadRight': [11, 9, 20, 13], 'HIDDEN@1': [0, 0, 1, 1], 'regulation:bad': [2, 3, 0, 1] };

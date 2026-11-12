@@ -1,0 +1,38 @@
+[
+  {
+    "stage": "act3autochess_m10",
+    "originalBytes": 20129296,
+    "originalSha256": "4e9dbc0a10ac45c93e1eef4edbe85f09e03872f46aa57d45461e569b9d5be822",
+    "restoredSha256": "4e9dbc0a10ac45c93e1eef4edbe85f09e03872f46aa57d45461e569b9d5be822",
+    "parts": [
+      {
+        "key": "bin",
+        "bytes": 15000000,
+        "name": "scene.bin"
+      },
+      {
+        "key": "bin1",
+        "bytes": 5129296,
+        "name": "scene1.bin"
+      }
+    ]
+  },
+  {
+    "stage": "act3autochess_m12",
+    "originalBytes": 20173324,
+    "originalSha256": "38967d886af1f5e65a84ac86bc3d33c72b2a8caa9fd8615c178013c9ad94423e",
+    "restoredSha256": "38967d886af1f5e65a84ac86bc3d33c72b2a8caa9fd8615c178013c9ad94423e",
+    "parts": [
+      {
+        "key": "bin",
+        "bytes": 15000000,
+        "name": "scene.bin"
+      },
+      {
+        "key": "bin1",
+        "bytes": 5173324,
+        "name": "scene1.bin"
+      }
+    ]
+  }
+]

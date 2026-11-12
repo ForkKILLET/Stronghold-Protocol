@@ -20,7 +20,7 @@ import { resolveUvTable } from '../../public/js/render/board3d/atlas.js';
 import { presetCamera } from '../../public/js/render/projection.js';
 import { sceneMaterial, sceneWaterMaterial, sceneBlend, sceneEnvTexture, focusUniforms, SCENE_LIGHT, waterMaterial, applyWaterMaterial, WATER_DEFAULTS, SCENE_WATER_DEFAULTS, WATER_TUNING, boardMaterial, glassMaterial, trapMaterial } from '../../public/js/render/board3d/materials.js';
 import {
-  parseSceneChunks, sceneGroupRects, loadScenePack, sceneListed, resetBoardPack, sceneGroup, sceneMaterialKey, mergeSceneChunks,
+  parseSceneChunks, joinSceneBuffers, sceneGroupRects, loadScenePack, sceneListed, resetBoardPack, sceneGroup, sceneMaterialKey, mergeSceneChunks,
   SCENE_TEX_GROUP, SCENE_VERSION, REGULATION_SCENE_VERSION, SCENE_VERTEX_BYTES, isSceneWater, sceneWaterInfo,
 } from '../../public/js/render/board3d/load.js';
 
@@ -31,6 +31,17 @@ const PY = ['python3', 'python'].find((bin) => spawnSync(bin, ['--version']).sta
 const HAS_PIL = !!PY && spawnSync(PY, ['-I', '-B', '-c', 'import PIL'], { env: ENV }).status === 0;
 const stages = JSON.parse(readFileSync(path.join(ROOT, 'data/stages.json'), 'utf8'));
 const manifest = (() => { try { return JSON.parse(readFileSync(path.join(ROOT, 'data/local-assets.json'), 'utf8')); } catch { return null; } })();
+
+test('scene transport parts are bounded, ordered and complete before allocating their joined buffer', () => {
+  const doc = { binBytes: 5, binParts: [{ key: 'bin', bytes: 2 }, { key: 'bin1', bytes: 3 }] };
+  const buffers = [new Uint8Array([1, 2]).buffer, new Uint8Array([3, 4, 5]).buffer];
+  assert.deepEqual([...new Uint8Array(joinSceneBuffers(doc, buffers))], [1, 2, 3, 4, 5]);
+  assert.equal(joinSceneBuffers(doc, buffers.slice(0, 1)), null);
+  assert.equal(joinSceneBuffers(doc, [...buffers].reverse()), null);
+  assert.equal(joinSceneBuffers({ ...doc, binBytes: 6 }, buffers), null);
+  assert.equal(joinSceneBuffers({ ...doc, binParts: [{ key: 'bin', bytes: 2 }, { key: '../../elsewhere', bytes: 3 }] }, buffers), null);
+  assert.equal(joinSceneBuffers({ binBytes: 30_000_002, binParts: [{ key: 'bin', bytes: 15_000_001 }, { key: 'bin1', bytes: 15_000_001 }] }, buffers), null);
+});
 
 function py(code) {
   const src = `import sys, json, struct\nsys.path.insert(0, ${JSON.stringify(TOOL)})\nimport scenes as s\n${code}`;
@@ -406,7 +417,23 @@ describe('scene chunks (load.js)', () => {
       assert.ok(composite, 'new composition schema loads with its explicit layout');
       assert.deepEqual(composite.groups['regulation:roadRight'], [11, 9, 20, 13]);
       resetBoardPack();
-      json = { ...json, materials: { unavailable: { map: 'not-listed-in-assets' } } };
+      const wholeFetch = globalThis.fetch;
+      const cut = 40;
+      json = { ...json, binParts: [{ key: 'bin', bytes: cut }, { key: 'bin1', bytes: bin.byteLength - cut }] };
+      urls[`${group}|bin1`] = '/s/scene1.bin';
+      globalThis.fetch = async u => u === '/s/scene.bin' ? new Response(bin.slice(0, cut))
+        : u === '/s/scene1.bin' ? new Response(bin.slice(cut)) : wholeFetch(u);
+      const split = await loadScenePack(store, 'act2autochess_m02');
+      assert.ok(split, 'transport parts restore the existing mesh layout');
+      assert.deepEqual(split.chunks.map(c => [...c.index]), composite.chunks.map(c => [...c.index]));
+      assert.deepEqual(split.chunks.map(c => [...c.position]), composite.chunks.map(c => [...c.position]));
+      resetBoardPack();
+      globalThis.fetch = async u => u === '/s/scene1.bin' ? new Response(null, { status: 404 })
+        : u === '/s/scene.bin' ? new Response(bin.slice(0, cut)) : wholeFetch(u);
+      assert.equal(await loadScenePack(store, 'act2autochess_m02'), null, 'missing part keeps the fallback board');
+      globalThis.fetch = wholeFetch;
+      resetBoardPack();
+      json = { ...composite.doc, materials: { unavailable: { map: 'not-listed-in-assets' } } };
       assert.equal(await loadScenePack(store, 'act2autochess_m02'), null, 'an incomplete composite keeps the metal board');
       resetBoardPack();
       json = { ...doc, version: SCENE_VERSION + 1 };
@@ -1047,11 +1074,19 @@ describe('BoardScene with an official scene (stub renderer)', () => {
 describe('extracted scenes (when scene bundles were extracted here)', { skip: !Object.keys(manifest?.groups || {}).some((g) => g.startsWith('scene/act')) && 'no scene in data/local-assets.json' }, () => {
   const groups = manifest?.groups || {};
   const file = (p) => path.join(ROOT, 'public', p.replace(/^\//, ''));
+  const binary = (g, doc) => Buffer.concat((doc.binParts || [{ key: 'bin' }]).map(part => {
+    const bin = readFileSync(file(groups[g][part.key].path));
+    if (doc.binParts) {
+      assert.equal(bin.length, part.bytes);
+      assert.ok(bin.length <= 15_000_000, 'each transport file fits an existing 16 MB ZIP');
+    }
+    return bin;
+  }));
 
   for (const g of Object.keys(groups).filter((k) => k.startsWith('scene/act'))) {
     test(`${g}: scene.json records fit scene.bin; lightmap pages and textures are listed and on disk`, { skip: !existsSync(file(groups[g].scene?.path || '/x')) && 'files not on this machine' }, () => {
       const doc = JSON.parse(readFileSync(file(groups[g].scene.path), 'utf8'));
-      const bin = readFileSync(file(groups[g].bin.path));
+      const bin = binary(g, doc);
       assert.equal(doc.version, doc.layout === 'regulation-composite-v1' ? REGULATION_SCENE_VERSION : SCENE_VERSION);
       assert.equal(`scene/${doc.stage}`, g);
       assert.equal(doc.binBytes, bin.length);
@@ -1086,7 +1121,7 @@ describe('extracted scenes (when scene bundles were extracted here)', { skip: !O
     for (const g of Object.keys(groups).filter((k) => k.startsWith('scene/act'))) {
       if (!existsSync(file(groups[g].scene?.path || '/x'))) continue;
       const doc = JSON.parse(readFileSync(file(groups[g].scene.path), 'utf8'));
-      const bin = readFileSync(file(groups[g].bin.path));
+      const bin = binary(g, doc);
       const chunks = parseSceneChunks(doc, bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.length));
       const rects = sceneGroupRects(chunks, doc);
       const stage = stages[doc.stage] || JSON.parse(readFileSync(path.join(ROOT, 'data/versions/act3autochess-v3_1/stages.json'), 'utf8'))[doc.stage];

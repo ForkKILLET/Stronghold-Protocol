@@ -1254,3 +1254,13 @@ Docker 复用旧素材镜像时，在复制素材后、生成哈希前运行 `np
 ### 本 Fork：战场声音生命周期
 
 `AudioManager.stopFieldSounds()` 在换场／退出时取消待解码和已播放的战斗音效、干员语音及落地音，旧请求不能补播插件回退音效，重复结束只释放一次限流额度。保留现有 SfxLimiter，不引入主线新版音效池；UI 点击、BGM 和盟约提示仍有各自生命周期。`setFieldUnits()` 另外沿用原盟约提示清理。字幕播放事件及时置空，本机 `fieldRevision` 让悬停保留句随战场结束清除，不改变普通语音换句时的悬停行为。
+
+### Regulation scene binary transport
+
+Large composite scene vertex buffers use optional `scene.json.binParts` records in original byte order.
+Each entry has a fixed manifest key (`bin`, `bin1`, …) and byte count; each file is at most 15,000,000 bytes
+so its stored ZIP remains below the existing 16,000,000-byte transfer cap. At most four parts are admitted.
+The loader validates every key/size and the aggregate `binBytes`, concatenates the bytes, then uses the
+unchanged scene chunk layout. Missing or truncated parts retain the procedural-board fallback.
+Single-file legacy scenes are unchanged. No mesh reduction or ZIP/cache limit increase is involved.
+See [transport receipts](research/scene-transport-20261112.md).

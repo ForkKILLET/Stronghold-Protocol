@@ -17,6 +17,23 @@ STAGES = tuple(f'act3autochess_m{i:02d}' for i in (1, 2, 3, 4, 5, 6, 9, 10, 11, 
 # Same binary vertex layout, new composition semantics. Older pages must keep their procedural board rather
 # than drawing these chunks without their ownership / height metadata during a resources-first rollout.
 SCENE_VERSION = 2
+# Leave room for ZIP headers and its manifest under the existing 16,000,000-byte pack limit.
+SCENE_BIN_PART_BYTES = 15_000_000
+
+
+def write_scene_bins(folder, blob):
+    """Split transport bytes only; concatenation reproduces the original mesh and every chunk offset."""
+    if not 0 < len(blob) <= 4 * SCENE_BIN_PART_BYTES:
+        raise ValueError('scene binary must fit at most four bounded transport parts')
+    parts = []
+    for i, offset in enumerate(range(0, len(blob), SCENE_BIN_PART_BYTES)):
+        key = 'bin' if i == 0 else f'bin{i}'
+        name = 'scene.bin' if i == 0 else f'scene{i}.bin'
+        data = blob[offset:offset + SCENE_BIN_PART_BYTES]
+        (folder / name).write_bytes(data)
+        parts.append({'key': key, 'bytes': len(data), 'name': name})
+    return parts
+
 # source part, row interval, column interval, row offset, logical owner rect (x0,y0,x1,y1).
 # Unbounded outer edges keep the island's decorative silhouette; seams between owned rows are exact.
 REGIONS = {
@@ -361,11 +378,14 @@ def export_regulation(stage, ab_root, out_root, manifest, log, material_info, ca
             shutil.copyfile(work / TEX_SUB / Path(rec['path']).name, tex_dir / Path(rec['path']).name)
         combined['chunks'], blob = compact_chunks(combined['chunks'], blob)
         combined.update(lightmaps=pages, binBytes=len(blob))
-        (folder / 'scene.bin').write_bytes(blob)
+        bin_parts = write_scene_bins(folder, blob)
+        if len(bin_parts) > 1:
+            combined['binParts'] = [{k: part[k] for k in ('key', 'bytes')} for part in bin_parts]
         (folder / 'scene.json').write_text(json.dumps(combined, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         manifest.setdefault(TEX_SUB, {}).update(local.get(TEX_SUB, {}))
         manifest[group] = {**entries, 'scene': {'path': f'/assets/local/{group}/scene.json', 'kind': 'Scene',
                                               'version': SCENE_EXTRACT_VERSION, 'chunks': len(combined['chunks'])},
-                           'bin': {'path': f'/assets/local/{group}/scene.bin', 'kind': 'SceneData', 'bytes': len(blob)}}
+                           **{part['key']: {'path': f'/assets/local/{group}/{part["name"]}', 'kind': 'SceneData',
+                                           'bytes': part['bytes']} for part in bin_parts}}
         log(f'{stage}: composed {len(combined["chunks"])} chunks, {len(blob)} mesh bytes, {pages} baked pages')
-        return len(entries) + 2 + len(local.get(TEX_SUB, {}))
+        return len(entries) + 1 + len(bin_parts) + len(local.get(TEX_SUB, {}))
