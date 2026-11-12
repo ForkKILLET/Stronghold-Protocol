@@ -383,4 +383,3 @@ The six corpora live under `<versionSlug>/`; root JSON files remain the default.
 - `standins`：`standin-01`、`standin-07`。
 
 其中 `coop2-NORMAL-3`、`coop2-NORMAL-14-standins` 在修改前已与存档不同；更新采用修复后的实际完整场景，包含其既有差异，不将全部字段变化归因于本次修复。其余 52 场旧差异保留，因此完整存档比较仍非全绿。两次实算之间除此主题外未修改规则或数据；混合盟约与补位场景包含莱塔尼亚召唤影响。专项 43 项、相邻回归 53 项、循环守卫 14 项及文档 32 项通过；lint、导入边界和类型检查通过。完整本地 CI 未重复运行，浏览器未运行。
-
