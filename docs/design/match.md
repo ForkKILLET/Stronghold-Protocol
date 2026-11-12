@@ -76,6 +76,35 @@ Piece = { uid, kind:'chess'|'item'|'token', id /* chessId (golden id if elite) |
           meta: { round?: { r, n: { key: count } } } }   // per-piece counters of the current round, module-prefixed keys (拉普兰德's first refresh, §21.1)
 ```
 
+**Regulation commands.** `bandId` remains the selected opening strategy while `command.currentEffectId` can change
+through a draft. The seven strategy-level bond replacements are sent to battle from that opening strategy and survive
+command swaps. Other command passives follow the live row; the opening strategy's recurring “好多委托！” draft stays
+active. 妮芙's `MAP_TILE` / `PASSABLE` targets require `passable === 'ALL'` and exclude `tile_start` / `tile_end`, even
+though those gate tiles are passable in v3_1. Ordinary LOW road tiles remain selectable without a deployment-slot test;
+HIGH and fence tiles remain excluded by their existing `passable` values.
+
+**[ASSUMED] Command pool and instance lifecycle.** A candidate draft resolves at most one row per strategy: start at
+its first skill and follow `next` while the preceding row's round, shop-level, cumulative-spending or bond-count
+unlock is met. Include only the resulting `ACTIVE` / `PASSIVE` row; exclude the live effect, `NONE`, older and locked
+rows, `auto_chess_effect_replace`, and `gain_band_skill_from_pool_in_prep`. 投机骰子 and “好多委托！” share this
+candidate builder. Fixed-round one-shot rewards leave after their income, round-start or current prep-start has passed;
+empty passives with no future effect leave too, while mixed and action-driven ongoing effects remain. 变形者集群's
+five-round reward cycle starts from each manual acquisition round (R3 → R7 → R12); initial acquisition at round 0 is
+anchored to R1. A candidate is omitted when its next reward cannot occur by the last available prep round.
+
+Each manual draft pick creates a fresh command instance and resets its chain records and usage quotas, including
+`ALL_LIMIT`; automatic `next` upgrades keep the current instance. Effects already produced stay in their normal state:
+marks, discounts, queued offers, pending funds and Pepe's earned refresh credit survive a swap, and manual-refresh
+history is not cleared. A Nymph tile mark blocks reuse through the rest of the current battle round, then expires at
+the next prep.
+
+Touch's live command provides its positive medical-token variants to every recipient field; duplicate variants from
+multiple seats are deduplicated, and each field selects from its own deployed elite count. The grant ends when the last
+current Touch command is replaced. Touch candidate exclusion includes every match seat, even an eliminated holder;
+Duck Lord's team-unique enemy replacement excludes a candidate only while a living teammate holds that command.
+Historical versions without command rows retain their original Touch strategy grant. These switch and pool details are
+unverified `[ASSUMED]` rules.
+
 Intent handlers (validate → mutate → recompute bonds → push private view): `buy(slot)`, `refresh()`, `freeze()`, `levelUp()`, `sell(uid)`, `move(uid, to)`, `equip(itemUid, targetUid, replaceUid?)`, `useArt(itemUid, row, col)`, `destroy(uid)`, `pickReward(idx)`, `pickChoice(idx)`, `setReady(bool)`. Every handler rejects when the phase forbids it (only PREP allows board/shop mutations; SP_DRAFT allows `pickChoice` only; reward pick allowed in PREP). Invalid intents return `error` with a code from `shared/constants.js → ERR` — the server never throws on bad input.
 
 在所有官方版本的未就绪 PREP，干员手牌↔场上互换复用原有两个位置；休整区满或部署数达到上限均不阻止

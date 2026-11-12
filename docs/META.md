@@ -137,22 +137,48 @@ untimed. Solo: free pick, no timer, no skip. Starting LP = `bands[id].totalHp`.
 
 `server/match/bandCommands.js` owns the command chain of a band with `skills` (currently 61 regulation strategies,
 74 skill rows). Covenant data has no command state. Unlocks advance monotonically by round, shop level, cumulative
-spending or bond member count. Each effect keeps its cost, round uses, total uses and ready round across command swaps.
-`ROUND_RESET` refills at prep start; `ALL_LIMIT` persists for the match; `DEFAULT` has no numeric stock. A cooldown N
-used in R is ready at R+N. These timing/stock choices are `[ASSUMED]` where the official tables specify no swap rule.
+spending or bond member count. A manual draft pick starts a fresh command instance: its whole skill-chain record and
+use quotas reset, including `ALL_LIMIT` stock; an automatic `next` upgrade keeps the same instance and its records.
+`ROUND_RESET` refills at prep start; `DEFAULT` has no numeric stock. A cooldown N used in R is ready at R+N. These
+swap and timing choices are `[ASSUMED]` where the official tables specify no rule.
+
+The seven strategy-level `auto_chess_effect_replace` bond mappings remain attached to the selected opening strategy
+through a command swap. Command passives otherwise follow the live row. Existing effects already produced keep their
+normal lifetime: treasure marks, tile marks, item discounts, queued offers and pending funds are not erased with the
+old command; a marked Nymph tile remains unavailable for the rest of that battle round. Pepe's earned special-refresh
+credit remains pending and is consumed once after a swap, while manual-refresh history stays factual.
 
 The private snapshot's `command` contains `effectId`, `bandId`, type, cost, cooldown, uses left, refusal reason, rich
 text, unlock parameters and exact valid targets. `g.command {effectId,target}` accepts `{}`, `{uid}`, `{slot}` or
 `{row,col}` according to the skill. The server checks phase, ownership, funds, stock, special recruit and target before
 payment. Random draws use `rngMeta`; intents participate in the existing test journal/replay. `[ASSUMED]` a queued
 recruit/reward offer is the special-recruit state. Marks apply to this round's normal and unite battles; treasure marks
-persist until a validated battle receipt says an enemy touched them.
+persist until a validated battle receipt says a non-flying enemy touched them. Flyers may still target the treasure.
+
+`commandDraft` candidates are `[ASSUMED]` one row per strategy: start from `skills[0]` and follow `next` while each
+preceding row's unlock condition is met by the player's round, shop level, cumulative spending or bond-member count.
+Only the resulting `ACTIVE` / `PASSIVE` row can be offered; exclude the live effect, `NONE`, earlier/later locked rows,
+`auto_chess_effect_replace`, and `gain_band_skill_from_pool_in_prep`. For example, 但书's row 89 enters at R4; 妮芙's
+candidate rows are 107/108/109/110 at R1/R5/R9/R13; 华法琳's rows are 31/32/33 at shop levels 1/3/5. Both 投机骰子
+and “好多委托！” use this same pool, while the latter's recurring draft remains tied to the selected opening
+strategy. A fixed-round one-shot passive leaves the pool after its scheduled income, round-start and current prep-start
+effects have passed; empty passives with no future effect also leave. Mixed or action-driven ongoing effects remain.
+“变形者集群” instead schedules its first reward five rounds after command acquisition, counting the acquisition round:
+acquiring it at R3 grants at R7 and R12. It is offered only if another grant can occur by the last available prep round;
+initial selection at round 0 anchors to R1.
+
+Touch's current medical command contributes its positive medical-token variants to every recipient field. Identical
+variants from multiple seats are deduplicated; the receiving field's own deployed elite count selects the variant.
+The grant ends when the last current Touch command is replaced. Candidate exclusion checks all match seats, including
+an eliminated Touch holder; the Duck Lord's enemy-replacement command is excluded only while a living teammate has it.
+These command-pool, swap and medical-grant rules are `[ASSUMED]` and need official-rule review. Historical versions
+without command rows retain the original Touch strategy grant.
 
 ITEMS integration: import `openSkillChangeDraft(player, choiceId, ctx?)` from `server/match/bandCommands.js`, or call
 `ctx.openSkillChangeDraft(choiceId)` in a meta handler. `skill_change_1` queues three cards; `skill_change_2` queues two.
-It returns false for unknown choices or commandless data. `[ASSUMED]` the missing official pool is all other ACTIVE
-rows, including upgraded rows. `commandDraft` exposes the first queued draft; `g.commandChoice {choiceId,idx}` takes a
-card. Ready waits for these choices, while bots and the prep deadline resolve them deterministically.
+It returns false for unknown choices or commandless data. Candidate selection follows the one-row-per-strategy
+resolution above. `commandDraft` exposes the first queued draft; `g.commandChoice {choiceId,idx}` takes a card. Ready
+waits for these choices, while bots and the prep deadline resolve them deterministically.
 
 ### 1.2 机变 (SP draft)
 Family = weighted pick from `choices.schedule[modeId].rounds[r].families`; cards: co-op 6 shared (each player takes 1,
@@ -623,7 +649,8 @@ Writes (validated, never throw on bad input; funds and available stock stay non-
 | `offerBountyChoice(cards, sourceItemId)` | 教鞭 only: open a PERSONAL choice of up to three of `cards` (cards.bounty entries) for this player — shuffled once with the meta rng, kept in `m.private.personalChoice` until the owner confirms one (`g.choice { idx, choiceId }`) or the prep's deadline / an AI seat picks (§2.5); returns the intent result (`{ ok }`, or `{ error, detail }` for a phase that is not PREP, a Ready player, a choice already open or no card — before any rng draw or id, so the Art stays in the hand) |
 | `toast(text, kind)` / `ticker(text)` / `giftTicker(fromName, chessId)` | messages |
 | `teammates()` / `player(playerId)` | ctx objects of other alive players (team effects) |
-| `teamMedicGranted()` | Whether this match has a confirmed Touch selection, including an eliminated/departed holder; only the retained 外勤医疗 grant uses this exception ([ASSUMED], §30.14) |
+| `teamMedicGranted()` | Whether a current command row grants a medical map character, or a historical no-command Touch strategy does; replacing the last current grant clears it ([ASSUMED], §30.14) |
+| `teamMedicVariants()` | Detached `{ cond, cnt, chars }` medical variants from the current team commands, or the original Touch strategy in a no-command version; serialized as battle `contentInfo.medicVariants` |
 
 ### 2.5 Items: consume-on-equip and Arts
 Items whose data `kind` starts with `consume_on_equip` resolve through their `item:` handler's `onEquip` and are
