@@ -7,10 +7,12 @@ import { makeBattle, chessRec, enemyRec } from '../helpers/battleHarness.js';
 import { validateClientResult } from '../../server/match/fields.js';
 import { compactResult, buildBattleSpec } from '../../server/sim/spec.js';
 import { fileURLToPath } from 'node:url';
+import { canTargetAlly, sortAllyTargets } from '../../server/sim/targeting.js';
 
 const raw = loadData(fileURLToPath(new URL('../../data/versions/act3autochess-v3_1', import.meta.url)), { log: { warn() {} } });
 const data = new DataSource({ ...raw, chess: { ...raw.chess, test_a: chessRec({ id: 'test_a', skill: null }) },
-  enemies: { ...raw.enemies, test_enemy: enemyRec({ key: 'test_enemy', hp: 100000, speed: 0 }) } }, null);
+  enemies: { ...raw.enemies, test_enemy: enemyRec({ key: 'test_enemy', hp: 100000, speed: 0 }),
+    test_flyer: enemyRec({ key: 'test_flyer', hp: 100000, speed: 0, motion: 'FLY', range: 10, atk: 100, bat: 0.2 }) } }, null);
 before(() => setGameData(raw));
 after(() => setGameData(null));
 const unit = (uid, col = 5) => ({ uid, kind: 'chess', chessId: 'test_a', row: 10, col });
@@ -63,6 +65,44 @@ test('treasure survives for a coin receipt, but touching it produces a permanent
   const lost = battle([mark]); lost.step(); lost.spawn('test_enemy', { pos: [9, 8] }); lost.runToEnd(4);
   assert.deepEqual(lost.result().perPlayer.p1.commandChests, [{ id: 17, alive: false }]);
   assert.equal(lost.result().perPlayer.p1.coins, 0);
+});
+
+test('flying over treasure preserves it and its reward; a ground enemy touching it still removes it', () => {
+  const mark = { id: 17, row: 9, col: 8, enemyId: 'enemy_9038_achest', coin: 1, persistent: true };
+  const safe = battle([mark]); safe.step();
+  const air = safe.spawn('test_flyer', { pos: [9, 8], route: { motion: 'FLY', start: [9, 8], end: [9, 8], steps: [{ t: 'wait', s: 99 }] } });
+  assert.equal(air.isFlying, true);
+  safe.step(2);
+  const chest = safe.b.allyUnits.find(u => u.defId === mark.enemyId);
+  assert.ok(chest.alive && chest.deployed);
+  safe.runToEnd(4);
+  assert.deepEqual(safe.result().perPlayer.p1.commandChests, [{ id: 17, alive: true }]);
+  assert.equal(safe.result().perPlayer.p1.coins, 1);
+  assert.deepEqual(compactResult(safe.result()).perPlayer.p1.commandChests, [{ id: 17, alive: true }]);
+
+  const lost = battle([mark]); lost.step();
+  lost.spawn('test_flyer', { pos: [9, 8] }); lost.step(2);
+  lost.spawn('test_enemy', { pos: [9, 8] }); lost.runToEnd(4);
+  assert.deepEqual(lost.result().perPlayer.p1.commandChests, [{ id: 17, alive: false }]);
+  assert.equal(lost.result().perPlayer.p1.coins, 0);
+});
+
+test('flyers can target and attack treasure at low priority without destroying it', () => {
+  const mark = { id: 17, row: 9, col: 8, enemyId: 'enemy_9038_achest', coin: 1, persistent: true };
+  const h = battle([mark]); h.step();
+  const chest = h.b.allyUnits.find(u => u.defId === mark.enemyId);
+  const air = h.spawn('test_flyer', { pos: [9, 8], route: { motion: 'FLY', start: [9, 8], end: [9, 8], steps: [{ t: 'wait', s: 99 }] } });
+  assert.equal(canTargetAlly(air, chest, true), true);
+  assert.equal(!!chest.s.flags.untargetable, false);
+  assert.equal(chest.s.taunt, -1);
+  assert.equal(sortAllyTargets(air, [chest, h.unit(1)])[0], h.unit(1), 'ordinary operator wins over the later-created chest');
+  h.b.retreat(h.unit(1), { permanent: true });
+  h.b.retreat(h.unit(2), { permanent: true });
+  h.run(1);
+  assert.ok(h.eventsOf('atk').some(e => e[1] === air.id && e[2] === chest.id), 'real AI attacks the chest when no higher-priority target remains');
+  assert.ok(chest.alive && chest.deployed);
+  assert.equal(chest.hp, chest.s.maxHp);
+  assert.equal(h.b.errorCount, 0);
 });
 
 test('bond replacements resolve by effect id in both directions and stay per player', () => {

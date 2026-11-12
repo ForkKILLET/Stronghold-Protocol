@@ -59,10 +59,11 @@ function installChest(battle, ps, mark) {
   let alive = true, chest = null;
   battle.on('battleStart', () => {
     chest = battle.spawnDevice(mark.enemyId, r, c, { hp: 1, blockCnt: 0, name: battle.data.raw.enemies?.[mark.enemyId]?.name });
-    if (chest) battle.addBuff(chest, { key: 'command:chest', flags: { untargetable: true, invulnerable: true }, persist: true });
+    // Selectable at the device's existing taunt -1: a flyer can shoot it, but cannot touch it from the air.
+    if (chest) battle.addBuff(chest, { key: 'command:chest', flags: { invulnerable: true }, persist: true });
   });
   battle.on('tick', () => {
-    if (!alive || !battle.enemies.some(e => e.alive && bodyOnTile(e, r, c))) return;
+    if (!alive || !battle.enemies.some(e => e.alive && !e.isFlying && bodyOnTile(e, r, c))) return;
     alive = false;
     if (chest?.alive) battle.retreat(chest, { permanent: true });
   });

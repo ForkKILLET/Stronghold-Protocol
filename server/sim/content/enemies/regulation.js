@@ -488,8 +488,8 @@ function kitAcrefd(ab) {
   ];
 }
 
-/** “模拟宝藏”: a hostage. It does not attack (applyWay NONE) and does not move.
- *  Survival coin and vanishing on enemy contact are not implemented. */
+/** Raw “模拟宝藏” enemy definition: no attack (applyWay NONE) or movement.
+ * Strategy-owned ally-side chests, contact removal and survival coins are installed by bands/commands.js. */
 function kitAchest() {
   return [{
     spawn(b, e) {
