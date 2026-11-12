@@ -371,3 +371,16 @@ The six corpora live under `<versionSlug>/`; root JSON files remain the default.
 ## 2026-11-05 主线 v0.3.3 对齐
 
 本分支继续保留模式不完整盟约仅过滤干员池、仍可激活盟约，以及特质赠送装备不占库存、Boss 按存活人数缩放的已记录规则。合入主线新玩法、AI 与隐秘核心重新配对后，重新核对 7 个 FUNNY roster、2 个 FUNNY stand-in 和 4 场完整对局的摘要；这些场景与主线基准存在上述明确规则差异，且引擎、调度、模拟和分发错误均为零。其余家族与场景保留合入后的基准，并通过比较验证。不能将本分支摘要作为主线原版规则的摘要。
+
+## 2026-11-13 莱塔尼亚召唤触发与地面接敌（主线 #943 适配）
+
+目标基线为 `966ceca779bc8f648d37d27b913530df31be40bf`。基线与适配树均以同一版本数据、Node 24、单 worker 完整实算规程 256 场；按实际计算结果比较，而非照搬主线预期。基线已有 54 场与存档不符。
+
+本次取消按成员开场生成，改为击倒事件触发；六人档增加本玩家干员死亡触发，并采用对应概率、上限、法术攻击及连续移动。召唤时间、位置、伤害与 RNG 消耗因此改变，完整对局后续的阵容、经济和生命可能随之变化。仅更新下列 13 场；fields、DIY 战斗分组及其既有差异不改：
+- `roster`：`roster-004`、`roster-028`。
+- `bonds`：`bond-lethaniaShip-low`、`bond-lethaniaShip-high`、`bond-miraShip-high`。
+- `matches`：`coop2-NORMAL-3`、`coop3-ABYSS-5`、`coop4-FUNNY-6`、`coop2-NORMAL-8-serverrun`、`coop2-NORMAL-14-standins`、`coop2-NORMAL-5-coverage-diy`。
+- `standins`：`standin-01`、`standin-07`。
+
+其中 `coop2-NORMAL-3`、`coop2-NORMAL-14-standins` 在修改前已与存档不同；更新采用修复后的实际完整场景，包含其既有差异，不将全部字段变化归因于本次修复。其余 52 场旧差异保留，因此完整存档比较仍非全绿。两次实算之间除此主题外未修改规则或数据；混合盟约与补位场景包含莱塔尼亚召唤影响。专项 43 项、相邻回归 53 项、循环守卫 14 项及文档 32 项通过；lint、导入边界和类型检查通过。完整本地 CI 未重复运行，浏览器未运行。
+
