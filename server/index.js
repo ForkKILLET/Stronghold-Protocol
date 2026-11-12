@@ -62,6 +62,7 @@ import { noteLlmIgnored, releaseIgnoresExternalAi, validateExternalConfig } from
 import { ROOT, listenAddress, bindCandidates, serveDirs, makeLogger, parseTrustProxy, versionsFrom, parseRoomCode } from './http/config.js';
 import { WS_MAX_PAYLOAD, createSessionStack, attachWebSocket } from './http/websocket.js';
 import { DATA_SHIM_JS, createStaticHandler } from './http/static.js';
+import { createDevResources } from './http/devResources.js';
 import { parseResourcePackRoutes } from '../shared/resourcePackRoutes.js';
 import { createPluginRegistry } from './plugins/registry.js';
 import { computeVanillaContent } from './plugins/identity.js';
@@ -105,7 +106,7 @@ export {
  *   heavyPerSec?: number, heavyBurst?: number, trustProxy?: 'auto' | boolean, soloReconnectWindowMs?: number,
  *   store?: object | null, resume?: boolean, saveMs?: number, checkpointConcurrency?: number, checkpointWaitMs?: number, assetsCdn?: string, dataCdn?: string, resourcePackRoutes?: string[] | string, studio?: boolean, matchHost?: object,
  *   workers?: number, roomWorkers?: number, matchWorkers?: number, workerQueue?: number, workerTimeoutMs?: number, workerPool?: SimulationPool | null,
- *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, wsUrl?: string, clientBuild?: boolean,
+ *   announcementsFile?: string | null, serverMessageFile?: string | null, announcementPollMs?: number, wsCompression?: boolean, wsUrl?: string, clientBuild?: boolean, developmentResources?: boolean,
  *   versionVoteMs?: number, versionRetryMs?: number, hotReload?: boolean,
  *   roomCode?: string | null,
  *   versions?: { enabled?: 'all' | string[], default?: string, maxHosts?: number },
@@ -297,6 +298,8 @@ export async function startServer(opts = {}) {
   const serveApi = async (req, res, pathname) => await serveUserApi(req,res,pathname) || await serveNameReview(req, res, pathname) || await servePublicApi(req, res, pathname);
 
   const serveStatic = createStaticHandler({ publicDir, dataDir, sharedDir, simDir, packsDir, pluginsDir, packs, content, log, visual, contents, cdnBase: assetsCdn, dataCdnBase: dataCdn, wsUrl, resourcePackRoutes, clientBuild, versions });
+  const devResources = !clientBuild && opts.developmentResources === true
+    ? await createDevResources({ publicDir, dataDir, log }) : null;
   // the plugin studio (DESIGN §32.9): its page and API for this machine and the local network; it watches plugins/ only
   // once it is used (hot reload), and rooms whose host is the author or alone follow a plugin's changes by themselves
   const studio = opts.studio === false ? null : createStudio({ publicDir, pluginsDir, dataDir, registry: packs, lobby, sessions: registry, log, fetch: opts.fetch });
@@ -315,7 +318,8 @@ export async function startServer(opts = {}) {
   const diagnostics = { persister, workerPool, matchWorkerPool, announcements, wsCompression, assetsCdn, dataCdn, serveStatic };
   let admin=null, devReload=null;
   const server = http.createServer(createRequestHandler({ serveStatic, studio, trustedRuntime, health, serveApi,
-    diagnostics, log, trustProxy: network.opts.trustProxy, serveDev: hotReload ? (...args) => devReload?.handle(...args) : null }));
+    diagnostics, log, trustProxy: network.opts.trustProxy, serveDev: devResources || hotReload ? async (...args) =>
+      await devResources?.(...args) || await devReload?.handle(...args) : null }));
   server.on('clientError', answerClientError);
   const wss = attachWebSocket(server, { network, log, wsCompression, announcements, traffic, users });
 
@@ -385,6 +389,7 @@ export async function startServer(opts = {}) {
     studio?.close();
     await admin?.close();
     await packs.close();
+    await devResources?.close();
     await serveStatic.close?.();
     eventLoop?.close();
     await trustedRuntime?.close();
@@ -425,6 +430,7 @@ export async function startServer(opts = {}) {
       if (ownsMatchWorkerPool) await matchWorkerPool?.close();
       studio?.close();
       await packs.close();
+      await devResources?.close();
       await serveStatic.close?.();
       await trustedRuntime?.close();
       await new Promise((resolve) => {
@@ -479,5 +485,6 @@ if (isProcessEntry(import.meta.url)) runMain(async () => {
   const { remoteTargetFromArgv, startRemoteDev } = await import('./http/devRemote.js');
   const target = remoteTargetFromArgv();
   if (target) return startRemoteDev({ target, hot: process.argv.includes('--hot') });
-  return startServer({ roomCode: roomCodeFromArgv(), userFile: userFileFromArgv() });
+  return startServer({ roomCode: roomCodeFromArgv(), userFile: userFileFromArgv(),
+    developmentResources: process.argv.includes('--source-client') });
 });

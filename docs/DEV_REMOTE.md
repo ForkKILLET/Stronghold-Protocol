@@ -35,10 +35,25 @@ npm run dev:source -- --remote https://genshin.asm.ms:7999
 | --- | --- |
 | 首页 HTML、`/js/`、`/css/`、`/vendor/`、`/i18n/`、图标、资源 SW | 本机源码，CSS 热替换、前端 JS／HTML 自动刷新 |
 | `/api/`、`/ws`、`/healthz` | 指定的远程服务器，账户与 WS 使用同一身份 |
-| `/sim/`、`/shared/`、`/data/`、`/data.js`、内容集及插件／语言包 | 远程，保持对局规则和内容身份一致 |
+| `/sim/`、`/shared/`、玩法 `/data/`、`/data.js`、内容集及插件／语言包 | 远程，保持对局规则和内容身份一致 |
 | `/js/battle/operatorTraits.js` | 远程，匹配服务器数据中的脚本 SHA-256 |
-| `/js/asset-cdn.js`、素材、字体、媒体及 ZIP | 远程的清单和 CDN 配置，继续支持本机预载缓存 |
+| `/data/assets.json`、`local-assets.json`、`local-fx.json`、`skins.json`、`profile-avatars.json`、`emotes.json`、`terms.json` | 本地最新展示清单；已有版本目录下的同名展示文件也使用本地 |
+| `/data/asset-hashes.json`、`resource-manifest.json`、`resource-packs.json` | 本地指纹、动态预载清单及 ZIP 索引 |
+| `/assets/`、`/fonts/`、`/media/`、`/resource-packs/`、`/downloads/` | 本地实际素材与 ZIP，不与生产清单混用 |
+| `/js/asset-cdn.js` | 本地提供空 ASSETS_CDN／DATA_CDN，使请求经过开发服务的本地资源或固定远程数据路由 |
 | `/js/ws-config.js` | 开发代理提供的同源 `/ws`，不使用本机或远程的 `SP_WS_URL` |
+
+普通 `npm run dev`／`dev:source` 和 `--remote` 开发统一使用本机最新资源，不再为光标等单独开例外。
+清单和实际文件复用正式静态资源服务的组合、音频 Range、预载清单及 ZIP 处理，只改变开发时的来源和缓存策略。
+远程内容集及插件自己的哈希文件（`/cs/`、`/vs/`、`/p/` 等）继续由远程提供，不以本地文件冒充其校验身份。
+旧远端内容身份可能将部署索引（asset-hashes／resource-manifest／resource-packs）也列入数据校验：它们带 `?v=` 的校验请求保留远端原始响应，普通预载使用不带 `v` 的本地索引，不能将本地 JSON 冒充远端校验字节。
+本地缺失素材返回 404，不悄悄向生产补取；可选本地清单沿用原有空清单回退。资源更新后仍须按正常工具重建指纹和 ZIP；未生成本地 ZIP 索引时使用已有逐文件下载流程。
+
+开发资源响应使用 `no-store`，旧的 `?v=`、ETag 或 HTTP 缓存不能遮住刚编辑的文件。
+开发服务还提供仅联网的资源 Service Worker，接管后不再用已有 Cache Storage 回复资源请求，**不删除已有预载、档案或设置**。
+预载下载、校验和 ZIP UI 仍可测试；要验证运行时缓存命中／离线播放，请使用生产构建或测试服。
+首次从旧开发服务切换后刷新页面，使新 worker 完成接管；后续刷新都读取本地资源。
+生产启动及程序化 `startServer()` 的默认缓存／CDN 行为保持不变，程序化验证可显式设置 `clientBuild:false, developmentResources:true`。
 
 本模式不启动本机 Lobby、SQLite、Redis、模拟或对局 Worker；`SP_USER_DB` 等本机游戏后端配置不会应用。
 远程 `shared` 和模拟模块不接受本机热修改；调试规则、后端或共享协议改动应使用普通本地模式或相应测试服。

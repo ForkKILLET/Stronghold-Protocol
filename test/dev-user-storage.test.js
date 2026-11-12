@@ -13,6 +13,25 @@ test('only source-client CLI supplies a local user database; explicit paths and 
  for(const argv of [[],['--source-client']])for(const file of ['custom.sqlite',':memory:',''])assert.equal(userFileFromArgv(argv,{SP_USER_DB:file}),file);
 });
 
+test('local development resources are explicit and production/programmatic defaults retain caching and CDN',async()=>{
+ const options={host:'127.0.0.1',port:0,workers:0,roomWorkers:0,matchWorkers:0,quiet:true,assetIndex:false,serverConfigFile:false,announcementsFile:null,clientBuild:false,studio:false,userFile:'',assetsCdn:'https://cdn.invalid'};
+ for(const enabled of [false,true]){
+  const server=await startServer({...options,developmentResources:enabled});
+  try{
+   const config=await(await fetch(server.url+'/js/asset-cdn.js')).text();
+   const worker=await fetch(server.url+'/resource-sw.js');
+   if(enabled){
+    assert.match(config,/ASSETS_CDN = ""/);
+    assert.equal(worker.headers.get('cache-control'),'no-store');
+    assert.doesNotMatch(await worker.text(),/addEventListener\(['"]fetch/);
+   }else{
+    assert.match(config,/https:\/\/cdn.invalid/);
+    assert.match(await worker.text(),/handleResourceRequest/);
+   }
+  }finally{await server.close();}
+ }
+});
+
 test('local profiles save through the real API and retain their identity after server restart',async()=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'sp-dev-users-')),file=path.join(root,'nested/users.sqlite');let server;
  const options={host:'127.0.0.1',port:0,workers:0,roomWorkers:0,matchWorkers:0,quiet:true,assetIndex:false,serverConfigFile:false,announcementsFile:null,nameModeration:null,clientBuild:false};

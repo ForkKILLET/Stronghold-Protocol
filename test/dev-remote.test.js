@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
+import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { access, mkdtemp, mkdir, writeFile, copyFile, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -12,12 +13,17 @@ import { parseRemoteTarget, remoteTargetFromArgv, remoteDevHost, startRemoteDev 
 const quiet = { log() {}, warn() {} };
 
 async function fixture(t, { hot = true } = {}) {
-  const root = await mkdtemp(path.join(tmpdir(), 'sp-dev-remote-')), publicDir = path.join(root, 'public');
+  const root = await mkdtemp(path.join(tmpdir(), 'sp-dev-remote-')), publicDir = path.join(root, 'public'), dataDir = path.join(root, 'data');
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const dir of ['js', 'css', 'i18n', 'vendor']) await mkdir(path.join(publicDir, dir), { recursive: true });
   await writeFile(path.join(publicDir, 'index.html'), '<!doctype html><html><head><title>Fixture</title><link rel="stylesheet" href="/css/test.css"></head><body><p id="sample">Local UI</p><script src="/js/test.js"></script></body></html>');
   await writeFile(path.join(publicDir, 'css/test.css'), '#sample { color: rgb(10, 20, 30); }');
   await writeFile(path.join(publicDir, 'js/test.js'), 'window.fixtureVersion=1; window.fixtureSession=Math.random();');
+  await mkdir(dataDir);
+  await mkdir(path.join(publicDir, 'assets/ui'), { recursive: true });
+  await writeFile(path.join(publicDir, 'assets/ui/test.png'), 'local-image');
+  await writeFile(path.join(dataDir, 'assets.json'), JSON.stringify({ ui: { test: '/assets/ui/test.png' } }));
+  await writeFile(path.join(dataDir, 'local-assets.json'), JSON.stringify({ version: 1, groups: {} }));
   await copyFile('public/js/devReload.js', path.join(publicDir, 'js/devReload.js'));
   const requests = [], wsRequests = [], peers = new Set();
   const upstream = http.createServer(async (req, res) => {
@@ -54,9 +60,9 @@ async function fixture(t, { hot = true } = {}) {
     wss.close();
   };
   t.after(stopUpstream);
-  const gateway = await startRemoteDev({ target, port: 0, hot, publicDir, log: quiet });
+  const gateway = await startRemoteDev({ target, port: 0, hot, publicDir, dataDir, log: quiet });
   t.after(() => gateway.close());
-  return { gateway, target, publicDir, requests, wsRequests, peers, stopUpstream };
+  return { gateway, target, publicDir, dataDir, requests, wsRequests, peers, stopUpstream };
 }
 
 function rawRequest(url, options = {}) {
@@ -100,9 +106,9 @@ test('local source/HMR and remote data, simulation, accounts and pinned traits h
   }
   assert.equal(await (await fetch(base + '/js/ws-config.js')).text(), 'export const WS_URL = "";\n');
   assert.match(await (await fetch(base + '/__dev/remote.js')).text(), /Real|affect this server/);
-  for (const file of ['/healthz', '/data/resource-manifest.json', '/data/versions/v3/chess.json', '/shared/constants.js',
-    '/sim/spec.js', '/cs/abc/index.json', '/assets/a.webp', '/resource-packs/a.zip', '/downloads/a.zip',
-    '/packs/index.json', '/api/user/stats', '/api/user/replays', '/js/asset-cdn.js', '/js/battle/operatorTraits.js?v=hash']) {
+  for (const file of ['/healthz', '/data/versions/v3/chess.json', '/shared/constants.js',
+    '/sim/spec.js', '/cs/abc/index.json',
+    '/packs/index.json', '/api/user/stats', '/api/user/replays', '/js/battle/operatorTraits.js?v=hash']) {
     assert.equal(await (await fetch(base + file)).text(), `remote:${file}`);
   }
   assert.ok(requests.every(req => req.headers.host === new URL(gateway.target).host));
@@ -138,6 +144,72 @@ test('account cookies survive HTTP/WS while unrelated cookies and proxy credenti
   assert.equal((await compressed)[0].toString(), 'compressed'.repeat(2000));
   const closed = once(ws, 'close'); ws.close(1000, 'done');
   assert.deepEqual(await closed, [1000, Buffer.from('done')]);
+});
+
+test('all local presentation resources and manifests stay consistent, fresh and isolated from remote gameplay', async t => {
+  const { gateway, publicDir, dataDir, requests } = await fixture(t, { hot: false });
+  const base = gateway.url;
+  const writeJson = (name, doc) => writeFile(path.join(dataDir, name), JSON.stringify(doc));
+  const file = path.join(publicDir, 'assets/local/ui/cursor/prts_hand.png');
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, 'cursor-v1');
+  const cursor = { path: '/assets/local/ui/cursor/prts_hand.png', hash: createHash('sha1').update('cursor-v1').digest('hex').slice(0, 12) };
+  await writeJson('local-assets.json', { version: 1, groups: { 'ui/cursor': { prts_hand: cursor } } });
+  assert.deepEqual((await (await fetch(base + '/data/local-assets.json')).json()).groups['ui/cursor'].prts_hand, cursor);
+  assert.equal((await (await fetch(base + '/data/assets.json')).json()).ui.test, '/assets/ui/test.png');
+  assert.equal((await (await fetch(base + '/data/assets.json?v=old')).json()).ui.test, '/assets/ui/test.png');
+  const index = await (await fetch(base + '/data/resource-manifest.json')).json();
+  assert.ok(index.files.some(f => f.url === cursor.path && f.hash === cursor.hash));
+  assert.ok(index.files.some(f => f.url === '/assets/ui/test.png'));
+  for (const name of ['skins', 'profile-avatars', 'emotes', 'terms']) {
+    await writeJson(name + '.json', { local: name });
+    assert.deepEqual(await (await fetch(base + '/data/' + name + '.json')).json(), { local: name });
+  }
+  assert.match(await (await fetch(base + '/js/asset-cdn.js')).text(), /ASSETS_CDN = ""/);
+  assert.match(await (await fetch(base + '/js/asset-cdn.js')).text(), /DATA_CDN = ""/);
+  const worker = await fetch(base + '/resource-sw.js');
+  assert.equal(worker.headers.get('cache-control'), 'no-store');
+  assert.doesNotMatch(await worker.text(), /addEventListener\(['"]fetch/);
+  assert.doesNotMatch(await (await fetch(base + '/__dev/remote.js')).text(), /uiAssets/);
+  assert.equal((await fetch(base + '/__dev/assets/prts_hand.png')).status, 404, 'no per-cursor exception');
+  const before = await fetch(base + cursor.path + '?v=old');
+  const etag = before.headers.get('etag');
+  assert.equal(await before.text(), 'cursor-v1');
+  await writeFile(file, 'cursor-v2');
+  const after = await fetch(base + cursor.path + '?v=old', { headers: { 'if-none-match': etag } });
+  assert.equal(after.status, 200); assert.equal(after.headers.get('cache-control'), 'no-store');
+  assert.equal(await after.text(), 'cursor-v2', 'old URL/validator cannot hide edited local bytes');
+  for (const [p, body] of [['fonts/test.woff2', 'local-font'], ['assets/audio/bgm/test.mp3', '0123456789'],
+    ['resource-packs/test.zip', 'local-zip'], ['downloads/test.zip', 'local-download']]) {
+    await mkdir(path.dirname(path.join(publicDir, p)), { recursive: true });
+    await writeFile(path.join(publicDir, p), body);
+    assert.equal(await (await fetch(base + '/' + p)).text(), body);
+  }
+  const audio = await fetch(base + '/media/bgm/test', { headers: { range: 'bytes=2-4' } });
+  assert.equal(audio.status, 206); assert.equal(await audio.text(), '234');
+  await writeJson('resource-packs.json', { format: 'stronghold-resource-pack-index', version: 1, packs: [] });
+  assert.deepEqual((await (await fetch(base + '/data/resource-packs.json')).json()).packs, []);
+  assert.equal((await fetch(base + '/assets/not-installed.png')).status, 404);
+  for (const p of ['/data/chess.json', '/data/versions/v3/chess.json', '/shared/constants.js', '/sim/spec.js', '/cs/abc/index.json', '/p/plugin/hash/icon.png']) {
+    assert.equal(await (await fetch(base + p)).text(), `remote:${p}`);
+  }
+  for (const name of ['asset-hashes', 'resource-manifest', 'resource-packs']) {
+    const p = `/data/${name}.json?v=remotehash`;
+    assert.equal(await (await fetch(base + p)).text(), `remote:${p}`, 'preserve remote content verification bytes');
+  }
+  assert.ok(requests.every(r => !r.url.startsWith('/assets/') && !r.url.startsWith('/fonts/') && !r.url.startsWith('/media/')));
+  assert.equal((await fetch(base + cursor.path, { method: 'HEAD' })).status, 200);
+  assert.equal((await fetch(base + cursor.path, { method: 'POST' })).status, 405);
+  assert.equal((await rawRequest(base + cursor.path, { headers: { origin: 'https://other.invalid' } })).status, 403);
+  await rm(file);
+  assert.equal((await fetch(base + cursor.path)).status, 404);
+  await writeFile(path.join(publicDir, '../private.png'), 'private');
+  try { await symlink(path.join(publicDir, '../private.png'), file, 'file'); }
+  catch (err) {
+    if (process.platform === 'win32' && err.code === 'EPERM') { t.diagnostic('Symlink fixture needs Windows developer mode'); return; }
+    throw err;
+  }
+  assert.equal((await fetch(base + cursor.path)).status, 404);
 });
 
 test('loopback Host, Origin, Fetch Metadata and paths are checked before HTTP and WS forwarding', async t => {

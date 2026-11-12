@@ -1,5 +1,5 @@
 // Explicit source-development gateway. No Lobby, SQLite, Redis or game Workers are started here.
-// Local UI/HMR; remote accounts, HTTP data, simulation/shared modules and the unmodified WS stream.
+// Local UI/HMR and presentation resources; remote accounts, gameplay data, simulation/shared and WS.
 import http from 'node:http';
 import https from 'node:https';
 import { createReadStream } from 'node:fs';
@@ -10,6 +10,7 @@ import path from 'node:path';
 import { ROOT } from './config.js';
 import { MIME } from './files.js';
 import { createDevReload } from './devReload.js';
+import { createDevResources, isDevResourcePath } from './devResources.js';
 
 const REQUEST_HEADERS = new Set(['accept', 'accept-encoding', 'accept-language', 'user-agent', 'content-type',
   'content-length', 'if-none-match', 'if-modified-since', 'range', 'if-range', 'cache-control', 'pragma']);
@@ -113,10 +114,11 @@ function responseHeaders(upstream, target, origin, upgrade = false) {
 }
 
 export async function startRemoteDev({ target, port = process.env.PORT ? Number(process.env.PORT) : 3000,
-  hot = true, publicDir = path.join(ROOT, 'public'), log = console } = {}) {
+  hot = true, publicDir = path.join(ROOT, 'public'), dataDir = path.join(ROOT, 'data'), log = console } = {}) {
   const remote = parseRemoteTarget(target), host = remoteDevHost(remote.origin);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid remote development PORT');
   const publicRoot = await realpath(publicDir);
+  const resources = await createDevResources({ publicDir, dataDir, log });
   const transport = remote.protocol === 'https:' ? https : http;
   const agent = new transport.Agent({ keepAlive: true, maxSockets: 32, maxFreeSockets: 8 });
   const sockets = new Set();
@@ -183,6 +185,10 @@ export async function startRemoteDev({ target, port = process.env.PORT ? Number(
       const pathname = requestPath(req);
       if (!pathname) { fail(res, 400, 'Invalid path'); return; }
       const read = ['GET', 'HEAD'].includes(req.method);
+      if (isDevResourcePath(pathname, (req.url || '').split('?').slice(1).join('?'))) {
+        if (!read) { fail(res, 405, 'GET / HEAD only'); return; }
+        await resources(req, res, (req.url || '').split('?')[0]); return;
+      }
       if (pathname.startsWith('/api/') || read && (REMOTE_PREFIXES.some(p => pathname.startsWith(p))
           || ['/healthz', '/data.js', '/js/asset-cdn.js', '/js/battle/operatorTraits.js'].includes(pathname))) {
         proxy(req, res); return;
@@ -194,7 +200,7 @@ export async function startRemoteDev({ target, port = process.env.PORT ? Number(
       }
       if (pathname === '/__dev/remote.js') {
         res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-store' });
-        res.end(req.method === 'HEAD' ? undefined : `window.__SP_DEV_REMOTE__ = Object.freeze(${JSON.stringify({ target: remote.origin })});\ndocument.title = ${JSON.stringify(`[REMOTE ${remote.host}] `)} + document.title;\nconsole.warn(${JSON.stringify(`[dev] Remote backend: ${remote.origin}. Account changes and games affect this server. Local UI only; simulation/shared/data come from the remote server.`)});\n`); return;
+        res.end(req.method === 'HEAD' ? undefined : `window.__SP_DEV_REMOTE__ = Object.freeze(${JSON.stringify({ target: remote.origin })});\ndocument.title = ${JSON.stringify(`[REMOTE ${remote.host}] `)} + document.title;\nconsole.warn(${JSON.stringify(`[dev] Remote backend: ${remote.origin}. Account changes and games affect this server. Local UI and presentation resources; simulation/shared/game data come from the remote server.`)});\n`); return;
       }
       if (dev && await dev.handle(req, res, pathname)) return;
       if (pathname === '/' || pathname === '/index.html') {
@@ -232,12 +238,12 @@ export async function startRemoteDev({ target, port = process.env.PORT ? Number(
     await new Promise((resolve, reject) => {
       server.once('error', reject); server.listen(port, host, resolve);
     });
-  } catch (err) { dev?.close(); agent.destroy(); throw err; }
+  } catch (err) { dev?.close(); await resources.close(); agent.destroy(); throw err; }
   origin = `http://${host}:${server.address().port}`;
-  log.log?.(`\n[dev] REMOTE ${remote.origin}\n[dev] Real remote accounts/games; separate browser identity at ${origin}\n[dev] Only frontend code is local. Shared simulation and game data are remote. HOST / SP_WS_URL / local database settings are not used.`);
+  log.log?.(`\n[dev] REMOTE ${remote.origin}\n[dev] Real remote accounts/games; separate browser identity at ${origin}\n[dev] Frontend code and presentation resources are local. Shared simulation and game data are remote. HOST / SP_WS_URL / local database settings are not used.`);
   return { url: origin, host, port: server.address().port, server, target: remote.origin,
     async close() {
-      closed = true; dev?.close(); agent.destroy();
+      closed = true; dev?.close(); await resources.close(); agent.destroy();
       for (const socket of sockets) socket.destroy();
       await new Promise(resolve => server.close(resolve));
     },
