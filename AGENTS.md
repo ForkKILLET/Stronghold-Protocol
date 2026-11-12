@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-13 三期萨卡兹死亡召唤补齐 enemy_1222_dpvt／1223_dmech／1361_dthrow 两形态及 1363_spnshd_2 的注册；子裔读取 deathrattle 键，轰击者读取 Attack 键，卫士长读取 Summon 数量并沿用拷打者的静止血珀路径。replaceLater 的正延迟用 holdsBattle:true 防止空场提前结算，零延迟即时生成；责罚者／惩戒者按 PRTS 撤回旧 ASSUMED 1 秒。漏怪不触发、死亡天赋不受沉默，保持原路径／归属／倍率／悬赏隔离及 runtime 计数；相同回调的巨岩蛛覆盖四子体。其余未实现技能不在本次范围，不新增官方散点假设或全局等待视觉计时器。证据 docs/research/sarkaz-death-spawns-20261113.md；只恢复本任务限内存定向检查，完整模拟／golden／浏览器仍暂缓。
+
 - 2026-11-12 三期大场景的网格传输必须兼容既有 16,000,000 字节 ZIP 上限。Regulation 导出器按最多四段、每段 15,000,000 字节写入 scene.bin／scene1.bin 等，由 scene.json.binParts 的固定 bin／binN 键声明；加载器校验数量、键、各段大小与总量后顺序拼接，再复用原顶点／索引布局。只拆传输字节，不减面、不改变偏移、材质或场景几何；旧单文件与旧赛季不变，缺段／大小不符回退。不得扩大 ZIP／缓存单文件限制或只跳过必备模型。MAP10／12 还原 SHA-256 与原网格完全相同，证据见 docs/research/scene-transport-20261112.md。
 
 - 2026-11-12 用户授权先按 PRTS 截图拟合三期沙地花纹及十图粗光照，后续录屏再校准。sceneCalibration 仅作用于十个 Regulation composite pack；沙漠主材质共用部分原版顶点混色 0.625，每图同一 RGB 光照增益用于普通／联防／Boss，在发光项、clamp、focus 和输出转换之前应用。参数为经验拟合，不冒充官服运行时值；不改原版材质／贴图／规则，不影响旧赛季、缺资源回退、独立自发光、Unlit、水面、单位或 FX；半透明表面不参与拟合，保留原透明混合规则并跟随所在 lit 材质的光照，保留本服场外压暗。Float32 原始渲染分离 diffuse q=0/1 与 emission；普通及联防训练、Boss 留出、材质与空间均衡采样、Huber 和有界增益。30 场景实际渲染采样均改善，72 项定向检查通过，无浏览器／HTTP／OOM 错误，完整模拟／golden 仍暂缓。工具 tools/research/fit-regulation-light.py，证据 docs/research/map-light-calibration-20261112.md；后续同版本录屏优先验证运行时参数、阴影、反射及水面，勿凭单张截图写死每格蒙版。
