@@ -29,10 +29,9 @@ test('every official version declares comparable pictures, models, clips, icons 
   const result = assetCoverage({ root, local: { groups: {} } });
   assert.equal(result.versions.length, VERSIONS.length);
   assert.deepEqual(result.missing.filter((r) => r.version !== 'act3autochess@V3_1'), []);
-  // The updated client has an effect-only cocoon without an icon and dynamic boards without baked scene art.
+  // The updated client has an effect-only cocoon without an icon ; Regulation scene extraction is declared independently of installed art.
   assert.deepEqual(result.missing.filter((r) => r.version === 'act3autochess@V3_1').map((r) => [r.id, r.missing]), [
     ['enemy_9036_acweb', ['icon']],
-    ...['01', '02', '03', '04', '05', '06', '09', '10', '11', '12'].map((n) => [`act3autochess_m${n}`, ['scene']]),
   ]);
 });
 

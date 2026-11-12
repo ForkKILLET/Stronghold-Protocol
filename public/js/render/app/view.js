@@ -88,7 +88,14 @@ export const leaderShown = (vk, prevVk = null) => vk === 'bossPrep' || prevVk ==
  * board's active field rows (`field`), and whether the pen's figures (`pen`) and the boss-prep leader (`leader`) show.
  * @param {string} vk
  */
-export function restView(vk) {
+export function restView(vk, stage = null) {
+  if (vk === 'unite' && stage?.renderLayouts?.unite) {
+    return { area: [{r0:8,r1:13,c0:0,c1:20}], band:[8,13], field:[8,13], pen:false, leader:false };
+  }
+  if (stage?.renderLayouts?.normal && ['prep', 'normal', 'pen'].includes(vk)) {
+    return { area: [AREAS.normal[0], { r0: 7, r1: 13, c0: 11, c1: 19 }],
+      band: [6, 13], field: [6, 13], pen: showsPen(vk), leader: false };
+  }
   return { area: boardArea(vk), band: bandFor(vk), field: fieldRows(vk), pen: showsPen(vk), leader: leaderShown(vk) };
 }
 
@@ -99,9 +106,9 @@ export function restView(vk) {
  * @param {string} prevVk
  * @param {string} vk
  */
-export function flightView(prevVk, vk) {
+export function flightView(prevVk, vk, stage = null) {
   const pen = penShown(vk, prevVk);
-  const from = restView(prevVk), to = restView(vk);
+  const from = restView(prevVk, stage), to = restView(vk, stage);
   const noPen = (r) => [r[0], Math.min(r[1], 13)];
   const fromArea = pen ? from.area : from.area.filter((a) => a.r1 <= 13);
   const fb = pen ? from.band : noPen(from.band), ff = pen ? from.field : noPen(from.field);

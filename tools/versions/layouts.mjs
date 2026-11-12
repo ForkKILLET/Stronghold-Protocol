@@ -127,7 +127,16 @@ export function composeRegulationStage(main, [sub1, sub2, sub3]) {
     const a = p2[k], b = p3[k];
     predefines[k] = Array.isArray(a) || Array.isArray(b) ? [...(a || []), ...(b || [])] : (a ?? b);
   }
-  return { ...main, mapData: { ...main.mapData, map, tiles }, predefines };
+  // Presentation only: keep sub_01 intact (including its right-hand preview pen). Battle templates,
+  // deployment and checkpoints continue using the unchanged canonical grid above.
+  const renderNormal = gridOf((r, c) => {
+    const t = tileAt(sub1, r - 7, c) ?? filler;
+    return r === 7 ? asHandSlot(t) : t;
+  });
+  // The native unite board has one hand row, not sub_01's separate hand/equipment strip.
+  // It is only a battle presentation; canonical preparation and replay coordinates stay above.
+  const renderUnite = gridOf((r, c) => tileAt(sub2, r - 8, c) ?? filler);
+  return { ...main, mapData: { ...main.mapData, map, tiles }, predefines, renderNormal, renderUnite };
 }
 
 /**

@@ -159,8 +159,9 @@ import { loadBoardArt } from './boardArt.js';
 import { ImpostorAtlas } from './impostor.js';
 import { stepClipBounds } from './spine.js';
 import { loadThree, loadBoardPack, loadScenePack, webgl2Available, boardArtListed } from './board3d/load.js';
+import { TerrainFx } from './vfx/terrainfx.js';
 import { BoardScene } from './board3d/scene.js';
-import { layoutPen, penSignature } from './pen.js';
+import { parsePenRect, layoutPen, penSignature } from './pen.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitTiles } from './pick.js';
 import { promotionsOf } from './promote.js';
@@ -169,6 +170,7 @@ import { advanceEffectClock } from './app/playback.js';
 import { createWindUpLookahead } from './app/windup.js';
 import { pieceDirOf, pickUnitOf } from './app/pick.js';
 import { CAMERA_MS, BOARD3D_STABLE_MS, BOARD3D_RETRY_MS, PEN_CAMERA_MS, RANGE_GROUPS, LEADER_HIT_STYLE, DRAG_HOLD_TILES, CHAIN_KINDS, DROP_PENDING_MS, DEPLOY_REPLAY_MS } from './app/tune.js';
+import { presentationStage } from './app/stage.js';
 import { boardPreference, switchableBox, bandFor, fieldRows, boardArea, viewKind, restView, flightView } from './app/view.js';
 import { renderInfo, FORCED_EXIT, showsDeathFx } from './app/info.js';
 import { resolveAssets, makeData, withTimeout, QUALITY_RES, BOARD_RES, releaseGl } from './app/host.js';
@@ -314,6 +316,7 @@ export async function createFieldView(host, options = {}) {
 
   let mode = 'idle';          // 'idle' | 'prep' | 'battle'
   let stageRec = null;
+  let renderStage = null;
   let cam = presetCamera('prep', { width: s0.width, height: s0.height, padding: defaultPadding('prep', s0) }, { hud: hudBands('prep', s0) });
   let camFrom = null, camTo = null, camT0 = 0, camKind = 'prep', camOpts = {}, camMs = CAMERA_MS;
   let pendingView = null;     // tile band/focus to apply when the camera transition ends
@@ -415,6 +418,12 @@ export async function createFieldView(host, options = {}) {
   setupCleanup.push(() => ofx.destroy());
   layers.vfxGround.addChild(ofx.ground);
   layers.vfxOver.addChild(ofx.over);
+  // Each FX renderer owns its uploaded textures: sharing a library's onGpu markers would suppress another upload.
+  const terrainOfx = new OfficialFx({ P, renderer: app.renderer, assets, cam: () => cam, heightAt });
+  const terrainFx = new TerrainFx(terrainOfx);
+  setupCleanup.push(() => { terrainFx.clear(); terrainOfx.destroy(); });
+  layers.vfxGround.addChild(terrainOfx.ground);
+  layers.vfxOver.addChild(terrainOfx.over);
   const wiring = new FxWiring(ofx, {
     speed: projSpeed,
     // the index unit of a battle unit: the drawn operator (a stand-in's, a 自选 pick's), the chess' operator, the enemy / token
@@ -438,8 +447,12 @@ export async function createFieldView(host, options = {}) {
   /** The tier the effects run at now: the setting (auto: 精简 on touch devices) while the 3D board draws. */
   function syncOfficialFx() {
     ofx.setTier(board3d ? resolveOfficialFx(settings.officialFx, ofx.available) : 'off');
+    terrainOfx.setTier(board3d ? resolveOfficialFx(settings.officialFx, terrainOfx.available) : 'off');
+    terrainFx.clear();
   }
-  ofx.init().then((ok) => { if (!destroyed && ok) { syncOfficialFx(); wiring.ready(); } }, () => {});
+  Promise.all([ofx.init(), terrainOfx.init()]).then(([ok]) => {
+    if (!destroyed) { syncOfficialFx(); if (ok) wiring.ready(); }
+  }, () => {});
   // battle devices (crates / turrets as sim units): the official crate mesh in the 3D scene, else a Pixi box
   ctx.createBox = (spec) => switchableBox({ board: () => board3d, pixi: () => tiles.createBox(), spec });
   const impostors = new ImpostorAtlas(app.renderer);
@@ -466,7 +479,12 @@ export async function createFieldView(host, options = {}) {
     const id = st && typeof st.id === 'string' ? st.id : '';
     if (!id || !board3d) return;
     loadScenePack(assets, id).then((scene) => {
-      if (scene && !destroyed && board3d && stageRec && stageRec.id === id) board3d.setScenePack(id, scene);
+      if (scene && !destroyed && board3d && stageRec && stageRec.id === id) {
+        board3d.setScenePack(id, scene);
+        tiles.setSceneHeights(id, board3d.official === scene ? scene.doc?.tileHeightClasses : null);
+        tiles.project(cam, true);
+        if (penList) { const list = penList; clearPen(); setPenList(list); }
+      }
     }).catch(() => {});
   }
   function enable3d(THREE, pack) {
@@ -487,8 +505,8 @@ export async function createFieldView(host, options = {}) {
       board3d = b;
       tiles.setExternal(true);
       backdrop.visible = false;
-      b.setArea(boardArea(viewKind(camKind, camOpts)));
-      if (stageRec) { b.setStage(stageRec); useOfficialScene(stageRec); }
+      b.setArea(restView(viewKind(camKind, camOpts), stageRec).area);
+      if (stageRec) { b.setStage(renderStage || stageRec); useOfficialScene(stageRec); }
       b.setFocus(camRect());
       b.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null);
       tiles.project(cam, true);
@@ -510,6 +528,7 @@ export async function createFieldView(host, options = {}) {
     try { board3dCanvas?.remove(); } catch { /* ignore */ }
     board3dCanvas = null;
     if (!destroyed) {
+      tiles.setSceneHeights(null);
       tiles.setExternal(false); backdrop.visible = true; tiles.project(cam, true);
       for (const [g, r] of hlReq) drawHighlight(r.tiles, r.style, g);
       syncOfficialFx();
@@ -606,7 +625,7 @@ export async function createFieldView(host, options = {}) {
 
   function camRect() {
     const k = viewKind(camKind, camOpts);
-    if (k === 'pen') return { r0: 14, r1: 18, c0: 7, c1: 13 };
+    if (k === 'pen') return parsePenRect(renderStage?.config?.enemy_place_rect) || { r0: 14, r1: 18, c0: 7, c1: 13 };
     // prep lights the bench (hand row 7 / temp row 8) with the field, like the official prep view
     if (camOpts.rect) { const r = normRect(camOpts.rect); return k === 'prep' ? { ...r, r0: Math.min(r.r0, GEO.HAND_ROW) } : r; }
     // the boss round's prep lights the whole boss field: the pair partner's half is shown with its pieces (item 51)
@@ -623,7 +642,13 @@ export async function createFieldView(host, options = {}) {
     // fitted fallback (custom rects, portrait viewports); a prep camera keeps the bench and the field clear of the HUD
     // — `shop: false` (the folded shop, public issue #5) = the official shop-collapsed camera, clear of the folded
     // shop's HUD band (re-evaluated on resize: camOpts keep the flag)
-    const vk = viewKind(kind, o); // (a 'prep' camera on the boss rows = the Final Assault prep)
+    const vk = viewKind(kind, o);
+    if (stageRec?.renderLayouts?.normal && k === 'pen') {
+      return presetCamera(k, { width: sz.width, height: sz.height, padding: o.padding || defaultPadding(k, sz) }, {
+        fit: true, rect: parsePenRect(renderStage?.config?.enemy_place_rect),
+      });
+    }
+    // (a 'prep' camera on the boss rows = the Final Assault prep)
     return presetCamera(k, { width: sz.width, height: sz.height, padding: o.padding || defaultPadding(k, sz) }, {
       rect, side: o.side, half: !!o.half, shop: o.shop, fit: !!o.fit, config: stageRec?.config || null,
       hud: hudBands(vk, sz, { shop: o.shop !== false }),
@@ -652,8 +677,9 @@ export async function createFieldView(host, options = {}) {
     const vk = viewKind(camKind, camOpts);
     if (vk === 'prep') setPrepField(IDENTITY);
     else if (vk === 'bossPrep') setPrepField(bossPrepField(camOpts.side === 'R' ? 'R' : 'L'));
+    syncPresentationStage(vk);
     const target = targetCamera(camKind, camOpts);
-    const rest = restView(vk);
+    const rest = restView(vk, stageRec);
     const focus = camRect();
     board3d?.setFocus(focus);
     camMs = Number.isFinite(o.ms) && o.ms >= 0 ? o.ms : (vk === 'pen' || prevView === 'pen' ? PEN_CAMERA_MS : CAMERA_MS);
@@ -670,9 +696,9 @@ export async function createFieldView(host, options = {}) {
       camT0 = performance.now();
       // keep both fields drawn (and lit) while the camera flies between them; the pen as flightView says (a flight from
       // the prep camera into a battle drops it at once)
-      const fly = flightView(prevView, vk);
+      const fly = flightView(prevView, vk, stageRec);
       tiles.setView(fly.band, focus, fly.field);
-      board3d?.setArea(fly.area);
+      board3d?.setArea(stageRec?.renderLayouts?.normal ? rest.area : fly.area);
       setPenHidden(!fly.pen);
       setLeaderHidden(!fly.leader);
       pendingView = { ...rest, focus };
@@ -742,12 +768,26 @@ export async function createFieldView(host, options = {}) {
 
   // ---- stage ----------------------------------------------------------------------------------------------
 
+  function syncPresentationStage(vk) {
+    const next = presentationStage(stageRec, vk);
+    if (next === renderStage) return;
+    renderStage = next;
+    if (next) { tiles.setStage(next); board3d?.setStage(next); }
+    if (penList) { const list = penList; clearPen(); setPenList(list); }
+  }
+
   function setStage(st) {
     if (!st || typeof st !== 'object' || !Array.isArray(st.rows)) return false;
     stageRec = st;
-    tiles.setStage(st);
+    renderStage = presentationStage(st, viewKind(camKind, camOpts));
+    tiles.setStage(renderStage);
     tiles.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null);
-    if (board3d) { board3d.setStage(st); board3d.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null); useOfficialScene(st); }
+    if (board3d) { board3d.setStage(renderStage); board3d.setBattleRect(mode === 'battle' && battleMeta ? battleMeta.rect : null); useOfficialScene(st); }
+    if (!camTo) {
+      const rest = restView(viewKind(camKind, camOpts), st);
+      board3d?.setArea(rest.area);
+      tiles.setView(rest.band, camRect(), rest.field);
+    }
     tiles.project(cam, true);
     // a pen laid out before the stage arrived (setPrep / a scouting board first) used the default zones and the old
     // tile heights: lay it out again on this stage
@@ -1085,7 +1125,7 @@ export async function createFieldView(host, options = {}) {
     // the leader with a spawn tile stands on the boss field (setLeader), not in the pen
     const stand = leaderStand(list, (k) => data.enemy(k)?.hitArea ?? null, hitTiles);
     setLeader(stand);
-    const pen = layoutPen(stand ? list.filter((e) => e !== stand.entry) : list, { stage: stageRec });
+    const pen = layoutPen(stand ? list.filter((e) => e !== stand.entry) : list, { stage: renderStage || stageRec });
     for (const f of pen.figures) {
       const rec = data.enemy(f.enemyKey);
       const rank = rec?.rank;
@@ -2016,6 +2056,7 @@ export async function createFieldView(host, options = {}) {
     frameNo++;
     impSlot = 0;
     ofx.frameStats();
+    terrainOfx.frameStats();
     if (frameNo % 30 === 1) {
       impInterval = pickImpostorInterval(); clipAllowed = pickClipping();
       culledCount = 0;
@@ -2045,6 +2086,7 @@ export async function createFieldView(host, options = {}) {
         else board3d.render(cam, clock);
       }
       tiles.project(cam);
+      terrainFx.update(board3d, dt);
       updateBackdrop(clock);
       if (mode === 'battle') {
         const renderT = interp.update(now / 1000);
@@ -2116,6 +2158,7 @@ export async function createFieldView(host, options = {}) {
     app.renderer.resize(sz.width, sz.height);
     board3d?.resize(sz.width, sz.height, boardDpr());
     layoutBackdrop();
+    syncPresentationStage(viewKind(camKind, camOpts));
     const target = targetCamera(camKind, camOpts);
     if (camTo) camTo = target; else cam = target;
     tiles.project(cam, true);
@@ -2344,6 +2387,7 @@ export async function createFieldView(host, options = {}) {
       holdScene(false); // no scene any more: the quiet budget may free the skeletons (lobby / room / result)
       try { fx.destroy(); } catch { /* ignore */ }
       try { ofx.destroy(); } catch { /* ignore */ }
+      terrainFx.clear(); terrainOfx.destroy();
       pluginFx.destroy();
       try { tiles.destroy(); } catch { /* ignore */ }
       try { impostors.destroy(); } catch { /* ignore */ }
@@ -2360,7 +2404,7 @@ export async function createFieldView(host, options = {}) {
         fps: Math.round(fps * 10) / 10, frameMs: Math.round(frameMs * 100) / 100, cpuMs: Math.round(cpuMs * 100) / 100, renderMs: Math.round(renderMs * 100) / 100, mode, units: views.size, impostor: impInterval, impostorAtlas: { ...impostors.stats }, boardArt: !!tiles.atlas.art,
         board3d: board3d ? { on: true, ...board3d.stats(), losses: recover.count } : { on: false, error: board3dError, recovering: !!recover.timer, losses: recover.count },
         pen: penViews.size, penHidden, prepField: prepXf.kind === 'bossPrep' ? prepXf.side : null, lod: loadLevel, culled: culledCount,
-        ...fx.counts, officialFx: ofx.stats(), spine: assets.spine?.stats ? assets.spine.stats() : null, renderT: interp.renderT, rate: interp.rate,
+        ...fx.counts, officialFx: ofx.stats(), terrainFx: terrainOfx.stats(), spine: assets.spine?.stats ? assets.spine.stats() : null, renderT: interp.renderT, rate: interp.rate,
         buffered: interp.size, camera: cam.params(),
       };
     },

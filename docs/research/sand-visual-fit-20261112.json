@@ -1,0 +1,702 @@
+{
+  "meaning": "Display-space contrast fits, not recovered runtime shader parameters; per-tile mean removed; correlation>0.6 is a fit-quality filter, not independent validation.",
+  "results": [
+    {
+      "map": "01",
+      "patchCount": 16,
+      "acceptedCount": 12,
+      "patches": [
+        {
+          "row": 9,
+          "col": 3,
+          "contrastRatio": 0.3881502151489258,
+          "correlation": 0.8079243302345276,
+          "baselineRms": 19.17462921142578,
+          "sumDD": 22.244579315185547,
+          "sumDT": 13.974089622497559,
+          "sumTT": 10.6016845703125,
+          "samples": 1875,
+          "effectiveBlend": 0.6282020211219788,
+          "absoluteFit": 0.5369251370429993,
+          "fittedRms": 7.951495797822453
+        },
+        {
+          "row": 9,
+          "col": 4,
+          "contrastRatio": 0.3635556399822235,
+          "correlation": 0.7625967264175415,
+          "baselineRms": 20.357528686523438,
+          "sumDD": 23.321533203125,
+          "sumDT": 15.013983726501465,
+          "sumTT": 11.95008659362793,
+          "samples": 1875,
+          "effectiveBlend": 0.6437820196151733,
+          "absoluteFit": 0.5636568665504456,
+          "fittedRms": 8.900641592117495
+        },
+        {
+          "row": 9,
+          "col": 8,
+          "contrastRatio": 0.06622064113616943,
+          "correlation": 0.4246003031730652,
+          "baselineRms": 28.445470809936523,
+          "sumDD": 25.74292755126953,
+          "sumDT": 24.367877960205078,
+          "sumTT": 23.331741333007812,
+          "samples": 1875,
+          "effectiveBlend": 0.9465853571891785,
+          "absoluteFit": 0.8878052830696106,
+          "fittedRms": 3.0341818944937846
+        },
+        {
+          "row": 9,
+          "col": 9,
+          "contrastRatio": 0.3707239031791687,
+          "correlation": 0.8675479292869568,
+          "baselineRms": 19.430805206298828,
+          "sumDD": 24.631746292114258,
+          "sumDT": 15.605589866638184,
+          "sumTT": 10.886857032775879,
+          "samples": 1875,
+          "effectiveBlend": 0.6335559487342834,
+          "absoluteFit": 0.6054595708847046,
+          "fittedRms": 5.888510915762465
+        },
+        {
+          "row": 10,
+          "col": 4,
+          "contrastRatio": 0.5402691960334778,
+          "correlation": 0.9083081483840942,
+          "baselineRms": 14.480499267578125,
+          "sumDD": 20.023195266723633,
+          "sumDT": 9.58529281616211,
+          "sumTT": 6.046276092529297,
+          "samples": 1875,
+          "effectiveBlend": 0.47870945930480957,
+          "absoluteFit": 0.3699676990509033,
+          "fittedRms": 7.11008270295228
+        },
+        {
+          "row": 10,
+          "col": 8,
+          "contrastRatio": 0.32064828276634216,
+          "correlation": 0.8038748502731323,
+          "baselineRms": 20.99366569519043,
+          "sumDD": 24.146541595458984,
+          "sumDT": 16.529830932617188,
+          "sumTT": 12.70859146118164,
+          "samples": 1875,
+          "effectiveBlend": 0.6845631003379822,
+          "absoluteFit": 0.6468567252159119,
+          "fittedRms": 6.950187717400886
+        },
+        {
+          "row": 10,
+          "col": 9,
+          "contrastRatio": 0.2781778872013092,
+          "correlation": 0.7312275767326355,
+          "baselineRms": 21.348562240600586,
+          "sumDD": 22.049898147583008,
+          "sumDT": 16.345584869384766,
+          "sumTT": 13.141899108886719,
+          "samples": 1875,
+          "effectiveBlend": 0.7412998080253601,
+          "absoluteFit": 0.7103157639503479,
+          "fittedRms": 5.961905105350638
+        },
+        {
+          "row": 11,
+          "col": 4,
+          "contrastRatio": 0.4341433048248291,
+          "correlation": 0.9316017627716064,
+          "baselineRms": 18.181272506713867,
+          "sumDD": 23.099632263183594,
+          "sumDT": 14.152952194213867,
+          "sumTT": 9.53167724609375,
+          "samples": 1875,
+          "effectiveBlend": 0.6126916408538818,
+          "absoluteFit": 0.5209593176841736,
+          "fittedRms": 5.462104793419027
+        },
+        {
+          "row": 11,
+          "col": 8,
+          "contrastRatio": 0.35892942547798157,
+          "correlation": 0.887695848941803,
+          "baselineRms": 19.4349422454834,
+          "sumDD": 22.047168731689453,
+          "sumDT": 14.970208168029785,
+          "sumTT": 10.89149284362793,
+          "samples": 1875,
+          "effectiveBlend": 0.6790081858634949,
+          "absoluteFit": 0.6267393231391907,
+          "fittedRms": 5.019807514259201
+        },
+        {
+          "row": 11,
+          "col": 9,
+          "contrastRatio": 0.3657999038696289,
+          "correlation": 0.8570007681846619,
+          "baselineRms": 18.37272071838379,
+          "sumDD": 20.418577194213867,
+          "sumDT": 13.653955459594727,
+          "sumTT": 9.733473777770996,
+          "samples": 1875,
+          "effectiveBlend": 0.6687026023864746,
+          "absoluteFit": 0.6104903817176819,
+          "fittedRms": 4.573117335578594
+        },
+        {
+          "row": 12,
+          "col": 4,
+          "contrastRatio": 0.28196418285369873,
+          "correlation": 0.7649374604225159,
+          "baselineRms": 21.080781936645508,
+          "sumDD": 22.820146560668945,
+          "sumDT": 16.423492431640625,
+          "sumTT": 12.814284324645996,
+          "samples": 1875,
+          "effectiveBlend": 0.7196927070617676,
+          "absoluteFit": 0.6814140677452087,
+          "fittedRms": 5.872506121081792
+        },
+        {
+          "row": 12,
+          "col": 5,
+          "contrastRatio": 1.0111193656921387,
+          "correlation": 0.7539414763450623,
+          "baselineRms": 28.12596893310547,
+          "sumDD": 25.100360870361328,
+          "sumDT": 16.25167465209961,
+          "sumTT": 22.810558319091797,
+          "samples": 1875,
+          "effectiveBlend": 0.6474677920341492,
+          "absoluteFit": 0.6829209327697754,
+          "fittedRms": 20.643451190287937
+        },
+        {
+          "row": 12,
+          "col": 6,
+          "contrastRatio": 0.2564406096935272,
+          "correlation": 0.6116792559623718,
+          "baselineRms": 22.65484619140625,
+          "sumDD": 21.49544334411621,
+          "sumDT": 17.388429641723633,
+          "sumTT": 14.799365997314453,
+          "samples": 1875,
+          "effectiveBlend": 0.8089356422424316,
+          "absoluteFit": 0.7744298577308655,
+          "fittedRms": 5.042711473883227
+        },
+        {
+          "row": 12,
+          "col": 7,
+          "contrastRatio": 0.1146494671702385,
+          "correlation": 0.5845072269439697,
+          "baselineRms": 22.948970794677734,
+          "sumDD": 17.569883346557617,
+          "sumDT": 16.136859893798828,
+          "sumTT": 15.186138153076172,
+          "samples": 1875,
+          "effectiveBlend": 0.9184386730194092,
+          "absoluteFit": 0.8775197863578796,
+          "fittedRms": 3.5599025857296285
+        },
+        {
+          "row": 12,
+          "col": 8,
+          "contrastRatio": 0.11062093824148178,
+          "correlation": 0.5121361613273621,
+          "baselineRms": 24.40919303894043,
+          "sumDD": 20.756149291992188,
+          "sumDT": 18.489166259765625,
+          "sumTT": 17.180179595947266,
+          "samples": 1875,
+          "effectiveBlend": 0.8907801508903503,
+          "absoluteFit": 0.8583396673202515,
+          "fittedRms": 4.963535544595798
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "contrastRatio": 0.11481409519910812,
+          "correlation": 0.4118683338165283,
+          "baselineRms": 24.425582885742188,
+          "sumDD": 20.078319549560547,
+          "sumDT": 18.233360290527344,
+          "sumTT": 17.20326042175293,
+          "samples": 1875,
+          "effectiveBlend": 0.9081118702888489,
+          "absoluteFit": 0.8665500283241272,
+          "fittedRms": 4.7307693109587685
+        }
+      ],
+      "contrastRatioMedian": 0.3646777719259262,
+      "effectiveAttenuationMedian": 0.6353222280740738,
+      "effectiveBlendRange": [
+        0.47870945930480957,
+        0.8089356422424316
+      ],
+      "effectiveBlendMedian": 0.6580851972103119,
+      "absoluteFitMedian": 0.6186148524284363,
+      "exploratoryHeldOutFits": [
+        {
+          "trainingTiles": 8,
+          "heldOutTiles": 8,
+          "q": 0.6890922302580262,
+          "heldOutBaselineRms": 23.18928873797298,
+          "heldOutFitRms": 9.841631263714017
+        },
+        {
+          "trainingTiles": 8,
+          "heldOutTiles": 8,
+          "q": 0.7567885083692363,
+          "heldOutBaselineRms": 20.268967418580853,
+          "heldOutFitRms": 7.137503268137014
+        }
+      ]
+    },
+    {
+      "map": "02",
+      "patchCount": 20,
+      "acceptedCount": 16,
+      "patches": [
+        {
+          "row": 9,
+          "col": 3,
+          "contrastRatio": 0.3938923180103302,
+          "correlation": 0.8071048855781555,
+          "baselineRms": 19.730384826660156
+        },
+        {
+          "row": 9,
+          "col": 4,
+          "contrastRatio": 0.36549583077430725,
+          "correlation": 0.7533645629882812,
+          "baselineRms": 20.69765281677246
+        },
+        {
+          "row": 9,
+          "col": 5,
+          "contrastRatio": 0.38594844937324524,
+          "correlation": 0.7847450375556946,
+          "baselineRms": 19.894107818603516
+        },
+        {
+          "row": 9,
+          "col": 6,
+          "contrastRatio": 0.47673290967941284,
+          "correlation": 0.697090744972229,
+          "baselineRms": 21.417932510375977
+        },
+        {
+          "row": 9,
+          "col": 9,
+          "contrastRatio": 0.34339314699172974,
+          "correlation": 0.8432401418685913,
+          "baselineRms": 20.472797393798828
+        },
+        {
+          "row": 10,
+          "col": 3,
+          "contrastRatio": 0.21203190088272095,
+          "correlation": 0.6454813480377197,
+          "baselineRms": 22.30898094177246
+        },
+        {
+          "row": 10,
+          "col": 6,
+          "contrastRatio": 0.42889532446861267,
+          "correlation": 0.8778111338615417,
+          "baselineRms": 17.915376663208008
+        },
+        {
+          "row": 10,
+          "col": 9,
+          "contrastRatio": 0.27941229939460754,
+          "correlation": 0.6716205477714539,
+          "baselineRms": 22.449392318725586
+        },
+        {
+          "row": 11,
+          "col": 3,
+          "contrastRatio": 0.269731342792511,
+          "correlation": 0.8612347841262817,
+          "baselineRms": 22.325550079345703
+        },
+        {
+          "row": 11,
+          "col": 6,
+          "contrastRatio": 0.48158732056617737,
+          "correlation": 0.8779957294464111,
+          "baselineRms": 16.428611755371094
+        },
+        {
+          "row": 11,
+          "col": 7,
+          "contrastRatio": 0.42117413878440857,
+          "correlation": 0.8975082635879517,
+          "baselineRms": 16.780561447143555
+        },
+        {
+          "row": 11,
+          "col": 8,
+          "contrastRatio": 0.8040696978569031,
+          "correlation": 0.8168440461158752,
+          "baselineRms": 21.665863037109375
+        },
+        {
+          "row": 11,
+          "col": 9,
+          "contrastRatio": 0.3435736298561096,
+          "correlation": 0.8383360505104065,
+          "baselineRms": 19.17681121826172
+        },
+        {
+          "row": 12,
+          "col": 3,
+          "contrastRatio": 0.16840721666812897,
+          "correlation": 0.6730778217315674,
+          "baselineRms": 23.89857292175293
+        },
+        {
+          "row": 12,
+          "col": 4,
+          "contrastRatio": 0.2847552001476288,
+          "correlation": 0.8575401306152344,
+          "baselineRms": 21.471467971801758
+        },
+        {
+          "row": 12,
+          "col": 5,
+          "contrastRatio": 0.43220579624176025,
+          "correlation": 0.680344820022583,
+          "baselineRms": 21.46753692626953
+        },
+        {
+          "row": 12,
+          "col": 6,
+          "contrastRatio": 0.24047623574733734,
+          "correlation": 0.5893322229385376,
+          "baselineRms": 22.711143493652344
+        },
+        {
+          "row": 12,
+          "col": 7,
+          "contrastRatio": 0.11073625087738037,
+          "correlation": 0.47905203700065613,
+          "baselineRms": 22.469038009643555
+        },
+        {
+          "row": 12,
+          "col": 8,
+          "contrastRatio": 0.10438936203718185,
+          "correlation": 0.5104823708534241,
+          "baselineRms": 24.320842742919922
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "contrastRatio": 0.1009984090924263,
+          "correlation": 0.419353723526001,
+          "baselineRms": 24.380956649780273
+        }
+      ],
+      "contrastRatioMedian": 0.37572214007377625,
+      "effectiveAttenuationMedian": 0.6242778599262238
+    },
+    {
+      "map": "03",
+      "patchCount": 14,
+      "acceptedCount": 6,
+      "patches": [
+        {
+          "row": 9,
+          "col": 3,
+          "contrastRatio": 0.10630861669778824,
+          "correlation": 0.6735253930091858,
+          "baselineRms": 25.289371490478516
+        },
+        {
+          "row": 9,
+          "col": 4,
+          "contrastRatio": 0.032754868268966675,
+          "correlation": 0.40485408902168274,
+          "baselineRms": 27.909040451049805
+        },
+        {
+          "row": 9,
+          "col": 5,
+          "contrastRatio": 0.3615405857563019,
+          "correlation": 0.756933331489563,
+          "baselineRms": 19.9075870513916
+        },
+        {
+          "row": 9,
+          "col": 6,
+          "contrastRatio": 0.46909740567207336,
+          "correlation": 0.8305181860923767,
+          "baselineRms": 17.460773468017578
+        },
+        {
+          "row": 9,
+          "col": 7,
+          "contrastRatio": 0.3738551139831543,
+          "correlation": 0.7742891311645508,
+          "baselineRms": 19.83152198791504
+        },
+        {
+          "row": 9,
+          "col": 8,
+          "contrastRatio": 0.20900587737560272,
+          "correlation": 0.564739465713501,
+          "baselineRms": 24.707290649414062
+        },
+        {
+          "row": 9,
+          "col": 9,
+          "contrastRatio": 0.014124996028840542,
+          "correlation": 0.1305391788482666,
+          "baselineRms": 28.937925338745117
+        },
+        {
+          "row": 10,
+          "col": 5,
+          "contrastRatio": 0.2723386883735657,
+          "correlation": 0.5886860489845276,
+          "baselineRms": 23.57916259765625
+        },
+        {
+          "row": 10,
+          "col": 6,
+          "contrastRatio": 0.6252281665802002,
+          "correlation": 0.9256280064582825,
+          "baselineRms": 13.358660697937012
+        },
+        {
+          "row": 11,
+          "col": 6,
+          "contrastRatio": 0.281083881855011,
+          "correlation": 0.561954140663147,
+          "baselineRms": 24.653099060058594
+        },
+        {
+          "row": 12,
+          "col": 6,
+          "contrastRatio": 0.10769247263669968,
+          "correlation": 0.261385977268219,
+          "baselineRms": 28.308826446533203
+        },
+        {
+          "row": 12,
+          "col": 7,
+          "contrastRatio": 0.44533514976501465,
+          "correlation": 0.36711442470550537,
+          "baselineRms": 33.5827522277832
+        },
+        {
+          "row": 12,
+          "col": 8,
+          "contrastRatio": 0.45710596442222595,
+          "correlation": 0.39483383297920227,
+          "baselineRms": 33.54208755493164
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "contrastRatio": 1.1200577020645142,
+          "correlation": 0.7926169037818909,
+          "baselineRms": 32.45499801635742
+        }
+      ],
+      "contrastRatioMedian": 0.42147625982761383,
+      "effectiveAttenuationMedian": 0.5785237401723862
+    },
+    {
+      "map": "04",
+      "patchCount": 15,
+      "acceptedCount": 11,
+      "patches": [
+        {
+          "row": 9,
+          "col": 3,
+          "contrastRatio": 0.38127997517585754,
+          "correlation": 0.8058996796607971,
+          "baselineRms": 19.76856803894043
+        },
+        {
+          "row": 9,
+          "col": 4,
+          "contrastRatio": 0.3355177044868469,
+          "correlation": 0.7130464315414429,
+          "baselineRms": 21.580617904663086
+        },
+        {
+          "row": 9,
+          "col": 8,
+          "contrastRatio": 0.6069598197937012,
+          "correlation": 0.8465000987052917,
+          "baselineRms": 15.024955749511719
+        },
+        {
+          "row": 9,
+          "col": 9,
+          "contrastRatio": 0.3463217616081238,
+          "correlation": 0.8153891563415527,
+          "baselineRms": 20.33942985534668
+        },
+        {
+          "row": 10,
+          "col": 4,
+          "contrastRatio": 0.5924880504608154,
+          "correlation": 0.8486641049385071,
+          "baselineRms": 15.1048583984375
+        },
+        {
+          "row": 10,
+          "col": 5,
+          "contrastRatio": 0.2516809403896332,
+          "correlation": 0.5966880917549133,
+          "baselineRms": 22.634187698364258
+        },
+        {
+          "row": 10,
+          "col": 7,
+          "contrastRatio": 0.3832523226737976,
+          "correlation": 0.6459823250770569,
+          "baselineRms": 23.701583862304688
+        },
+        {
+          "row": 10,
+          "col": 8,
+          "contrastRatio": 0.5168957710266113,
+          "correlation": 0.8611692786216736,
+          "baselineRms": 15.817910194396973
+        },
+        {
+          "row": 10,
+          "col": 9,
+          "contrastRatio": 0.1725098341703415,
+          "correlation": 0.512836754322052,
+          "baselineRms": 24.24248695373535
+        },
+        {
+          "row": 11,
+          "col": 4,
+          "contrastRatio": 0.5360648036003113,
+          "correlation": 0.8651047348976135,
+          "baselineRms": 16.067581176757812
+        },
+        {
+          "row": 11,
+          "col": 5,
+          "contrastRatio": 0.2874416708946228,
+          "correlation": 0.6577648520469666,
+          "baselineRms": 21.557811737060547
+        },
+        {
+          "row": 11,
+          "col": 7,
+          "contrastRatio": 0.40159133076667786,
+          "correlation": 0.5796279311180115,
+          "baselineRms": 21.48525619506836
+        },
+        {
+          "row": 11,
+          "col": 8,
+          "contrastRatio": 0.29624566435813904,
+          "correlation": 0.7375776767730713,
+          "baselineRms": 20.695627212524414
+        },
+        {
+          "row": 11,
+          "col": 9,
+          "contrastRatio": 0.154860258102417,
+          "correlation": 0.49439677596092224,
+          "baselineRms": 24.004732131958008
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "contrastRatio": 0.4173860251903534,
+          "correlation": 0.6084738373756409,
+          "baselineRms": 22.569021224975586
+        }
+      ],
+      "contrastRatioMedian": 0.3832523226737976,
+      "effectiveAttenuationMedian": 0.6167476773262024
+    },
+    {
+      "map": "06",
+      "patchCount": 9,
+      "acceptedCount": 4,
+      "patches": [
+        {
+          "row": 9,
+          "col": 3,
+          "contrastRatio": 0.4505526125431061,
+          "correlation": 0.5661836862564087,
+          "baselineRms": 26.258764266967773
+        },
+        {
+          "row": 9,
+          "col": 4,
+          "contrastRatio": 0.18085385859012604,
+          "correlation": 0.3597449064254761,
+          "baselineRms": 28.284582138061523
+        },
+        {
+          "row": 9,
+          "col": 5,
+          "contrastRatio": 0.35873356461524963,
+          "correlation": 0.8079599738121033,
+          "baselineRms": 20.899639129638672
+        },
+        {
+          "row": 9,
+          "col": 6,
+          "contrastRatio": 0.45447486639022827,
+          "correlation": 0.8736303448677063,
+          "baselineRms": 18.008155822753906
+        },
+        {
+          "row": 9,
+          "col": 7,
+          "contrastRatio": 0.389596551656723,
+          "correlation": 0.7739890813827515,
+          "baselineRms": 20.27741813659668
+        },
+        {
+          "row": 9,
+          "col": 8,
+          "contrastRatio": 0.20526161789894104,
+          "correlation": 0.5706127285957336,
+          "baselineRms": 25.38249969482422
+        },
+        {
+          "row": 9,
+          "col": 9,
+          "contrastRatio": 0.014474587514996529,
+          "correlation": 0.12193096429109573,
+          "baselineRms": 29.146831512451172
+        },
+        {
+          "row": 12,
+          "col": 8,
+          "contrastRatio": 0.18043360114097595,
+          "correlation": 0.5538761615753174,
+          "baselineRms": 23.675724029541016
+        },
+        {
+          "row": 12,
+          "col": 9,
+          "contrastRatio": 1.1101038455963135,
+          "correlation": 0.785362720489502,
+          "baselineRms": 32.62675857543945
+        }
+      ],
+      "contrastRatioMedian": 0.42203570902347565,
+      "effectiveAttenuationMedian": 0.5779642909765244
+    }
+  ]
+}

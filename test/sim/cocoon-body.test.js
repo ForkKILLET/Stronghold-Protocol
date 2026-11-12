@@ -84,7 +84,7 @@ test('both cocoon forms use the same 5×3 body in actual solo and co-op wave pre
     }
   }
   assert.deepEqual([...seen].sort(), keys.flatMap(k => [`${k}:pair`, `${k}:solo`]).sort());
-  for (const key of ['enemy_9036_acweb', 'enemy_9037_aceel', 'enemy_9037_aceel_2', 'enemy_9029_acfnc', 'enemy_9029_acfnc_2']) {
+  for (const key of ['enemy_9036_acweb', 'enemy_9037_aceel', 'enemy_9037_aceel_2']) {
     assert.equal(RAW.enemies[key].hitArea, undefined, `${key} is outside this fix`);
   }
 });

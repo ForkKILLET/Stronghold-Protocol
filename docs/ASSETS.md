@@ -589,6 +589,40 @@ containing the plugin JSON and roster; `--only plugin-art/<charId>` narrows the 
 
 ### Re-extracting scenes after an update
 
+Regulation adds ten maps (`act3autochess_m01–m06`, `m09–m12`). Their logical scene files contain almost no art:
+the exporter composes the three installed MapGraphic prefabs through `regulation_scenes.py`, resolves CAB dependencies,
+reads the prefab's separate baked-lightmap component, and preserves logical ownership while clipping mesh seams.
+Ordinary Regulation views retain the full sub_01 and its right-hand enemy preview; 联防 uses the full sub_02 and
+its single native bench row, and Boss uses sub_03. Do not append sub_01's equipment/bench strip to 联防.
+`stages.renderLayouts.normal` / `.unite` are presentation grids, separate from simulation coordinates.
+Native persistent concealment/infection/mire effects have a map-owned lifecycle, independent of battle effect resets;
+missing resources / disabled effects retain the readable fallback. Fixed cannon graphics use the native trap mesh.
+`groupRects` and `tileHeightClasses` in the new scene document version 2 keep field visibility and unit feet aligned;
+version-1 packs still use their existing defaults and binary layout. Older pages reject version 2 and retain the metal
+board during a resources-first rollout. Missing complete models, materials or lightmaps retain the metal board.
+Theme-specific screen effects / animated shaders are not all reproduced. Source identities, constraints and current
+verification status: [Regulation scene import](research/regulation-scene-import-20261112.md).
+
+Regulation composite packs also use `render/board3d/calibration.js` for empirical PRTS-based light gains and a
+shared, partial native sand vertex blend. These are presentation fits, not official runtime parameters; they do not
+rewrite native assets or affect old/missing packs. Light gain precedes emission and output conversion; unlit art,
+water, units and FX retain their separate pipelines. Translucent surfaces are excluded from fitting; lit ones follow
+the light gain with their native alpha/blend policy. The existing outside-field focus dimming
+remains. Fit methodology, held-out Boss results and captures: [map light calibration](research/map-light-calibration-20261112.md).
+
+For an isolated single-map import (the output and manifest must both be outside the installation):
+
+```sh
+npm run check:local -- --small <extract-venv>/bin/python tools/local-extract/extract.py \
+  --game '<current client install or AB root>' --only scene/act3autochess_m09 \
+  --out .state/regulation-scenes/art --manifest .state/regulation-scenes/local-assets.json
+```
+
+Extraction is serial and bounded; do not run it alongside builds, simulations or browsers. The current client must
+carry all three pieces and their dependencies. The archived `fetch_scenes.py` download still covers the old eleven
+scenes, and does not supply missing Regulation prefabs. Shared `scene/tex` entries survive a single-map merge.
+Exactly these ten new scene JSON paths are accepted by the standard resources / ZIP / fingerprints chain.
+
 Scene extraction version **4** removes complete, exact redundant renderers (GitHub #684, DESIGN §34.24).
 The official Android `26-04-13-12-31-42_e9b560` m03 scene contains both a base rock (renderer 2048) and its
 `HIDDEN@1` copy (2193); static batching gives the base a different mesh buffer and lightmap UVs. **[ASSUMED]**
@@ -602,7 +636,7 @@ ties are described in §34.24; deletion is a remake art correction, not an offic
 After updating, run `node tools/setup.mjs --scenes`, or answer a typed **yes** to setup's existing version-only
 re-extraction prompt. Version-3 scenes still load but contain the redundant geometry; replacing code alone does
 not repair already extracted files. A missing-scene/partial set retains the existing explicit `--scenes` / `--yes`
-gate. `scene.json` mesh version remains 1; the manifest's `scene` record is version 4.
+gate. Legacy `scene.json` remains version 1; Regulation compositions use version 2, and both use manifest `scene` record version 4.
 
 For inspection without replacing installed assets, the local extractor already supports **both** output options:
 
@@ -1016,6 +1050,13 @@ Other renderer rules from research 07 §5.4–5.5:
     牵绊 and 予愿安洁莉娜's “一会儿见！” — the last three keep the token fallback picture (`tokenAvatarUrl`: no avatar, no
     owner in the manifest → the 召唤物 battle-card icon).
 
+### Equipped item icons
+
+`render/units.js` shows every carried item, including zero-slot equipment, in rows of at most three icons.
+Rows are balanced (4 → 2+2, 5 → 3+2, 6 → 3+3), individually centred, and grow upward from a fixed bottom row.
+Icon size stays unchanged; equipment progress stays below the icons, with extra clearance when zoomed out.
+Empty capacity is not rendered. The detail panel continues to show the actual slot usage and capacity.
+
 ### Other fallbacks
 
 - **Emotes and 玩法说明 pages** (`public/js/data.js artUrls / nextArtUrl`, `ui/guide.js guideStage`): the local-client picture (`data/local-assets.json`) first, then the mirror copy (`ui['emoticon/…']`, `ui['guide/…']`), each tried in turn when one fails to load; when none is left — none listed, or every copy failed (for example data/assets.json lists the downloaded pages but the files are not on disk yet: a `git pull` and restart without setup) — the neutral emote glyph, and for a page the official tips text (`config.tips`). The rest of the local-client art (the 3D board, the official HUD sprites, module type icons, the two enemy models and the 40 token models above) is not downloaded: the client looks it up in `data/local-assets.json` only (most of the HUD sprites are on the mirror too, DESIGN §22.5); docs/DEPLOY.md §6 lists what falls back without it.
@@ -1053,6 +1094,10 @@ Other renderer rules from research 07 §5.4–5.5:
 个人头像及部署皮肤仍沿用原契约。动态拼装棋盘使用数据几何；没有烘焙 scene 文件不表示无法显示地图。
 `enemy_9036_acweb` 使用效果绘制茧，没有独立 Spine 或图标，不能拿别的敌人冒充。
 本轮固定来源、安装清单与覆盖验证见 [三期集成记录](MERGE_DEV_2026-11-11.md)。
+
+三期新版地图模型需从 30 个 sub prefab 导出并按现有逻辑区域重组，不能只在旧整场景清单添加 ID。
+本机 10 张地图的模型包已安装；图 9 的隐匿地块本轮先修复玩法与回退显示，模型导入尚未实施。
+来源核对与分阶段方案见 [图 9 修复与地图模型导入](research/regulation-map09-20261112.md)。
 
 ## Verification
 

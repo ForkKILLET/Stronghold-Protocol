@@ -986,9 +986,20 @@ def export_scenes(ab_root, out_root, manifest, log, ids, roots):
     any root is skipped."""
     root = Path(ab_root)
     shader_deps = dep_bundles(root, {'Material'})
+    regulation_cabs = None
     n = 0
     for sid, deps in scenes.SCENES:
         if sid not in ids:
+            continue
+        if sid.startswith('act3autochess_'):
+            from regulation_scenes import export_regulation, native_dependencies
+            if regulation_cabs is None:
+                regulation_cabs = fx.scan_cabs(root, dirs=('arts/maps', 'anon', 'shaders'), files=fx.CAB_FILES)
+                regulation_cabs.update(native_dependencies(root))
+            try:
+                n += export_regulation(sid, root, out_root, manifest, log, material_info, regulation_cabs)
+            except Exception as e:
+                log(f'FAIL scene {sid}: {e}')
             continue
         src = scenes.find_scene(sid, roots)
         if src is None:
@@ -1253,6 +1264,9 @@ def extract(args, ab_root):
     for group in manifest:
         if group.startswith('char/'):
             manifest[group] = {**old.get(group, {}), **manifest[group]}
+    # Textures are shared across every battlefield. A one-stage extract must retain the older scenes' textures.
+    if scenes.TEX_SUB in manifest:
+        manifest[scenes.TEX_SUB] = {**old.get(scenes.TEX_SUB, {}), **manifest[scenes.TEX_SUB]}
     groups = merge_manifest(old, manifest, ran_groups(old, manifest, fx_on))  # a missing bundle keeps its previous group
     add_hashes(out_root, groups, print)
     count = sum(len(v) for v in groups.values())

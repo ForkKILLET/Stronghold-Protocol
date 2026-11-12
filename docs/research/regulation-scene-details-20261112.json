@@ -1,0 +1,319 @@
+{
+  "clientVersion": "26-11-06-12-42-25-70182449",
+  "stageCount": 10,
+  "declaredSceneFiles": 95,
+  "sceneBytes": 97857278,
+  "maxMeshBytes": 20878976,
+  "maps": [
+    {
+      "stage": "act3autochess_m01",
+      "chunks": 40,
+      "vertices": 84122,
+      "triangles": 57428,
+      "meshBytes": 3373004,
+      "sha256": "5dddc21db1992998514425d16c5dadcb80aa16ba9e5777c8ef7bf62ab4874c33",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "f2455fa70f8809bbe26ad07908f528581014e4b5af63c58b82e1da4b9794432b",
+        "547f1f84d68414cd44b097f7e36d5cf8a9f75a983eb6c57ea6370be862f1460a",
+        "6511d19d9738fb182697edb9adf6befb749364ac85b1ca84365d174acbdb0c8f"
+      ]
+    },
+    {
+      "stage": "act3autochess_m02",
+      "chunks": 37,
+      "vertices": 83089,
+      "triangles": 56168,
+      "meshBytes": 3328244,
+      "sha256": "bd40399ae4328f7288a12bd1c1f55c93b5f5081cc0072670e63e549df1476523",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "2d3c21b1ebd3915ac219725673db365788f6b15a93b8ed6a9ad637710ddbdfe6",
+        "937303578b89b6091f142d2a3668a12482d75cb647ee10971a807535edcb34ad",
+        "d1a7ac06e161a7650da5492a1c541595a6c4942cd2922258abfeefb18d3809ea"
+      ]
+    },
+    {
+      "stage": "act3autochess_m03",
+      "chunks": 40,
+      "vertices": 81003,
+      "triangles": 55417,
+      "meshBytes": 3248652,
+      "sha256": "5f14c0d00e058932ce90d3f11d56ec7f9284203e8d8a7919eeb68f63d58a3477",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "a1cfa60c65bd6e0bbbe1e51b8a03b3e7dc6adb4273dd9b73a40feb670a3f4fc3",
+        "392d9db523d3231efd7458aee42a88cb28048bd75545520fc19fcc14ee06ba36",
+        "c2ed0a2b94ee2971b17771dea236eb5207496bf7fd7b9736ba6fcc690938d14f"
+      ]
+    },
+    {
+      "stage": "act3autochess_m04",
+      "chunks": 37,
+      "vertices": 82508,
+      "triangles": 56426,
+      "meshBytes": 3308880,
+      "sha256": "be804aebcfd4679fc4b1cee5b8648bbd1d63161ab07a3e4b026dc7cee301ec13",
+      "tileEffects": {
+        "i": "map_promote_01"
+      },
+      "staticDevices": null,
+      "sourceBundles": [
+        "5c079890f84982ab189a998f0b4cfe846e295239a1482afb22ce96ff3e6fa708",
+        "0f4665e5493eded49c74765b9fe148bd3b33a9cc3345668420676b4d4f17b942",
+        "569ce8ade40d039453b93ab40215950702c558426be13c6c52261bb4d67aa4ed"
+      ]
+    },
+    {
+      "stage": "act3autochess_m05",
+      "chunks": 25,
+      "vertices": 273701,
+      "triangles": 170157,
+      "meshBytes": 11404404,
+      "sha256": "911587b2d1b1af2713f0c283e81cb360c4d2006c0b2fa989899ce84a31b3689e",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "53393ddc5bfe449ef1816ce16d25842fadfb9bbf65d763bc3ae5a19564d18e7c",
+        "3f7602c6b701e08be6e4e1de61a074d53e2b1c97e9ae892737967432d9599e3f",
+        "0233b20373187e3ff981518f93a8fbdadb58836ecbd58e29fdcb4002fbae56c7"
+      ]
+    },
+    {
+      "stage": "act3autochess_m06",
+      "chunks": 40,
+      "vertices": 93475,
+      "triangles": 64077,
+      "meshBytes": 3749608,
+      "sha256": "1d4eec520dec8d82f536a6fe52e7c8d9e4697b76a735f187adcf11d3ebeeac3d",
+      "tileEffects": {
+        "m": "mapeff_mud_ground_01"
+      },
+      "staticDevices": null,
+      "sourceBundles": [
+        "c6e2450ed05a8b3fe9270ed8fcd54bd408741c44f25f35c3bb23493aaa46f8ad",
+        "ec8e3d7e362891bf9bb360425f725e848ffd5db772f21260326ec656810acaa3",
+        "1c8fbc1c5ba9940ff419dfba9c13111e821dbd5d1351764d89f6ea83fa00d56a"
+      ]
+    },
+    {
+      "stage": "act3autochess_m09",
+      "chunks": 19,
+      "vertices": 81845,
+      "triangles": 69202,
+      "meshBytes": 3361644,
+      "sha256": "719a06f2244d3b98fd44953b6d71817836382c261f7ddb6ae3ed80b517916f98",
+      "tileEffects": {
+        "w": "mapeff_079_dikuai_01"
+      },
+      "staticDevices": null,
+      "sourceBundles": [
+        "24447147340181caf5c3d4936149fc51a3df150f94c010900560bfc6a7a6c27b",
+        "dd36a84fef5be608de125caeb3acf21c3ad64ccf709329ddc7d721f0e776e99e",
+        "3b461dbf19eceeb036c3b097819b8835b835e7c372d6cbdf90ec6fe39bddbc8d"
+      ]
+    },
+    {
+      "stage": "act3autochess_m10",
+      "chunks": 23,
+      "vertices": 488114,
+      "triangles": 290899,
+      "meshBytes": 20840480,
+      "sha256": "56ad4cb718bc88b75902d2c9139c10723ce4b3337e9170dbb5607c7e6116fdbc",
+      "tileEffects": {},
+      "staticDevices": {
+        "prefab": "trap_196_cnnon",
+        "bundle": "pkgrps/btl_pfb_tokens_2.ab",
+        "positions": [
+          [
+            13,
+            6
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            6,
+            14
+          ]
+        ]
+      },
+      "sourceBundles": [
+        "62a3abfec515152742fa60ad72111567d4464bb8bf3e6ef853b2aadb6d54f05b",
+        "08f7db30da042d38937664ee7aeb3b2ac99addba08f047c356f51e656c8822bb",
+        "35973886f2a11c8365926432af2ccb04a4fc9a1594838426589798eafd6686c7"
+      ]
+    },
+    {
+      "stage": "act3autochess_m11",
+      "chunks": 19,
+      "vertices": 82860,
+      "triangles": 69412,
+      "meshBytes": 3399444,
+      "sha256": "133df4a4846a8cffe478e3fb3ef71e9a450b69e493974c38f5a3ae830713d5ec",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "25414c0ec6da4f24ccbc5e55c192374c510cfbc23b527fe9296d7ff094c0bfaf",
+        "dcf3451869a14a446eeea156439f9d80bb6ec811d7d2611db1902b4f462a5373",
+        "b09e7828ba6ab657f41d2e5b018c2805494ca51ea215e9c55589146256d4dae5"
+      ]
+    },
+    {
+      "stage": "act3autochess_m12",
+      "chunks": 22,
+      "vertices": 488631,
+      "triangles": 290005,
+      "meshBytes": 20878976,
+      "sha256": "f517188ec8c26ac26d56bd48f6982ebbbc98a80ac244b0b26a8192795d50abd9",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "56d08a82bdb429b61409401036a0273e9f8a8de79250ce1ce349ef1f63c3746f",
+        "0183581916a7919ab81534e64f95ab6a643a0623f01aa6dc796fb67a073a571d",
+        "15dceab047deb310a38de8ce9ce695050d5e8092a46bdce0e1a728fa4c2e50ee"
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "key": "mapeff_079_dikuai_01",
+      "bundle": "pkgrps/btl_pfb_fx_mapeff_10.ab",
+      "nodes": 7,
+      "textures": 7,
+      "meshes": 2,
+      "sha256": "996bfae908ebb721ccccfcda1b4858008093c3e8064cb5f13536330d36e608ab"
+    },
+    {
+      "key": "map_promote_01",
+      "bundle": "battle/prefabs/effects/map.ab",
+      "nodes": 7,
+      "textures": 3,
+      "meshes": 0,
+      "sha256": "16a0d1557e0dcd7e487c6ac415fcde4a8d5d47eafd088033da2717486b9f643b"
+    },
+    {
+      "key": "mapeff_mud_ground_01",
+      "bundle": "pkgrps/btl_pfb_fx_mapeff_4.ab",
+      "nodes": 4,
+      "textures": 6,
+      "meshes": 0,
+      "sha256": "7a4f8c02c0cd4d24e74a08440ccd83715c130dad5619a154559730baa6da7c69"
+    }
+  ],
+  "desktopCaptures": 30,
+  "supplementalChecks": [
+    {
+      "name": "right-pen-zoom",
+      "rect": "((8,12),(12,18))",
+      "figures": [
+        [
+          8.14208084754646,
+          11.864044281281531
+        ],
+        [
+          7.839023208618165,
+          12.170340447891503
+        ],
+        [
+          11.159690315499903,
+          11.813336647953838
+        ],
+        [
+          10.83165193632245,
+          12.155083716642112
+        ],
+        [
+          11.006790408268571,
+          12.977034008223564
+        ],
+        [
+          10.968220131602138,
+          15.963662421610206
+        ],
+        [
+          10.964931770153344,
+          16.974316190257667
+        ],
+        [
+          8.023760537337512,
+          13.016463204752654
+        ],
+        [
+          8.015604049358517,
+          14.983184201475233
+        ],
+        [
+          8.002262180093675,
+          15.967713679205627
+        ],
+        [
+          7.965919369161129,
+          16.96577332643792
+        ]
+      ],
+      "camera": [
+        15,
+        10
+      ],
+      "hidden": false,
+      "pickable": true
+    },
+    {
+      "name": "battle-fx-reset-retains-terrain",
+      "effects": 4
+    },
+    {
+      "name": "switch-prep",
+      "kind": "prep",
+      "layout": "normal-right-preview",
+      "penHidden": false
+    },
+    {
+      "name": "switch-unite",
+      "kind": "unite",
+      "layout": "canonical",
+      "penHidden": true
+    },
+    {
+      "name": "switch-bossPrep",
+      "kind": "bossPrep",
+      "layout": "canonical",
+      "penHidden": true
+    },
+    {
+      "name": "switch-prep",
+      "kind": "prep",
+      "layout": "normal-right-preview",
+      "penHidden": false
+    },
+    {
+      "name": "fx-off-fallback",
+      "effects": 0,
+      "visible": true
+    },
+    {
+      "name": "2d-preview",
+      "on": false,
+      "rect": "((8,12),(12,18))",
+      "deployable": false,
+      "drawn": true
+    },
+    {
+      "name": "restore-3d",
+      "effects": 4
+    }
+  ],
+  "pageErrors": 0,
+  "failedRequests": 0,
+  "regressionSuite": "paused",
+  "golden": "paused"
+}

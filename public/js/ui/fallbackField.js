@@ -29,6 +29,8 @@ import { avatarUrl } from '../assets.js';
 import { visibleSkin } from '../../../shared/skins.js';
 import { tileKey, hasFlag, UF, penPlacement, PEN, fieldTile, ownStandIn, ownDiyRecord } from './gameLogic.js';
 import { t } from '../../../shared/i18n.js';
+import { presentationStage } from '../render/app/stage.js';
+import { penZones } from '../render/pen.js';
 import { pieceItemProgress, progressLabel } from '../itemProgress.js';
 import { ownerSkin } from './skins.js';
 
@@ -60,6 +62,8 @@ export function fallbackTileClass(stage, row, col) {
   if (t.height === 'HIGH') return t.buildable === 'NONE' ? 'void' : 'high';
   if (t.special === 'mire' || glyph === 'm') return 'mire';
   if (glyph === 'g') return 'smog';
+  if (glyph === 'z') return 'speedup';
+  if (t.tileKey === 'tile_duel_grassland') return 'duel-grass';
   if (glyph === 'd') return 'deep';
   if (glyph === 'i') return 'infect';
   if (t.buildable === 'NONE') return 'lane';
@@ -319,30 +323,35 @@ export function createFallbackView(host, opts = {}) {
     const w = st.size.w || host.clientWidth || 1;
     const h = st.size.h || host.clientHeight || 1;
     const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 100;
-    const cols = PEN.c1 - PEN.c0 + 1;
-    const rows = PEN.r1 - PEN.r0 + 1;
+    const previewStage = presentationStage(st.stage, 'pen');
+    const zones = penZones(previewStage);
+    const rect = zones.rect;
+    const cols = rect.c1 - rect.c0 + 1;
+    const rows = rect.r1 - rect.r0 + 1;
     const top0 = rem * 1.3;
     const tile = Math.max(28, Math.floor(Math.min((w * 0.62) / cols, (h - top0 - rem * 0.5) / rows)));
     const bw = tile * cols;
     const left = Math.round(w / 2 - bw / 2);
     const top = Math.round(top0 + (h - top0 - rem * 0.5 - tile * rows) / 2);
-    const models = penPlacement(st.pen, { stage: st.stage });
+    const models = penPlacement(st.pen, { stage: previewStage });
     const cells = [];
-    for (let r = PEN.r1; r >= PEN.r0; r--) {
-      for (let c = PEN.c0; c <= PEN.c1; c++) {
+    for (let r = rect.r1; r >= rect.r0; r--) {
+      for (let c = rect.c0; c <= rect.c1; c++) {
         // the pen's own start tiles (15,7) / (18,7) are its gates (research 09 §2.1)
-        const gate = c === PEN.c0 && (r === PEN.anchors.upper[0] || r === PEN.anchors.lower[0]);
-        const cls = gate ? 'gate' : r === PEN.emptyRow ? 'void' : 'floor';
+        const gate = zones.zones.some(z => z.anchor[0] === r && z.anchor[1] === c);
+        const glyph = previewStage?.rows?.[r]?.[c];
+        const blocked = previewStage?.tiles?.[glyph]?.bb?.previewNotAlloed ?? (r === PEN.emptyRow);
+        const cls = gate ? 'gate' : blocked ? 'void' : 'floor';
         cells.push(html`<div key=${`${r},${c}`} class=${cx('ff-tile', `ff-tile--${cls}`)}
-          style=${`transform:translate(${(c - PEN.c0) * tile}px,${(PEN.r1 - r) * tile}px);width:${tile}px;height:${tile}px`}></div>`);
+          style=${`transform:translate(${(c - rect.c0) * tile}px,${(rect.r1 - r) * tile}px);width:${tile}px;height:${tile}px`}></div>`);
       }
     }
     const size = tile * 0.62;
     const off = [[0, 0], [-0.22, 0.14], [0.22, 0.14], [-0.2, -0.16], [0.2, -0.16]];
     const figs = models.map((mdl) => {
       const o = off[mdl.slot % off.length];
-      const x = (mdl.col - PEN.c0 + 0.5 + o[0]) * tile - size / 2;
-      const y = (PEN.r1 - mdl.row + 0.5 + o[1]) * tile - size / 2;
+      const x = (mdl.col - rect.c0 + 0.5 + o[0]) * tile - size / 2;
+      const y = (rect.r1 - mdl.row + 0.5 + o[1]) * tile - size / 2;
       const src = unitArt(m(), { side: 'enemy', defId: mdl.enemyKey, avatar: mdl.enemyKey });
       const name = lookup('enemies', mdl.enemyKey)?.name || mdl.enemyKey;
       const tap = (e) => { if (e.button == null || e.button === 0) emit('pieceClick', { enemyKey: mdl.enemyKey, preview: true, unit: { side: 'enemy', defId: mdl.enemyKey, name }, button: 0, clientX: e.clientX, clientY: e.clientY }); };

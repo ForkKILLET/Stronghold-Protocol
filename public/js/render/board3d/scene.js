@@ -29,11 +29,12 @@ import { buildBoard, objToBoard, boxProjectUV, ROWS, COLS, DEVICE_H, AREAS } fro
 import { surfaceUV } from './atlas.js';
 import {
   focusUniforms, makeTexture, boardMaterial, glassMaterial, decalMaterial, pipeMaterial, unlitMaterial, gateMaterial, glowMaterial,
-  waterMaterial, mireMaterial, infectionMaterial, smogMaterial, dashTexture, environmentMap, sceneMaterial, sceneWaterDecalMaterial,
+  waterMaterial, mireMaterial, infectionMaterial, smogMaterial, duelGrassMaterial, dashTexture, environmentMap, sceneMaterial, sceneWaterDecalMaterial,
   sceneEnvTexture, applyWaterMaterial, trapMaterial,
 } from './materials.js';
 import { syncThreeCamera } from '../projection.js';
 import { mergeSceneChunks, sceneMaterialKey, sceneWaterInfo, isSceneWater } from './load.js';
+import { sceneCalibration } from './calibration.js';
 
 /** Lighting rig (tuned against the official screenshots: bright even tops, darker sides, soft shadows). */
 export const LIGHTING = Object.freeze({
@@ -88,7 +89,13 @@ export function gatePulse(t, [from, mid] = GATE_TINT.start.alpha) {
  * left undrawn. A HIDDEN part is a different group and still follows the field.
  */
 export function sceneGroupVisible(rect, areas, group = '') {
-  if (group === 'inactive') return false;
+  if (group === 'inactive' || group === 'regulation:uniteHand') return false;
+  const unite = (areas || []).some(a => a.r0 >= 6 && a.c0 === 0 && a.c1 === 20);
+  const normal = (areas || []).some(a => a.r0 >= 6 && a.c0 === 0 && a.c1 === 10);
+  if (['regulation:normal', 'regulation:backgroundNormal'].includes(group)) return normal && !unite;
+  if (['regulation:unite', 'regulation:backgroundUnite'].includes(group)) return unite;
+  // Camera flights may show both field families. Their large background planes must not fight at the same depth.
+  if (group === 'regulation:backgroundBoss' && (normal || unite)) return false;
   if (!Array.isArray(rect) || rect.length < 4) return true;
   const cx = (rect[0] + rect[2]) / 2, cy = (rect[1] + rect[3]) / 2;
   return (areas || []).some((a) => cx >= a.c0 - 0.5 && cx <= a.c1 + 0.5 && cy >= a.r0 - 0.5 && cy <= a.r1 + 0.5);
@@ -217,6 +224,7 @@ export class BoardScene {
       mire: mireMaterial(T, this.tex, this.focus),
       infection: infectionMaterial(T, this.tex, this.focus),
       smog: smogMaterial(T, this.tex, this.focus),
+      duelGrass: duelGrassMaterial(T, this.focus),
       shadowCatcher: new T.ShadowMaterial({ opacity: 0.32, color: 0x000000 }),
       platform: this.tex.platform ? trapMaterial(T, this.tex.platform, this.focus, pack?.materials?.trap?.MT_trap_1106_achplat || null, LIGHTING.key.dir) : null,
       crate: this.tex.crate ? trapMaterial(T, this.tex.crate, this.focus, pack?.materials?.trap?.MT_trap_1105_accrate
@@ -365,10 +373,14 @@ export class BoardScene {
     this.sceneWater = [];
     this.official = null;
     if (!stage) { applyWaterMaterial(this.mat.water, null); return; }
-    const board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry() });
-    this.board = board;
+    let board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry(),
+      heightClasses: official?.doc?.tileHeightClasses || null });
     const M = this.meshes = {};
     this.official = official && this._buildScene(official) ? official : null;
+    if (!this.official && official?.doc?.tileHeightClasses) {
+      board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry() });
+    }
+    this.board = board;
     // Apply only the active, successfully built pack: preloading another stage must not recolour this board.
     // setScenePack rebuilds the current stage, so replacement/removal also restores parameters and cube defines.
     const waterPack = this.official;
@@ -459,7 +471,9 @@ export class BoardScene {
         mat = surface
           ? waterMaterial(T, this.tex, this.focus, info, { env: res.env, envRange: pack.doc?.env?.range, envMips: pack.doc?.env?.mips })
           : water ? sceneWaterDecalMaterial(T, this.tex, this.focus, info)
+          : info?.shader?.includes('/Trap/Shadow') ? trapMaterial(T, res.tex[info?.map] || null, this.focus, info, pack.doc?.light?.dir)
           : sceneMaterial(T, {
+            calibration: sceneCalibration(pack.stage, pack.doc, c.material),
             map: res.tex[info?.map] || null, lightMap: c.lightmap >= 0 ? (res.lm[c.lightmap] || null) : null, info,
             light: pack.doc?.light || null, lightRange: pack.doc?.lightRange, lightEncoding: pack.doc?.lightEncoding,
             normalMap: res.data[info?.normalMap] || null, glossMap: res.data[info?.glossMap] || null,
@@ -479,6 +493,7 @@ export class BoardScene {
       g.setIndex(new T.BufferAttribute(c.index, 1));
       g.computeBoundingSphere();
       const mesh = new T.Mesh(g, mat);
+      mesh.name = c.material;
       mesh.castShadow = false; mesh.receiveShadow = false;
       mesh.renderOrder = water ? 1 : mat.userData.blend === 'blend' ? 2 : mat.userData.blend === 'cutout' ? -3 : -4;
       mesh.matrixAutoUpdate = false; mesh.updateMatrix();
@@ -595,6 +610,7 @@ export class BoardScene {
     const opt = { cast: false, receive: false, order: 2 };
     if (T.water.length) this.meshes.water = this._mesh(quads(T.water, -0.035), this.mat.water, opt);
     if (T.mire.length) this.meshes.mire = this._mesh(quads(T.mire, 0.006, 0.02), this.mat.mire, opt);
+    if (T.duelGrass.length) this.meshes.duelGrass = this._mesh(quads(T.duelGrass, 0.009, 0.015), this.mat.duelGrass, opt);
     // The infection (活性源石) glow is our own flat patch; an official scene already carries that floor in its own
     // geometry and textures, so drawing ours on top just overlaps it (#549).
     if (T.infection.length && !this.official) this.meshes.infection = this._mesh(quads(T.infection, 0.007, 0.02), this.mat.infection, opt);
@@ -612,6 +628,12 @@ export class BoardScene {
       const nrm = new Float32Array(pos.length); for (let i = 1; i < nrm.length; i += 3) nrm[i] = -1;
       this.meshes.smog = this._mesh({ position: new Float32Array(pos), normal: nrm, uv: new Float32Array(uv), color: null, index: new Uint16Array(idx) }, this.mat.smog, { ...opt, order: 6 });
     }
+  }
+
+  /** Hide only the fallback whose real client effect has actually started; missing FX retains a visible tile. */
+  setNativeTerrain(glyphs) {
+    if (this.meshes.mire) this.meshes.mire.visible = !glyphs.has('m');
+    if (this.meshes.duelGrass) this.meshes.duelGrass.visible = !glyphs.has('w');
   }
 
   _buildBackground(board) {
@@ -767,7 +789,7 @@ export class BoardScene {
     let flash = 0;
     for (let i = this.flashes.length - 1; i >= 0; i--) { const f = this.flashes[i]; f.t += dt; if (f.t > 1.2) this.flashes.splice(i, 1); else flash = Math.max(flash, 1 - f.t / 1.2); }
     for (const m of [this.mat.gateEndAdd, this.mat.gateEndAb]) if (m) m.uniforms.uFlash.value.setRGB(flash, flash * 0.12, flash * 0.1);
-    for (const k of ['water', 'mire', 'infection', 'smog']) this.mat[k].uniforms.uTime.value = t;
+    for (const k of ['water', 'mire', 'infection', 'smog', 'duelGrass']) this.mat[k].uniforms.uTime.value = t;
     if (this.official) for (const m of this.sceneWater || []) m.uniforms.uTime.value = t;
     this.renderer.render(this.scene, this.camera);
     this.frames++;

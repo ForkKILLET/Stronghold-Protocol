@@ -1,0 +1,1233 @@
+{
+  "stageCount": 10,
+  "files": 92,
+  "bytes": 64899696,
+  "meshBytes": 44582472,
+  "checkedTileCentres": 1684,
+  "maxRegularSurfaceError": 0.004851465225219731,
+  "sceneVersion": 2,
+  "maps": [
+    {
+      "stage": "act3autochess_m01",
+      "chunks": 33,
+      "vertices": 58422,
+      "triangles": 38818,
+      "meshBytes": 2336132,
+      "beforeIndexingBytes": 2336132,
+      "sha256": "368abaec7d32b29664a9cf4115e618ca7a47f6028fc3487f015107ef9717980e",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "f2455fa70f8809bbe26ad07908f528581014e4b5af63c58b82e1da4b9794432b",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_01",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 82,
+          "medianGridOriginError": 3.591179762452157e-07,
+          "maxGraphicPivotOffset": 0.027406439665824678,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m01/level_act3autochess_m01_sub_01/level_act3autochess_m01_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "547f1f84d68414cd44b097f7e36d5cf8a9f75a983eb6c57ea6370be862f1460a",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_02",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 75,
+          "medianGridOriginError": 0.005730910471287487,
+          "maxGraphicPivotOffset": 0.021675588501307352,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m01/level_act3autochess_m01_sub_02/level_act3autochess_m01_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "6511d19d9738fb182697edb9adf6befb749364ac85b1ca84365d174acbdb0c8f",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 127,
+          "medianGridOriginError": 0.027405781729541445,
+          "maxGraphicPivotOffset": 0.027406980080934673,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m01/level_act3autochess_m01_sub_03/level_act3autochess_m01_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 157,
+      "maxRegularSurfaceError": 0.00034299067834003827,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673249879272
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.25646732498796687
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2564673249879717
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.25646732747556944
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m02",
+      "chunks": 33,
+      "vertices": 56276,
+      "triangles": 37631,
+      "meshBytes": 2251756,
+      "beforeIndexingBytes": 2251756,
+      "sha256": "d1de10a96a414bf9cc4964b8f3a1257a535154fb3c287e4ed893fbb0090c1bac",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "2d3c21b1ebd3915ac219725673db365788f6b15a93b8ed6a9ad637710ddbdfe6",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m02_sub_01",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 81,
+          "medianGridOriginError": 3.576276803585188e-07,
+          "maxGraphicPivotOffset": 0.027406439665824678,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m02/level_act3autochess_m02_sub_01/level_act3autochess_m02_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "937303578b89b6091f142d2a3668a12482d75cb647ee10971a807535edcb34ad",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_02",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 73,
+          "medianGridOriginError": 3.722309998011042e-07,
+          "maxGraphicPivotOffset": 0.021675588501307352,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m02/level_act3autochess_m02_sub_02/level_act3autochess_m02_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "d1a7ac06e161a7650da5492a1c541595a6c4942cd2922258abfeefb18d3809ea",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 125,
+          "medianGridOriginError": 3.129242198696147e-07,
+          "maxGraphicPivotOffset": 0.0274064697661629,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m02/level_act3autochess_m02_sub_03/level_act3autochess_m02_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 173,
+      "maxRegularSurfaceError": 0.00034298896786577604,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755586
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755478
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2564673274755911
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.25646732747556944
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m03",
+      "chunks": 33,
+      "vertices": 55826,
+      "triangles": 37152,
+      "meshBytes": 2232680,
+      "beforeIndexingBytes": 2232680,
+      "sha256": "008dc005a0fbe23d286f9072acae6cfc86156e1aa1221b102422656fb149d83a",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "a1cfa60c65bd6e0bbbe1e51b8a03b3e7dc6adb4273dd9b73a40feb670a3f4fc3",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_01",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 81,
+          "medianGridOriginError": 3.498792580103327e-07,
+          "maxGraphicPivotOffset": 0.027406439665824678,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m03/level_act3autochess_m03_sub_01/level_act3autochess_m03_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "392d9db523d3231efd7458aee42a88cb28048bd75545520fc19fcc14ee06ba36",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_02",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 73,
+          "medianGridOriginError": 3.498792580103327e-07,
+          "maxGraphicPivotOffset": 0.021675588501307352,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m03/level_act3autochess_m03_sub_02/level_act3autochess_m03_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "c2ed0a2b94ee2971b17771dea236eb5207496bf7fd7b9736ba6fcc690938d14f",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 125,
+          "medianGridOriginError": 2.905724763024864e-07,
+          "maxGraphicPivotOffset": 0.0274064697661629,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m03/level_act3autochess_m03_sub_03/level_act3autochess_m03_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 165,
+      "maxRegularSurfaceError": 0.00034298896786577604,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755586
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755478
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2564673274755911
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.25646732747556944
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m04",
+      "chunks": 33,
+      "vertices": 56196,
+      "triangles": 38112,
+      "meshBytes": 2251760,
+      "beforeIndexingBytes": 2251760,
+      "sha256": "c07affac9ab93fcc0ce56ef4ef31a2f241faad60b68ed46ca81945c4eac5db34",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "5c079890f84982ab189a998f0b4cfe846e295239a1482afb22ce96ff3e6fa708",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_01",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 79,
+          "medianGridOriginError": 3.576276714767346e-07,
+          "maxGraphicPivotOffset": 0.027406439665824678,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m04/level_act3autochess_m04_sub_01/level_act3autochess_m04_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "0f4665e5493eded49c74765b9fe148bd3b33a9cc3345668420676b4d4f17b942",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_02",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 69,
+          "medianGridOriginError": 3.5762769279301665e-07,
+          "maxGraphicPivotOffset": 0.021675588501307352,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m04/level_act3autochess_m04_sub_02/level_act3autochess_m04_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "569ce8ade40d039453b93ab40215950702c558426be13c6c52261bb4d67aa4ed",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 121,
+          "medianGridOriginError": 2.905724763024864e-07,
+          "maxGraphicPivotOffset": 0.0274064697661629,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m04/level_act3autochess_m04_sub_03/level_act3autochess_m04_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 161,
+      "maxRegularSurfaceError": 0.00034298896786577604,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755586
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755478
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2564673274755911
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.25646732747556944
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m05",
+      "chunks": 21,
+      "vertices": 154640,
+      "triangles": 96649,
+      "meshBytes": 6146944,
+      "beforeIndexingBytes": 6146944,
+      "sha256": "c4f2b88e1d4f371f7061675e822e3adbd43a102335fc7b8a14cdabf021d5ae50",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "53393ddc5bfe449ef1816ce16d25842fadfb9bbf65d763bc3ae5a19564d18e7c",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.3799999952316284,
+            "layerHeight": 9.0,
+            "theme": "SYRACUSE_METRO"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 85,
+          "medianGridOriginError": 2.0116567611694336e-07,
+          "maxGraphicPivotOffset": 4.023313522338867e-07,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m05/level_act3autochess_m05_sub_01/level_act3autochess_m05_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "3f7602c6b701e08be6e4e1de61a074d53e2b1c97e9ae892737967432d9599e3f",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.3799999952316284,
+            "layerHeight": 9.0,
+            "theme": "SYRACUSE_METRO"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 76,
+          "medianGridOriginError": 2.2351741790771484e-07,
+          "maxGraphicPivotOffset": 4.470348358154297e-07,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m05/level_act3autochess_m05_sub_02/level_act3autochess_m05_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "0233b20373187e3ff981518f93a8fbdadb58836ecbd58e29fdcb4002fbae56c7",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.3799999952316284,
+            "layerHeight": 9.0,
+            "theme": "SYRACUSE_METRO"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 132,
+          "medianGridOriginError": 2.2351741790771484e-07,
+          "maxGraphicPivotOffset": 4.470348358154297e-07,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m05/level_act3autochess_m05_sub_03/level_act3autochess_m05_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.38,
+        "bench": 0.38
+      },
+      "checkedTileCentres": 169,
+      "maxRegularSurfaceError": 0.004851465225219731,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.15201984345912933
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.15201984345912933
+        },
+        {
+          "row": 2,
+          "col": 2,
+          "glyph": "E",
+          "height": 0,
+          "error": 0.16219782829284668
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.15201984345912933
+        },
+        {
+          "row": 2,
+          "col": 18,
+          "glyph": "E",
+          "height": 0,
+          "error": 0.16219782829284668
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.16219782829284668
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m06",
+      "chunks": 33,
+      "vertices": 66569,
+      "triangles": 44549,
+      "meshBytes": 2663812,
+      "beforeIndexingBytes": 2663812,
+      "sha256": "fa620815043b9a5396cdfa66a356a5832ea67a26091db7a9e1fceeddbc5476d6",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "c6e2450ed05a8b3fe9270ed8fcd54bd408741c44f25f35c3bb23493aaa46f8ad",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m02_sub_01",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 79,
+          "medianGridOriginError": 3.498792580103327e-07,
+          "maxGraphicPivotOffset": 0.027406439665824678,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m06/level_act3autochess_m06_sub_01/level_act3autochess_m06_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "ec8e3d7e362891bf9bb360425f725e848ffd5db772f21260326ec656810acaa3",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "mapeff_act3autochess_m01_sub_02",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 69,
+          "medianGridOriginError": 3.5762768924030297e-07,
+          "maxGraphicPivotOffset": 0.021675588501307352,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m06/level_act3autochess_m06_sub_02/level_act3autochess_m06_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "1c8fbc1c5ba9940ff419dfba9c13111e821dbd5d1351764d89f6ea83fa00d56a",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "DESERT_DAY"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": []
+          },
+          "tileGraphics": 121,
+          "medianGridOriginError": 2.905724763024864e-07,
+          "maxGraphicPivotOffset": 0.0274064697661629,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m06/level_act3autochess_m06_sub_03/level_act3autochess_m06_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 161,
+      "maxRegularSurfaceError": 0.00034298896786577604,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755586
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2564673274755478
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2564673274755911
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.25646732747556944
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m09",
+      "chunks": 16,
+      "vertices": 50513,
+      "triangles": 44066,
+      "meshBytes": 2082872,
+      "beforeIndexingBytes": 2082872,
+      "sha256": "342d3bacdf68d6f8703f508029edd8a2e3c087910766ad954a19662b09f0fb9d",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "24447147340181caf5c3d4936149fc51a3df150f94c010900560bfc6a7a6c27b",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "ICEWILD"
+          },
+          "effects": {
+            "cameraEffect": "screen_ICEWILD_frost_01",
+            "mapEffects": []
+          },
+          "tileGraphics": 87,
+          "medianGridOriginError": 2.592801983780646e-06,
+          "maxGraphicPivotOffset": 0.20603209774867803,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m09/level_act3autochess_m09_sub_01/level_act3autochess_m09_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "dd36a84fef5be608de125caeb3acf21c3ad64ccf709329ddc7d721f0e776e99e",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "ICEWILD"
+          },
+          "effects": {
+            "cameraEffect": "screen_ICEWILD_frost_01",
+            "mapEffects": []
+          },
+          "tileGraphics": 78,
+          "medianGridOriginError": 2.160668319817205e-06,
+          "maxGraphicPivotOffset": 4.32133663963441e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m09/level_act3autochess_m09_sub_02/level_act3autochess_m09_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "3b461dbf19eceeb036c3b097819b8835b835e7c372d6cbdf90ec6fe39bddbc8d",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "ICEWILD"
+          },
+          "effects": {
+            "cameraEffect": "screen_ICEWILD_frost_01",
+            "mapEffects": []
+          },
+          "tileGraphics": 137,
+          "medianGridOriginError": 2.3767351517989255e-06,
+          "maxGraphicPivotOffset": 0.25821071005031904,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m09/level_act3autochess_m09_sub_03/level_act3autochess_m09_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 185,
+      "maxRegularSurfaceError": 0.004227722647989762,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": []
+    },
+    {
+      "stage": "act3autochess_m10",
+      "chunks": 20,
+      "vertices": 266929,
+      "triangles": 161136,
+      "meshBytes": 11163080,
+      "beforeIndexingBytes": 11163080,
+      "sha256": "ebf6d29e774686d2ca628d7f9f518660d309db6bf649dcc990a50819aca7970c",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "62a3abfec515152742fa60ad72111567d4464bb8bf3e6ef853b2aadb6d54f05b",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.30000001192092896,
+            "layerHeight": 9.0,
+            "theme": "LTNYTOWER"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 89,
+          "medianGridOriginError": 1.7881393432617188e-07,
+          "maxGraphicPivotOffset": 1.6230344499490457e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m10/level_act3autochess_m10_sub_01/level_act3autochess_m10_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "08f7db30da042d38937664ee7aeb3b2ac99addba08f047c356f51e656c8822bb",
+          "mapSettings": {
+            "cameraView": 1,
+            "highlandHeight": 0.30000001192092896,
+            "layerHeight": 9.0,
+            "theme": "LTNYTOWER"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 79,
+          "medianGridOriginError": 2.4586915969848633e-07,
+          "maxGraphicPivotOffset": 1.6006827081582742e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m10/level_act3autochess_m10_sub_02/level_act3autochess_m10_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "35973886f2a11c8365926432af2ccb04a4fc9a1594838426589798eafd6686c7",
+          "mapSettings": {
+            "cameraView": 1,
+            "highlandHeight": 0.30000001192092896,
+            "layerHeight": 9.0,
+            "theme": "LTNYTOWER"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 138,
+          "medianGridOriginError": 3.129243850708008e-07,
+          "maxGraphicPivotOffset": 1.5112757409951882e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m10/level_act3autochess_m10_sub_03/level_act3autochess_m10_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.3,
+        "bench": 0.3
+      },
+      "checkedTileCentres": 183,
+      "maxRegularSurfaceError": 9.643554221838713e-05,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.21022933060158705
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2102294245830868
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2102293478550321
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2074957637750722
+        },
+        {
+          "row": 9,
+          "col": 10,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.2102293479555724
+        },
+        {
+          "row": 9,
+          "col": 18,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.21022941951488647
+        },
+        {
+          "row": 12,
+          "col": 10,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.207495793905709
+        },
+        {
+          "row": 12,
+          "col": 18,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.20749563952713868
+        }
+      ]
+    },
+    {
+      "stage": "act3autochess_m11",
+      "chunks": 16,
+      "vertices": 51196,
+      "triangles": 44120,
+      "meshBytes": 2107784,
+      "beforeIndexingBytes": 2107784,
+      "sha256": "fffdfbe9851c3b5e9db3bdbb66709b17c940df68d93d7013b7290123900c2a3f",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "25414c0ec6da4f24ccbc5e55c192374c510cfbc23b527fe9296d7ff094c0bfaf",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "ICEWILD"
+          },
+          "effects": {
+            "cameraEffect": "screen_ICEWILD_frost_01",
+            "mapEffects": []
+          },
+          "tileGraphics": 88,
+          "medianGridOriginError": 2.592801983780646e-06,
+          "maxGraphicPivotOffset": 0.20603209774867803,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m11/level_act3autochess_m11_sub_01/level_act3autochess_m11_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "dcf3451869a14a446eeea156439f9d80bb6ec811d7d2611db1902b4f462a5373",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "ICEWILD"
+          },
+          "effects": {
+            "cameraEffect": "screen_ICEWILD_frost_01",
+            "mapEffects": []
+          },
+          "tileGraphics": 80,
+          "medianGridOriginError": 2.160668319817205e-06,
+          "maxGraphicPivotOffset": 4.32133663963441e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m11/level_act3autochess_m11_sub_02/level_act3autochess_m11_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "b09e7828ba6ab657f41d2e5b018c2805494ca51ea215e9c55589146256d4dae5",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.4000000059604645,
+            "layerHeight": 9.0,
+            "theme": "ICEWILD"
+          },
+          "effects": {
+            "cameraEffect": "screen_ICEWILD_frost_01",
+            "mapEffects": []
+          },
+          "tileGraphics": 141,
+          "medianGridOriginError": 2.3767351517989255e-06,
+          "maxGraphicPivotOffset": 0.25821071005031904,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m11/level_act3autochess_m11_sub_03/level_act3autochess_m11_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.4,
+        "bench": 0.4
+      },
+      "checkedTileCentres": 171,
+      "maxRegularSurfaceError": 0.004227726657028585,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": []
+    },
+    {
+      "stage": "act3autochess_m12",
+      "chunks": 19,
+      "vertices": 271349,
+      "triangles": 163786,
+      "meshBytes": 11345652,
+      "beforeIndexingBytes": 11345652,
+      "sha256": "a5998f4d9a133e3387bfb76f49d5efb44b18450d0a720b106594352260ee78f3",
+      "sources": [
+        {
+          "part": 1,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "56d08a82bdb429b61409401036a0273e9f8a8de79250ce1ce349ef1f63c3746f",
+          "mapSettings": {
+            "cameraView": 3,
+            "highlandHeight": 0.30000001192092896,
+            "layerHeight": 9.0,
+            "theme": "LTNYTOWER"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 88,
+          "medianGridOriginError": 2.0116567611694336e-07,
+          "maxGraphicPivotOffset": 1.6230344499490457e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m12/level_act3autochess_m12_sub_01/level_act3autochess_m12_sub_01.ab"
+        },
+        {
+          "part": 2,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "0183581916a7919ab81534e64f95ab6a643a0623f01aa6dc796fb67a073a571d",
+          "mapSettings": {
+            "cameraView": 1,
+            "highlandHeight": 0.30000001192092896,
+            "layerHeight": 9.0,
+            "theme": "LTNYTOWER"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 77,
+          "medianGridOriginError": 2.4586915969848633e-07,
+          "maxGraphicPivotOffset": 1.6006827081582742e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m12/level_act3autochess_m12_sub_02/level_act3autochess_m12_sub_02.ab"
+        },
+        {
+          "part": 3,
+          "clientVersion": "26-11-06-12-42-25-70182449",
+          "bundleSha256": "15dceab047deb310a38de8ce9ce695050d5e8092a46bdce0e1a728fa4c2e50ee",
+          "mapSettings": {
+            "cameraView": 1,
+            "highlandHeight": 0.30000001192092896,
+            "layerHeight": 9.0,
+            "theme": "LTNYTOWER"
+          },
+          "effects": {
+            "cameraEffect": "",
+            "mapEffects": [
+              {
+                "key": "",
+                "offset": {
+                  "x": 0.0,
+                  "y": 0.0,
+                  "z": 0.0
+                },
+                "direction": 0
+              }
+            ]
+          },
+          "tileGraphics": 138,
+          "medianGridOriginError": 3.129243850708008e-07,
+          "maxGraphicPivotOffset": 1.5112757409951882e-06,
+          "bundle": "battle/prefabs/levelprefabs/activities/act3autochess/level_act3autochess_m12/level_act3autochess_m12_sub_03/level_act3autochess_m12_sub_03.ab"
+        }
+      ],
+      "tileHeightClasses": {
+        "wall": 0.3,
+        "bench": 0.3
+      },
+      "checkedTileCentres": 159,
+      "maxRegularSurfaceError": 9.643554221838713e-05,
+      "uncoveredOrMismatched": [],
+      "decorativeCentreDifferences": [
+        {
+          "row": 1,
+          "col": 3,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.21022933060158705
+        },
+        {
+          "row": 1,
+          "col": 17,
+          "glyph": "I",
+          "height": 0,
+          "error": 0.2102294245830868
+        },
+        {
+          "row": 2,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2102293478550321
+        },
+        {
+          "row": 5,
+          "col": 10,
+          "glyph": "O",
+          "height": 0,
+          "error": 0.2074957637750722
+        },
+        {
+          "row": 9,
+          "col": 10,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.2102293479555724
+        },
+        {
+          "row": 9,
+          "col": 18,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.21022941951488647
+        },
+        {
+          "row": 12,
+          "col": 10,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.207495793905709
+        },
+        {
+          "row": 12,
+          "col": 18,
+          "glyph": "S",
+          "height": 0,
+          "error": 0.20749563952713868
+        }
+      ]
+    }
+  ]
+}

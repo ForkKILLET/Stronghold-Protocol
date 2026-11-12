@@ -1,0 +1,884 @@
+{
+  "method": "empirical gamma/display-space diffuse gain + shared native vertex mix; constant emission; Huber; eroded static-material masks",
+  "sandBlend": 0.625,
+  "gainBounds": [
+    0.65,
+    1.45
+  ],
+  "trainingViews": [
+    "prep",
+    "unite"
+  ],
+  "heldOutView": "boss",
+  "objective": 0.002429485536253765,
+  "profiles": {
+    "act3autochess_m01": {
+      "light": [
+        0.94047,
+        0.97291,
+        1.14225
+      ],
+      "mix": 0.625,
+      "training": {
+        "before": {
+          "rgbRms": 22.691572846131983,
+          "meanRgbError": [
+            -0.16194830236040758,
+            -2.141088971922181,
+            -14.440196708586406
+          ]
+        },
+        "after": {
+          "rgbRms": 15.174344132187295,
+          "meanRgbError": [
+            3.029281485898723,
+            2.781318387153978,
+            -0.6857089810070907
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 23.700454716912535,
+          "meanRgbError": [
+            -5.624516673818209,
+            -6.279314032605492,
+            -15.841541345186279
+          ]
+        },
+        "after": {
+          "rgbRms": 14.306529008822658,
+          "meanRgbError": [
+            0.3184114876356969,
+            -0.057851335806066696,
+            -0.01827891426639688
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 2842,
+          "referenceSha256": "4d06e5dc3c4a12bf13bc1dc8cbbd28ba13101315aad11effb7d6985a9871b566"
+        },
+        "unite": {
+          "samples": 2709,
+          "referenceSha256": "528a3392c6e66639baf80068e55c464b7a61de8de49550a0692a6b2bcd617c2a"
+        },
+        "boss": {
+          "samples": 2776,
+          "referenceSha256": "a75fadbca104013324f66225c2c1527a9bdaf0c2592e1c9ccc4b181f7adcb1a0"
+        }
+      }
+    },
+    "act3autochess_m02": {
+      "light": [
+        0.93759,
+        0.96852,
+        1.13915
+      ],
+      "mix": 0.625,
+      "training": {
+        "before": {
+          "rgbRms": 21.42085793625464,
+          "meanRgbError": [
+            -0.8637443132942817,
+            -2.014511805748873,
+            -14.204116675212164
+          ]
+        },
+        "after": {
+          "rgbRms": 14.192106112747545,
+          "meanRgbError": [
+            2.438959999267211,
+            2.467311743772252,
+            -0.7999406384793528
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 22.61210823243562,
+          "meanRgbError": [
+            -3.3239956605079,
+            -4.154578687430368,
+            -15.572346015777864
+          ]
+        },
+        "after": {
+          "rgbRms": 13.905822373473796,
+          "meanRgbError": [
+            1.1881858151259996,
+            0.7559016591359331,
+            -0.49429045406438393
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 2804,
+          "referenceSha256": "c4afc1608580bc8ae7cfd724c87d5f539307861f0dc8e2f7dc750a19f5e9b5c5"
+        },
+        "unite": {
+          "samples": 2930,
+          "referenceSha256": "b969efda7050404dd7b0950bf1b0c7cbe26cb8ec5052a3fac2aac326393a313b"
+        },
+        "boss": {
+          "samples": 2918,
+          "referenceSha256": "cf990d2d14846f0f23db3009ed79bef23258fb3671d86a4b06f09ec9db20fd7d"
+        }
+      }
+    },
+    "act3autochess_m03": {
+      "light": [
+        0.94385,
+        0.9753,
+        1.14331
+      ],
+      "mix": 0.625,
+      "training": {
+        "before": {
+          "rgbRms": 23.009852916062705,
+          "meanRgbError": [
+            -0.6364329531111623,
+            -2.6673702944061297,
+            -14.790617558219218
+          ]
+        },
+        "after": {
+          "rgbRms": 15.791430471516774,
+          "meanRgbError": [
+            2.858461409781382,
+            2.464929472841536,
+            -0.7911289608128369
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 22.820302143020946,
+          "meanRgbError": [
+            -5.040318702618439,
+            -4.761225936296155,
+            -14.872905037437771
+          ]
+        },
+        "after": {
+          "rgbRms": 14.315842534580879,
+          "meanRgbError": [
+            0.6108796593225121,
+            1.0869550493825608,
+            0.009324783910262976
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 2779,
+          "referenceSha256": "acd0cf0adc1ced39bf564bd2f826ef6fb1ecd10138b6b04d5f8d03612aa0a283"
+        },
+        "unite": {
+          "samples": 2722,
+          "referenceSha256": "36af3ae90bac89cace1ce0dfcedc7dec79602670ed51d25e4398b97cb5f56f4c"
+        },
+        "boss": {
+          "samples": 3012,
+          "referenceSha256": "b428cceecb62835555048ef19e21d1f3d2da0c4682e8bd3191240a91aa97682f"
+        }
+      }
+    },
+    "act3autochess_m04": {
+      "light": [
+        0.93796,
+        0.96726,
+        1.14487
+      ],
+      "mix": 0.625,
+      "training": {
+        "before": {
+          "rgbRms": 21.985766593544174,
+          "meanRgbError": [
+            0.3598744476443579,
+            -1.3581414256290103,
+            -14.729808466851782
+          ]
+        },
+        "after": {
+          "rgbRms": 15.384987814517732,
+          "meanRgbError": [
+            2.6593028793427473,
+            2.4895781615000385,
+            -0.6825854720484776
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 23.116559605688973,
+          "meanRgbError": [
+            -3.0013215067711743,
+            -4.522322452881119,
+            -15.573901637372646
+          ]
+        },
+        "after": {
+          "rgbRms": 15.219498658136427,
+          "meanRgbError": [
+            1.6009001855705254,
+            0.511622501697923,
+            0.7633525659535609
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 2930,
+          "referenceSha256": "ffc1addcab6a05e8fdbc9744b8958d665a92ea1ef3ef95a0a10468e24d63f6dd"
+        },
+        "unite": {
+          "samples": 2921,
+          "referenceSha256": "00abeab9af0f1283919f44966cc9fe16bd0d23d5d6567bbca7f749f66e2f9ffe"
+        },
+        "boss": {
+          "samples": 2805,
+          "referenceSha256": "b25ba0a559c72b2e68b5489bc783aa95adf2c1eab9202e037ccc0fa134831644"
+        }
+      }
+    },
+    "act3autochess_m05": {
+      "light": [
+        1.0831,
+        1.1037,
+        1.16621
+      ],
+      "mix": 0,
+      "training": {
+        "before": {
+          "rgbRms": 20.151654815421796,
+          "meanRgbError": [
+            -10.826107038583787,
+            -12.057091112179227,
+            -16.959536213382783
+          ]
+        },
+        "after": {
+          "rgbRms": 17.794362837267247,
+          "meanRgbError": [
+            -3.1250258919987637,
+            -2.7323349999855338,
+            -4.742172235778277
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 19.92667194049824,
+          "meanRgbError": [
+            -11.857218761230458,
+            -12.2860663674166,
+            -16.2601725895989
+          ]
+        },
+        "after": {
+          "rgbRms": 17.81142669034713,
+          "meanRgbError": [
+            -3.541367900102187,
+            -2.513343839608116,
+            -3.147923833090042
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 4804,
+          "referenceSha256": "d5b09ca1aff0ffa02fa501b8468031db8a3de193a7ab043597a2612409adb9e6"
+        },
+        "unite": {
+          "samples": 3941,
+          "referenceSha256": "2250b8e544edfc738c72f7353034030ffd6624f67d85d18f787451994cc2ce4a"
+        },
+        "boss": {
+          "samples": 3959,
+          "referenceSha256": "871b79c46d942d05276c3f876f5b43a1fd81faaaee4088b1c0a80e3fe869857d"
+        }
+      }
+    },
+    "act3autochess_m06": {
+      "light": [
+        0.94732,
+        0.97868,
+        1.14599
+      ],
+      "mix": 0.625,
+      "training": {
+        "before": {
+          "rgbRms": 23.756887179975735,
+          "meanRgbError": [
+            -2.269715825960065,
+            -3.3554059272655907,
+            -14.384934688215727
+          ]
+        },
+        "after": {
+          "rgbRms": 17.564072020380372,
+          "meanRgbError": [
+            2.3508746522106883,
+            2.4990733266289773,
+            -0.5789973853747149
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 22.683315934699305,
+          "meanRgbError": [
+            -2.166603494174125,
+            -3.3534661771958336,
+            -14.768678732236781
+          ]
+        },
+        "after": {
+          "rgbRms": 16.301780528267095,
+          "meanRgbError": [
+            3.454292865962427,
+            2.8680132044350097,
+            0.8861550135682268
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 2634,
+          "referenceSha256": "454db8c3615ca78e40b7c92518f59f675c2e37dbe64ab5ed9abc19c0d9344e07"
+        },
+        "unite": {
+          "samples": 2743,
+          "referenceSha256": "dae039b1e89f632d80ad3667bbd37b21394ec7e74796c7f8c560cac667ab8d6c"
+        },
+        "boss": {
+          "samples": 2907,
+          "referenceSha256": "7d586371266d343d27a74e035f462b0b58868f8e68653f2fbea059d49b9b1938"
+        }
+      }
+    },
+    "act3autochess_m09": {
+      "light": [
+        1.01305,
+        1.01498,
+        1.02472
+      ],
+      "mix": 0,
+      "training": {
+        "before": {
+          "rgbRms": 22.639757810109856,
+          "meanRgbError": [
+            -9.29477189355022,
+            -8.499128007107057,
+            -8.820339034019263
+          ]
+        },
+        "after": {
+          "rgbRms": 22.25993759171253,
+          "meanRgbError": [
+            -7.798060247381946,
+            -6.516603980763709,
+            -5.531767972204737
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 23.80361091102625,
+          "meanRgbError": [
+            -10.33798890598371,
+            -9.642669901761787,
+            -11.723189892360194
+          ]
+        },
+        "after": {
+          "rgbRms": 23.42407894719556,
+          "meanRgbError": [
+            -8.895137913451578,
+            -7.6123006407829035,
+            -8.414956738426826
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 3712,
+          "referenceSha256": "569fab53fba78336b358a6e8f77c79ff744ca815cc22cdb8c528e02a65561c6c"
+        },
+        "unite": {
+          "samples": 3328,
+          "referenceSha256": "6828601b5b384cfacc1725714e21b29868480e593944fa430e3d62604612c843"
+        },
+        "boss": {
+          "samples": 4014,
+          "referenceSha256": "138dcf9a2f21e4e61e178bfc33535b82323bf8b23c20bcc38c1218d4be763ce5"
+        }
+      }
+    },
+    "act3autochess_m10": {
+      "light": [
+        1.02014,
+        1.08659,
+        1.26364
+      ],
+      "mix": 0,
+      "training": {
+        "before": {
+          "rgbRms": 28.85737982907212,
+          "meanRgbError": [
+            -4.67373629751747,
+            -12.462305236468948,
+            -24.578617705848217
+          ]
+        },
+        "after": {
+          "rgbRms": 27.657237312461994,
+          "meanRgbError": [
+            -2.5624964798414815,
+            -4.779931128694837,
+            -10.766308536729786
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 29.090208506775205,
+          "meanRgbError": [
+            -1.2161394144253657,
+            -9.68898997319086,
+            -23.584946030946806
+          ]
+        },
+        "after": {
+          "rgbRms": 28.380768891175563,
+          "meanRgbError": [
+            0.9575953887463073,
+            -1.5221221819924817,
+            -9.147484398877216
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 3339,
+          "referenceSha256": "24e3fc21d42596cad1a8ccefb0ae39ed67d10092ffdb88d3796ccf83b865857b"
+        },
+        "unite": {
+          "samples": 3026,
+          "referenceSha256": "4cf31e5c1c8fbe3773c4b9742e635aa93789fe02a342f2ccadcf3c500eba4b7f"
+        },
+        "boss": {
+          "samples": 3192,
+          "referenceSha256": "d4d044b98e0e97d023ca8aa1c9264fa76a7f606e8716e762faf292634b1789bf"
+        }
+      }
+    },
+    "act3autochess_m11": {
+      "light": [
+        1.01324,
+        1.01621,
+        1.02427
+      ],
+      "mix": 0,
+      "training": {
+        "before": {
+          "rgbRms": 20.425894886752047,
+          "meanRgbError": [
+            -8.349213003058843,
+            -8.11348015356053,
+            -8.51596251362669
+          ]
+        },
+        "after": {
+          "rgbRms": 20.021591524127256,
+          "meanRgbError": [
+            -6.888685682018866,
+            -6.040067797174051,
+            -5.250450133042405
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 22.82883240875153,
+          "meanRgbError": [
+            -10.408728529420149,
+            -10.593215197065168,
+            -12.681969165458584
+          ]
+        },
+        "after": {
+          "rgbRms": 22.32767178495774,
+          "meanRgbError": [
+            -9.001441241741125,
+            -8.48815562744713,
+            -9.426425481699448
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 3868,
+          "referenceSha256": "9e0d5d082b87621ee238fdc71bf0355d2a8d3e301975094c364fbc7c16555e87"
+        },
+        "unite": {
+          "samples": 3456,
+          "referenceSha256": "f86fe1232066e373672cd7cb55132e155742b0e17b300266b510f7e28223b266"
+        },
+        "boss": {
+          "samples": 4177,
+          "referenceSha256": "20f2c17ea230a13e37c2c563fb461580fa11dca1dc4dd0b564611c1370c9944c"
+        }
+      }
+    },
+    "act3autochess_m12": {
+      "light": [
+        1.00417,
+        1.07539,
+        1.28119
+      ],
+      "mix": 0,
+      "training": {
+        "before": {
+          "rgbRms": 30.739059192648174,
+          "meanRgbError": [
+            -3.8242984746481663,
+            -11.917969697711158,
+            -24.841055270294397
+          ]
+        },
+        "after": {
+          "rgbRms": 29.604750267319286,
+          "meanRgbError": [
+            -3.3871096084208796,
+            -5.207115965138265,
+            -10.458888752022503
+          ]
+        }
+      },
+      "heldOutBoss": {
+        "before": {
+          "rgbRms": 29.660273937224368,
+          "meanRgbError": [
+            -3.2884397621882964,
+            -11.143373136092107,
+            -24.01823629738034
+          ]
+        },
+        "after": {
+          "rgbRms": 28.619902901682753,
+          "meanRgbError": [
+            -2.8486298549081814,
+            -4.169798928852096,
+            -8.84709221128804
+          ]
+        }
+      },
+      "sources": {
+        "prep": {
+          "samples": 3339,
+          "referenceSha256": "c1198ce3c8f80f5214abbcad78b8cc5304bc72813269f6ffb7abf0d0c6fee75e"
+        },
+        "unite": {
+          "samples": 3076,
+          "referenceSha256": "53910191e2a25f58e17dd78dabbb5adf0c91efa24017fb44d268d2e7d8839af1"
+        },
+        "boss": {
+          "samples": 3156,
+          "referenceSha256": "9fa7d10d90c47f15b5ced6182d57e64227f982d1415d1be203d944528806dd05"
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Not recovered official runtime values",
+    "Preserves the game's independent focus dimming",
+    "Fit samples exclude water, translucent surfaces, unlit art, units and FX",
+    "Reference version, resampling and remaining camera/geometry errors are unresolved"
+  ],
+  "actualRenderValidation": [
+    {
+      "stage": "01",
+      "view": "prep",
+      "samples": 2842,
+      "beforeRms": 21.487520217895508,
+      "afterRms": 15.24599838256836,
+      "maxRenderVsPrediction": 6.057680547510991e-05,
+      "screenshotSha256": "e9ac7ceaed1ff45d3d0405efc3dc85ce7a5954c4fb820a60cf028e170a7a6629"
+    },
+    {
+      "stage": "01",
+      "view": "unite",
+      "samples": 2709,
+      "beforeRms": 23.88960075378418,
+      "afterRms": 15.098870277404785,
+      "maxRenderVsPrediction": 7.238885163796116e-05,
+      "screenshotSha256": "d1d1e86e9c8328247b19acb312e1eb5c06f7f2e7b65b16653e994a79f636002d"
+    },
+    {
+      "stage": "01",
+      "view": "boss",
+      "samples": 2776,
+      "beforeRms": 23.70045280456543,
+      "afterRms": 14.306519508361816,
+      "maxRenderVsPrediction": 5.773440597600654e-05,
+      "screenshotSha256": "18afdcea5fe2c8c9366009ce9abd2a3eea6969971c2579ad2aa595906f021729"
+    },
+    {
+      "stage": "02",
+      "view": "prep",
+      "samples": 2804,
+      "beforeRms": 20.06795310974121,
+      "afterRms": 14.377521514892578,
+      "maxRenderVsPrediction": 6.716033221887407e-05,
+      "screenshotSha256": "f9eb12923fb25bf3ec28f7210876be78c78bbe8e711f7e6b0b659a451fb1fc7c"
+    },
+    {
+      "stage": "02",
+      "view": "unite",
+      "samples": 2930,
+      "beforeRms": 22.640003204345703,
+      "afterRms": 14.012361526489258,
+      "maxRenderVsPrediction": 6.928153038265883e-05,
+      "screenshotSha256": "aacb2f722e538a76a8bae8f3263f8bff171fb24a27d7d6dd3f575ba1f7c266a8"
+    },
+    {
+      "stage": "02",
+      "view": "boss",
+      "samples": 2918,
+      "beforeRms": 22.61210823059082,
+      "afterRms": 13.9058198928833,
+      "maxRenderVsPrediction": 6.130803822113062e-05,
+      "screenshotSha256": "1c5c05eb8cd879f83e355399a62406e48b52fb3054bc88d7d558fafeb25ca67a"
+    },
+    {
+      "stage": "03",
+      "view": "prep",
+      "samples": 2779,
+      "beforeRms": 21.42499542236328,
+      "afterRms": 15.6581392288208,
+      "maxRenderVsPrediction": 6.493091583070765e-05,
+      "screenshotSha256": "15425e867a1eb9a1b7677907d862f28f3655a870e6d2285df7acd707ed1e5960"
+    },
+    {
+      "stage": "03",
+      "view": "unite",
+      "samples": 2722,
+      "beforeRms": 24.522457122802734,
+      "afterRms": 15.926348686218262,
+      "maxRenderVsPrediction": 6.850880382325286e-05,
+      "screenshotSha256": "bc9eea0436b0b57f8140144a0cfd5882d0eec40ae615009943b0d11d6b1aaab1"
+    },
+    {
+      "stage": "03",
+      "view": "boss",
+      "samples": 3012,
+      "beforeRms": 22.820302963256836,
+      "afterRms": 14.31583023071289,
+      "maxRenderVsPrediction": 6.171476840732826e-05,
+      "screenshotSha256": "3cfa5e193e4171aa4f70ab5b06effe4a0350cb9deabfc1e29cf97cea082e2593"
+    },
+    {
+      "stage": "04",
+      "view": "prep",
+      "samples": 2930,
+      "beforeRms": 20.91677474975586,
+      "afterRms": 15.129572868347168,
+      "maxRenderVsPrediction": 6.430349350494691e-05,
+      "screenshotSha256": "cf550dfab64d719fd0b9655af7c46a8ef4bb5165c33186bcbf3ac66cfb5e583c"
+    },
+    {
+      "stage": "04",
+      "view": "unite",
+      "samples": 2921,
+      "beforeRms": 23.008207321166992,
+      "afterRms": 15.636923789978027,
+      "maxRenderVsPrediction": 6.706123351796212e-05,
+      "screenshotSha256": "e8c3354ae62c56fdd18070111775ae220db43f493f8249edefcc9eea168f7a85"
+    },
+    {
+      "stage": "04",
+      "view": "boss",
+      "samples": 2805,
+      "beforeRms": 23.116561889648438,
+      "afterRms": 15.219499588012695,
+      "maxRenderVsPrediction": 6.960983274628685e-05,
+      "screenshotSha256": "1208583742c38f74d192dde142135fcb6172eff5c0d94d713418e48e62d27b9c"
+    },
+    {
+      "stage": "05",
+      "view": "prep",
+      "samples": 4804,
+      "beforeRms": 20.85465431213379,
+      "afterRms": 17.759212493896484,
+      "maxRenderVsPrediction": 5.9079229833280955e-05,
+      "screenshotSha256": "3e87870a293f0b506549003a106e2dedb5a1f3782afbb8cb546c6db425d7140e"
+    },
+    {
+      "stage": "05",
+      "view": "unite",
+      "samples": 3941,
+      "beforeRms": 19.260038375854492,
+      "afterRms": 17.837146759033203,
+      "maxRenderVsPrediction": 6.10640913151217e-05,
+      "screenshotSha256": "6298870f35245cd0054bb8da8a8c1b0ebd1b1a613e79b55e97402064a4c1f36d"
+    },
+    {
+      "stage": "05",
+      "view": "boss",
+      "samples": 3959,
+      "beforeRms": 19.92667007446289,
+      "afterRms": 17.811447143554688,
+      "maxRenderVsPrediction": 6.029911639171548e-05,
+      "screenshotSha256": "20b507e1959a36859c60a8101494a3613278ae0aeccfff93fa54d662a63cb2a8"
+    },
+    {
+      "stage": "06",
+      "view": "prep",
+      "samples": 2634,
+      "beforeRms": 22.20897102355957,
+      "afterRms": 17.456289291381836,
+      "maxRenderVsPrediction": 5.822077990047525e-05,
+      "screenshotSha256": "def987d13c43547296093f47a265d6b95960b7c92619c7d43efb31841ac659ce"
+    },
+    {
+      "stage": "06",
+      "view": "unite",
+      "samples": 2743,
+      "beforeRms": 25.15380096435547,
+      "afterRms": 17.66697883605957,
+      "maxRenderVsPrediction": 5.435836316070031e-05,
+      "screenshotSha256": "0c183db11f1aa3e529a1f4d1779773095e6cac76a103084a1ecd65ff865f9229"
+    },
+    {
+      "stage": "06",
+      "view": "boss",
+      "samples": 2907,
+      "beforeRms": 22.68331527709961,
+      "afterRms": 16.30181121826172,
+      "maxRenderVsPrediction": 5.61810493626691e-05,
+      "screenshotSha256": "a41744fe33474f4b9b19ccca8bd0fa9effc590b0210572bcced33d5af6b40fe1"
+    },
+    {
+      "stage": "09",
+      "view": "prep",
+      "samples": 3712,
+      "beforeRms": 21.84881019592285,
+      "afterRms": 21.45801544189453,
+      "maxRenderVsPrediction": 6.579301359554979e-05,
+      "screenshotSha256": "5bf380133f6ba2f5a130c71d60b97ecab377d7f8d3207cc98c71399175c46aba"
+    },
+    {
+      "stage": "09",
+      "view": "unite",
+      "samples": 3328,
+      "beforeRms": 23.490571975708008,
+      "afterRms": 23.121614456176758,
+      "maxRenderVsPrediction": 6.851011002173557e-05,
+      "screenshotSha256": "a852b112c1a48f61ad7e1328b4f42f0cfccba0323edc36e07b9faf95e22dc43c"
+    },
+    {
+      "stage": "09",
+      "view": "boss",
+      "samples": 4014,
+      "beforeRms": 23.803611755371094,
+      "afterRms": 23.42408561706543,
+      "maxRenderVsPrediction": 6.994451880182329e-05,
+      "screenshotSha256": "14688b7fa7471f8098eaf5d542b9c5312e4d85e82dee5a770c472cea7e14a4d8"
+    },
+    {
+      "stage": "10",
+      "view": "prep",
+      "samples": 3339,
+      "beforeRms": 27.594438552856445,
+      "afterRms": 26.36627960205078,
+      "maxRenderVsPrediction": 6.366512773969824e-05,
+      "screenshotSha256": "1146db76f96159d39b577270e051f0cebd27747e573243b9c0780d345180ac05"
+    },
+    {
+      "stage": "10",
+      "view": "unite",
+      "samples": 3026,
+      "beforeRms": 30.18970489501953,
+      "afterRms": 29.015148162841797,
+      "maxRenderVsPrediction": 7.710455059095622e-05,
+      "screenshotSha256": "48ada9b9f638f1133e0126f07ee345d871922c7a365eefd6d123528c1ef28e1e"
+    },
+    {
+      "stage": "10",
+      "view": "boss",
+      "samples": 3192,
+      "beforeRms": 29.090208053588867,
+      "afterRms": 28.380781173706055,
+      "maxRenderVsPrediction": 6.654993293941924e-05,
+      "screenshotSha256": "43643b532e9e8416a09aaea6fea38957420fb82463a3656530376dd38cbeafd9"
+    },
+    {
+      "stage": "11",
+      "view": "prep",
+      "samples": 3868,
+      "beforeRms": 19.830835342407227,
+      "afterRms": 19.44782066345215,
+      "maxRenderVsPrediction": 7.14332789203409e-05,
+      "screenshotSha256": "a4ca6b6b2f8c1d62ff849ba52bd3aee7edffb6818abc74283934156236e488f9"
+    },
+    {
+      "stage": "11",
+      "view": "unite",
+      "samples": 3456,
+      "beforeRms": 21.071971893310547,
+      "afterRms": 20.64487075805664,
+      "maxRenderVsPrediction": 6.814569533830639e-05,
+      "screenshotSha256": "be1266c55fd48f69a70649104baaaa7307c473bcef1e2b6a15b4e35a289fd562"
+    },
+    {
+      "stage": "11",
+      "view": "boss",
+      "samples": 4177,
+      "beforeRms": 22.828832626342773,
+      "afterRms": 22.327678680419922,
+      "maxRenderVsPrediction": 6.213988958392314e-05,
+      "screenshotSha256": "c9c8c85b4303dd47c47672dcc4539f96b86113fc9a8e00c573dfe4ab4634277e"
+    },
+    {
+      "stage": "12",
+      "view": "prep",
+      "samples": 3339,
+      "beforeRms": 30.359535217285156,
+      "afterRms": 29.182037353515625,
+      "maxRenderVsPrediction": 6.438997685043191e-05,
+      "screenshotSha256": "69afc61680b0ea94156df7da2062d581a3b7654b10460b48f116add0022af642"
+    },
+    {
+      "stage": "12",
+      "view": "unite",
+      "samples": 3076,
+      "beforeRms": 31.14579963684082,
+      "afterRms": 30.056909561157227,
+      "maxRenderVsPrediction": 6.811560093633595e-05,
+      "screenshotSha256": "247a3b58b4da4d85fbc6387fa14afacbe19614ca38cc964274cf8515e6e88b03"
+    },
+    {
+      "stage": "12",
+      "view": "boss",
+      "samples": 3156,
+      "beforeRms": 29.660274505615234,
+      "afterRms": 28.619922637939453,
+      "maxRenderVsPrediction": 5.6874436127341e-05,
+      "screenshotSha256": "81eaf97d2492ea74b846d60d84785bd09ca030e87f4cd32e954df951f303b296"
+    }
+  ],
+  "desktopCaptures": 30,
+  "browserErrors": 0,
+  "failedRequests": 0,
+  "targetedTests": {
+    "pass": 72,
+    "fail": 0,
+    "skip": 0
+  },
+  "fullSimulation": "paused",
+  "golden": "paused"
+}

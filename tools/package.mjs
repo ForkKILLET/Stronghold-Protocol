@@ -611,7 +611,7 @@ export function formatSummary(p) {
     if (sceneFiles?.length) {
       lines.push(`battlefield scenes: ${sceneFiles.length} files, ${MB(p.scenes.bytes || 0)} (public/assets/local/scene; the metal board is the fallback when a stage has none)`);
     } else if (p.scenes) {
-      lines.push('battlefield scenes: none on this machine (the full bundle ships the metal board; fetch_scenes.py then extract.py --only scene before packaging to include the 11 official scenes)');
+      lines.push('battlefield scenes: none on this machine (the full bundle ships the metal board; fetch_scenes.py then extract.py --only scene before packaging to include official scenes (Regulation also needs the current client MapGraphic prefabs))');
     }
   }
   if (p.generated?.length) {

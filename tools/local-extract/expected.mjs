@@ -39,6 +39,16 @@ export const EXPECTED_LOCAL_GROUPS = Object.freeze([
   "scene/act2autochess_m02",
   "scene/act2autochess_m03",
   "scene/act2autochess_m04",
+  "scene/act3autochess_m01",
+  "scene/act3autochess_m02",
+  "scene/act3autochess_m03",
+  "scene/act3autochess_m04",
+  "scene/act3autochess_m05",
+  "scene/act3autochess_m06",
+  "scene/act3autochess_m09",
+  "scene/act3autochess_m10",
+  "scene/act3autochess_m11",
+  "scene/act3autochess_m12",
   "scene/tex",
   "spine/enemy/enemy_1201_sfzhi",
   "spine/enemy/enemy_1249_lysdb",
@@ -94,7 +104,8 @@ export const EXPECTED_LOCAL_GROUPS = Object.freeze([
   "ui/season/act3autochess",
 ]);
 
-// Manifest `scene` record version (kind Scene on each scene/<stageId> group). scene.json's mesh version stays 1.
+// Manifest `scene` record version (kind Scene on each scene/<stageId> group). Legacy scene.json remains 1;
+// Regulation's document is 2 with the same binary vertices and explicit composition metadata.
 // An extracted record whose version is not this one is stale: setup asks once (DESIGN §34.12).
 // 4 removes exact redundant scene renderers (#684); older extracts still contain the source duplicates.
 // [ASSUMED] A group with no kind:Scene record is not a version problem (the group-key check still applies).

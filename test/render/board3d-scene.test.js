@@ -21,7 +21,7 @@ import { presetCamera } from '../../public/js/render/projection.js';
 import { sceneMaterial, sceneWaterMaterial, sceneBlend, sceneEnvTexture, focusUniforms, SCENE_LIGHT, waterMaterial, applyWaterMaterial, WATER_DEFAULTS, SCENE_WATER_DEFAULTS, WATER_TUNING, boardMaterial, glassMaterial, trapMaterial } from '../../public/js/render/board3d/materials.js';
 import {
   parseSceneChunks, sceneGroupRects, loadScenePack, sceneListed, resetBoardPack, sceneGroup, sceneMaterialKey, mergeSceneChunks,
-  SCENE_TEX_GROUP, SCENE_VERSION, SCENE_VERTEX_BYTES, isSceneWater, sceneWaterInfo,
+  SCENE_TEX_GROUP, SCENE_VERSION, REGULATION_SCENE_VERSION, SCENE_VERTEX_BYTES, isSceneWater, sceneWaterInfo,
 } from '../../public/js/render/board3d/load.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -116,12 +116,14 @@ describe('scenes.py (no UnityPy needed)', { skip: !PY && 'no python3' }, () => {
     assert.equal(scenes.tex, SCENE_TEX_GROUP);
     assert.equal(scenes.version, 4, 'manifest scene-record version; scene.json stays SCENE_VERSION');
     const ids = scenes.stages.map((x) => x.id);
-    const battlefields = Object.keys(stages).filter((id) => /^act\dautochess_m\d+$/.test(id)).sort();
+    const regulationStages = JSON.parse(readFileSync(path.join(ROOT, 'data/versions/act3autochess-v3_1/stages.json'), 'utf8'));
+    const battlefields = [...Object.keys(stages), ...Object.keys(regulationStages)].filter((id) => /^act\dautochess_m\d+$/.test(id)).sort();
     assert.deepEqual([...ids].sort(), battlefields, 'every battlefield has a scene');
     for (const st of scenes.stages) {
       const season = st.id.replace(/_m\d+$/, '');
       assert.equal(st.bundle, `scenes/activities/${season}/level_${st.id}/level_${st.id}.ab`);
-      assert.ok(st.deps.length > 0 && st.deps.every((d) => d.startsWith('arts/maps/') && d.endsWith('.ab')), st.id);
+      if (st.id.startsWith('act3autochess_')) assert.equal(st.deps.length, 0, 'prefab CAB dependencies resolve dynamically');
+      else assert.ok(st.deps.length > 0 && st.deps.every((d) => d.startsWith('arts/maps/') && d.endsWith('.ab')), st.id);
     }
     const sand = scenes.stages.filter((x) => x.deps.includes('arts/maps/map_autochesssand/res.ab')).map((x) => x.id);
     assert.deepEqual(sand, ['act1autochess_m01', 'act1autochess_m02', 'act1autochess_m03', 'act1autochess_m04', 'act1autochess_m05',
@@ -133,7 +135,7 @@ describe('scenes.py (no UnityPy needed)', { skip: !PY && 'no python3' }, () => {
     const out = py(`import extract as e
 print(json.dumps({'all': len(e.scene_ids([])), 'scene': len(e.scene_ids(['scene'])), 'one': e.scene_ids(['scene/act2autochess_m02']),
   'other': e.scene_ids(['emoticon']), 'missing': s.find_scene('act2autochess_m02', ['/no/such/root']) is None}))`);
-    assert.deepEqual(out, { all: 11, scene: 11, one: ['act2autochess_m02'], other: [], missing: true });
+    assert.deepEqual(out, { all: 21, scene: 21, one: ['act2autochess_m02'], other: [], missing: true });
   });
 
   test('a disabled group is kept for the duplicate check and left out of scene.bin (#918)', () => {
@@ -397,6 +399,15 @@ describe('scene chunks (load.js)', () => {
       assert.ok(lit.images.data.TX_N && lit.images.data.TX_M && lit.images.env, 'the normal / gloss maps and the reflection atlas');
       assert.ok(lit.images.tex.TX_E && !lit.images.data.TX_E, 'emission is an sRGB colour map');
       assert.ok(!lit.images.tex.TX_N && !lit.images.tex.TX_M, 'data maps stay out of the sRGB textures');
+      resetBoardPack();
+      json = { ...doc, version: REGULATION_SCENE_VERSION, layout: 'regulation-composite-v1',
+        groupRects: { 'regulation:roadRight': [11, 9, 20, 13] } };
+      const composite = await loadScenePack(store, 'act2autochess_m02');
+      assert.ok(composite, 'new composition schema loads with its explicit layout');
+      assert.deepEqual(composite.groups['regulation:roadRight'], [11, 9, 20, 13]);
+      resetBoardPack();
+      json = { ...json, materials: { unavailable: { map: 'not-listed-in-assets' } } };
+      assert.equal(await loadScenePack(store, 'act2autochess_m02'), null, 'an incomplete composite keeps the metal board');
       resetBoardPack();
       json = { ...doc, version: SCENE_VERSION + 1 };
       assert.equal(await loadScenePack(store, 'act2autochess_m02'), null, 'unknown version → the procedural board');
@@ -1041,12 +1052,13 @@ describe('extracted scenes (when scene bundles were extracted here)', { skip: !O
     test(`${g}: scene.json records fit scene.bin; lightmap pages and textures are listed and on disk`, { skip: !existsSync(file(groups[g].scene?.path || '/x')) && 'files not on this machine' }, () => {
       const doc = JSON.parse(readFileSync(file(groups[g].scene.path), 'utf8'));
       const bin = readFileSync(file(groups[g].bin.path));
-      assert.equal(doc.version, SCENE_VERSION);
+      assert.equal(doc.version, doc.layout === 'regulation-composite-v1' ? REGULATION_SCENE_VERSION : SCENE_VERSION);
       assert.equal(`scene/${doc.stage}`, g);
       assert.equal(doc.binBytes, bin.length);
       const chunks = parseSceneChunks(doc, bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.length));
       assert.ok(chunks && chunks.length === doc.chunks.length && chunks.length > 0);
-      assert.ok(chunks.some((c) => !c.group), 'a base part');
+      if (doc.layout === 'regulation-composite-v1') assert.ok(chunks.every(c => c.group.startsWith('regulation:')), 'explicit composite owners');
+      else assert.ok(chunks.some((c) => !c.group), 'a base part');
       for (const c of chunks) {
         let max = 0;
         for (const i of c.index) if (i > max) max = i;
@@ -1076,8 +1088,9 @@ describe('extracted scenes (when scene bundles were extracted here)', { skip: !O
       const doc = JSON.parse(readFileSync(file(groups[g].scene.path), 'utf8'));
       const bin = readFileSync(file(groups[g].bin.path));
       const chunks = parseSceneChunks(doc, bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.length));
-      const rects = sceneGroupRects(chunks);
-      const stage = stages[doc.stage];
+      const rects = sceneGroupRects(chunks, doc);
+      const stage = stages[doc.stage] || JSON.parse(readFileSync(path.join(ROOT, 'data/versions/act3autochess-v3_1/stages.json'), 'utf8'))[doc.stage];
+      assert.ok(stage, `${doc.stage}: installed scene has its version's stage`);
       const board = new BoardScene(THREE, fakePack(), { renderer: stubRenderer() });
       board.setScenePack(doc.stage, { key: g, stage: doc.stage, doc, chunks, groups: rects, images: { tex: {}, lm: [] } });
       board.setStage(stage);

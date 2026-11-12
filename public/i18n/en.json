@@ -1,4 +1,9 @@
 {
+  "加速地块": "Acceleration tile",
+  "攻击速度 +{aspd}，移动速度 ×{move}": "ASPD +{aspd}, movement speed ×{move}",
+  "隐匿地块": "Concealment tile",
+  "其上的双方地面单位获得隐匿，离开地块后解除": "Ground units on either side gain Stealth while on this tile; leaving removes the effect.",
+  "敌方单位被阻挡时显形，解除阻挡后立即恢复隐匿": "Enemies become visible while blocked and regain Stealth immediately when released.",
   "骷髅手指光标": "PRTS hand cursor",
   "使用明日方舟的骷髅手指光标；文字输入、拖动和缩放仍保留系统光标。": "Use the Arknights skeletal hand cursor; text input, dragging and resizing keep the system cursor.",
   "等待创建者开始模拟": "Waiting for the host to start the simulation",

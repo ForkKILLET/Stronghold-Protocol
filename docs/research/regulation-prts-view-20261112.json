@@ -1,0 +1,861 @@
+{
+  "clientVersion": "26-11-06-12-42-25-70182449",
+  "stageCount": 10,
+  "declaredSceneFiles": 95,
+  "sceneBytes": 95954479,
+  "maxMeshBytes": 20173324,
+  "maps": [
+    {
+      "stage": "act3autochess_m01",
+      "chunks": 35,
+      "vertices": 85203,
+      "triangles": 56974,
+      "meshBytes": 3409192,
+      "sha256": "938b4fda9a393dfacd16afcd0fa07d9015b4c4c1899473b1efeed1682238d7d0",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "f2455fa70f8809bbe26ad07908f528581014e4b5af63c58b82e1da4b9794432b",
+        "547f1f84d68414cd44b097f7e36d5cf8a9f75a983eb6c57ea6370be862f1460a",
+        "6511d19d9738fb182697edb9adf6befb749364ac85b1ca84365d174acbdb0c8f"
+      ]
+    },
+    {
+      "stage": "act3autochess_m02",
+      "chunks": 32,
+      "vertices": 84198,
+      "triangles": 55740,
+      "meshBytes": 3365596,
+      "sha256": "e4fc0e997cb15b1a95e7b30f9b430a65fcdd60fd323614d482d4fe92bdfd53fb",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "2d3c21b1ebd3915ac219725673db365788f6b15a93b8ed6a9ad637710ddbdfe6",
+        "937303578b89b6091f142d2a3668a12482d75cb647ee10971a807535edcb34ad",
+        "d1a7ac06e161a7650da5492a1c541595a6c4942cd2922258abfeefb18d3809ea"
+      ]
+    },
+    {
+      "stage": "act3autochess_m03",
+      "chunks": 35,
+      "vertices": 82183,
+      "triangles": 55037,
+      "meshBytes": 3288848,
+      "sha256": "18a3af001f40d54735ad01dfd09e9dc685907ae0c4a8d943026d726c1a3c8066",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "a1cfa60c65bd6e0bbbe1e51b8a03b3e7dc6adb4273dd9b73a40feb670a3f4fc3",
+        "392d9db523d3231efd7458aee42a88cb28048bd75545520fc19fcc14ee06ba36",
+        "c2ed0a2b94ee2971b17771dea236eb5207496bf7fd7b9736ba6fcc690938d14f"
+      ]
+    },
+    {
+      "stage": "act3autochess_m04",
+      "chunks": 32,
+      "vertices": 83606,
+      "triangles": 55988,
+      "meshBytes": 3345776,
+      "sha256": "687522f8ab2f29e6d9a29393dfdba77ab9253cffcf4d3fc48888761292a7f44e",
+      "tileEffects": {
+        "i": "map_promote_01"
+      },
+      "staticDevices": null,
+      "sourceBundles": [
+        "5c079890f84982ab189a998f0b4cfe846e295239a1482afb22ce96ff3e6fa708",
+        "0f4665e5493eded49c74765b9fe148bd3b33a9cc3345668420676b4d4f17b942",
+        "569ce8ade40d039453b93ab40215950702c558426be13c6c52261bb4d67aa4ed"
+      ]
+    },
+    {
+      "stage": "act3autochess_m05",
+      "chunks": 23,
+      "vertices": 266922,
+      "triangles": 165703,
+      "meshBytes": 11133632,
+      "sha256": "d6f574cebf7d7785e901716493d8df9de5e261defec1f2d4f387065ce5e6667b",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "53393ddc5bfe449ef1816ce16d25842fadfb9bbf65d763bc3ae5a19564d18e7c",
+        "3f7602c6b701e08be6e4e1de61a074d53e2b1c97e9ae892737967432d9599e3f",
+        "0233b20373187e3ff981518f93a8fbdadb58836ecbd58e29fdcb4002fbae56c7"
+      ]
+    },
+    {
+      "stage": "act3autochess_m06",
+      "chunks": 35,
+      "vertices": 94659,
+      "triangles": 63697,
+      "meshBytes": 3789948,
+      "sha256": "f515fedafb3f6314148baac3547cfe600d92b0853a96a6e4c1e95baae2fc294d",
+      "tileEffects": {
+        "m": "mapeff_mud_ground_01"
+      },
+      "staticDevices": null,
+      "sourceBundles": [
+        "c6e2450ed05a8b3fe9270ed8fcd54bd408741c44f25f35c3bb23493aaa46f8ad",
+        "ec8e3d7e362891bf9bb360425f725e848ffd5db772f21260326ec656810acaa3",
+        "1c8fbc1c5ba9940ff419dfba9c13111e821dbd5d1351764d89f6ea83fa00d56a"
+      ]
+    },
+    {
+      "stage": "act3autochess_m09",
+      "chunks": 18,
+      "vertices": 76982,
+      "triangles": 65180,
+      "meshBytes": 3162440,
+      "sha256": "31880609ebe42f7715f4887143f752bde29fb6325c6c48cf16ec1ddcd2655666",
+      "tileEffects": {
+        "w": "mapeff_079_dikuai_01"
+      },
+      "staticDevices": null,
+      "sourceBundles": [
+        "24447147340181caf5c3d4936149fc51a3df150f94c010900560bfc6a7a6c27b",
+        "dd36a84fef5be608de125caeb3acf21c3ad64ccf709329ddc7d721f0e776e99e",
+        "3b461dbf19eceeb036c3b097819b8835b835e7c372d6cbdf90ec6fe39bddbc8d"
+      ]
+    },
+    {
+      "stage": "act3autochess_m10",
+      "chunks": 21,
+      "vertices": 470182,
+      "triangles": 279961,
+      "meshBytes": 20129296,
+      "sha256": "4e9dbc0a10ac45c93e1eef4edbe85f09e03872f46aa57d45461e569b9d5be822",
+      "tileEffects": {},
+      "staticDevices": {
+        "prefab": "trap_196_cnnon",
+        "bundle": "pkgrps/btl_pfb_tokens_2.ab",
+        "positions": [
+          [
+            13,
+            6
+          ],
+          [
+            13,
+            14
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            6,
+            14
+          ]
+        ]
+      },
+      "sourceBundles": [
+        "62a3abfec515152742fa60ad72111567d4464bb8bf3e6ef853b2aadb6d54f05b",
+        "08f7db30da042d38937664ee7aeb3b2ac99addba08f047c356f51e656c8822bb",
+        "35973886f2a11c8365926432af2ccb04a4fc9a1594838426589798eafd6686c7"
+      ]
+    },
+    {
+      "stage": "act3autochess_m11",
+      "chunks": 18,
+      "vertices": 77962,
+      "triangles": 65351,
+      "meshBytes": 3198748,
+      "sha256": "ee437345f1e4fc9df6a0dd09d8df1bbfce6e6175c094207a75e1f9abd295692b",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "25414c0ec6da4f24ccbc5e55c192374c510cfbc23b527fe9296d7ff094c0bfaf",
+        "dcf3451869a14a446eeea156439f9d80bb6ec811d7d2611db1902b4f462a5373",
+        "b09e7828ba6ab657f41d2e5b018c2805494ca51ea215e9c55589146256d4dae5"
+      ]
+    },
+    {
+      "stage": "act3autochess_m12",
+      "chunks": 20,
+      "vertices": 470839,
+      "triangles": 279149,
+      "meshBytes": 20173324,
+      "sha256": "38967d886af1f5e65a84ac86bc3d33c72b2a8caa9fd8615c178013c9ad94423e",
+      "tileEffects": {},
+      "staticDevices": null,
+      "sourceBundles": [
+        "56d08a82bdb429b61409401036a0273e9f8a8de79250ce1ce349ef1f63c3746f",
+        "0183581916a7919ab81534e64f95ab6a643a0623f01aa6dc796fb67a073a571d",
+        "15dceab047deb310a38de8ce9ce695050d5e8092a46bdce0e1a728fa4c2e50ee"
+      ]
+    }
+  ],
+  "effects": [
+    {
+      "key": "mapeff_079_dikuai_01",
+      "bundle": "pkgrps/btl_pfb_fx_mapeff_10.ab",
+      "nodes": 7,
+      "textures": 7,
+      "meshes": 2,
+      "sha256": "996bfae908ebb721ccccfcda1b4858008093c3e8064cb5f13536330d36e608ab"
+    },
+    {
+      "key": "map_promote_01",
+      "bundle": "battle/prefabs/effects/map.ab",
+      "nodes": 7,
+      "textures": 3,
+      "meshes": 0,
+      "sha256": "16a0d1557e0dcd7e487c6ac415fcde4a8d5d47eafd088033da2717486b9f643b"
+    },
+    {
+      "key": "mapeff_mud_ground_01",
+      "bundle": "pkgrps/btl_pfb_fx_mapeff_4.ab",
+      "nodes": 4,
+      "textures": 6,
+      "meshes": 0,
+      "sha256": "7a4f8c02c0cd4d24e74a08440ccd83715c130dad5619a154559730baa6da7c69"
+    }
+  ],
+  "desktopCaptures": 30,
+  "cameraCalibration": {
+    "act3autochess_m01:prep": {
+      "params": {
+        "tx": 5.492979383728096,
+        "ty": 10.035249534261895,
+        "tz": 0,
+        "dist": 11.288962378093663,
+        "tilt": 30.0,
+        "scale": 62.30459415342271,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 8,
+      "rmse": 1.030238612997548
+    },
+    "act3autochess_m01:unite": {
+      "params": {
+        "tx": 5.4916161876102105,
+        "ty": 11.024959315400432,
+        "tz": 0,
+        "dist": 11.28337439291791,
+        "tilt": 30.0,
+        "scale": 62.33544991840815,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 13,
+      "rmse": 1.311507211282488
+    },
+    "act3autochess_m01:boss": {
+      "params": {
+        "tx": 5.483471287038538,
+        "ty": 3.0331193055246004,
+        "tz": 0,
+        "dist": 11.298911840346237,
+        "tilt": 30.0,
+        "scale": 62.249730710247775,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 11,
+      "rmse": 0.9827027679958288
+    },
+    "act3autochess_m02:prep": {
+      "params": {
+        "tx": 5.484979611454301,
+        "ty": 10.032576044488009,
+        "tz": 0,
+        "dist": 11.285413648997006,
+        "tilt": 30.0,
+        "scale": 62.32418600295561,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 9,
+      "rmse": 1.0814951156466923
+    },
+    "act3autochess_m02:unite": {
+      "params": {
+        "tx": 5.481020552245384,
+        "ty": 11.035466800206596,
+        "tz": 0,
+        "dist": 11.29120942155868,
+        "tilt": 30.0,
+        "scale": 62.292195027172724,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 15,
+      "rmse": 1.355082516664934
+    },
+    "act3autochess_m02:boss": {
+      "params": {
+        "tx": 5.4804434214132725,
+        "ty": 3.0370626101242064,
+        "tz": 0,
+        "dist": 11.294530968256145,
+        "tilt": 30.0,
+        "scale": 62.273875857014005,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 5,
+      "rmse": 0.7141815509682119
+    },
+    "act3autochess_m03:prep": {
+      "params": {
+        "tx": 5.492967937728048,
+        "ty": 10.032390303903913,
+        "tz": 0,
+        "dist": 11.243822755619684,
+        "tilt": 30.0,
+        "scale": 62.55472312820349,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 14,
+      "rmse": 0.9106579480598538
+    },
+    "act3autochess_m03:unite": {
+      "params": {
+        "tx": 5.496710394704985,
+        "ty": 11.021903710193705,
+        "tz": 0,
+        "dist": 11.271569602086371,
+        "tilt": 30.0,
+        "scale": 62.400734255342066,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 8,
+      "rmse": 1.1570175991812126
+    },
+    "act3autochess_m03:boss": {
+      "params": {
+        "tx": 5.488871250789567,
+        "ty": 3.0319243308241983,
+        "tz": 0,
+        "dist": 11.261928133288846,
+        "tilt": 30.0,
+        "scale": 62.4541562560106,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 14,
+      "rmse": 1.0752630975276458
+    },
+    "act3autochess_m04:prep": {
+      "params": {
+        "tx": 5.478563905585356,
+        "ty": 10.029099500410348,
+        "tz": 0,
+        "dist": 11.305730498651817,
+        "tilt": 30.0,
+        "scale": 62.212186949287066,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 5,
+      "rmse": 0.9821898703880735
+    },
+    "act3autochess_m04:unite": {
+      "params": {
+        "tx": 5.493834272925384,
+        "ty": 11.024666547984694,
+        "tz": 0,
+        "dist": 11.277210968259,
+        "tilt": 30.0,
+        "scale": 62.36951861236384,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 5,
+      "rmse": 1.314058837187828
+    },
+    "act3autochess_m04:boss": {
+      "params": {
+        "tx": 5.478563905585356,
+        "ty": 3.0290995004103483,
+        "tz": 0,
+        "dist": 11.305730498651817,
+        "tilt": 30.0,
+        "scale": 62.212186949287066,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "same-map prep + native sub offset",
+      "matches": 0,
+      "rmse": null
+    },
+    "act3autochess_m05:prep": {
+      "params": {
+        "tx": 5.481217206597063,
+        "ty": 10.03998102597097,
+        "tz": 0,
+        "dist": 11.3062654728799,
+        "tilt": 30.0,
+        "scale": 62.20924327909196,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 21,
+      "rmse": 0.8827275329614753
+    },
+    "act3autochess_m05:unite": {
+      "params": {
+        "tx": 5.490712747346883,
+        "ty": 11.04146791560627,
+        "tz": 0,
+        "dist": 11.30714025017537,
+        "tilt": 30.0,
+        "scale": 62.204430458839894,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 13,
+      "rmse": 0.7719143262439032
+    },
+    "act3autochess_m05:boss": {
+      "params": {
+        "tx": 5.490560485204715,
+        "ty": 3.0376824050643023,
+        "tz": 0,
+        "dist": 11.284160709953367,
+        "tilt": 30.0,
+        "scale": 62.331106181426414,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 29,
+      "rmse": 0.7689538811369835
+    },
+    "act3autochess_m06:prep": {
+      "params": {
+        "tx": 5.494091728192101,
+        "ty": 10.034224141962468,
+        "tz": 0,
+        "dist": 11.231403973648753,
+        "tilt": 30.0,
+        "scale": 62.62389110307144,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 9,
+      "rmse": 0.6847799492362764
+    },
+    "act3autochess_m06:unite": {
+      "params": {
+        "tx": 5.48937015903675,
+        "ty": 11.029014154605884,
+        "tz": 0,
+        "dist": 11.234575473892326,
+        "tilt": 30.0,
+        "scale": 62.60621249239777,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 7,
+      "rmse": 0.7642883782530477
+    },
+    "act3autochess_m06:boss": {
+      "params": {
+        "tx": 5.4877744417835865,
+        "ty": 3.03528231382785,
+        "tz": 0,
+        "dist": 11.276971593985762,
+        "tilt": 30.0,
+        "scale": 62.37084251905862,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 17,
+      "rmse": 0.8918602713529995
+    },
+    "act3autochess_m09:prep": {
+      "params": {
+        "tx": 5.992954094235212,
+        "ty": 11.035495687722799,
+        "tz": 0,
+        "dist": 12.302629383008034,
+        "tilt": 30.0,
+        "scale": 57.17104835750249,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 30,
+      "rmse": 0.996088317109156
+    },
+    "act3autochess_m09:unite": {
+      "params": {
+        "tx": 5.985383963072493,
+        "ty": 12.034806685821248,
+        "tz": 0,
+        "dist": 12.308487377118555,
+        "tilt": 30.0,
+        "scale": 57.14383886747262,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 35,
+      "rmse": 1.1307523948729028
+    },
+    "act3autochess_m09:boss": {
+      "params": {
+        "tx": 5.991151122721875,
+        "ty": 4.039521935626466,
+        "tz": 0,
+        "dist": 12.287179104488668,
+        "tilt": 30.0,
+        "scale": 57.24293699954604,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 48,
+      "rmse": 0.9735301881908743
+    },
+    "act3autochess_m10:prep": {
+      "params": {
+        "tx": 5.982832861795705,
+        "ty": 10.022924838543876,
+        "tz": 0,
+        "dist": 11.313839789189279,
+        "tilt": 30.0,
+        "scale": 62.16759583713214,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 7,
+      "rmse": 0.6466886003529487
+    },
+    "act3autochess_m10:unite": {
+      "params": {
+        "tx": 5.97587703776714,
+        "ty": 10.524383156041342,
+        "tz": 0,
+        "dist": 10.303350634849744,
+        "tilt": 30.0,
+        "scale": 68.26461064048225,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 10,
+      "rmse": 1.512218687002575
+    },
+    "act3autochess_m10:boss": {
+      "params": {
+        "tx": 5.97276316604075,
+        "ty": 2.530029311837287,
+        "tz": 0,
+        "dist": 10.307193934349511,
+        "tilt": 30.0,
+        "scale": 68.23915644357886,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 10,
+      "rmse": 1.032880752905352
+    },
+    "act3autochess_m11:prep": {
+      "params": {
+        "tx": 5.992496081884052,
+        "ty": 11.041753226691682,
+        "tz": 0,
+        "dist": 12.298379562772732,
+        "tilt": 30.0,
+        "scale": 57.19080434868353,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 33,
+      "rmse": 0.8822008028420582
+    },
+    "act3autochess_m11:unite": {
+      "params": {
+        "tx": 5.986951089152132,
+        "ty": 12.038500230792579,
+        "tz": 0,
+        "dist": 12.31088249710817,
+        "tilt": 30.0,
+        "scale": 57.13272135816433,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 44,
+      "rmse": 0.966814986104845
+    },
+    "act3autochess_m11:boss": {
+      "params": {
+        "tx": 5.989829749384113,
+        "ty": 4.0408969366081715,
+        "tz": 0,
+        "dist": 12.296246100455633,
+        "tilt": 30.0,
+        "scale": 57.20072724913344,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 54,
+      "rmse": 0.9845654313871368
+    },
+    "act3autochess_m12:prep": {
+      "params": {
+        "tx": 5.989630886983609,
+        "ty": 10.02229280392844,
+        "tz": 0,
+        "dist": 11.346677982954693,
+        "tilt": 30.0,
+        "scale": 61.98767784165395,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 8,
+      "rmse": 0.7321365168267177
+    },
+    "act3autochess_m12:unite": {
+      "params": {
+        "tx": 5.986369701572088,
+        "ty": 10.53672144528115,
+        "tz": 0,
+        "dist": 10.345252709233474,
+        "tilt": 30.0,
+        "scale": 67.9881138865382,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 12,
+      "rmse": 1.2901643573100612
+    },
+    "act3autochess_m12:boss": {
+      "params": {
+        "tx": 5.97487180312487,
+        "ty": 2.5229190472090353,
+        "tz": 0,
+        "dist": 10.295049753024506,
+        "tilt": 30.0,
+        "scale": 68.31965228470608,
+        "cx": 455,
+        "cy": 256
+      },
+      "calibration": "measured, refined at matched framing",
+      "matches": 8,
+      "rmse": 1.0367903764578574
+    }
+  },
+  "pageErrors": 0,
+  "failedRequests": 0,
+  "regressionSuite": "paused",
+  "golden": "paused",
+  "screenshots": [
+    {
+      "stage": "act3autochess_m01",
+      "view": "prep",
+      "file": "m01-prep.png",
+      "sha256": "2a2508e7ad45345425379d70d5d30667eba62c6621639cc920e0e5c78e03389e"
+    },
+    {
+      "stage": "act3autochess_m01",
+      "view": "unite",
+      "file": "m01-unite.png",
+      "sha256": "f4cfb3369338eeaeb58ee289aa49c757a18f93843a7bd711fb12e4bbc2294d7f"
+    },
+    {
+      "stage": "act3autochess_m01",
+      "view": "boss",
+      "file": "m01-boss.png",
+      "sha256": "d8494f4faa0edfdedbf813d16130173c210ed0aded7217a847929310c92e5997"
+    },
+    {
+      "stage": "act3autochess_m02",
+      "view": "prep",
+      "file": "m02-prep.png",
+      "sha256": "ac06e80da7b8b89231542e4ad9772867f72439bc67bd7c5f02479c9bf2a5f756"
+    },
+    {
+      "stage": "act3autochess_m02",
+      "view": "unite",
+      "file": "m02-unite.png",
+      "sha256": "edbc17e531c5f22d617ec10cc329c91376021f048fd5323a2e474d3b1c80c38d"
+    },
+    {
+      "stage": "act3autochess_m02",
+      "view": "boss",
+      "file": "m02-boss.png",
+      "sha256": "cd5d68baecebcd46d60abceebbe1ed28ed9caa32d9635183f5318ca4e88b374f"
+    },
+    {
+      "stage": "act3autochess_m03",
+      "view": "prep",
+      "file": "m03-prep.png",
+      "sha256": "5b9391e86e69350e4c98d991baf9146c12049ad11088280377c670fb9fe2be13"
+    },
+    {
+      "stage": "act3autochess_m03",
+      "view": "unite",
+      "file": "m03-unite.png",
+      "sha256": "83f16b16a9f4ec0fcb1fb59c766db95ba5c4e9cc6bc6a504ff3665483cbccbe4"
+    },
+    {
+      "stage": "act3autochess_m03",
+      "view": "boss",
+      "file": "m03-boss.png",
+      "sha256": "75f3113900197f4ef72870d688c73b18fb4ba56978a4b4cec6ed06a22c847373"
+    },
+    {
+      "stage": "act3autochess_m04",
+      "view": "prep",
+      "file": "m04-prep.png",
+      "sha256": "bdd3dcb046f069a59ffb4723407fa164e60abf67932fb9417ed0f51a993dd510"
+    },
+    {
+      "stage": "act3autochess_m04",
+      "view": "unite",
+      "file": "m04-unite.png",
+      "sha256": "1d1739a154fd69a864b8d3c0acd6af61a345674b85e60d0f957844a1b0abf1d2"
+    },
+    {
+      "stage": "act3autochess_m04",
+      "view": "boss",
+      "file": "m04-boss.png",
+      "sha256": "d25fb26a5bb091a616a6e6474aab595850310d5809a4e04df8959cfcfb22b907"
+    },
+    {
+      "stage": "act3autochess_m05",
+      "view": "prep",
+      "file": "m05-prep.png",
+      "sha256": "196ae97c04d5c28f909ef1bf16b13844ec100865696556f355da73804ebc95a3"
+    },
+    {
+      "stage": "act3autochess_m05",
+      "view": "unite",
+      "file": "m05-unite.png",
+      "sha256": "6fb4474c05675a8f24661c76e294b6358279265c9d5bfc241c5e17d05e09a2b8"
+    },
+    {
+      "stage": "act3autochess_m05",
+      "view": "boss",
+      "file": "m05-boss.png",
+      "sha256": "ed57372698b1ad94cc4de08df8e4dc99b217340827a3c0187c1624255cce6991"
+    },
+    {
+      "stage": "act3autochess_m06",
+      "view": "prep",
+      "file": "m06-prep.png",
+      "sha256": "aff20a858f83e277fe7187b8e061c54f45474135b243aa6c9c00b76a15f5188f"
+    },
+    {
+      "stage": "act3autochess_m06",
+      "view": "unite",
+      "file": "m06-unite.png",
+      "sha256": "7c061744e53364f7a9bd170d56df1e6f2a4ebc11cb64acadacdd956610e0391f"
+    },
+    {
+      "stage": "act3autochess_m06",
+      "view": "boss",
+      "file": "m06-boss.png",
+      "sha256": "73ecedb979c29932d40c10dd86a088670e79c5266752b0f7b0852fe0796763eb"
+    },
+    {
+      "stage": "act3autochess_m09",
+      "view": "prep",
+      "file": "m09-prep.png",
+      "sha256": "d9185705e18c4a2d94a9ab00a985249c7b45c14f0d72f348d3f053f8bd4e23fd"
+    },
+    {
+      "stage": "act3autochess_m09",
+      "view": "unite",
+      "file": "m09-unite.png",
+      "sha256": "fe61ba2ae09ce73c0c393764d43ab1aa294c2c082096b75bdcfc5b081029e56f"
+    },
+    {
+      "stage": "act3autochess_m09",
+      "view": "boss",
+      "file": "m09-boss.png",
+      "sha256": "32e0161574ba14192e8863c72c14d3bcf108ccab274fd57956186e65294a7b7d"
+    },
+    {
+      "stage": "act3autochess_m10",
+      "view": "prep",
+      "file": "m10-prep.png",
+      "sha256": "ea9175fb3b73324f09d80e80a4105c8ba537a056b38897558d6608e7aad5e18e"
+    },
+    {
+      "stage": "act3autochess_m10",
+      "view": "unite",
+      "file": "m10-unite.png",
+      "sha256": "8c71454b2cfe7121ab223429ba58a14459f173537b2b61e72efa066187f7fc7e"
+    },
+    {
+      "stage": "act3autochess_m10",
+      "view": "boss",
+      "file": "m10-boss.png",
+      "sha256": "2d9b5c1a94f04d2fcb51a3b77ffc635fd83089857dacb8752c4ddfe18e9abddc"
+    },
+    {
+      "stage": "act3autochess_m11",
+      "view": "prep",
+      "file": "m11-prep.png",
+      "sha256": "b8d3e4f0b7b9ceffa459f5bb3501d6383355326c4cd9f1de3ce7893a91b74277"
+    },
+    {
+      "stage": "act3autochess_m11",
+      "view": "unite",
+      "file": "m11-unite.png",
+      "sha256": "c949ea5ade6a4207cb51b898f84d907acd9bd8f0dea708a83dc89f21b4214487"
+    },
+    {
+      "stage": "act3autochess_m11",
+      "view": "boss",
+      "file": "m11-boss.png",
+      "sha256": "dc33a5898566ffda5c0efca32e30d747fff04c7e9916666cc03543f01817a2d3"
+    },
+    {
+      "stage": "act3autochess_m12",
+      "view": "prep",
+      "file": "m12-prep.png",
+      "sha256": "1de25636bdbbbbe55f6429234300e96664ecb9aeb06d7a36aeff45b1f6f36309"
+    },
+    {
+      "stage": "act3autochess_m12",
+      "view": "unite",
+      "file": "m12-unite.png",
+      "sha256": "4a647e3760b587f49d8cdde9d272a549c7f44f42965233b8821de1a5b3328cf3"
+    },
+    {
+      "stage": "act3autochess_m12",
+      "view": "boss",
+      "file": "m12-boss.png",
+      "sha256": "b3d5cd9a275e97d253fa68db5a9f4e47a2aef31e3cfa57995786fed9e65d3349"
+    }
+  ],
+  "targetedRenderChecks": {
+    "pass": 56,
+    "skip": 0,
+    "fail": 0,
+    "files": [
+      "test/render/regulation-preview.test.js",
+      "test/local-extract-regulation-scenes.test.js",
+      "test/render/board3d-scene.test.js"
+    ]
+  }
+}

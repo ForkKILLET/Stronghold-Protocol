@@ -76,6 +76,8 @@ TOKEN_GLOB = 'pkgrps/btl_pfb_tokens_*.ab'
 # The Phase 1a sample (handoff/vfx-feasibility.md): these effect keys, every effect the sample units reference, the
 # generic keys (FX_GENERIC + every buff_* of buff.ab) and a few prefabs that cover the rarer features of the format
 FX_SAMPLE_KEYS = [
+    # Persistent tile effects are not referenced by operator skills or enemy talents.
+    'mapeff_079_dikuai_01', 'map_promote_01', 'mapeff_mud_ground_01',
     'common_hit_01', 'common_firemagic_hit_01', 'common_enemy_hit_01', 'common_char_die_01', 'common_enemy_die_01',
     'common_char_birth_01', 'buff_stun', 'buff_frozen', 'buff_autochess_frozen', 'buff_sleep', 'buff_burn', 'buff_cold',
     'inside_attack_01_start_front', 'inside_attack_01_trail_front', 'inside_attack_01_hit',

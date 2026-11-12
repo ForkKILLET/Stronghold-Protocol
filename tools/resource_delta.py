@@ -33,6 +33,9 @@ BOARD_JSON = frozenset(
     f"/assets/local/scene/{season}_m{index:02}/scene.json"
     for season, maximum in (("act1autochess", 7), ("act2autochess", 4))
     for index in range(1, maximum + 1)
+) | frozenset(
+    f"/assets/local/scene/act3autochess_m{index:02}/scene.json"
+    for index in (1, 2, 3, 4, 5, 6, 9, 10, 11, 12)
 )
 
 

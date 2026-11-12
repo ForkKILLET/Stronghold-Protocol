@@ -296,6 +296,22 @@ export function infectionMaterial(THREE, tex, focus) {
   });
 }
 
+/** Reduced-effects fallback for the red concealment-module rim; the full mode uses the client prefab. */
+export function duelGrassMaterial(THREE, focus) {
+  return new THREE.ShaderMaterial({
+    uniforms: {uTime:{value:0}, ...focus}, vertexShader:TERRAIN_VERT,
+    fragmentShader:[
+      'uniform float uTime;', FOCUS_GLSL, 'varying vec2 vUv; varying vec3 vWorld;',
+      'void main() {',
+      'float edge = min(min(vUv.x,1.0-vUv.x),min(vUv.y,1.0-vUv.y));',
+      'float rim = (1.0-smoothstep(0.02,0.065,edge))*smoothstep(0.0,0.012,edge);',
+      'float pulse = 0.8 + 0.2 * sin(uTime * 2.0);',
+      'gl_FragColor=vec4(vec3(1.0,0.07,0.12)*focusMask(vWorld.xy),rim*pulse);',
+      '#include <colorspace_fragment>', '}',
+    ].join('\n'), transparent:true, depthWrite:false,
+  });
+}
+
 /** Smog: drifting exhaust haze (vertical billboards over the grilles). */
 export function smogMaterial(THREE, tex, focus) {
   const uniforms = { uTime: { value: 0 }, uNoise: { value: tex.noise || null }, ...focus };
@@ -346,9 +362,8 @@ export function smogMaterial(THREE, tex, focus) {
  *   - reflection probes — one cubemap per scene, chosen at the board's anchor: the baked cubemap of the
  *     ReflectionProbe whose box holds the board (act2autochess_m01 / m03, at the probe's intensity), else the
  *     scene's default reflection; a renderer outside that box and the blend at its edge are not reproduced;
- *   - the vertex-colour blend is left out on the reading that it is a tile buried in sand
- *     (mix(albedo, _BlendColor, smoothstep(colour.r) · _BlendStrength) in the program) which the client uncovers at
- *     run time by a rule not found yet; drawn as written it covers every patterned tile of the field.
+ *   - the vertex-colour blend is left out: applied directly it buries every patterned sand tile. PRTS's
+ *     ordinary / joint scenes confirm those patterns remain visible; do not invent a runtime road mask.
  *   - the emission map is an sRGB colour map, sampled with toDisplay like albedo: the client's gamma shader reads
  *     the stored bytes as display values. The colour is colors._EmissionColor (rgb); there is no second key;
  *   - the sum, including emission, is then clamped to 0–1 with the rest of the lighting. The client writes that
@@ -414,7 +429,9 @@ export function sceneBlend(info) {
  * (5 · A · RGB) / lightRange in RGB when `lightEncoding` is 'gamma'; a page of an older extraction holds
  * (5^2.2 · A^2.2 · RGB / lightRange)^(1/2.2), from which the same value is read back to within a few percent (the
  * brightest channel of RGB is taken as 1). Geometry attributes: position, normal, uv, aLm (lightmap uv), aColor.
- * @param {{ map?: any, lightMap?: any, normalMap?: any, glossMap?: any, emissionMap?: any, env?: any, envRange?: number, info?: object, lightRange?: number, lightEncoding?: string, light?: { dir: number[], color: number[], intensity: number } }} o
+ * Calibration is opt-in for the new Regulation composite packs only: a display-space light gain before emission,
+ * and a fitted multiplier of the native vertex blend for the sand material. Other scenes keep neutral defaults.
+ * @param {{ calibration?: {light:number[], blend:number|null}|null, map?: any, lightMap?: any, normalMap?: any, glossMap?: any, emissionMap?: any, env?: any, envRange?: number, info?: object, lightRange?: number, lightEncoding?: string, light?: { dir: number[], color: number[], intensity: number } }} o
  */
 export function sceneMaterial(THREE, o, focus) {
   const info = o.info || null;
@@ -425,12 +442,20 @@ export function sceneMaterial(THREE, o, focus) {
   const gamma = o.lightEncoding === 'gamma';
   const range = o.lightRange > 0 ? o.lightRange : (gamma ? SCENE_LIGHT.range : 8);
   const pbs = !!o.env;
+  const calibration = o.calibration || null;
+  const vertexBlend = Number.isFinite(calibration?.blend) && hasKeyword(info, '_HG_VERTEX_COLOR_BLEND_ON')
+    && info?.shader === 'Torappu/Scene/StandardRealtimeShadow' && floatOf(info, '_BlendStrength', 0) > 0.01;
+  const blendRange = colorOf(info, '_BlendRangeCtrl', [0, 1, 0, 0]);
+  const blendColor = colorOf(info, '_BlendColor');
   // The client's program samples _EmissionMap only in the _EMISSION variant. Unity's unset colour is black.
   const emis = hasKeyword(info, '_EMISSION') && !!o.emissionMap;
   const emisCol = emis ? colorOf(info, '_EmissionColor', [0, 0, 0, 1]) : [0, 0, 0, 1];
   const uniforms = {
     uMap: { value: o.map || null }, uLm: { value: o.lightMap || null },
     uColor: { value: new THREE.Vector4(col[0], col[1], col[2], col[3]) },   // display values, like the texture's stored ones
+    uSceneGain: { value: new THREE.Vector3(...(calibration?.light || [1, 1, 1])) },
+    uVertexBlend: { value: new THREE.Vector3(blendRange[0], blendRange[1], vertexBlend ? floatOf(info, '_BlendStrength', 0) * calibration.blend : 0) },
+    uVertexBlendColor: { value: new THREE.Vector3(...blendColor.slice(0, 3)) },
     uCutoff: { value: blend === 'cutout' ? floatOf(info, '_Cutoff', 0.5) : 0 },
     uLmScale: { value: o.lightMap ? (gamma ? range : Math.pow(range, 1 / 2.2)) * SCENE_LIGHT.indirect : 0 },
     uAmbient: { value: o.lightMap ? 0 : SCENE_LIGHT.ambient },
@@ -447,15 +472,24 @@ export function sceneMaterial(THREE, o, focus) {
   const m = new THREE.ShaderMaterial({
     uniforms,
     defines: {
+      ...(calibration ? { SCENE_CALIBRATED: 1 } : {}),
+      ...(vertexBlend ? { SCENE_VERTEX_BLEND: 1 } : {}),
+      ...((info?.shader || '').startsWith('Unlit/') ? { SCENE_UNLIT: 1 } : {}),
       ...(o.map ? { SCENE_MAP: 1 } : {}), ...(o.lightMap ? { SCENE_LM: 1 } : {}), ...(o.lightMap && !gamma ? { SCENE_LM_V1: 1 } : {}),
       ...(pbs ? { SCENE_PBS: 1 } : {}), ...(pbs && o.normalMap ? { SCENE_NORMAL: 1 } : {}), ...(pbs && o.glossMap ? { SCENE_GLOSS: 1 } : {}),
       ...(emis ? { SCENE_EMIS: 1 } : {}),
     },
     vertexShader: [
       'attribute vec2 aLm;',
+      '#ifdef SCENE_VERTEX_BLEND',
+      'attribute vec4 aColor; varying float vBlendMask;',
+      '#endif',
       'varying vec2 vUv; varying vec2 vLm; varying vec3 vN; varying vec3 vWorld;',
       'void main() {',
       '  vUv = uv; vLm = aLm;',
+      '  #ifdef SCENE_VERTEX_BLEND',
+      '    vBlendMask = aColor.r;',
+      '  #endif',
       '  vN = normalize(mat3(modelMatrix) * normal);',
       '  vec4 w = modelMatrix * vec4(position, 1.0);',
       '  vWorld = w.xyz;',
@@ -464,6 +498,10 @@ export function sceneMaterial(THREE, o, focus) {
     ].join('\n'),
     fragmentShader: [
       'uniform sampler2D uMap; uniform sampler2D uLm; uniform vec4 uColor; uniform float uCutoff;',
+      'uniform vec3 uSceneGain; uniform vec3 uVertexBlend; uniform vec3 uVertexBlendColor;',
+      '#ifdef SCENE_VERTEX_BLEND',
+      'varying float vBlendMask;',
+      '#endif',
       'uniform float uLmScale; uniform float uAmbient; uniform vec3 uLightDir; uniform vec3 uLightColor;',
       'uniform samplerCube uEnv; uniform float uEnvScale; uniform sampler2D uNormal; uniform sampler2D uGlossMap; uniform vec3 uSurface;',
       'uniform sampler2D uEmissionMap; uniform vec3 uEmissionColor;',
@@ -476,7 +514,15 @@ export function sceneMaterial(THREE, o, focus) {
       '  vec4 a = uColor;',
       '  #ifdef SCENE_MAP',
       '    vec4 t = texture2D(uMap, vUv);',
-      '    a *= vec4(toDisplay(t.rgb), t.a);',
+      '    vec3 albedo = toDisplay(t.rgb);',
+      // PC StandardRealtimeShadow variants 17 / 2993: smoothstep(COLOR.r) -> _BlendColor,
+      // then _Color. The empirical multiplier lives in the profile, never in the native material.
+      '    #ifdef SCENE_VERTEX_BLEND',
+      '      float blendWeight = clamp((vBlendMask - uVertexBlend.x) / max(uVertexBlend.y - uVertexBlend.x, 1e-6), 0.0, 1.0);',
+      '      blendWeight = blendWeight * blendWeight * (3.0 - 2.0 * blendWeight) * uVertexBlend.z;',
+      '      albedo = mix(albedo, uVertexBlendColor, blendWeight);',
+      '    #endif',
+      '    a *= vec4(albedo, t.a);',
       '  #endif',
       '  if (a.a < uCutoff) discard;',
       '  vec3 light = vec3(uAmbient); float shade = 1.0;',
@@ -524,6 +570,14 @@ export function sceneMaterial(THREE, o, focus) {
       '      + env * (1.0 - 0.28 * r2 * rough) * mix(spec, vec3(clamp(smoothness + 1.0 - omr, 0.0, 1.0)), fres);',
       '  #else',
       '    vec3 lit = a.rgb * (light + uLightColor * max(dot(n, uLightDir), 0.0) * shade);',
+      '  #endif',
+      '  #ifdef SCENE_UNLIT',
+      '    lit = a.rgb;',
+      '  #endif',
+      // Coarse per-map light/white-balance fit, before clamp, focus and output conversion.
+      // Emission, unlit art, units and effects retain their own colours.
+      '  #if defined(SCENE_CALIBRATED) && !defined(SCENE_UNLIT)',
+      '    lit *= uSceneGain;',
       '  #endif',
       // Client GLES, after the BRDF, not × albedo: texture(_EmissionMap).xyz * _EmissionColor.xyz + lit.
       // [ASSUMED] sRGB → toDisplay, then the existing 0–1 clamp (the client writes the sum unclamped).

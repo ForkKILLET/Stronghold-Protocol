@@ -176,6 +176,7 @@ export function loadBoardPack(assets) {
 export const sceneGroup = (stageId) => `scene/${stageId}`;
 export const SCENE_TEX_GROUP = 'scene/tex';
 export const SCENE_VERSION = 1;
+export const REGULATION_SCENE_VERSION = 2;
 /** Bytes per vertex of a scene chunk: position f32×3, uv f32×2, lightmap uv f32×2, normal i8×4, colour u8×4. */
 export const SCENE_VERTEX_BYTES = 36;
 
@@ -296,12 +297,19 @@ export function mergeSceneChunks(chunks) {
 }
 
 /** Ground rect [x0, y0, x1, y1] (board space) of every named group of chunks (the scene's switchable parts). */
-export function sceneGroupRects(chunks) {
+export function sceneGroupRects(chunks, doc = null) {
   const out = {};
   for (const c of chunks || []) {
     if (!c.group || !c.bounds) continue;
     const b = c.bounds, r = out[c.group];
     out[c.group] = r ? [Math.min(r[0], b[0]), Math.min(r[1], b[1]), Math.max(r[2], b[3]), Math.max(r[3], b[4])] : [b[0], b[1], b[3], b[4]];
+  }
+  // Composite owners are independent of decorative bounds: a mountain must follow its road, not the pen.
+  if (doc?.layout === 'regulation-composite-v1' && isObj(doc.groupRects)) {
+    for (const [name, rect] of Object.entries(doc.groupRects)) {
+      if (name.startsWith('regulation:') && Array.isArray(rect) && rect.length === 4 && rect.every(Number.isFinite)
+        && rect[0] <= rect[2] && rect[1] <= rect[3]) out[name] = rect;
+    }
   }
   return out;
 }
@@ -334,7 +342,9 @@ export function loadScenePack(assets, stageId) {
     const url = (g, n) => { const u = assets.localUrl(g, n); return typeof u === 'string' && u ? u : null; }; // as in loadBoardPack
     const group = sceneGroup(stageId);
     const [doc, buf] = await Promise.all([fetchJson(url(group, 'scene')), fetchBuffer(url(group, 'bin'))]);
-    if (!isObj(doc) || doc.version !== SCENE_VERSION || !buf) return null;
+    if (!isObj(doc) || !buf) return null;
+    if (doc.version !== SCENE_VERSION
+      && !(doc.version === REGULATION_SCENE_VERSION && doc.layout === 'regulation-composite-v1')) return null;
     const chunks = parseSceneChunks(doc, buf);
     if (!chunks || !chunks.length) return null;
     const img = async (u) => {
@@ -352,10 +362,13 @@ export function loadScenePack(assets, stageId) {
       Promise.all(Array.from({ length: pages }, (_, i) => img(url(group, `lm${i}`)))),
       isObj(doc.env) ? img(url(group, 'env')) : null,
     ]);
+    if (doc.layout === 'regulation-composite-v1'
+      && ([...texList, ...dataList, ...lm].some(image => !image) || (isObj(doc.env) && !env))) return null;
     const tex = {}, data = {};
     names.forEach((n, i) => { if (texList[i]) tex[n] = texList[i]; });
     dataNames.forEach((n, i) => { if (dataList[i]) data[n] = dataList[i]; });
-    return { key: `${url(group, 'scene')}#${doc.binBytes | 0}`, stage: stageId, doc, chunks, groups: sceneGroupRects(chunks), images: { tex, data, lm, env } };
+    const groups = sceneGroupRects(chunks, doc);
+    return { key: `${url(group, 'scene')}#${doc.binBytes | 0}`, stage: stageId, doc, chunks, groups, images: { tex, data, lm, env } };
   })().catch((err) => { console.warn('[board3d] scene load failed', err); return null; }).then((pack) => {
     if (!pack && sceneCache.get(stageId) === pending) sceneCache.delete(stageId);
     return pack;

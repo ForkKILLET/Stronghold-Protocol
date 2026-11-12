@@ -1,0 +1,42 @@
+{
+  "browser": "Firefox",
+  "viewport": [
+    1820,
+    1024
+  ],
+  "captures": 6,
+  "pageErrors": 0,
+  "failedRequests": 0,
+  "checks": {
+    "tests": 13,
+    "pass": 13,
+    "fail": 0,
+    "skip": 0
+  },
+  "screenshots": [
+    {
+      "file": "m09-prep.png",
+      "sha256": "b245a63bf066381cf94a3241c397733000182e7e02e08b3228db0aaaec89a28b"
+    },
+    {
+      "file": "m09-unite.png",
+      "sha256": "922585f0a8d25acdd1cdd9474255b2913fde121a37f888f428f28236aeec420f"
+    },
+    {
+      "file": "m09-boss.png",
+      "sha256": "030b2736a66b0fd68a9659a6377ae70731c128d5a625ea3042e460351c0fb994"
+    },
+    {
+      "file": "m11-prep.png",
+      "sha256": "72a11fdd484a9eeaced5393f68c4feb12da5ee8d74edb00a411db0369e282ea4"
+    },
+    {
+      "file": "m11-unite.png",
+      "sha256": "1ee4c5221437962458f8910e894eb14fbdd475613f475c227bebde2cd4869d26"
+    },
+    {
+      "file": "m11-boss.png",
+      "sha256": "59d5c67010ebf3affd129c18b1bc11b1a037f0d6304a3edc5abcd1c44356c6f5"
+    }
+  ]
+}

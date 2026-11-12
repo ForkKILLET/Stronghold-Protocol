@@ -16,7 +16,7 @@
 //      bottle or PlayCover on macOS, or --game <dir>) with tools/local-extract/extract.py in a project-local Python
 //      venv (.venv-extract), then the board tile crops (tools/crop-board-atlas.mjs → tiles.json). Asked once on a
 //      terminal (the answer is remembered in .cache/setup-state.json; without a terminal it is skipped); never fatal.
-//   7. Optional: the eleven official battlefield scenes. The full release zip already contains
+//   7. Optional: the official battlefield scenes (11 legacy + 10 Regulation). The full release zip already contains
 //      them when the maintainer extracted them. A lite package or a source install may download the in-season bundles
 //      (tools/local-extract/fetch_scenes.py) and extract them (extract.py --only scene). Missing Python or
 //      UnityPy / lz4 / Pillow is a warning: the 3D board keeps the metal tiles. --scenes does it without asking;
@@ -1106,7 +1106,7 @@ async function main() {
     if (decision.state === 'ask') {
       if (filesPartial || versionOnly) log(`\n${c.cyan('▶')} ${decision.detail}`);
       else {
-        log(`\n${c.cyan('▶')} 各战场的官方场景还没提取（${sceneLocal.sceneStagesExpected} 个战场；赛季场景包约 23 MB，贴图仍取自本机客户端）。`);
+        log(`\n${c.cyan('▶')} 各战场的官方场景还没提取（${sceneLocal.sceneStagesExpected} 个战场；旧赛季场景包约 23 MB；规程三块地图图形及贴图取自本机最新版客户端）。`);
         log('  下载并提取后，3D 棋盘按战场显示官方场景。没有提取依赖、下载失败或跳过时，仍用现在的金属地块。');
       }
       const answer = await ask('现在下载并提取吗？', sceneAskDefault(filesPartial || versionOnly));

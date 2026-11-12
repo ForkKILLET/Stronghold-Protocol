@@ -220,6 +220,9 @@ Replacement bodies remain the responsibility of the bond module.
 
 Treasure battles append `perPlayer[pid].commandChests: [{id,alive}]`. Compact results, result digests and server bounds
 include this receipt only when present; the server requires exactly the supplied treasure ids without duplicates.
+Only ground enemies touching a treasure's tile trigger removal: flying units passing over it leave the treasure and
+its survival reward intact (owner-confirmed official screenshot, 2026-11-12). Chests remain selectable with the device's
+existing taunt −1 and invulnerability, so a flying ranged enemy may attack one when no higher-priority target is available.
 The match removes touched treasures before building unite inputs and again at settlement. `[ASSUMED]` reserve units
 replace the original body for that battle and are selected from the rightmost legal bench operator at input creation.
 
@@ -974,7 +977,10 @@ and 扎罗's 溶血骇惧; "受到N真实伤害" over time is damage (PRTS 伤�
 无来源 true damage tagged `'terrain'` — 环境伤害 (PRTS 自然环境), what "受到来自自然环境的伤害" content (纠缠藤蔓) reads — and
 not `'dot'` [ASSUMED] (DESIGN §22.4). 规程 `tile_speedup` (glyph `z`) is not a tick: a ground unit standing on it gains
 ASPD +`attack_speed` and move ×`move_speed` (`stage.special.speedup`, official 25 / 1.5), both sides, cleared on leaving;
-flyers skip it. Glyph `w` (`tile_duel_grassland`, no blackboard) is plain ground [ASSUMED]. The 源石溶剂 drain also ticks on every 敌人类我方单位 of the field (炎佑, a
+flyers skip it. Glyph `w` (`tile_duel_grassland`) grants both sides' ground units stealth while on the tile;
+enemies are revealed while blocked and regain it immediately on release (`stealthRestore:0`). Leaving removes only
+`terrain:duelGrass`; flyers skip it. This comes from the official tile prefab and two buff templates, not the absent
+blackboard ([measurements](research/regulation-map09-20261112.md)). The 源石溶剂 drain also ticks on every 敌人类我方单位 of the field (炎佑, a
 partner's too: PRTS 备注 "全场范围内的所有敌人类我方单位也会获得此装备的…效果…无视目标可选性"), credited to nobody, once per
 second however many carriers (PRTS 作战机制 "同名buff的默认叠加策略buff只能表现出一个"), while a carrier is on the field
 [ASSUMED]. 奥术法阵 has the same 备注 for its rider: while a carrier is on the field, every damage instance of such a unit

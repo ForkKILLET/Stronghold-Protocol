@@ -23,6 +23,9 @@ and the materials' albedo, normal (normal_rgb), metallic-gloss and (only with th
 <out>/scene/tex/ (manifest group scene/tex, shared by the scenes). Normal, metallic-gloss and emission are lossless WebP;
 albedo and lightmaps stay lossy. The manifest scene record's version (SCENE_EXTRACT_VERSION) is what
 setup treats as fresh; scene.json version stays the mesh layout (SCENE_VERSION).
+Regulation adds ten stages composed from three MapGraphic prefabs by regulation_scenes.py;
+optional groupRects pins logical visibility owners and tileHeightClasses keeps feet aligned with the original platforms.
+The legacy scene.bin layout and older scenes are unchanged.
 A chunk's `group` is '' for what the scene shows at rest and the sub-graphic name (HIDDEN@1 …, MapSubGraphicHolder)
 for the meshes the game switches on later. A GameObject saved disabled that no sub-graphic owns is tagged
 `inactive` while duplicates are checked, then left out of the file (`chunk_group_exported`): the board never
@@ -32,6 +35,7 @@ import json
 import re
 import struct
 from pathlib import Path
+from regulation_scenes import STAGES as REGULATION_STAGES
 
 SAND = ['arts/maps/map_autochesssand/res.ab', 'arts/maps/map_survivaloasis_city/res.ab', 'arts/maps/map_yumen/res.ab']
 SHORE = ['arts/maps/map_doss_shore/res.ab']
@@ -52,6 +56,7 @@ SCENES = [
     ('act2autochess_m03', ['arts/maps/map_kxmr/res.ab', 'arts/maps/map_kxmr/background_mesh/bg_kxmr.ab',
                            'arts/maps/map_lm_center/res.ab']),
     ('act2autochess_m04', SAND + SHORE),
+    *[(stage, []) for stage in REGULATION_STAGES],
 ]
 # bundles every scene may reference besides its theme (shared water / noise textures)
 COMMON_DEPS = ['arts/maps/effect.ab']
@@ -383,7 +388,8 @@ def hidden_groups(raw, objects):
     return out
 
 
-def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, material_info, shader_deps=()):
+def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, material_info, shader_deps=(),
+                 source_adapter=None, cab_index=None):
     """Write one stage's scene (see the module docstring). Returns the number of files written (0 on failure)."""
     import aklz4  # noqa: F401  (registers the LZ4AK decoder)
     import UnityPy
@@ -409,6 +415,9 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
             env.load_file(str(dep))
         except Exception as e:
             log(f'  warn {stage_id}: dependency {Path(dep).name}: {e}')
+    if cab_index is not None:
+        from regulation_scenes import load_dependencies
+        load_dependencies(env, cab_index)
 
     # ---- hierarchy: world matrices, active flags, hidden groups ---------------------------------------------------
     tf = {}  # transform path id → (local matrix, father id, game object)
@@ -480,6 +489,8 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
             m = world(tf_of_go[gid])
             anchor = (m[0][3], m[1][3], m[2][3])
             break
+    if source_adapter is not None:
+        source_adapter.prepare(scene_objs, objects, world, tf_of_go)
 
     # ---- light ----------------------------------------------------------------------------------------------------
     light = None
@@ -542,6 +553,12 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
             continue
         r = o.read()
         gid = r.m_GameObject.m_PathID
+        if source_adapter is not None and hasattr(source_adapter, 'accept_renderer') \
+                and not source_adapter.accept_renderer(object_path(gid)):
+            continue
+        active, group = state(gid)
+        if source_adapter is not None and (not getattr(r, 'm_Enabled', True) or (not active and group is None)):
+            continue
         mf = None
         for c in r.m_GameObject.read().m_Component:
             if c.component.type.name == 'MeshFilter':
@@ -550,9 +567,10 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
             continue
         data = mesh_data(mf.m_Mesh)
         if not data:
+            if source_adapter is not None:
+                raise ValueError(f'{stage_id}: unresolved mesh #{mf.m_Mesh.m_PathID}')
             continue
         verts, normals, uv0, uv1, colors, tris, tangents, extra_uv = data
-        active, group = state(gid)
         if not active and group is None:
             group = 'inactive'
         sb = r.m_StaticBatchInfo
@@ -565,6 +583,8 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
         so = r.m_LightmapTilingOffset
         st = (1.0, 1.0, 0.0, 0.0) if static else (so.x, so.y, so.z, so.w)
         lm = r.m_LightmapIndex if r.m_LightmapIndex < 65534 else -1
+        if source_adapter is not None and o.path_id in source_adapter.lightmap_renderers:
+            lm, st = source_adapter.lightmap_renderers[o.path_id]
         luv = uv1 if uv1 else uv0
         try:
             draw_state = renderer_state(o.read_typetree(), go_layers[gid])
@@ -627,8 +647,9 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
     for renderer in kept:
         if not chunk_group_exported(renderer['group']):
             continue
-        for part in renderer['parts']:
-            key = (part['material'], part['lightmap'], renderer['group'])
+        parts = source_adapter.parts(renderer) if source_adapter is not None else [(renderer['group'], p) for p in renderer['parts']]
+        for group, part in parts:
+            key = (part['material'], part['lightmap'], group)
             ch = chunks.setdefault(key, {'pos': [], 'uv': [], 'uv1': [], 'nrm': [], 'col': [], 'idx': []})
             offset = len(ch['pos'])
             for attr in ('pos', 'uv', 'uv1', 'nrm', 'col'):
@@ -667,6 +688,8 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
         mm = re.match(r'^Lightmap-(\d+)_comp_(light|shadowmask)$', t.m_Name or '')
         if mm:
             pages.setdefault(int(mm.group(1)), {})[mm.group(2)] = t
+    if source_adapter is not None:
+        pages = source_adapter.lightmap_pages
     used_pages = sorted({rec['lightmap'] for rec in records if rec['lightmap'] >= 0})
     lightmaps = 0
     for i in used_pages:
@@ -724,6 +747,9 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
             manifest[sub]['env'] = {'path': f'/assets/local/{sub}/env.png', 'w': atlas.width, 'h': atlas.height, 'kind': 'Reflection'}
             env_doc = {'size': t.m_Width, 'mips': t.m_MipCount, 'range': rng, 'source': 'probe' if probes else 'default'}
             n += 1
+    except StopIteration:
+        if source_adapter is None:
+            log(f'  warn {stage_id}: reflection cubemap: no RenderSettings')
     except Exception as e:
         log(f'  warn {stage_id}: reflection cubemap: {e}')
 
@@ -740,18 +766,24 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
                 tex = pptr.read()
                 tname = re.sub(r'[^A-Za-z0-9_.\-\[\]]+', '_', tex.m_Name or f'tex_{pptr.m_PathID}')
                 materials[name][key] = tname
-                if tname in manifest.get(TEX_SUB, {}):
+                if tname in manifest.get(TEX_SUB, {}) and (Path(out_root) / TEX_SUB / Path(manifest[TEX_SUB][tname]['path']).name).is_file():
                     continue
                 img = normal_rgb(tex.image) if key == 'normalMap' else tex.image
                 manifest.setdefault(TEX_SUB, {})[tname] = {**save_image(img, tex_dir, tname, TEX_SUB, key in LOSSLESS_MAPS), 'kind': 'Texture2D'}
                 n += 1
             except Exception as e:
+                if source_adapter is not None:
+                    raise ValueError(f'{stage_id}: texture {slot} of {name}: {e}') from e
                 log(f'  warn {stage_id}: texture {slot} of {name}: {e}')
 
     doc = {'version': SCENE_VERSION, 'stage': stage_id, 'bundle': scene_bundle(stage_id), 'light': light, 'lightmaps': lightmaps,
            'lightRange': LIGHT_RANGE, 'lightEncoding': LIGHT_ENCODING, **({'env': env_doc} if env_doc else {}),
            'materials': dict(sorted(materials.items())), 'groups': sorted({rec['group'] for rec in records}),
            'chunks': records, 'binBytes': len(blob)}
+    if source_adapter is not None:
+        if skipped:
+            raise ValueError(f'{stage_id}: {skipped} sub-meshes have unresolved materials')
+        doc['source'] = source_adapter.receipt
     (out_dir / 'scene.json').write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     manifest[sub]['scene'] = {'path': f'/assets/local/{sub}/scene.json', 'kind': 'Scene', 'chunks': len(records),
                               'version': SCENE_EXTRACT_VERSION}

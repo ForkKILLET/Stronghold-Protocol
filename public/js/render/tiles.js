@@ -98,7 +98,7 @@ const SIDE_MAT = {
  * `field` = [f0, f1] rows of the active field — drawn rows outside it are dim, non-playable scenery (e.g. the enemy
  * preview pen behind the normal field, or the normal field behind the boss field).
  */
-export function parseStage(stage, band = [0, ROWS - 1], field = [0, 13]) {
+export function parseStage(stage, band = [0, ROWS - 1], field = [0, 13], heightClasses = null) {
   const rows = Array.isArray(stage?.rows) ? stage.rows : [];
   const legend = stage && typeof stage.tiles === 'object' && stage.tiles ? stage.tiles : {};
   const grid = [];
@@ -111,7 +111,8 @@ export function parseStage(stage, band = [0, ROWS - 1], field = [0, 13]) {
       const def = GLYPH[g];
       const inBand = r >= band[0] && r <= band[1];
       const scenery = r < field[0] || r > field[1];
-      row.push({ r, c, glyph: g, mat: def.mat, hClass: def.h, h: def.h ? TILE_H[def.h] : 0, playable: inBand && !scenery && g !== '#' && g !== 'X', inBand, scenery, dist: 0, alpha: 1, drawn: true, focus: true });
+      const h = def.h ? (Number.isFinite(heightClasses?.[def.h]) ? heightClasses[def.h] : TILE_H[def.h]) : 0;
+      row.push({ r, c, glyph: g, mat: def.mat, hClass: def.h, h, playable: inBand && !scenery && g !== '#' && g !== 'X', inBand, scenery, dist: 0, alpha: 1, drawn: true, focus: true });
     }
     grid.push(row);
   }
@@ -119,11 +120,17 @@ export function parseStage(stage, band = [0, ROWS - 1], field = [0, 13]) {
   const pen = parsePenRect(stage?.config?.enemy_place_rect) || PEN_RECT;
   for (let r = pen.r0; r <= pen.r1; r++) for (let c = pen.c0; c <= pen.c1; c++) {
     const t = grid[r]?.[c];
-    if (t && (t.glyph === 'f' || t.glyph === 'p')) t.mat = 'penGlass';
+    if (t) {
+      if (t.glyph === 'f' || t.glyph === 'p') t.mat = 'penGlass';
+      if (stage?.presentationLayout === 'normal-right-preview') {
+        t.playable = false;
+        t.preview = t.inBand && t.glyph !== '#' && t.glyph !== 'X';
+      }
+    }
   }
   // distance (Chebyshev) to the nearest playable tile → fade / skip the margin
   const INF = 99;
-  for (const row of grid) for (const t of row) t.dist = t.playable ? 0 : INF;
+  for (const row of grid) for (const t of row) t.dist = t.playable || t.preview ? 0 : INF;
   for (let pass = 0; pass < PLAYABLE_DIST + 1; pass++) {
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
       const t = grid[r][c];
@@ -334,9 +341,15 @@ export class TileField {
     this._rebuild();
   }
 
+  /** Presentation only, owned by a successfully loaded official scene; stale stage packs cannot affect a new map. */
+  setSceneHeights(stageId, classes = null) {
+    this.sceneHeights = classes ? { stageId, classes } : null;
+    if (this.stage) this._rebuild();
+  }
+
   _rebuild() {
     const stage = this.stage;
-    this.grid = parseStage(stage, this.band, this.field);
+    this.grid = parseStage(stage, this.band, this.field, this.sceneHeights?.stageId === stage?.id ? this.sceneHeights.classes : null);
     const F = this.focus;
     for (const row of this.grid) for (const t of row) {
       t.focus = !F || (t.r >= F.r0 && t.r <= F.r1 && t.c >= F.c0 && t.c <= F.c1);
@@ -657,6 +670,7 @@ export class TileField {
       };
       switch (t.glyph) {
         case 'g': add('smog', 'smoke', P.BLEND_MODES.NORMAL, 0xb8c4c0, 2); break;
+        case 'w': add('infect', 'glow', P.BLEND_MODES.ADD, 0xff454e, 1); break;
         case 'd': add('sea', 'soft', P.BLEND_MODES.ADD, 0x5fe0ff, 1); break;
         case 'i': add('infect', 'glow', P.BLEND_MODES.ADD, ORIGINIUM.glow, 1); break;
         case 'm': add('mire', 'dot', P.BLEND_MODES.ADD, 0xc8d890, 2); break;
