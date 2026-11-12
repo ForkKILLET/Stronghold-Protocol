@@ -268,7 +268,7 @@ Counts, evidence and assumptions are in [design/match.md §6.5](design/match.md#
 ### 1.4 Watching fields
 Client-side combat (the default, DESIGN §14 Spectating; `Match._watchClient`): `g.watch` answers with the field's
 `b.start` (a display replica fast-forwarded to the field clock); an alive player may watch another normal field while its own battle continues. During 联防, completed normal fields
-remain viewable. The other pair's boss field remains hidden (`BAD_TARGET 'other group hidden'`); eliminated players watch anything. Whatever is watched, the viewer's bond strip shows the bonds of the
+remain viewable. Final Assault and Hidden Core also allow viewing the other pair (owner-confirmed official QoL, 2026-11-12); eliminated players watch anything. Whatever is watched, the viewer's bond strip shows the bonds of the
 player on screen from that player's `m.public players[].bonds` (§5) plus the replica's live layers (DESIGN §20.15) — no
 extra message. On a shared field (联防 / a pair's boss field) the client remembers the teammate picked with 前往查看
 (the `g.watch` request still names the field) and frames that player's half; a viewer who does not fight on the field
@@ -292,8 +292,8 @@ The rest of this section is the legacy server-run mode
 `g.watch { fieldId }`: any live field during COMBAT / 联防; while no battle field is up (PREP, drafts, SETTLE)
 `'n:<pid>'` keeps the viewer scouting that board and pushes `prepFieldMeta` again when it changes (GitHub #87) — during a battle phase an `'n:<pid>'` id must name a live field
 (`BAD_TARGET 'no such field'` otherwise, and the viewer keeps its stream). In the
-最终攻势 / 隐秘核心 a player fighting in a boss field may only watch its own field ("两名参与者会处于同一个战场，但无法查看
-另一组队友的战场情况" → `BAD_TARGET 'other group hidden'`); eliminated / departed players spectate any field.
+最终攻势 / 隐秘核心 any existing boss field may be watched, including the other group. Returning home restores the
+own field. The former other-group refusal was based on the older official rule; it no longer applies.
 
 ### 1.5 AI player (bot.js)
 
@@ -943,6 +943,12 @@ The former `enemyHpMul` / `enemyAtkMul` / `enemySpeedMul` / `bossHpMul` / `flyPl
 tuning file that still carries them is ignored (`gd.bossHpMul()` always returns 1). `tools/balance.mjs --tuning off`
 drops the file (titles only, so the numbers are the same). Titles: `rule: 'min'` ranks the players still alive by the
 smallest stat (坚若磐石 "目标生命值损失最少" = least `lpLost`). docs/BALANCE.md has the balance measurements.
+
+Regulation's official eighteen titles reuse these IDs with different meanings. Until their actual assignment
+conditions are known, the owner chose to reuse the complete covenant six-title catalog and existing assignment
+algorithm, including the LP-loss tuning. The build profile names `titlesFrom: 'act2autochess'`; this is an explicit
+remake fallback, not a claim about official Regulation rules. History and other gameplay data are preserved.
+See [the investigation](research/versions/act3autochess-v3_1/titles.md).
 
 ---
 

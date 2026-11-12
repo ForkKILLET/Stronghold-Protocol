@@ -279,7 +279,15 @@ async function loadContext() {
   if (!act || !ac) throw new Error(`activity_table has no ${PROFILE.section ? PROFILE.section.join('.') : PROFILE.season} / autoChessData section`);
   // an older table into the shape this build reads (tools/versions/adapters.mjs); never for the default version
   if (!IS_DEFAULT) applyAdapters(act, PROFILE.adapters);
-
+  let titleData = act.playerTitleDataDict;
+  if (PROFILE.titlesFrom) {
+    const { profile } = await loadProfile(PROFILE.titlesFrom);
+    const table = await loadGamedata('excel/activity_table.json', profile);
+    const season = profile.section ? profile.section.reduce((o, k) => o?.[k], table?.activity)
+      : table?.activity?.AUTOCHESS_SEASON?.[profile.season];
+    titleData = season?.playerTitleDataDict;
+    if (!titleData || Object.keys(titleData).length !== 6) throw new Error(`Invalid six-title fallback: ${PROFILE.titlesFrom}`);
+  }
   // A templated operator (规程's chess_char_5_26: charId char_002_amiya + tmplId char_1037_amiya3, 阿米娅's 医疗 form) is
   // built as its template: char_patch_table's patchChars holds the template as a character record of its own (skills,
   // phases, the uniequip_00x_amiya3 modules). Loaded only when a shop row names a template (盟约 has none).
@@ -341,7 +349,7 @@ async function loadContext() {
   };
 
   return {
-    act, ac, charTable, skillTable, rangeTable, uniequip, battleEquip, handbook, enemyDb,
+    act, ac, titleData, charTable, skillTable, rangeTable, uniequip, battleEquip, handbook, enemyDb,
     levels, templateIds: [...templateIds].sort(naturalCmp), stageIds, enemyDataLevelId, research,
     manifest: await loadManifest(),
   };
@@ -3258,7 +3266,7 @@ function buildConfig(ctx, waves, stages, bands, chess, items) {
         ? 'solo chooses one of two shuffled core groups [ASSUMED counts]; multi uses configured mode-level core and add-on counts; banned iff all cores are off when present, otherwise all add-ons are off; mode-level ban counts override difficulty defaults; unverified solo add-on counts [ASSUMED]'
         : 'banned iff every bond of a visible non-DIY chess is in (drawn set D ∪ mode.inactiveBondIds); core = isCore bonds, addon = other bonds with weight > 0; uniform draw' },
     bandDraft: { skipsPerPlayer: 1, order: 'random', duplicatesAllowed: true, timeoutBandId: 'band_bldsk' },
-    titles: Object.values(act.playerTitleDataDict || {}).map((t) => ({ id: t.id, picId: t.picId, name: t.txt, ...(titleRules[t.id] || {}) })),
+    titles: Object.values(ctx.titleData ?? act.playerTitleDataDict ?? {}).map((t) => ({ id: t.id, picId: t.picId, name: t.txt, ...(titleRules[t.id] || {}) })),
     titleRule: 'each player gets at most one title; each title is used at most once per match; assign by the category where the player ranks best relative to teammates [ASSUMED]',
     tips: (Array.isArray(ac.gameTipsList) ? ac.gameTipsList : Object.values(ac.gameTipsList || {})).map((t) => ({ tip: String(t.tip).trim(), weight: t.weight })),
     broadcasts: (Array.isArray(ac.broadcastList) ? ac.broadcastList : Object.values(ac.broadcastList || {})).map((b) => ({

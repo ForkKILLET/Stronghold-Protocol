@@ -11,6 +11,8 @@
 //             (pinGroupOf), cached in .cache/gamedata@<sha>/ (@aa-<sha>/ for the ArknightsAssets mirror)
 //   adapters  names in tools/versions/adapters.mjs, applied in this order to the loaded activity_table
 //   research  the version's research directory (falls back to docs/research/, with a warning) or null = docs/research/
+//   titlesFrom  optional version id whose pinned playerTitleDataDict supplies the temporary title catalog;
+//             affects result titles only, never the room's gameplay version or other tables
 //   tables    'default' (the 下半-measured tables of tools/build-data.mjs) or { stock, shopDraft, tacticDraft,
 //             bountyDrafts } with null = left out
 //   pools     { <pool id>: [charId…] } replaces the operators tools/build-data.mjs writes for a hand-written chess pool,

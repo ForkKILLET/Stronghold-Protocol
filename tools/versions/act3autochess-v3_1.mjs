@@ -25,6 +25,9 @@ export default Object.freeze({
   season: 'act3autochess',
   section: Object.freeze(['AUTOCHESS', 'act3autochess', 'V3_1']),
   layout: 'regulation',
+  // Temporary owner-approved fallback (2026-11-12): all six title names/icons/rules use covenant data
+  // until Regulation's eighteen assignment conditions have been verified.
+  titlesFrom: 'act2autochess',
   pins: Object.freeze({
     default: '6f63c14e27b847ef74b53b00fe51fc322b3cd7ff', // Kengxxiao, 2026-11-09, CN data 79.2.0 (change 127796 of 2026-11-05)
   }),
