@@ -7,6 +7,15 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
 ## 9. Client rendering contract (public/js/render)
 
+Normal healing ranges use cyan-blue battlefield highlights; damaging ranges keep orange. Placement previews and
+inspected operators / healing summons resolve the same loadout record (dmgType heal or attackKind heal).
+The solid fill, Pixi stripes and SVG stripes share that choice, preserving highlight groups and orientation.
+This does not recolour the card mini-map or infer a healing range from profession, incidental healing, regen, or skill
+text. Special skills that change the displayed ability need separate verified display metadata. Colour families follow
+[PRTS combat mechanics](https://prts.wiki/w/%E4%BD%9C%E6%88%98%E6%9C%BA%E5%88%B6#%E6%94%BB%E5%87%BB%E8%8C%83%E5%9B%B4);
+the exact RGB values are this UI's palette, not extracted official constants.
+
+
 Shop cards are grouped by each existing slot's `kind`, preserving its original purchase index.
 `shop.layout` classifies only empty positions (including the first-season equipment unlock); a stale layout must
 not reinterpret an operator as equipment, lose a card outside its declared range, or change its detail/buy target.
