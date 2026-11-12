@@ -221,7 +221,7 @@
 .preparation-tools .gm__gear { flex:none; box-sizing:border-box; width:var(--corner-button-size); height:var(--corner-button-size); min-height:var(--corner-button-size); min-width:0; padding:0; background:rgba(8,11,10,.85); color:var(--text-lo); border:1px solid var(--line-2); }
 .preparation-tools .gm__gear .icon { width:max(.28rem,18px); height:max(.28rem,18px); }
 .preparation-tools .gm__gear:hover:not(:disabled) { color:var(--mint-400); border-color:var(--mint-700); }
-.preparation-tools .gm__gear:disabled { opacity:.4; cursor:default; }
+.preparation-tools .gm__gear:disabled { opacity:.4; cursor: var(--sp-cursor-default, default); }
 .preparation-tools .ewheel__btn.is-communication { height:var(--corner-button-size); min-height:var(--corner-button-size); }
 .preparation-tools > .communication-activity { position:absolute; left:0; bottom:calc(100% + 4px); z-index:35; display:flex; flex-direction:row; align-items:center; padding:4px; }
 .preparation-tools .communication-activity .ebubble { width:36px; height:32px; flex:none; }

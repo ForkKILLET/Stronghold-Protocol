@@ -282,7 +282,7 @@ html[data-script="alphabetic"] .title-login .btn--xl { --title-start-tracking:.3
 /* ---- offline resource preload (docs/ASSETS.md「Preload」): the home screen's own way in ---------------- */
 .title-preload { position: absolute; z-index: 3; right: calc(.44 * var(--ui-unit, 1rem)); bottom: calc(.86 * var(--ui-unit, 1rem)); }
 .res-pill { display: block; width: calc(2.7 * var(--ui-unit, 1rem)); min-height: 44px; padding: calc(.1 * var(--ui-unit, 1rem)) calc(.12 * var(--ui-unit, 1rem)); background: rgba(10, 14, 12, .74); border: 1px solid var(--line-2);
-  color: var(--text-hi); text-align: left; cursor: pointer; transition: background-color var(--t-fast), border-color var(--t-fast); }
+  color: var(--text-hi); text-align: left; cursor: var(--sp-cursor-pointer, pointer); transition: background-color var(--t-fast), border-color var(--t-fast); }
 .res-pill.is-on { border-color: var(--mint-800); background: rgba(13, 20, 17, .86); }
 .res-pill:hover, .res-pill:focus-visible { border-color: var(--mint-700); background: var(--bg-1); }
 .res-pill__head {

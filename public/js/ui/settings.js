@@ -56,6 +56,7 @@ import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
 import { ScreenFitSection } from './screenFit.js';
 import { cosmetics } from '../cosmetics.js';
+import { applyCursor } from './cursor.js';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
 
@@ -80,6 +81,7 @@ settingsStore.subscribe((s) => {
   audio.setVoiceLang(s.voiceLang, s.voiceOverrides);
   audio.setVoiceNative(s.voiceNative);
   applyTextSize(s.textSize);
+  applyCursor(s.arknightsCursor);
 });
 shortcutsStore.subscribe((s) => savePref('shortcuts', sanitizeShortcuts(s)));
 audio.setVolumes(settingsStore.get());
@@ -87,6 +89,7 @@ audio.setVoiceLang(settingsStore.get().voiceLang, settingsStore.get().voiceOverr
 audio.setVoiceNative(settingsStore.get().voiceNative);
 // before the first render (main.js boot renders after its imports ran): the stored step is on screen without a flash
 applyTextSize(settingsStore.get().textSize);
+applyCursor(settingsStore.get().arknightsCursor);
 
 /** @param {Partial<ReturnType<typeof sanitizeSettings>>} patch */
 export function updateSettings(patch) {
@@ -444,6 +447,8 @@ export function SettingsModal({ open, onClose }) {
       ` : null}
       ${category === 'appearance' ? html`
       <${PersonalizationSection} />
+      <${Toggle} label=${t('骷髅手指光标')} micro="PRTS CURSOR" value=${s.arknightsCursor} testId="arknights-cursor" onChange=${v => updateSettings({ arknightsCursor: v })} />
+      <p class="set-hint">${t('使用明日方舟的骷髅手指光标；文字输入、拖动和缩放仍保留系统光标。')}</p>
       <${Toggle} label=${t('启用皮肤')} micro="SKINS" value=${s.skinsEnabled} onChange=${(v) => updateSettings({ skinsEnabled: v })} />
       <p class="set-hint">${t('开启后可在干员调配中选择皮肤，并显示其他玩家的皮肤。关闭时全部显示默认外观，保留已选皮肤。')}</p>
       <${OtherSkinsRow} value=${s.otherSkins !== false} onSet=${v => updateSettings({otherSkins:v})} />

@@ -362,7 +362,7 @@
 .dpick__opt .icon { width: calc(.2 * var(--ui-unit, 1rem)); height: calc(.2 * var(--ui-unit, 1rem)); color: var(--d-color); opacity: .55; transition: opacity var(--t-fast); }
 .dpick__opt:hover:not(:disabled) { color: var(--text-hi); background: rgba(255, 255, 255, .03); }
 .dpick__opt:hover:not(:disabled) .icon { opacity: 1; }
-.dpick__opt:disabled { cursor: default; }
+.dpick__opt:disabled { cursor: var(--sp-cursor-default, default); }
 .dpick__opt.is-active {
   color: var(--d-color);
   background: transparent; background: color-mix(in srgb, var(--d-color) 17%, transparent);
@@ -423,13 +423,13 @@
 .room-screen .room-option-switch:hover:not(:disabled) { border-color:var(--mint-500); background:var(--bg-3); color:var(--text-hi); }
 .room-screen .room-option-switch.is-on:hover:not(:disabled) { color:var(--mint-400); }
 .room-screen .room-option-switch:focus-visible { outline:2px solid var(--mint-400); outline-offset:2px; }
-.room-screen .room-option-switch:disabled { opacity:.5; cursor:default; }
+.room-screen .room-option-switch:disabled { opacity:.5; cursor: var(--sp-cursor-default, default); }
 
 /* Seat identity stays inside the plate; portrait editing belongs to the seat strip. */
 .room-screen .rseat__strip { box-sizing:border-box; height:28px; min-height:28px; padding:2px 6px; gap:8px; }
 .room-screen .rseat__strip > .num { flex:none; font-size:11px; line-height:1; }
 .room-screen .rseat__strip > i { flex:1; max-width:48px; margin-right:auto; }
-.room-screen .rseat__strip .rseat__pick { position:static; box-sizing:border-box; flex:none; display:grid; place-items:center; width:24px; height:24px; min-height:24px; padding:4px; opacity:1; border:1px solid transparent; background:#0a181355; color:var(--text-hi); cursor:pointer; transition:color var(--t-fast),background var(--t-fast),border-color var(--t-fast); }
+.room-screen .rseat__strip .rseat__pick { position:static; box-sizing:border-box; flex:none; display:grid; place-items:center; width:24px; height:24px; min-height:24px; padding:4px; opacity:1; border:1px solid transparent; background:#0a181355; color:var(--text-hi); cursor: var(--sp-cursor-pointer, pointer); transition:color var(--t-fast),background var(--t-fast),border-color var(--t-fast); }
 .room-screen .rseat__strip .rseat__pick .icon { width:14px; height:14px; }
 .room-screen .rseat__strip .rseat__pick:hover { color:var(--mint-300); background:var(--bg-3); border-color:var(--mint-400); }
 .room-screen .rseat__strip .rseat__pick:focus-visible { outline:2px solid var(--mint-400); outline-offset:1px; }

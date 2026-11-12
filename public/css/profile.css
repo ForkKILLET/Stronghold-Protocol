@@ -63,7 +63,7 @@
 @media (max-width: 760px) { .doctor-achievements .ach-top-area { grid-template-columns: minmax(0, 1fr); } }
 .doctor-filters { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:16px; font-size:max(calc(.15 * var(--utility-text,var(--t))),12px); }
 .doctor-filter,.st-verfilter { box-sizing:border-box; display:inline-flex; align-items:center; gap:10px; min-height:40px; max-width:100%; padding:8px 12px; border:1px solid var(--line-2); background:var(--bg-1); color:var(--text-md); }
-.doctor-filter { cursor:pointer; }
+.doctor-filter { cursor: var(--sp-cursor-pointer, pointer); }
 .doctor-filter.is-on { color:var(--mint-400); border-color:var(--mint-700); }
 .doctor-filter:not(.is-disabled):hover { border-color:var(--mint-700); }
 .doctor-filter.is-disabled { color:var(--text-dim); cursor:not-allowed; }
@@ -108,7 +108,7 @@
 .replay-choices { display:grid; gap:6px; margin:8px 0; color:var(--mint-400); }
 .replay-choices pre { margin:0; font:inherit; white-space:pre-wrap; }
 .replay-actions { list-style:none; padding:0; margin:0; }
-.replay-actions button { display:flex; gap:10px; width:100%; min-height:32px; padding:6px 4px; text-align:left; background:transparent; border:0; border-bottom:1px solid var(--line-2); color:var(--text-md); font:inherit; cursor:pointer; }
+.replay-actions button { display:flex; gap:10px; width:100%; min-height:32px; padding:6px 4px; text-align:left; background:transparent; border:0; border-bottom:1px solid var(--line-2); color:var(--text-md); font:inherit; cursor: var(--sp-cursor-pointer, pointer); }
 .replay-actions time { color:var(--text-lo); }
 .replay-actions button:hover,.replay-actions button:focus-visible { background:var(--bg-2); color:var(--mint-400); }
 .replay-prep { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; padding:8px 16px; border-top:1px solid var(--line-2); }
@@ -127,7 +127,7 @@
 .replay-controls .btn { min-height:36px; }
 .replay-seek { flex:1; min-width:80px; display:flex; align-items:center; gap:12px; color:var(--text-lo); }
 .replay-seek > span { white-space:nowrap; }
-.replay-seek input { flex:1; min-width:40px; accent-color:var(--mint-400); cursor:pointer; }
+.replay-seek input { flex:1; min-width:40px; accent-color:var(--mint-400); cursor: var(--sp-cursor-pointer, pointer); }
 .replay-controls > .game-select { width:88px; min-width:76px; }
 .replay-buffer { min-width:6em; text-align:right; color:var(--text-lo); }
 @media (max-height:560px), (max-width:900px) {

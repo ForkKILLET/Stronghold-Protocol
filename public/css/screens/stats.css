@@ -51,7 +51,7 @@
 .st-tabs { display: flex; align-items: stretch; gap: calc(.04 * var(--ui-unit, 1rem)); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .st-tab {
   display: inline-flex; align-items: center; padding: calc(.02 * var(--ui-unit, 1rem)) calc(.16 * var(--ui-unit, 1rem)); font: inherit; font-size: max(calc(.24 * var(--utility-text, var(--t))), 13px); font-weight: 900;
-  letter-spacing: .12em; line-height: 1.2; color: var(--text-lo); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer;
+  letter-spacing: .12em; line-height: 1.2; color: var(--text-lo); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: var(--sp-cursor-pointer, pointer);
   touch-action: manipulation; white-space: nowrap;
 }
 .st-tab:hover { color: var(--text-hi); }
@@ -127,7 +127,7 @@
   color: var(--text-lo); border: 1px solid var(--line-2); white-space: nowrap;
 }
 .st-table tr.is-excluded td { opacity: .6; }
-.st-table tr.is-clickable { cursor: pointer; }
+.st-table tr.is-clickable { cursor: var(--sp-cursor-pointer, pointer); }
 .st-table tr.is-clickable:hover td, .st-table tr.is-clickable:focus-visible td { background: rgba(78, 216, 175, .1); color: var(--text-hi); }
 .st-table tr.is-clickable:focus-visible { outline: 2px solid var(--mint-400); outline-offset: -2px; }
 .st-more { display: flex; justify-content: center; margin: calc(.14 * var(--ui-unit, 1rem)) 0 0; }

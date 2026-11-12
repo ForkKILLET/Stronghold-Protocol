@@ -38,7 +38,7 @@
 .draft-order__rows .dorder { flex:none; }
 .dorder__name > span:not(.dorder__ai) { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .dorder__box { padding:0; background:none; color:inherit; font:inherit; }
-button.dorder__box { cursor:pointer; }
+button.dorder__box { cursor: var(--sp-cursor-pointer, pointer); }
 button.dorder__box:hover { border-color:var(--mint-400); }
 
 /* ---- the wall of strategies ---- */
@@ -81,7 +81,7 @@ button.dorder__box:hover { border-color:var(--mint-400); }
 .draft-detail__btns .btn { flex: 1; }
 .dorder__secs { margin-left: calc(.06 * var(--ui-unit, 1rem)); font-size: calc(.15 * var(--utility-text, var(--utility-text, var(--t)))); color: var(--gold); }
 /* 队友已选 (research 09 §5): a strategy a teammate picked cannot be chosen again */
-.dband.is-taken { cursor: pointer; border-color: rgba(246, 163, 41, .35); }
+.dband.is-taken { cursor: var(--sp-cursor-pointer, pointer); border-color: rgba(246, 163, 41, .35); }
 .dband.is-taken .bandicon, .dband.is-taken .dband__name, .dband.is-taken .dband__lp { filter: grayscale(.8) brightness(.62); }
 .dband.is-taken:hover { transform: none; }
 .dband__taken {
