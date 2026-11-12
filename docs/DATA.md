@@ -372,6 +372,13 @@ A version build may set `canFuse`, `fuseWith` and `fuseResult` together: both pa
 
 ## 7. `effects.json` — `{ [effectId]: Effect }` (361: every effect of the season)
 
+Regulation bond effects also carry `effectDescParams[]`, read from the official
+`effectDescParamDataDict[effectId].descParamInfos`: each positional placeholder records its own `base`, `perStack`,
+`format` and optional positive `max`. Values come from that effect's `params`, including substituted effects; the
+base bond's blackboard must not be reused for a different effect. `PEOPLE_COUNT` effects also carry the official
+`bondPhaseCountList` as `displayThresholds`, including the Yan nine-person tier. Builds without the official parameter
+table keep their existing output shape; a missing binding remains visibly unavailable rather than becoming zero.
+
 Types: `BAND_INITIAL` 41, `BOND` 23, `EQUIP` 115, `ENEMY_GAIN` 129 (悬赏), `BUFF_GAIN` 43 (战术决策), `ENEMY` 6 (`aceffect_enemy_*` global modifiers), `CHAR_MAP` 4 (角色练度映射 — the 自持有 练度 tiers `aceffect_char_1…4`, 未精英化 / 精英阶段1 / 精英阶段2 / 精英阶段2-60级, in `autoChessData.cultivateEffectList` order: their `char_attribute_mul` buff — `atk` / `def` / `max_hp` 1, 1.05, 1.1 — is the unit's 练度 multiplier, `shared/potential.js cultivateMul`, 0.2.2).
 
 | Field | Example | Meaning |

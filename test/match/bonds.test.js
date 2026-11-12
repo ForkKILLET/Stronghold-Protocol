@@ -3,9 +3,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GameData } from '../../server/match/gamedata.js';
 import { computeBonds, tierFor, activatedLayers, bondList, thresholdsOf } from '../../server/match/bondsMeta.js';
+import { commandBondOverrides } from '../../server/match/bandCommands.js';
+import { loadData } from '../../server/data.js';
 import { DATA } from './harness.js';
+import { fileURLToPath } from 'node:url';
 
 const gd = new GameData(DATA, 'mode_multi_normal');
+const regulationRaw = loadData(fileURLToPath(new URL('../../data/versions/act3autochess-v3_1', import.meta.url)), { log: { warn() {} } });
+const regulation = new GameData(regulationRaw, 'mode_multi_normal');
 let uid = 1;
 const piece = (id, items = []) => ({ uid: uid++, kind: 'chess', id, items: items.map((i) => ({ uid: uid++, kind: 'item', id: i })) });
 const state = ({ board = [], hand = [], layers = {} } = {}) => {
@@ -16,6 +21,43 @@ const state = ({ board = [], hand = [], layers = {} } = {}) => {
   return { board: b, hand: h, layers };
 };
 const members = (bond, n, extra = () => true) => Object.values(DATA.chess).filter((c) => c.visible && !c.isGolden && c.bonds.includes(bond) && extra(c)).slice(0, n).map((c) => c.chessId);
+
+test('private/public bond views carry the same current replacement identity as combat, including zero-state metadata', () => {
+  const states = Object.fromEntries(regulation.bondIds.map((id) => [id, { count: 6, active: true, tier: 2, layers: 40 }]));
+  const before = JSON.stringify(states);
+  const skills = Object.values(regulationRaw.bands).flatMap((band) => band.skills || []);
+  const replacements = skills.filter((skill) => skill.buffs?.some((buff) => buff.key === 'auto_chess_effect_replace'));
+  assert.ok(replacements.length > 0);
+  for (const skill of replacements) {
+    const ps = { gd: regulation, command: { currentEffectId: skill.effectId } };
+    const overrides = commandBondOverrides(ps);
+    const publicRows = bondList(regulation, states, { effectOverrides: overrides });
+    const privateRows = bondList(regulation, states, { full: true, effectOverrides: overrides });
+    for (const bond of Object.values(regulationRaw.bonds)) {
+      const expected = overrides[bond.effectId];
+      assert.equal(publicRows.find((row) => row.bondId === bond.bondId)?.effectId, expected);
+      assert.equal(privateRows.find((row) => row.bondId === bond.bondId)?.effectId, expected);
+    }
+
+    const emptyPublic = bondList(regulation, {}, { effectOverrides: overrides });
+    const emptyPrivate = bondList(regulation, {}, { full: true, effectOverrides: overrides });
+    for (const [baseId, effectId] of Object.entries(overrides)) {
+      const bond = Object.values(regulationRaw.bonds).find((candidate) => candidate.effectId === baseId);
+      assert.ok(bond, `${baseId} maps to a known bond`);
+      const pub = emptyPublic.find((row) => row.bondId === bond.bondId);
+      const own = emptyPrivate.find((row) => row.bondId === bond.bondId);
+      assert.deepEqual([pub?.count, pub?.layers, pub?.effectId], [0, 0, effectId]);
+      assert.deepEqual([own?.count, own?.layers, own?.effectId], [0, 0, effectId]);
+    }
+  }
+
+  const noReplacement = skills.find((skill) => !skill.buffs?.some((buff) => buff.key === 'auto_chess_effect_replace'));
+  assert.ok(noReplacement);
+  const switched = { gd: regulation, command: { currentEffectId: noReplacement.effectId } };
+  assert.deepEqual(commandBondOverrides(switched), {}, 'swapping away removes only the old display mapping');
+  assert.ok(bondList(regulation, states, { effectOverrides: commandBondOverrides(switched) }).every((row) => !row.effectId));
+  assert.equal(JSON.stringify(states), before, 'display metadata never mutates bond state');
+});
 
 test('BOARD: distinct base chess on the board; normal + elite of one operator count once; the hand does not count', () => {
   const [a, b, c] = members('yanShip', 3, (x) => x.bonds.length === 1 || true);

@@ -1200,9 +1200,24 @@ function buildEffects(ctx) {
   for (const effectId of Object.keys(ctx.act.effectInfoDataDict).sort(naturalCmp)) {
     const e = ctx.act.effectInfoDataDict[effectId];
     const buffs = effectBuffs(ctx, effectId);
+    // Regulation replacement effects own their positional bindings and person-count tiers by effect id.
+    const phase = ctx.act.effectDescParamDataDict?.[effectId];
+    const descParams = phase?.descParamInfos;
     out[effectId] = {
       effectId, effectType: e.effectType, name: e.effectName || null,
       desc: stripRich(e.effectDesc), descRaw: richRaw(e.effectDesc),
+      ...(e.effectType === 'BOND' && descParams ? {
+        ...(phase.phaseType === 'PEOPLE_COUNT' && Array.isArray(phase.bondPhaseCountList)
+          ? { displayThresholds: phase.bondPhaseCountList } : {}),
+        effectDescParams: [...String(e.effectDesc || '').matchAll(/\{(\d+)(?::([^{}]+))?\}/g)].map(m => {
+          const index = Number(m[1]), p = descParams[index];
+          return {
+            index, format: m[2] || null,
+            base: p?.descParamBase || null, perStack: p?.descParamPerStack || null,
+            ...(p?.descParamMax > 0 ? { max: p.descParamMax } : {}),
+          };
+        }),
+      } : {}),
       counterType: e.effectCounterType || 'NONE', continuedRound: e.continuedRound ?? -1,
       decoIconId: e.effectDecoIconId || null, enemyPrice: e.enemyPrice || 0,
       buffs, params: effectParams(buffs),

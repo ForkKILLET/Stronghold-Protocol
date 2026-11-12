@@ -1158,6 +1158,20 @@ The four-star Theresa mote ring follows the game clock (including pause and spee
 Spine display coordinates, and is recreated on model swaps. Its S2 radius of 2 tiles is [ASSUMED] from outside_radius;
 the hidden five-star orbit is unchanged (PR #576).
 
+### Regulation command and replacement descriptions
+
+The effects column resolves the selected command skill by its current effect id, then lists substituted bond effects and
+the original followers strategy's retained draft passive as separate entries. Replacing a command removes the stale
+starting description. The command row keeps this fork's existing command control; other entries retain their own
+tooltips. Combat spectators use the same display model for the viewed player.
+
+Private and public bond views carry the selected replacement effect id, including metadata-only entries when both the
+member count and layers are zero. Those entries do not create bond-strip icons. A popup resolves the selected
+localized effect, its positional values and official count thresholds from that effect's own generated record; it does
+not mutate bond state or reuse the base effect's blackboard. This is a display change, so command selection and combat
+rules remain unchanged. Command-specific progress is not added here because the existing progress readers are tied to
+the starting band; a current-skill mapping needs its own verified counter source.
+
 The active-bond strip shows every entry in a horizontal scroller, with keyboard focus, touch panning and translated
 arrow controls. Watched owners, harmony counts, morph members and disabled bonds retain their existing behavior (PR #678).
 The strip's .08rem clip padding has matching negative margins to preserve the discs' and names' original height.
