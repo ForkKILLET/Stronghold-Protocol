@@ -154,9 +154,11 @@ shows the ac_n_initial one when that pack is installed, else the same layout in 
 设置 → 界面主题 lists a card for each installed group `themes/ac_n_initial`, `themes/ac_n_iron`,
 `themes/ac_s_closur` (`data/local-assets.json`). The card shows the thumbnail, the name below, an 「官方」 mark
 and `skinDesc`. It is not deletable and it is not one of the 8 imported packs. A lite zip with no group shows
-nothing extra. Choosing one fetches `theme.json` and the files it names, turns pictures and voice into blob
+nothing extra. The first action is 「下载并使用」; while fetching it shows 「加载中」, and a theme already loaded
+in this page offers 「使用」. Choosing one fetches `theme.json` and the files it names with at most four concurrent requests, turns pictures and voice into blob
 URLs, and plays a Spine from the served URL. The choice is still `settings.uiTheme`. A saved official id whose
-group is missing returns to the built-in look with no “主题已损坏” notice. A fetch that fails does show that notice.
+group is missing returns to the built-in look with no “主题已损坏” notice. A failed explicit download keeps the
+current theme intact and offers a retry; a failed saved-theme load at startup falls back with that notice.
 
 | id | Card | Character on `.funds` (目前资金) |
 |---|---|---|

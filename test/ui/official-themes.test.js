@@ -20,7 +20,7 @@ function installed(id) {
   return join(ROOT, 'public/assets/local/themes', id, 'theme.json');
 }
 
-const havePacks = IDS.every((id) => existsSync(installed(id)));
+const installedIds = IDS.filter((id) => existsSync(installed(id)));
 
 test('official card metadata and a safe served URL', () => {
   assert.equal(officialThemeById('ac_n_initial').name, '卫戍协议终端（官方贴图）');
@@ -112,8 +112,8 @@ test('a sliced banner and a character are kept; a bad character drops only that 
   assert.equal(portrait.character.anims, undefined);
 });
 
-test('an installed official theme.json is accepted, including sliced banners', { skip: !havePacks && 'official theme files are not installed' }, () => {
-  for (const id of IDS) {
+test('an installed official theme.json is accepted, including sliced banners', { skip: !installedIds.length && 'official theme files are not installed' }, () => {
+  for (const id of installedIds) {
     const jsonText = readFileSync(installed(id), 'utf8');
     const doc = JSON.parse(jsonText);
     const dir = dirname(installed(id));
@@ -194,10 +194,12 @@ test('loading an official pack resolves blob pictures and keeps the spine URL', 
   assert.deepEqual(lib.officialCards().map((card) => card.id), ['ac_n_initial']);
   assert.equal(lib.officialCards()[0].official, true);
   assert.equal(lib.officialCards()[0].thumbnailUrl, `${prefix}/thumb.webp`);
+  assert.equal(lib.officialCards()[0].loaded, false);
   const loaded = await lib.loadOfficial(officialThemeById('ac_n_initial'), manifest);
   assert.equal(loaded.ok, true, loaded.code);
   const pack = lib.get('ac_n_initial');
   assert.equal(pack.official, true);
+  assert.equal(lib.officialCards()[0].loaded, true);
   assert.equal(pack.banners.rest.slice.join(','), '4,5,6,7');
   assert.ok(pack.banners.rest.url.startsWith('blob:'));
   assert.equal(pack.voiceStem[pack.voice.AUTOCHESS_FREEZE[0]], 'cn_014');
@@ -205,4 +207,34 @@ test('loading an official pack resolves blob pictures and keeps the spine URL', 
   assert.equal(pack.character.spine.atlas, `${prefix}/spine/trap.atlas`);
   assert.deepEqual(pack.character.anims.voice, { cn_014: 'Interact' });
   assert.equal(await lib.remove('ac_n_initial'), false);
+});
+
+test('official downloads are bounded and a failed retry preserves the complete theme', async () => {
+  const id = 'ac_n_iron', group = `themes/${id}`, prefix = `/assets/local/${group}`;
+  const slots = ['shop_main', 'prep_ready', 'hud_player_info', 'game_start', 'help_battle', 'round_start'];
+  const doc = { spTheme: 1, id, name: '乌萨斯齐心团', images: Object.fromEntries(slots.map((slot, i) => [slot, `sprites/${i}.png`])) };
+  const manifest = { groups: { [group]: Object.fromEntries(['theme.json', ...Object.values(doc.images)].map(rel => [rel, { path: `${prefix}/${rel}` }])) } };
+  let active = 0, peak = 0, failed = false, revoked = 0;
+  const lib = createThemeLibrary({
+    openDb: async () => { throw new Error('no IndexedDB'); },
+    measure: async () => ({ ok: true, width: 8, height: 8 }),
+    createUrl: () => 'blob:official', revokeUrl: () => { revoked++; },
+    fetchImpl: async url => {
+      if (url === `${prefix}/theme.json`) return { ok: true, text: async () => JSON.stringify(doc) };
+      active++; peak = Math.max(peak, active);
+      await new Promise(resolve => setTimeout(resolve, 3));
+      active--;
+      if (failed && url.endsWith('/2.png')) return { ok: false, status: 503 };
+      return { ok: true, arrayBuffer: async () => Uint8Array.of(1).buffer };
+    },
+  });
+  assert.equal((await lib.loadOfficial(officialThemeById(id), manifest)).ok, true);
+  assert.ok(peak > 1 && peak <= 4, `concurrent downloads: ${peak}`);
+  const complete = lib.get(id);
+  assert.equal(Object.keys(complete.images).length, slots.length);
+  failed = true;
+  assert.deepEqual(await lib.loadOfficial(officialThemeById(id), manifest), { ok: false, code: 'broken' });
+  assert.equal(active, 0, 'all pending downloads settle before returning');
+  assert.equal(lib.get(id), complete);
+  assert.equal(revoked, 0, 'working image URLs survive a network failure');
 });

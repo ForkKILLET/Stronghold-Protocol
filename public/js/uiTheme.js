@@ -1,5 +1,5 @@
-// public/js/uiTheme.js — local interface themes (docs/THEMES.md). This browser only: nothing is uploaded, the
-// server never sees the pack, and other players do not. Blob URLs and CSS variables are written here; a pack
+// public/js/uiTheme.js — local interface themes (docs/THEMES.md). Imported packs are never uploaded;
+// official packs download from the server. The choice stays on this device. Blob URLs and CSS variables are written here; a pack
 // file is never parsed as CSS, HTML or script.
 //
 // Storage is IndexedDB `sp-ui-themes` / `packs`. A private window that blocks it keeps the pack for this
@@ -486,16 +486,24 @@ export function createThemeLibrary(opts = {}) {
     try { doc = JSON.parse(jsonText); } catch { return { ok: false, code: 'broken' }; }
     /** @type {{ rel: string, size: number, bytes: Uint8Array, url: string }[]} */
     const fetched = [];
-    for (const rel of themePathsOf(doc)) {
-      const url = officialAssetUrl(row.group, group[rel]);
-      if (!url) continue;
-      try {
-        const res = await fetchFn(url, { cache: 'no-cache' });
-        if (!res?.ok) continue;
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        fetched.push({ rel, size: bytes.byteLength, bytes, url });
-      } catch { /* assess reports the hole */ }
-    }
+    const paths = themePathsOf(doc);
+    let next = 0;
+    let failed = false;
+    await Promise.all(Array.from({ length: Math.min(4, paths.length) }, async () => {
+      while (next < paths.length && !failed) {
+        const rel = paths[next++];
+        const url = officialAssetUrl(row.group, group[rel]);
+        if (!url) { failed = true; break; }
+        try {
+          const res = await fetchFn(url, { cache: 'no-cache' });
+          if (!res?.ok) { failed = true; break; }
+          const bytes = new Uint8Array(await res.arrayBuffer());
+          fetched.push({ rel, size: bytes.byteLength, bytes, url });
+        } catch { failed = true; }
+      }
+    }));
+    // A failed download must not replace a working pack with a partially drawn theme.
+    if (failed) return { ok: false, code: 'broken' };
     /** @type {Record<string, Blob>} */
     const blobs = {};
     /** @type {{ path: string, size: number, width?: number, height?: number, measured?: boolean }[]} */
@@ -581,6 +589,7 @@ export function createThemeLibrary(opts = {}) {
       description: row.description,
       thumbnailUrl: row.thumbnailUrl || null,
       official: true,
+      loaded: mem.get(row.id)?.official === true,
     }));
   }
 

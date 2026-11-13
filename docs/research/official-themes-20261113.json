@@ -1,0 +1,58 @@
+{
+  "clientVersion": "26-11-06-12-42-25-70182449",
+  "extractorRevision": "58163490",
+  "upstreamThemeBase": "f3975b2a",
+  "themes": {
+    "themes/ac_n_iron": {
+      "files": 184,
+      "bytes": 3173975
+    },
+    "themes/ac_s_closur": {
+      "files": 385,
+      "bytes": 7016508
+    }
+  },
+  "outputFilesDigestSha256": "8b48845577edc6bd29c33ec5738af9f6d09d861dd16388fbb36204e4bbbc5733",
+  "sources": [
+    {
+      "bundle": "ui/autochess/autochessvariantskin/[uc]ac_n_initial.ab",
+      "bytes": 1555550,
+      "sha256": "bd56d80292b7734353e7dcd7fe0db0b923709d2f6f9674a187c8999a80efcc0d"
+    },
+    {
+      "bundle": "ui/autochess/autochessvariantskin/[uc]ac_n_iron.ab",
+      "bytes": 1802412,
+      "sha256": "b773ac56a7b60641c7ce4900ed808f44d4aa61fe3396d5dbaeffd0e6bd3d83d5"
+    },
+    {
+      "bundle": "ui/autochess/autochessvariantskin/[uc]ac_s_closur.ab",
+      "bytes": 3568813,
+      "sha256": "1500d347eac688ff62565f234b0026d363288b51a36e884d768018b3c17f4a03"
+    },
+    {
+      "bundle": "ui/autochess/[uc]autochessouter.ab",
+      "bytes": 19834797,
+      "sha256": "38c269b2c9e8d2fe7f340b05e575f426959fcf75a7440fb3ef2390fab90f20e5"
+    },
+    {
+      "bundle": "audio/autochess_skin_se/ac_n_iron.ab",
+      "bytes": 177408,
+      "sha256": "524b13da9bb3cb01f309fb48a474406239b84c9d4666a9b8f2f4c02cb7bf9e91"
+    },
+    {
+      "bundle": "audio/sound_beta_2/voice_cn/ac_s_closur.ab",
+      "bytes": 341849,
+      "sha256": "6e539a012c630d911f674eba5a8ce55f8bb42d5303b0f28526f9e1d6406222d0"
+    },
+    {
+      "bundle": "audio/sound_beta_2/voice/ac_s_closur.ab",
+      "bytes": 452777,
+      "sha256": "66197b7c8d62b5fff39330b58d22c8d9a09fe8519459e2ee6be3fcc1999f3921"
+    }
+  ],
+  "table": {
+    "commit": "6f63c14e27b847ef74b53b00fe51fc322b3cd7ff",
+    "file": "excel/activity_table.json",
+    "sha256": "8a4327bb9651f875c67990e3a2faab2ba8fe81559d322cdbd27bf34bf0f7169d"
+  }
+}

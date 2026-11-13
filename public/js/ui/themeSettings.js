@@ -2,7 +2,7 @@
 // Import stays on this device. Switching calls selectTheme, which paints immediately.
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Button, Icon, MicroLabel, confirmDialog } from './components.js';
+import { html, Button, MicroLabel, confirmDialog } from './components.js';
 import { t } from '../../../shared/i18n.js';
 import { THEME_LIMITS } from '../../../shared/uiTheme.js';
 import {
@@ -67,6 +67,7 @@ export function ThemeSection({ activeId = '' }) {
   const [report, setReport] = useState(null);
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loadingId, setLoadingId] = useState(null);
   const refresh = () => setCards(themeCards());
 
   useEffect(() => {
@@ -108,16 +109,20 @@ export function ThemeSection({ activeId = '' }) {
   };
   const useTheme = async (id) => {
     setBusy(true);
+    setLoadingId(id);
     try {
       const prepared = await prepareTheme(id);
       if (!prepared.ok) {
-        if (prepared.code !== 'missing') setNotice('broken');
+        setNotice('download-failed');
         refresh();
         return;
       }
       selectTheme(id);
+      setNotice(null);
       refresh();
-    } finally { setBusy(false); }
+    } catch {
+      setNotice('download-failed');
+    } finally { setBusy(false); setLoadingId(null); }
   };
   const remove = async (card) => {
     const ok = await confirmDialog({
@@ -133,9 +138,8 @@ export function ThemeSection({ activeId = '' }) {
 
   const usingBuiltin = !activeId;
   return html`<section class="theme-page" aria-labelledby="theme-page-title" data-testid="ui-theme-page">
-    <div class="set-keys__head sw-sec__head">
-      <span class="sw-sec__glyph" aria-hidden="true"><${Icon} name="edit" /></span>
-      <span class="set-row__label sw-sec__name" id="theme-page-title"><i>[</i> ${t('界面主题')} <i>]</i><${MicroLabel}>UI THEME<//></span>
+    <div class="set-keys__head">
+      <span class="set-row__label" id="theme-page-title">${t('界面主题')}<${MicroLabel}>UI THEME<//></span>
       <span class="theme-page__actions">
         <${Button} variant="ghost" size="sm" disabled=${busy} onClick=${() => zipRef.current?.click()}>${t('导入主题包')}<//>
         <${Button} variant="ghost" size="sm" disabled=${busy} onClick=${() => dirRef.current?.click()}>${t('导入文件夹')}<//>
@@ -146,6 +150,7 @@ export function ThemeSection({ activeId = '' }) {
     <p class="set-hint">${t('主题包只保存在这台设备的浏览器里，不会上传，其他玩家看不到，也不改变对局。')}</p>
     ${notice === 'session' ? html`<p class="set-keys__note is-warn" role="status">${t('浏览器存储不可用，主题只在本次打开期间保留。')}</p>` : null}
     ${notice === 'broken' ? html`<p class="set-keys__note is-warn" role="status">${t('这个主题已损坏，已回到卫戍协议终端。')}</p>` : null}
+    ${notice === 'download-failed' ? html`<p class="set-keys__note is-warn" role="status">${t('主题加载失败，请重试。')}</p>` : null}
     <div class="theme-grid">
       <article class=${cx('theme-card', usingBuiltin && 'is-on')} data-theme-id=${BUILTIN_ID}>
         <span class="theme-card__thumb" aria-hidden="true">${[...t('卫戍协议终端')][0]}</span>
@@ -156,7 +161,7 @@ export function ThemeSection({ activeId = '' }) {
         <div class="theme-card__actions">
           ${usingBuiltin
             ? html`<span class="theme-card__using">${t('使用中')}</span>`
-            : html`<${Button} variant="secondary" size="sm" onClick=${() => useTheme('')}>${t('使用')}<//>`}
+            : html`<${Button} variant="secondary" size="sm" disabled=${busy} onClick=${() => useTheme('')}>${t('使用')}<//>`}
         </div>
       </article>
       ${cards.map((card) => {
@@ -175,7 +180,7 @@ export function ThemeSection({ activeId = '' }) {
           <div class="theme-card__actions">
             ${on
               ? html`<span class="theme-card__using">${t('使用中')}</span>`
-              : html`<${Button} variant="secondary" size="sm" disabled=${busy} onClick=${() => useTheme(card.id)}>${t('使用')}<//>`}
+              : html`<${Button} variant="secondary" size="sm" disabled=${busy} onClick=${() => useTheme(card.id)}>${loadingId === card.id ? t('加载中') : t(card.official && !card.loaded ? '下载并使用' : '使用')}<//>`}
             ${card.official ? null : html`<${Button} variant="ghost" size="sm" disabled=${busy} onClick=${() => remove(card)}>${t('删除')}<//>`}
           </div>
         </article>`;
