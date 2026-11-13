@@ -1,0 +1,274 @@
+{
+  "inputSha256": "752dfd60b5535785d55b73827338ae8718b44587445813dddb98bbcc4d51160e",
+  "time": "2026-11-13T16:39:16.903Z",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36 Edg/157.0.0.0",
+  "context": {
+    "attributes": {
+      "alpha": false,
+      "antialias": true,
+      "depth": true,
+      "desynchronized": false,
+      "failIfMajorPerformanceCaveat": false,
+      "powerPreference": "high-performance",
+      "premultipliedAlpha": true,
+      "preserveDrawingBuffer": false,
+      "stencil": false,
+      "xrCompatible": false
+    },
+    "version": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+    "renderer": "WebKit WebGL",
+    "vendor": "WebKit",
+    "unmaskedRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002520) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "unmaskedVendor": "Google Inc. (NVIDIA)",
+    "maxTextureSize": 16384
+  },
+  "sources": [
+    {
+      "name": "original-lossy-rgba",
+      "sha256": "69eac5ef1323515d8f98774c5ceec60481bb12ec4ffd5df273a44f865bfc4dee"
+    },
+    {
+      "name": "lossless-rgba",
+      "sha256": "847e6c47417f8d1d31a09b938b31bcf6cd95bc93b6ab2f611bf66a90b68dbd81"
+    },
+    {
+      "name": "png-rgba",
+      "sha256": "9467567631d5562da52b299c390c012ecfb8918e5e5d67367225b94f2dbe4a3d"
+    },
+    {
+      "name": "fixed-lossless-rgb",
+      "sha256": "e21b306b45b61d4c0ad956f0df1729bd3b1b473712df4f9d2f6d4c4920629113"
+    }
+  ],
+  "tests": [
+    {
+      "name": "raw-rgba-control",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": []
+    },
+    {
+      "name": "original-lossy-rgba/img-srgb-storage",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    },
+    {
+      "name": "original/img-rgba8-storage",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "different RGBA8 vs sRGB formats; not an equivalence test",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 18
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 22
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 35
+        }
+      ]
+    },
+    {
+      "name": "original/img-srgb-texImage",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    },
+    {
+      "name": "original/img-srgb-storage-repeat",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    },
+    {
+      "name": "original/bitmap-none",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    },
+    {
+      "name": "original/canvas2d-positive-control",
+      "positiveControl": true,
+      "samples": 12,
+      "mismatches": 8,
+      "zeroAlphaMismatches": 3,
+      "maxError": 154,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 130
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 130
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 130
+        }
+      ]
+    },
+    {
+      "name": "lossless-rgba/img-srgb-storage",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    },
+    {
+      "name": "png-rgba/img-srgb-storage",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    },
+    {
+      "name": "fixed-lossless-rgb/img-srgb-storage",
+      "positiveControl": false,
+      "samples": 12,
+      "mismatches": 0,
+      "zeroAlphaMismatches": 0,
+      "maxError": 0,
+      "outputAlphaRgbMaxDifference": 0,
+      "mipComparison": "same sRGB format, fixed RGB reference",
+      "mips": [
+        {
+          "lod": 1,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 2,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        },
+        {
+          "lod": 3,
+          "maxRgbDifferenceFromSrgbFixed": 0
+        }
+      ]
+    }
+  ],
+  "conclusion": "No RGB loss reproduced in 9 non-Canvas2D paths at 12 LOD0 points. Same-format sRGB mip 1-3 results match fixed RGB exactly at the sampled locations. Canvas2D positive control loses expected hidden RGB. Exact game failure remains unlocalized; do not attribute it to decode/upload/mipmap or NVIDIA driver from this report.",
+  "nextProbe": "Actual MAP9 BoardScene / shader / linear and anisotropic filtering / 3 scene layouts / AA on-off, without Pixi, actors, persistent FX or live match state."
+}

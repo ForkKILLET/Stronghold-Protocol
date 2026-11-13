@@ -2,7 +2,8 @@
 
 用户已确认 `8832d14e` 的兼容处理在原受影响 Edge 设备上正常。此前提供的显卡型号为
 NVIDIA GeForce RTX 3060 Laptop GPU；`edge://gpu` 截图显示 Canvas、Compositing、Rasterization
-及 WebGL 硬件加速。该型号截图不能替代实际上下文的 ANGLE renderer，Edge／驱动版本仍未知。
+及 WebGL 硬件加速。随后收到原设备像素报告，确认 Edge 主版本 157、RTX 3060 Laptop 的
+ANGLE D3D11；完整浏览器构建及驱动版本仍未知。结果见[原设备诊断分析](snow-albedo-device-result-20261114.md)。
 本轮继续调查旧版本原因，没有回滚生产修复或更改游戏运行时。
 
 ## 当前能确定与不能确定的内容
@@ -96,3 +97,7 @@ JSON 包含 UA、可获取的 GPU／ANGLE renderer、上下文参数、图像身
 本轮已通过 2 项 CPU 定向检查（包括生成器的控制组像素、原文件不变与拒绝错误对照），JS 语法和
 ESLint 通过，真实图像离线页生成成功（约 13.68 MiB），峰值约 201 MiB，OOM 计数为零。
 浏览器、完整模拟及 golden 仍暂停；未运行此页，未宣称 GPU 采样已核验。结果等待原设备补充。
+
+后续原设备结果：9 项非 Canvas2D 路径在 12 点的 LOD0 均零误差，同格式 sRGB 的前三层 mip
+与修复图也一致；仅正对照丢色。此页没有复现故障，不能据此归因解码、上传或驱动。
+后续已准备真实静态地图 A/B 页，详见[分析与后续工具](snow-albedo-device-result-20261114.md)。

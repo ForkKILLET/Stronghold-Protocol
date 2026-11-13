@@ -20,9 +20,10 @@
     "canvas": "Hardware accelerated",
     "fixWorks": true,
     "reportDate": "2026-11-14",
-    "edgeVersion": null,
-    "actualAngleRenderer": null,
+    "edgeVersion": "157 (reduced User-Agent; full build unavailable)",
+    "actualAngleRenderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Laptop GPU (0x00002520) Direct3D11 vs_5_0 ps_5_0, D3D11)",
     "driverVersion": null
   },
-  "status": "Player confirms compatibility fix; exact decode/upload/mipmap cause awaits device readback. Chromium source is not pinned to the unknown player Edge version."
+  "status": "Player device probe did not reproduce: 9 non-Canvas2D paths have zero RGB error at 12 LOD0 samples; same-format sRGB mip 1-3 samples equal fixed RGB. Static real-scene A/B prepared; exact game failure remains unlocalized.",
+  "deviceResult": "snow-albedo-device-result-20261114.json"
 }
