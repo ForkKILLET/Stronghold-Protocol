@@ -3464,5 +3464,7 @@
   "未使用：{unused}": "Unused: {unused}",
   "已拒绝：{refused}": "Refused: {refused}",
   "已忽略：{ignored}": "Ignored: {ignored}",
-  "使用规程商店界面": "Use Regulation shop interface"
+  "使用规程商店界面": "Use Regulation shop interface",
+  "灰色核心盟约的干员无法出现，同时属于亮着的核心盟约的除外；没有核心盟约的干员，附加盟约全部置灰时无法出现": "Operators of a grey core bond cannot appear, unless they also belong to a lit core bond. An operator with no core bond cannot appear when all of their add-on bonds are grey.",
+  "{name}：该核心盟约的干员无法出现，同属亮着的核心盟约的除外": "{name}: Operators of this core bond cannot appear, unless they also belong to a lit core bond"
 }

@@ -169,6 +169,14 @@ export class MatchInfra {
   bondLive(bondId) {
     return this.bondInPool(bondId);
   }
+
+  /**
+   * Whether a bot should build towards a bond: live, and in regulation not a core bond the draw greyed. A grey core keeps
+   * only the operators that also belong to a lit core (gamedata bondsExclude); bots plan as when it had none.
+   */
+  bondPlayable(bondId) {
+    return this.bondLive(bondId) && !(this.gd.regulationBondDraw && this.gd.bond(bondId)?.isCore && this.disabledBonds.includes(bondId));
+  }
   humans() { return this.order.filter((p) => !p.isBot && !p.left); }
 
   /** [ASSUMED] A live Touch command grants a medic on every field; legacy Touch strategies keep their original team grant. */

@@ -122,10 +122,7 @@ for (const [modeId, size, addons] of [['mode_single_1', 4, 2], ['mode_single_12'
       assert.equal(m.pool.has(id), !excluded(m.gd, m.gd.chess(id), offOf(m)), id);
     }
     for (const e of m.pool.entries.values()) assert.equal(e.left, e.cap);
-    for (const id of groups[0]) {
-      const hasSurvivingMember = [...m.pool.entries.keys()].some(chess => m.gd.chess(chess).bonds.includes(id));
-      assert.equal(botBondUnavailable(m, id), !hasSurvivingMember, 'a grey core may retain multi-core members');
-    }
+    assert.ok(groups[0].every(id => botBondUnavailable(m, id)), 'bots do not plan around grey cores');
     assert.ok(groups[1].some(id => !botBondUnavailable(m, id)));
     m.flush(true);
     assert.equal(h.lastBc('m.public').bondChoice.picked, 1);
