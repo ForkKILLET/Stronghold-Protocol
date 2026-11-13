@@ -507,7 +507,7 @@ test('a greyed regulation core card explains all-core exclusion; an unpicked gro
   assert.doesNotMatch(card(cov, 'sargonShip', { count: 0, layers: 0, tier: 0, active: false }), /该干员才无法出现/);
 });
 
-test('规程 briefing rows: only the bonds the mode loads, lit discs before greyed ones; 盟约 keeps every bond in order', () => {
+test('preparation keeps fixed bond order and marks inactive entries in both rule versions', () => {
   const bonds = [
     { bondId: 'a', isCore: true, bondOrder: 1 }, { bondId: 'b', isCore: true, bondOrder: 2 }, { bondId: 'c', isCore: true, bondOrder: 3 },
     { bondId: 'x', isCore: false, bondOrder: 4 }, { bondId: 'y', isCore: false, bondOrder: 5 }, { bondId: 'z', isCore: false, bondOrder: 6 },
@@ -515,8 +515,11 @@ test('规程 briefing rows: only the bonds the mode loads, lit discs before grey
   const mode = { inactiveBondIds: ['c', 'z'] };
   const ids = (list) => list.map((b) => b.bondId);
   const reg = matchInfoModel({ bondDraw: 'regulation', disabledBonds: ['a', 'x'] }, { bonds, mode });
-  assert.deepEqual(ids(reg.core), ['b', 'a'], 'c (fixed inactive) left out, the greyed a after the lit b');
-  assert.deepEqual(ids(reg.addon), ['y', 'x']);
+  // The fork keeps its preparation layout; upstream's filtered, sorted briefing is deferred with that redesign.
+  assert.deepEqual(ids(reg.core), ['a', 'b', 'c']);
+  assert.deepEqual(ids(reg.addon), ['x', 'y', 'z']);
+  assert.equal(reg.stateOf('c'), 'drawn', 'static pool exclusions use the same grey marker in this fork');
+  assert.equal(reg.stateOf('a'), 'drawn');
   assert.deepEqual(ids(reg.bonds), ['a', 'b', 'c', 'x', 'y', 'z'], 'the full list stays for lookups');
   const covenant = matchInfoModel({ disabledBonds: ['a', 'x'] }, { bonds, mode });
   assert.deepEqual(ids(covenant.core), ['a', 'b', 'c']);
