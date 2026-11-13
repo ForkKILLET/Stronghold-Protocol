@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-14 乌萨斯 ac_n_iron／可露希尔 ac_s_closur 在规程赛季自动启用规程商店，统一以 regulationShopEnabled 判断商店、根样式和详情避让；设置开关显示开启且禁用，并说明主题控制。不改 officialRegulationHud 存储值，切回默认／自定义主题恢复原偏好，不更改赛季或规则。其它赛季通过 themeForShopLayout 仅应用兼容颜色／横幅／图标／语音，滤除这两套主题的商店、卡框、阶级、准备按钮贴图及资金角色；原主题包完整保留，config 通知重新应用，跨赛季无需重下素材。本条替代此前两主题与商店开关始终独立的展示约定；浏览器、完整模拟和 golden 继续暂停。
+
 - 2026-11-14 固定合入主线 dev f772ae6b（六个提交），接入两套官方 prefab HUD／动画／横幅、三期开场、全赛季头像连胜与领袖伤害徽章、全赛季领袖排行。保留本服二期默认、分类设置、准备 HUD／暂停投票／字幕／快捷键、个性化大厅、账户／Worker／回放和既有地图／规则修复；开场仅在记住三期版本且仍在标题页时启用，其它赛季流程不恢复旧动画。stats.perfectStreak 经原检查点保存，缺失按零处理。更新两主题 572 文件及开场 41 文件，其它素材逐项不变；JS 与两 Python 工具同步精确 prefab JSON 白名单，主题／开场均可选，不安装第三套默认官方主题。定向回归及本地化复核、Python、类型／导入／构建通过，95 个资源包内 613 条更新逐项读回通过。详见 docs/MERGE_DEV_2026-11-14.md；本轮浏览器、完整模拟及 golden 仍暂停，未推送部署。
 
 - 2026-11-14 原设备像素报告确认 Edge 157（精简 UA）、RTX 3060 Laptop／ANGLE D3D11、MAX_TEXTURE_SIZE=16384。9 项非 Canvas2D 路径的 12 点 LOD0 全零误差，同格式 sRGB 的 mip 1–3 与修复图一致，仅 Canvas2D 正对照丢色；此诊断未复现，不能当作预乘／WebP 解码／NVIDIA 驱动故障证明。报告摘要见 docs/research/snow-albedo-device-result-20261114.md／json。新增 snow-scene-probe 生成页复用真实 Three／BoardScene／MAP9 几何与材质，三布局及 AA 开关下整帧比较旧／新图、输出 alpha 与各向异性控制；无网络／账户，不含 Pixi／干员／持续 FX／真实对局压力。已过 CPU 构造与打包检查，未跑本机 GPU，浏览器／完整模拟／golden 仍暂停；原设备下一轮结果待补。

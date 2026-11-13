@@ -166,6 +166,8 @@ current theme intact and offers a retry; a failed saved-theme load at startup fa
 | `ac_n_iron` | 乌萨斯齐心团 | unfolded `group_bg/char` portrait, file `sprites/char_2.webp` (127×157). `sprites/char.webp` is a different texture that shares the name |
 | `ac_s_closur` | “全能的”可露希尔 | UI Spine `ac_s_closur_spine`. A voice line plays the `skinVoiceAnimDict` clip, then idle. The board trap `trap_2000_acclsr` is not this portrait |
 
+三期选择乌萨斯齐心团或可露希尔主题时，自动启用规程商店布局。设置中的「使用规程商店界面」显示开启并由主题控制，保留玩家原先的开关偏好；切回默认或自定义主题后恢复该偏好。其它赛季保留原有商店布局，仅应用兼容的颜色、横幅、图标和语音，不套用这两套主题的商店／卡框／阶级／准备按钮贴图或资金角色。切换赛季时自动重新应用，主题资源无需重新下载。此联动只改变展示，不切换赛季或玩法规则。
+
 No `character` leaves the 盟约 funds box as it is today. On a 规程 match with no selected character, the card uses ac_n_initial's shop-up spine `trap_1096_acshopup` (idle `Idle`) when that group is installed. The portrait does not take taps (收起 stays the button). 规程 bond discs sit under the middle of the top bar (`.gm--reg .gm__bonds`).
 
 ## 规程 HUD from the official prefabs

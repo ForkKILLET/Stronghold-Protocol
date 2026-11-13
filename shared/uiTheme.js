@@ -197,6 +197,24 @@ export function officialThemeById(id) {
   return OFFICIAL_THEMES.find((row) => row.id === id) || null;
 }
 
+/** Official skins whose shop artwork requires the Regulation layout. */
+export function themeNeedsRegulationShop(id) {
+  return id === 'ac_n_iron' || id === 'ac_s_closur';
+}
+
+/**
+ * Keep layout-specific artwork out of covenant screens. The stored pack stays complete so switching seasons
+ * restores it without another download; compatible colours, banners, icons and voice remain available.
+ * @param {any} pack @param {boolean} regulation
+ */
+export function themeForShopLayout(pack, regulation) {
+  if (!pack || regulation || !themeNeedsRegulationShop(pack.id)) return pack;
+  const images = Object.fromEntries(Object.entries(pack.images || {}).filter(([slot]) =>
+    slot !== 'prep_ready' && slot !== 'char_spine_outer' && !slot.startsWith('shop_') &&
+    !slot.startsWith('chess_frame_') && !slot.startsWith('chess_level_icon_')));
+  return { ...pack, images, character: null };
+}
+
 const COMBAT_PHASES = new Set(['COMBAT', 'UNITE', 'FINAL_ASSAULT', 'HIDDEN_CORE']);
 const GAME_START_FROM = new Set(['INFO_CHECK', 'BAND_DRAFT', 'CUSTOM_CHECK', 'BATTLE_CHECK']);
 

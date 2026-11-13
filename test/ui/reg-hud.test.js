@@ -5,11 +5,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  regulationFamily, regCardModel, regChromeUrls, regCssUrl, regChromeStyle, regulationCharacter, regChromeTheme, regUpgradeModel,
+  regulationFamily, regulationShopEnabled, regCardModel, regChromeUrls, regCssUrl, regChromeStyle, regulationCharacter, regChromeTheme, regUpgradeModel,
 } from '../../public/js/ui/regHud.js';
 
 globalThis.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
 const { ChessCard, ItemCard } = await import('../../public/js/ui/shopBar.js');
+const { RegulationShopSetting } = await import('../../public/js/ui/settings.js');
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const read = (rel) => readFileSync(path.join(ROOT, rel), 'utf8');
@@ -35,6 +36,56 @@ test('regulationFamily is only the regulation config', () => {
   assert.equal(regulationFamily({}), false);
   assert.equal(regulationFamily(null), false);
   assert.equal(regulationFamily(undefined), false);
+});
+
+test('official skins control only the Regulation shop, preserving the independent preference', () => {
+  const regulation = { version: { family: 'regulation' } };
+  for (const preferred of [false, true]) {
+    const settings = { uiTheme: '', officialRegulationHud: preferred };
+    for (const id of ['ac_s_closur', 'ac_n_iron', '', 'ac_n_initial', 'custom-pack']) {
+      settings.uiTheme = id;
+      assert.equal(regulationShopEnabled(regulation, settings), preferred || ['ac_s_closur', 'ac_n_iron'].includes(id));
+      for (const config of [null, {}, { version: { family: 'covenant' } }]) {
+        assert.equal(regulationShopEnabled(config, settings), false);
+      }
+      assert.equal(settings.officialRegulationHud, preferred);
+    }
+  }
+  assert.equal(regulationShopEnabled(regulation, undefined), false);
+});
+
+test('theme-controlled shop switch is checked and disabled without writing preferences', () => {
+  function elements(v, found = []) {
+    if (!v || typeof v !== 'object') return found;
+    if (Array.isArray(v)) { for (const child of v) elements(child, found); return found; }
+    if (typeof v.type === 'function') return elements(v.type(v.props), found);
+    found.push(v);
+    return elements(v.props?.children, found);
+  }
+  for (const preferred of [false, true]) {
+    const settings = { uiTheme: 'ac_s_closur', officialRegulationHud: preferred };
+    const changes = [];
+    const render = () => elements(RegulationShopSetting({ settings, onChange: (v) => changes.push(v) }));
+    for (const id of ['ac_s_closur', 'ac_n_iron']) {
+      settings.uiTheme = id;
+      const tree = render();
+      const button = tree.find(v => v.props?.role === 'switch');
+      assert.equal(button.props['aria-checked'], 'true');
+      assert.equal(button.props.disabled, true);
+      assert.ok(tree.some(v => v.props?.id === button.props['aria-describedby']));
+      button.props.onClick();
+      assert.deepEqual(changes, []);
+      assert.equal(settings.officialRegulationHud, preferred);
+    }
+    for (const id of ['', 'custom-pack', 'ac_n_initial']) {
+      settings.uiTheme = id;
+      const button = render().find(v => v.props?.role === 'switch');
+      assert.equal(button.props['aria-checked'], String(preferred));
+      assert.equal(button.props.disabled, false);
+      button.props.onClick();
+      assert.equal(changes.at(-1), !preferred);
+    }
+  }
 });
 
 test('regCardModel is null outside 规程 and describes the official face inside it', () => {
@@ -332,7 +383,7 @@ test('盟约 shop markup stays, and 规程 adds the new face without replacing t
   assert.match(bar, /cx\('shopbar', 'shopbar--reg', frozen && 'is-frozen'/);
   assert.match(bar, /funds funds--reg/);
   assert.match(bar, /scard__cost/);
-  assert.match(game, /regulationFamily\(gd\.config\) && settings\.officialRegulationHud\) && 'gm--reg'/);
+  assert.match(game, /regShop && 'gm--reg'/);
   for (const page of ['public/index.html', 'public/dev/game-mock.html']) {
     const html = read(page);
     const shop = html.indexOf('/css/screens/game-shop.css');

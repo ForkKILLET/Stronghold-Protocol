@@ -13,7 +13,7 @@ import { themeTemplateDocument, zipStored } from '../../tools/theme-template.mjs
 import {
   BUILTIN_ID, THEME_LIMITS, VOICE_TRIGGERS, applyThemeTo, assessTheme, buyVoiceTrigger, createVoiceGate,
   cssUrl, emptyCueState, stepThemeCues, takeVoiceCues, themeDeclarations, themeRelPath, themeRootOf,
-  themeStyleText, themeViewSnap,
+  themeStyleText, themeViewSnap, themeForShopLayout, themeNeedsRegulationShop,
 } from '../../shared/uiTheme.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -279,6 +279,54 @@ test('the built-in look adds no CSS; a pack writes blob URLs and a default frame
   assert.equal(root.dataset.spTheme, undefined);
   assert.equal(root.dataset.spSlot, undefined);
   assert.deepEqual(props, {});
+});
+
+test('official shop artwork follows the season without damaging the stored pack or compatible styling', () => {
+  const props = {};
+  const root = {
+    style: {
+      setProperty(name, value) { props[name] = value; },
+      removeProperty(name) { delete props[name]; },
+    },
+    dataset: {},
+  };
+  for (const id of ['ac_s_closur', 'ac_n_iron']) {
+    const pack = {
+      id, colors: { skinLightColor: '#00FFC4' },
+      images: Object.fromEntries(['prep_ready', 'char_spine_outer', 'shop_main', 'shop_level_2', 'shop_money',
+        'chess_frame_normal', 'chess_level_icon_1', 'img_check_player', 'img_shop_sell_chess_normal']
+        .map(slot => [slot, { url: `blob:${slot}` }])),
+      banners: { rest: 'blob:rest' },
+      voice: { AUTOCHESS_GAME_START: ['blob:voice'] },
+      character: { image: { url: 'blob:portrait' } },
+    };
+    const before = structuredClone(pack);
+    assert.equal(themeNeedsRegulationShop(id), true);
+    assert.equal(themeForShopLayout(pack, true), pack);
+    applyThemeTo(root, themeForShopLayout(pack, true));
+    assert.equal(props['--sp-img-shop_level_2'], 'url("blob:shop_level_2")');
+    const legacy = themeForShopLayout(pack, false);
+    assert.equal(legacy.character, null);
+    assert.equal(legacy.voice, pack.voice);
+    applyThemeTo(root, legacy);
+    assert.equal(props['--sp-c-skin-light'], '#00FFC4');
+    assert.equal(props['--sp-banner-rest'], 'url("blob:rest")');
+    assert.equal(props['--sp-img-img_check_player'], 'url("blob:img_check_player")');
+    assert.equal(props['--sp-img-img_shop_sell_chess_normal'], 'url("blob:img_shop_sell_chess_normal")');
+    assert.doesNotMatch(root.dataset.spSlot, /(?:^| )(?:shop_|chess_|prep_ready|char_spine_outer)/);
+    assert.equal(props['--sp-img-shop_level_2'], undefined);
+    assert.equal(props['--sp-img-chess_frame_normal'], undefined);
+    applyThemeTo(root, themeForShopLayout(pack, true));
+    assert.equal(props['--sp-img-shop_level_2'], 'url("blob:shop_level_2")');
+    assert.equal(props['--sp-img-chess_frame_normal'], 'url("blob:chess_frame_normal")');
+    assert.deepEqual(pack, before);
+  }
+  for (const id of ['', 'ac_n_initial', 'iron-fan']) {
+    const pack = { id, images: { shop_main: { url: 'blob:custom-shop' } } };
+    assert.equal(themeNeedsRegulationShop(id), false);
+    assert.equal(themeForShopLayout(pack, false), pack);
+  }
+  assert.equal(themeForShopLayout(null, false), null);
 });
 
 test('theme paint rules are gated, and the sheets load after the device sheet', () => {

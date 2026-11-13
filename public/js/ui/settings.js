@@ -29,6 +29,7 @@ import { PersonalizationSection } from './personalization.js';
 import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Modal, Button, Icon, MicroLabel, Tooltip, confirmDialog } from './components.js';
 import { createStore, useStore, loadPref, savePref, store } from '../store.js';
+import { data } from '../data.js';
 import { sanitizeSettings, DEFAULT_SHORTCUTS, sanitizeShortcuts, shortcutLabel, VOICE_LANGS, TEXT_SIZES } from './gameLogic.js';
 import { GIcon } from './gameComponents.js';
 import { settingsStore } from './settingsStore.js';
@@ -58,6 +59,7 @@ import { ScreenFitSection } from './screenFit.js';
 import { cosmetics } from '../cosmetics.js';
 import { ThemeSection } from './themeSettings.js';
 import { applyUiTheme, bindThemeSettings, bootUiThemes, syncThemeVoiceVolume } from '../uiTheme.js';
+import { themeNeedsRegulationShop } from '../../../shared/uiTheme.js';
 import { applyCursor } from './cursor.js';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
@@ -121,12 +123,21 @@ function Slider({ label, micro, value, onInput, icon }) {
   </label>`;
 }
 
-function Toggle({ label, micro, value, onChange, testId }) {
+function Toggle({ label, micro, value, onChange, testId, disabled = false, describedBy }) {
   return html`<div class="set-row">
     <span class="set-row__label">${label}<${MicroLabel}>${micro}<//></span>
-    <button type="button" class=${`set-toggle${value ? ' is-on' : ''}`} role="switch" aria-label=${label} data-testid=${testId} aria-checked=${value ? 'true' : 'false'}
-      onClick=${() => onChange(!value)}><i></i><span>${value ? tc('toggle', '开启') : tc('toggle', '关闭')}</span></button>
+    <button type="button" class=${`set-toggle${value ? ' is-on' : ''}`} role="switch" aria-label=${label} data-testid=${testId} aria-checked=${value ? 'true' : 'false'} disabled=${disabled} aria-describedby=${describedBy}
+      onClick=${() => { if (!disabled) onChange(!value); }}><i></i><span>${value ? tc('toggle', '开启') : tc('toggle', '关闭')}</span></button>
   </div>`;
+}
+
+/** Theme-controlled presentation does not overwrite the player's independent layout preference. */
+export function RegulationShopSetting({ settings, onChange }) {
+  const forced = themeNeedsRegulationShop(settings.uiTheme);
+  return html`<${Toggle} label=${t('使用规程商店界面')} micro="REGULATION HUD"
+    value=${forced || settings.officialRegulationHud === true} disabled=${forced} testId="regulation-hud"
+    describedBy=${forced ? 'regulation-hud-theme-hint' : undefined} onChange=${onChange} />
+    ${forced ? html`<p class="set-hint" id="regulation-hud-theme-hint">${t('由当前主题启用，仅在规程赛季生效。切换主题后恢复原设置。')}</p>` : null}`;
 }
 
 /** Display order only: 低 / 中 / 高, the same direction as 官方特效 关 / 精简 / 完整. Stored values stay high | medium | low. */
@@ -453,7 +464,7 @@ export function SettingsModal({ open, onClose }) {
       <${ThemeSection} activeId=${s.uiTheme || ''} />
       <${Toggle} label=${t('主题动画')} micro="THEME MOTION" value=${s.themeMotion} onChange=${(v) => updateSettings({ themeMotion: v })} />
       <p class="set-hint" data-testid="theme-motion-hint">${t('规程里乌萨斯齐心团、可露希尔主题界面的循环动画（倒计时与按钮的闪光等）。关闭后只显示静态画面，适合配置较低的设备；系统开启“减少动态效果”时也不播放。')}</p>
-      <${Toggle} label=${t('使用规程商店界面')} micro="REGULATION HUD" value=${s.officialRegulationHud} onChange=${v => updateSettings({ officialRegulationHud: v })} />
+      <${RegulationShopSetting} settings=${s} onChange=${v => updateSettings({ officialRegulationHud: v })} />
       <${PersonalizationSection} />
       <${Toggle} label=${t('骷髅手指光标')} micro="PRTS CURSOR" value=${s.arknightsCursor} testId="arknights-cursor" onChange=${v => updateSettings({ arknightsCursor: v })} />
       <p class="set-hint">${t('使用明日方舟的骷髅手指光标；文字输入、拖动和缩放仍保留系统光标。')}</p>
@@ -529,5 +540,9 @@ export function SettingsButton({ class: cls, size = 'sm', variant = 'ghost', lab
 bindThemeSettings({
   get: () => settingsStore.get(),
   set: (patch) => settingsStore.set(sanitizeSettings({ ...settingsStore.get(), ...patch })),
+  config: () => data.get('config'),
+});
+data.subscribe((name) => {
+  if (name === 'config') applyUiTheme(settingsStore.get().uiTheme);
 });
 bootUiThemes();

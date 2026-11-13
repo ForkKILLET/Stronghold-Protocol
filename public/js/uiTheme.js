@@ -9,7 +9,7 @@ import { openZip, normalizePackPath } from './ui/themeZip.js';
 import {
   BUILTIN_ID, THEME_LIMITS, applyThemeTo, assessTheme, createVoiceGate, emptyCueState,
   installedOfficialThemes, officialAssetUrl, officialThemeById, stepThemeCues,
-  stripThemePrefix, takeVoiceCues, themePathsOf, themeRelPath, themeRootOf, themeViewSnap,
+  stripThemePrefix, takeVoiceCues, themePathsOf, themeRelPath, themeRootOf, themeViewSnap, themeForShopLayout,
 } from '../../shared/uiTheme.js';
 
 const DB_NAME = 'sp-ui-themes';
@@ -650,11 +650,13 @@ const library = createThemeLibrary();
 
 let settingsGet = () => ({ uiTheme: '', voice: 0.8, muted: false });
 let settingsSet = () => {};
+let configGet = () => null;
 
 /** settings.js owns the store. This module must not import it (the dialog imports us). */
 export function bindThemeSettings(api) {
   settingsGet = api.get;
   settingsSet = api.set;
+  configGet = api.config || (() => null);
 }
 
 let appliedKey = '';
@@ -690,11 +692,12 @@ export function themePack(id) {
 /** Paint `id`, or the built-in look when the id is empty or the pack is gone. */
 export function applyUiTheme(id) {
   const pack = themePack(id);
-  const key = pack ? `${pack.id}:${pack.rev}` : '';
+  const regulation = configGet()?.version?.family === 'regulation';
+  const key = pack ? `${pack.id}:${pack.rev}:${regulation}` : '';
   if (key === appliedKey && (pack ? voicePackId === pack.id : voicePackId === '')) return pack;
   appliedKey = key;
   const root = rootEl();
-  if (root) applyThemeTo(root, pack);
+  if (root) applyThemeTo(root, themeForShopLayout(pack, regulation));
   if (!pack) {
     stopVoice();
     voicePackId = '';

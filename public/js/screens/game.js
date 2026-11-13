@@ -93,7 +93,7 @@ import { TopBar, liveLp, ownLeaks, uniteRemaining, tempInfo, tempReadyReason } f
 import { BondStrip, BondPopup } from '../ui/bondStrip.js';
 import { TeamPanel } from '../ui/teamPanel.js';
 import { ShopBar } from '../ui/shopBar.js';
-import { regulationFamily } from '../ui/regHud.js';
+import { regulationFamily, regulationShopEnabled } from '../ui/regHud.js';
 import { selectedBondTimers } from '../ui/bondTimers.js';
 import { DetailPanel, resolveDetail } from '../ui/detailPanel.js';
 import { RewardOverlay } from '../ui/rewardOverlay.js';
@@ -287,6 +287,7 @@ function MatchScreen() {
     isHost: !!s.room && s.room.hostId === s.me.playerId,
   }), shallowEqual);
   const gd = useGameData();
+  const regShop = regulationShopEnabled(gd.config, settings);
 
   const hostRef = useRef(null);
   const barRef = useRef(null);
@@ -1867,12 +1868,12 @@ function MatchScreen() {
   const dSide = (() => {
     if (ufShown) {
       const { rem, vp } = panelFrame();
-      return panelSide(underframeRect(ufGeo, rem), panelSlots(vp, rem, { shopOpen, reg: (regulationFamily(gd.config) && settings.officialRegulationHud) }));
+      return panelSide(underframeRect(ufGeo, rem), panelSlots(vp, rem, { shopOpen, reg: regShop }));
     }
     if (mergeGeo && resolved) {
       const { rem, vp } = panelFrame();
       const half = (mergeGeo.s > 0 ? mergeGeo.s : 64) * 1.05; // the tile diamond's box (underframeRect's)
-      return panelSide({ left: mergeGeo.x - half, right: mergeGeo.x + half, top: mergeGeo.y - half, bottom: mergeGeo.y + half }, panelSlots(vp, rem, { shopOpen, reg: (regulationFamily(gd.config) && settings.officialRegulationHud) }));
+      return panelSide({ left: mergeGeo.x - half, right: mergeGeo.x + half, top: mergeGeo.y - half, bottom: mergeGeo.y + half }, panelSlots(vp, rem, { shopOpen, reg: regShop }));
     }
     return 'left';
   })();
@@ -1924,7 +1925,7 @@ function MatchScreen() {
     bonds: data.list('bonds'), chess: (id) => data.lookup('chess', id), mode: getMode(pub?.modeId),
   }) : null;
 
-  return html`<div class=${cx('screen', 'gm', (regulationFamily(gd.config) && settings.officialRegulationHud) && 'gm--reg', isBossPhase(phase) && 'is-boss', `gm--${mode}`, drag && 'is-dragging', barCollapsed && 'is-collapsed', roomConsole && !spectator && 'has-console', (sp && !choiceHidden || hasPersonalChoice || offerBlocksPrep(pub?.offers)) && 'has-sp', sp && !choiceHidden && 'has-spdraft', pen && 'is-pen', readyWhy && 'has-readywhy')}
+  return html`<div class=${cx('screen', 'gm', regShop && 'gm--reg', isBossPhase(phase) && 'is-boss', `gm--${mode}`, drag && 'is-dragging', barCollapsed && 'is-collapsed', roomConsole && !spectator && 'has-console', (sp && !choiceHidden || hasPersonalChoice || offerBlocksPrep(pub?.offers)) && 'has-sp', sp && !choiceHidden && 'has-spdraft', pen && 'is-pen', readyWhy && 'has-readywhy')}
       data-camera=${pen ? 'pen' : camKind}>
     <div class="gm__field" ref=${hostRef} onContextMenu=${(e) => e.preventDefault()}></div>
     ${viewKind === 'loading' ? html`<div class="gm__loading"><${Spinner} label="LOADING FIELD" /></div>` : null}

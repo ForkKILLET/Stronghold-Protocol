@@ -39,8 +39,9 @@ import { useShortcuts } from './settings.js';
 import { shortcutLabel } from './gameLogic.js';
 import { hotkeyLabelOf, useSettings } from './settings.js';
 import { themePack } from '../uiTheme.js';
+import { themeForShopLayout } from '../../../shared/uiTheme.js';
 import { mountThemeCharacter } from './themeCharacter.js';
-import { regulationFamily, regulationCharacter, regChromeUrls, regChromeStyle, regChromeTheme, regUpgradeModel } from './regHud.js';
+import { regulationFamily, regulationShopEnabled, regulationCharacter, regChromeUrls, regChromeStyle, regChromeTheme, regUpgradeModel } from './regHud.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -471,8 +472,9 @@ export function ShopBar({ priv, editable, collapsed, refreshBusy = false, onColl
   reward = null, onReward, onRewardLater, onArm = null, offBonds = null }) {
   const shortcuts = useShortcuts();
   const settings = useSettings();
-  const themeCharacter = themePack(settings?.uiTheme)?.character || null;
-  const reg = regulationFamily(data.get('config')) && settings.officialRegulationHud;
+  const config = data.get('config');
+  const themeCharacter = themeForShopLayout(themePack(settings?.uiTheme), regulationFamily(config))?.character || null;
+  const reg = regulationShopEnabled(config, settings);
   const shop = priv?.shop || {};
   const slots = Array.isArray(shop.slots) ? shop.slots : [];
   // Empty slots have no kind. In 第一期 the first equipment slot opens empty at level 5; use layout for that empty

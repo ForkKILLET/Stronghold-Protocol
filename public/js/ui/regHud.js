@@ -7,7 +7,7 @@
 // not the character plate. That plate is sprites/btn_big_close.webp. 可露希尔's plate is
 // sprites/closure_back_active.webp. A missing plate stays a CSS shape.
 
-import { officialAssetUrl, officialThemeById } from '../../../shared/uiTheme.js';
+import { officialAssetUrl, officialThemeById, themeNeedsRegulationShop } from '../../../shared/uiTheme.js';
 
 const INITIAL_GROUP = 'themes/ac_n_initial';
 
@@ -56,6 +56,11 @@ const ICON_SPRITES = Object.freeze({
 /** @param {any} config */
 export function regulationFamily(config) {
   return config?.version?.family === 'regulation';
+}
+
+/** Effective presentation only: a theme never overwrites the saved layout preference or changes game rules. */
+export function regulationShopEnabled(config, settings) {
+  return regulationFamily(config) && (settings?.officialRegulationHud === true || themeNeedsRegulationShop(settings?.uiTheme));
 }
 
 /**
