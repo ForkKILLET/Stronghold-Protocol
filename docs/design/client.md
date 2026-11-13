@@ -19,6 +19,22 @@ not reinterpret an operator as equipment, lose a card outside its declared range
 Branch preference (2026-10-16): `deploymentZoom` / 设置“部署时镜头缩放” is off by default, including legacy or invalid preferences. It persists in `sp.pref.settings`. Only explicit true enables temporary shop folding and camera zoom while placing operators, equipment or summons and choosing facing. Manual shop folding, ready-state camera changes, pen/scouting and battle framing retain their behavior. Placement and simulation rules are unchanged.
 
 
+Normal healing ranges use cyan-blue battlefield highlights; damaging ranges keep orange. Placement previews and
+inspected operators / healing summons resolve the same loadout record (dmgType heal or attackKind heal).
+The solid fill, Pixi stripes and SVG stripes share that choice, preserving highlight groups and orientation.
+This does not recolour the card mini-map or infer a healing range from profession, incidental healing, regen, or skill
+text. Special skills that change the displayed ability need separate verified display metadata. Colour families follow
+[PRTS combat mechanics](https://prts.wiki/w/%E4%BD%9C%E6%88%98%E6%9C%BA%E5%88%B6#%E6%94%BB%E5%87%BB%E8%8C%83%E5%9B%B4);
+the exact RGB values are this UI's palette, not extracted official constants.
+
+
+Match-information bond entries (#915, history §37.98) open the existing `BondPopup` directly: the in-game chips,
+briefing discs and strategy information discs share its effects, member list and ban marks. `MatchBondDialog` shares
+Modal's focus stack; Escape or its backdrop closes the card alone and restores its trigger. A strategy-turn change
+or leaving preparation also removes it. In-game ownership, live layers, morph rules and member skins use the existing
+view data; opening a member closes the information overlays before showing its operator card. Before combat the
+member grid is informational. Mode activation bans and drawn incomplete lineups keep their existing distinct meanings.
+
 **Operator skins (§34.23, [SKINS.md](../SKINS.md)).** [ASSUMED] Retain received skin IDs separately from displayed
 skins so the other-player switch restores loaded units when re-enabled, including boss prep partners. Any-phase
 `room.skins` refreshes owner/private and existing scout views; public seat choices update current battle rendering
