@@ -1,0 +1,66 @@
+{
+  "source": "tools/assets/sources.mjs RAW.aa2voice",
+  "manifestHash": "732db406503e",
+  "files": [
+    {
+      "path": "/assets/audio/bgm/m_bat1_act35side_intro.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act35side/m_bat1_act35side_intro.mp3",
+      "bytes": 37451,
+      "sha256": "47afe538d61a3dab60e391dab427c93cf6bb539c96aa9bdf6905edd280b75c89"
+    },
+    {
+      "path": "/assets/audio/bgm/m_bat1_act35side_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act35side/m_bat1_act35side_loop.mp3",
+      "bytes": 2487946,
+      "sha256": "7320700ab8567bce755931449fb55edd6032bbf42c81e7057530e1bfed368f9a"
+    },
+    {
+      "path": "/assets/audio/bgm/m_bat2_act16main_intro.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act16main/m_bat2_act16main_intro.mp3",
+      "bytes": 320827,
+      "sha256": "b238a0653143909d8f18488f372f1844dd5f2af5db1fa677a44158620b9ef145"
+    },
+    {
+      "path": "/assets/audio/bgm/m_bat2_act16main_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act16main/m_bat2_act16main_loop.mp3",
+      "bytes": 1920775,
+      "sha256": "de6cf8d64c1e37a13957464b964ec2c91107bad689d109b18d06bcb68ddc8730"
+    },
+    {
+      "path": "/assets/audio/bgm/m_bat2_act35side_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act35side/m_bat2_act35side_loop.mp3",
+      "bytes": 3294607,
+      "sha256": "4ca77efcb060ada09f72c491544b865f4b878f887c7bc3999c5646238ac8eaf6"
+    },
+    {
+      "path": "/assets/audio/bgm/m_bat_chernobog_intro.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act9d2d0/m_bat_chernobog_intro.mp3",
+      "bytes": 768879,
+      "sha256": "02673f2bebe4895349c998e06fcaad1f973bdea26201462a76062c9db0368e3f"
+    },
+    {
+      "path": "/assets/audio/bgm/m_bat_chernobog_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act9d2d0/m_bat_chernobog_loop.mp3",
+      "bytes": 1536670,
+      "sha256": "c6c95e6675ce8bed5207a4fc8722926f45272e2e40b1b00f18c456638443dbff"
+    },
+    {
+      "path": "/assets/audio/bgm/m_boss1_act3autochess_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act3autochess/m_boss1_act3autochess_loop.mp3",
+      "bytes": 2166953,
+      "sha256": "f495672e97f3ff830ab07b31972b93d3c3aa9a4ff327ce6a2a0c2de61aca47a1"
+    },
+    {
+      "path": "/assets/audio/bgm/m_boss2_act3autochess_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act3autochess/m_boss2_act3autochess_loop.mp3",
+      "bytes": 1748576,
+      "sha256": "bc5f904cfd997f5083edfbe832766975553012a7aca4f7df08dde5e736bb1795"
+    },
+    {
+      "path": "/assets/audio/bgm/m_sys_act3autochess_loop.mp3",
+      "url": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/voice/assets/dyn/audio/sound_beta_2/music/act3autochess/m_sys_act3autochess_loop.mp3",
+      "bytes": 2096092,
+      "sha256": "fabb1968a360ff282e971430a09e572d58681a61f4d50a8c4cdb3f3e4aabbf2d"
+    }
+  ]
+}

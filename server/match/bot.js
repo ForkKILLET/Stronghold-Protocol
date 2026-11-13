@@ -2385,7 +2385,6 @@ const EFFECT_ALIAS = Object.freeze({
   prep_end_act_bond: 'use_equip_reward_char_chess_bond_layer',
 });
 const FIRST_BOND_KEYS = new Set(['equip_destory_first_bond_char', 'use_equip_spe_goods_first_bond', 'equip_use_main_bond']);
-const effectKey = (rec) => EFFECT_ALIAS[itemEffect(rec)] || itemEffect(rec);
 
 /** 突变细胞 (buff char_chess_transformation_equip). */
 const isMutationCell = (gd, itemId) => itemEffect(gd.item(itemId)) === 'char_chess_transformation_equip';
@@ -2550,7 +2549,7 @@ function useArt(m, ps, item, ctx) {
   if (key) { const [r, c] = parseKey(key); tryDo(() => ps.useArt(item.uid, r, c)); }
 }
 
-function equipItems(m, ps) {
+export function equipItems(m, ps) {
   const gd = ps?.gd || m.gd;
   const tried = new Set();
   for (let guard = 0; guard < 12; guard++) {

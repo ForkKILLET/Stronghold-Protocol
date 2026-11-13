@@ -106,6 +106,7 @@ test('规程: 见钱眼开玩偶 is bought and consumed in solo before the Final
   ps.shop.slots = [{ kind: 'item', id: EYE, basePrice: data.items[EYE].price, sold: false }];
   drainBuy(m, ps);
   assert.equal(ps.shop.slots[0].sold, true);
+  equipItems(m, ps); // This branch equips in the following bounded prep step, not inside every purchase.
   assert.equal(held(ps, EYE), false, 'destroyed on equip, like the 盟约 doll');
 });
 
