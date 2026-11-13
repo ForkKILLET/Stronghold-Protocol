@@ -259,7 +259,7 @@ export function targetsNear(b, e, r, { ranged = true, x = e.x, y = e.y } = {}) {
 
 /** Every targetable ally on the field. */
 export function allTargets(b, e) {
-  return b.allies().filter((a) => canTargetAlly(e, a, true));
+  return b.allyUnits.filter((a) => canTargetAlly(e, a, true));
 }
 
 /**

@@ -78,7 +78,7 @@ import { fontJobs, buildFonts } from './assets/fonts.mjs';
 import { skelParserAvailable } from './assets/skel.mjs';
 import { SourceVerifier } from './assets/source-verifier.mjs';
 import { statsTemplateJobs } from './assets/stats-template.mjs';
-import { versionAssetData, presentationUnion, addManifestEntries, versionAudioData } from './assets/versions.mjs';
+import { versionAssetData, presentationUnion, addManifestEntries, versionAudioData, seasonMusicSpec, seasonMusicFiles } from './assets/versions.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ASSETS = join(ROOT, 'public', 'assets');
@@ -488,6 +488,7 @@ async function main() {
     extraBonds: all.bonds,
     moduleTypes: all.moduleTypes,
     charModes,
+    seasonMusic: seasonMusicSpec(ROOT),
   });
   const skinCount = Object.values(plan.template.chars).reduce((n, c) => n + Object.keys(c.skins || {}).length, 0);
   const leaves = collectLeaves(plan.template);
@@ -500,6 +501,8 @@ async function main() {
     `${Object.keys(plan.template.audio.voiceEn || {}).length} with EN, ` +
     `${Object.keys(plan.template.audio.voiceKr || {}).length} with KR, ` +
     `${Object.keys(plan.template.audio.voiceNative || {}).length} with an own-language dub)`);
+  const seasonFiles = seasonMusicFiles(plan.template.audio.seasons);
+  if (seasonFiles) log(`[plan] audio.seasons ${JSON.stringify(seasonFiles)}`);
   if (opts.dryRun) {
     for (const n of plan.notes) log(`  note: ${n}`);
     return 0;

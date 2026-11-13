@@ -309,7 +309,7 @@ export function isAssetUrl(v, ext = '') {
 }
 
 export function validSpine(sp) {
-  return isObj(sp) && isAssetUrl(sp.skel, '.skel') && typeof sp.atlas === 'string' && isObj(sp.anims);
+  return isObj(sp) && (isAssetUrl(sp.skel, '.skel') || isAssetUrl(sp.skel, '.json')) && typeof sp.atlas === 'string' && isObj(sp.anims);
 }
 
 /** Best 2D picture for a unit asset id (operator avatar, token avatar, enemy icon, item icon); `opts` reaches avatarUrl. */

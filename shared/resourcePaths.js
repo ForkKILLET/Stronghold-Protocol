@@ -3,7 +3,8 @@ export function isBoardResourceJson(url) {
   let pathname;
   try { pathname = new URL(String(url), 'https://resources.invalid').pathname; } catch { return false; }
   if (pathname.startsWith('/build/')) return false;
-  return /\/assets\/local\/map\/(?:fx\/(?:materials|prefab)|autochess\/(?:materials|tiles))\.json$/.test(pathname)
+  return /\/assets\/local\/themes\/(?:ac_n_initial|ac_n_iron|ac_s_closur)\/(?:theme|layout|character\/[A-Za-z0-9_.-]+)\.json$/.test(pathname)
+    || /\/assets\/local\/map\/(?:fx\/(?:materials|prefab)|autochess\/(?:materials|tiles))\.json$/.test(pathname)
     || /\/assets\/local\/fx\/(?:(?:index|textures)|prefabs\/[A-Za-z0-9_.-]+|mesh\/[A-Za-z0-9_.-]+)\.json$/.test(pathname)
     || /\/assets\/local\/scene\/(?:act1autochess_m0[1-7]|act2autochess_m0[1-4]|act3autochess_m(?:0[1-6]|09|1[0-2]))\/scene\.json$/.test(pathname);
 }

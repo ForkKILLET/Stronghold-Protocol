@@ -42,12 +42,20 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
     .cache/official-scenes/*, filled by tools/local-extract/fetch_scenes.py)
   - optional Windows PRTS cursor from the original PC prefab and animation clips → ui/cursor;
     --only ui/cursor extracts only this art; not required on mobile-only installations
+  - 规程's ten battlefields (regulation_scenes.REGULATION_IDS). Their art is three piece prefabs, not the logic
+    scene bundle; the same --only scene / --scenes <dir> run writes scene/<stageId>/ with the rows layouts.mjs
+    borrows. Each stage's materials come from regulation_scenes.STAGE_DEPS (sand, Syracuse metro, icewild or
+    ltny2). Those groups are not in expected_local_groups, so a client without them keeps the metal board
   - the official battle effects (特效) of the mode's operators, enemies and tokens (fx.py, DESIGN §33)
     → fx/index.json, fx/textures.json, fx/prefabs/*.json, fx/tex/**.webp (or .png), fx/mesh/*.json, listed in their own
     data/local-fx.json (next to --manifest; data/local-assets.json has no fx group);
     only with an explicit --only fx (a plain run leaves them out): the Phase 1a sample by default, --fx-set used for
     every effect the units reference, --fx-keys <k1,k2> for named prefabs; textures are WebP quality 90 by default,
     --fx-texture-format png selects lossless PNG
+  - the three official 卫戍协议 in-match UI themes (autochess_themes.py: ac_n_initial 卫戍协议终端, ac_n_iron 乌萨斯齐心团,
+    ac_s_closur 「全能的」可露希尔) → themes/<id>/theme.json (spTheme 1), layout.json, sprites/*.webp, voice/*.mp3.
+    Opt-in like fx: --only theme or --only theme/<id>, read from --themes <backup or AB root>. Not in
+    expected_local_groups. Both --out and --manifest must be scratch: official art is never committed
 
 Usage:
   python3 -m venv .venv && .venv/bin/pip install -r tools/local-extract/requirements.txt
@@ -60,6 +68,8 @@ Usage:
   .venv/bin/python tools/local-extract/extract.py --only fx [--fx-set sample|used] [--fx-keys k1,k2] [--fx-jobs N]
                                                         [--fx-texture-format webp|png]
   .venv/bin/python tools/local-extract/extract.py --only plugin-art [--plugin-root <installation>]
+  .venv/bin/python tools/local-extract/extract.py --only theme [--themes <backup or AB root>] [--only theme/<id>]
+                                                        --out <scratch> --manifest <scratch>/local-assets.json
 
 Writes <out>/**.png|.webp|.skel|.atlas and data/local-assets.json (manifest of what was extracted). With --only, just
 the jobs whose output subdir one of the prefixes names run (`enemy` selects `spine/enemy` as `spine/enemy` does), and
@@ -76,10 +86,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import scenes  # noqa: E402  (the battlefield scene table and exporter; imports UnityPy only when it runs)
+import regulation_scenes  # noqa: E402  (规程 piece prefabs → the same scene/ group; no UnityPy at import)
 import fx  # noqa: E402  (the official battle effects, DESIGN §33; imports UnityPy only when it runs)
 import operators  # noqa: E402 (installed plugin operators' optional official art, §34.28)
 import cursor  # optional Windows-client PRTS hand
 import versions  # noqa: E402 (the official-version roster's missing presentation art)
+import autochess_themes  # noqa: E402 (official in-match UI themes; UnityPy only when a theme run executes)
 from bundles import client_bundles  # noqa: E402 (Windows hot updates over the packaged client)
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1170,6 +1182,9 @@ def main():
     ap.add_argument('--webp', action='store_true',
                     help='only write the WebP copies of the board textures and the guide pages from the PNGs already '
                          'under --out and list them in the manifest (needs Pillow, not the client)')
+    ap.add_argument('--themes', action='append', default=[], metavar='DIR',
+                    help='AB root of the official in-match UI themes (repeatable). Used only with --only theme. '
+                         'Searched before --game')
     args = ap.parse_args()
 
     if args.print_jobs:
@@ -1194,7 +1209,10 @@ def main():
                           'scenes': {'sub': scenes.SCENE_SUB, 'tex': scenes.TEX_SUB,
                                      'version': scenes.SCENE_EXTRACT_VERSION,
                                      'stages': [{'id': sid, 'bundle': scenes.scene_bundle(sid), 'deps': deps}
-                                                for sid, deps in scenes.SCENES]}},
+                                                for sid, deps in scenes.SCENES]},
+                          'themes': {'sub': autochess_themes.THEME_SUB, 'optIn': True, 'spTheme': autochess_themes.SP_THEME,
+                                     'version': autochess_themes.DATA_VERSION,
+                                     'ids': list(autochess_themes.THEME_IDS)}},
                          ensure_ascii=False))
         return 0
 
@@ -1202,6 +1220,9 @@ def main():
         return webp_only(Path(args.out), Path(args.manifest), print)
 
     ab_root = locate_client(args.game)
+    theme_ids = autochess_themes.selected_ids(args.only)
+    if (not ab_root or not ab_root.exists()) and theme_ids and args.themes:
+        return extract(args, None)
     if not ab_root or not ab_root.exists():
         print('No Arknights install found. Pass --game <install directory or AssetBundle root>.', file=sys.stderr)
         return 2
@@ -1211,18 +1232,23 @@ def main():
 
 
 def extract(args, ab_root):
-    jobs = select_jobs(args.only)
-    enemy_ids = spine_ids(args.only, ENEMY_SPINE_SUB, ENEMY_SPINES)
-    token_ids = spine_ids(args.only, TOKEN_SPINE_SUB, TOKEN_SPINES)
-    stage_ids = scene_ids(args.only)
-    fx_on = fx_selected(args.only)
+    theme_ids = autochess_themes.selected_ids(args.only)
+    client = ab_root is not None
+    jobs = select_jobs(args.only) if client else []
+    enemy_ids = spine_ids(args.only, ENEMY_SPINE_SUB, ENEMY_SPINES) if client else []
+    token_ids = spine_ids(args.only, TOKEN_SPINE_SUB, TOKEN_SPINES) if client else []
+    stage_ids = scene_ids(args.only) if client else []
+    fx_on = fx_selected(args.only) if client else False
     # §34.28: a normal full run is not consent for optional plugin art. --only plugin-art is explicit too.
-    art_on = wants_sub(args.only, operators.SUB) and (bool(args.only) or args.plugin_art)
+    art_on = client and wants_sub(args.only, operators.SUB) and (bool(args.only) or args.plugin_art)
     art_ids = spine_ids(args.only, operators.SUB, operators.references(Path(args.plugin_root))) if art_on else []
-    cursor_on = wants_sub(args.only, cursor.SUB)
-    versions_on = not args.only or 'versions' in args.only
-    if not jobs and not enemy_ids and not token_ids and not stage_ids and not fx_on and not art_on and not versions_on and not cursor_on:
+    cursor_on = client and wants_sub(args.only, cursor.SUB)
+    versions_on = client and (not args.only or 'versions' in args.only)
+    if not jobs and not enemy_ids and not token_ids and not stage_ids and not fx_on and not art_on and not versions_on and not theme_ids and not cursor_on:
         print(f'--only {args.only}: no job matches', file=sys.stderr)
+        return 2
+    if theme_ids and not args.themes:
+        print('--only theme needs --themes <backup or AssetBundle root>', file=sys.stderr)
         return 2
     out_root = Path(args.out)
     out_root.mkdir(parents=True, exist_ok=True)
@@ -1235,7 +1261,8 @@ def extract(args, ab_root):
     if art_ids:
         chars, n = operators.export(ab_root, out_root, manifest, print, art_ids)
         total += n
-    print(f'AB root: {ab_root}')
+    if client:
+        print(f'AB root: {ab_root}')
     for job in jobs:
         total += export_bundle(ab_root, job, out_root, manifest, print)
     if enemy_ids:
@@ -1249,7 +1276,11 @@ def extract(args, ab_root):
                               fx_manifest=Path(args.manifest).with_name(fx.FX_MANIFEST), texture_format=args.fx_texture_format,
                               add_only=args.fx_add_only)
     if stage_ids:
-        total += export_scenes(ab_root, out_root, manifest, print, stage_ids, scene_roots(ab_root, args.scenes))
+        roots = scene_roots(ab_root, args.scenes)
+        total += export_scenes(ab_root, out_root, manifest, print, stage_ids, roots)
+    if theme_ids:
+        total += autochess_themes.export_themes(
+            args.themes, out_root, manifest, print, theme_ids, ROOT, game_root=ab_root)
     old, old_chars = {}, {}
     if Path(args.manifest).exists():
         try:

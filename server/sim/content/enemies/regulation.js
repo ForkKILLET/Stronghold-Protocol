@@ -514,8 +514,9 @@ function kitAcrefd(ab) {
   ];
 }
 
-/** Raw “模拟宝藏” enemy definition: no attack (applyWay NONE) or movement.
- * Strategy-owned ally-side chests, contact removal and survival coins are installed by bands/commands.js. */
+/** “模拟宝藏”: a hostage when the enemy record itself is spawned. It does not attack (applyWay NONE)
+ *  and does not move. The command deploys an ally device instead (content/bands/commands.js): enemy
+ *  contact and the survival coin live there, so this kit is not the payoff. */
 function kitAchest() {
   return [{
     spawn(b, e) {

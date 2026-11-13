@@ -13,6 +13,8 @@ import { audio } from '../audio.js';
 import { sentText } from '../ui/lang.js';
 import { reducedMotion } from '../ui/device.js';
 import { recordId, selfRowOf, loadStats, isModdedRecord, recordsOfSeason } from '../ui/stats.js';
+import { DIFFICULTY_NAMES } from '../../../shared/constants.js';
+import { ladderName } from '../ui/hud.js';
 import { ResultView, resultBonds } from './result.js';
 import { shownVersion, seasonOf } from '../versions.js';
 import { t } from '../../../shared/i18n.js';
@@ -174,6 +176,17 @@ function SettleMap({ lose, seed }) {
   </svg>`;
 }
 
+/**
+ * The result's mode name: 规程's own mode name where it is not its difficulty's (规程等级 n / 极速模拟, as the in-match tag:
+ * the official settlement of a solo 规程等级20 match says 「规程等级20」, BV12ZWP6pE7m 11:40), else the difficulty's.
+ * @param {{ difficulty?: string|null, modeId?: string|null }} r
+ */
+export function modePillName(r) {
+  const d = r?.difficulty;
+  if (!d) return '';
+  return ladderName({ modeId: r.modeId || undefined, difficulty: d }) || (DIFFICULTY_NAMES[d] ? t(DIFFICULTY_NAMES[d]) : d);
+}
+
 // ---- the radar intro -------------------------------------------------------------------------------------------------
 
 const SEAT_BOX = [[640, 355], [1145, 355], [640, 640], [1145, 640]];
@@ -280,7 +293,7 @@ function BondBar({ bonds, gd }) {
 
 function ModePill({ r }) {
   return html`<span class="smode">
-    ${r.difficulty ? html`<${DifficultyTag} difficulty=${r.difficulty} size="lg" />` : null}
+    ${r.difficulty ? html`<${DifficultyTag} difficulty=${r.difficulty} size="lg" name=${modePillName(r)} />` : null}
   </span>`;
 }
 

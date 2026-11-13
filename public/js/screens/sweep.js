@@ -1,13 +1,13 @@
 import { PageHeader } from '../ui/pageHeader.js';
 // S.W.E.E.P. report adapted from isomerpoi UI b2bd17af; existing local game data only, no new protocol or rule state.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Icon, roman } from '../ui/components.js';
+import { html, Button, Icon, TierChip, roman } from '../ui/components.js';
 import { Img, RichText, GIcon } from '../ui/gameComponents.js';
-import { bondIconUrl, bandIconUrl, enemyIconUrl, factionIconUrl, chessAvatarUrl } from '../ui/assetUrls.js';
+import { bondIconUrl, bandIconUrl, enemyIconUrl, factionIconUrl, chessAvatarUrl, itemIconUrl } from '../ui/assetUrls.js';
 import { attackInterval, fmtNum } from '../ui/gameLogic.js';
 import { abilityRows } from '../ui/abilityLines.js';
 import { contentSet, pageVersion, retryContentSet } from '../content.js';
-import { DEFAULT_VERSION, shownVersion } from '../versions.js';
+import { DEFAULT_VERSION, shownVersion, versionById } from '../versions.js';
 import { data, useData } from '../data.js';
 import { useStore, loadPref, savePref } from '../store.js';
 import { loadoutStore, openLoadout } from '../ui/loadoutSync.js';
@@ -16,12 +16,15 @@ import { t, N_ } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 const TAB_PREF = 'sweep.tab';
-export const sweepTab = (v) => ['bonds', 'bands', 'enemies'].includes(v) ? v : 'bonds';
+export const sweepTab = (v) => ['bonds', 'bands', 'enemies', 'equip'].includes(v) ? v : 'bonds';
 const TABS = [
   { id: 'bonds', name: N_('盟约报告'), icon: () => html`<${Icon} name="link" />` },
   { id: 'bands', name: N_('策略报告'), icon: () => html`<${Icon} name="rook" />` },
   { id: 'enemies', name: N_('敌方资料'), icon: () => html`<${GIcon} name="target" />` },
 ];
+// [ASSUMED] the official tab's equipment glyph is not in this icon set; shield is the glyph equipment offers already use.
+const EQUIP_TAB = { id: 'equip', name: N_('装备报告'), icon: () => html`<${Icon} name="shield" />` };
+const EQUIP_TIERS = [1, 2, 3, 4, 5, 6];
 const MODE_NAME = { SINGLE: N_('独立模拟'), MULTI: N_('同盟模拟') };
 const RANK = { NORMAL: N_('普通'), ELITE: N_('精英'), BOSS: N_('领袖') };
 const APPLY = { MELEE: N_('近战'), RANGED: N_('远程'), ALL: N_('近战 / 远程'), NONE: N_('不攻击') };
@@ -85,30 +88,72 @@ export function bossEnemyKeys(boss) {
   return [...new Set(keys.filter((k) => typeof k === 'string' && k))];
 }
 
+/**
+ * 装备报告 is 规程's fourth tab. A covenant build, and data with no `config.version`, keep the three tabs.
+ * The gate is the family, not a chess / band / bond id (seasons reuse ids).
+ * @param {any} config config.json
+ * @returns {boolean}
+ */
+export function equipReportOn(config) {
+  return config?.version?.family === 'regulation';
+}
+
+/**
+ * The 装备报告's rows: base (non-golden) EQUIP of one items.json, tiers 1–6 in order, `shopSortId` within a tier
+ * (then id). Shop-excluded pieces stay — the official tier-4 row includes 灼燃维式重锤, which the shop never sells.
+ * `golden` is the `goldenId` record when it exists and is not the item itself; null means no 进阶效果 block.
+ * @param {Record<string, any> | any[] | null | undefined} items
+ * @returns {{ tier: number, items: { item: any, golden: any | null }[] }[]}
+ */
+export function equipReportGroups(items) {
+  const list = (Array.isArray(items) ? items : (items && typeof items === 'object' ? Object.values(items) : []))
+    .filter((it) => it && typeof it === 'object');
+  const byId = new Map();
+  for (const it of list) if (typeof it.id === 'string' && it.id) byId.set(it.id, it);
+  const sortId = (it) => (Number.isFinite(it.shopSortId) ? it.shopSortId : 1e9);
+  const base = list.filter((it) => it.itemType === 'EQUIP' && it.isGolden !== true
+    && typeof it.id === 'string' && it.id && EQUIP_TIERS.includes(it.tier));
+  base.sort((a, b) => a.tier - b.tier || sortId(a) - sortId(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const groups = [];
+  for (const tier of EQUIP_TIERS) {
+    const rows = [];
+    for (const item of base) {
+      if (item.tier !== tier) continue;
+      const gid = item.goldenId;
+      const golden = typeof gid === 'string' && gid && gid !== item.id ? byId.get(gid) || null : null;
+      rows.push({ item, golden });
+    }
+    if (rows.length) groups.push({ tier, items: rows });
+  }
+  return groups;
+}
+
 // ---- small pieces ------------------------------------------------------------------------------------------------------
 
 /** The big square at the top of the left panel (bracket corners, a ring behind a glyph or the art). */
-function Hero({ src, glyph = false, art = false, name, sub = null, fallback }) {
-  return html`<div class="sw-hero">
-    <span class=${cx('sw-hero__box', glyph && 'is-glyph', art && 'is-art')}>
+function Hero({ src, glyph = false, art = false, item = false, name, sub = null, fallback, badge = null }) {
+  return html`<div class=${cx('sw-hero', item && 'sw-hero--item')}>
+    <span class=${cx('sw-hero__box', glyph && 'is-glyph', art && 'is-art', item && 'is-item')}>
       <i class="sw-hero__c sw-hero__c--tl"></i><i class="sw-hero__c sw-hero__c--br"></i>
       <span class="sw-hero__img"><${Img} src=${src} fallback=${fallback} /></span>
+      ${badge}
     </span>
     <h3 class="sw-hero__name">${name}</h3>
     ${sub ? html`<span class="sw-hero__sub">${sub}</span>` : null}
   </div>`;
 }
 
-/** One tile of the right grid. */
-function Tile({ on, onClick, title, kind, children, badge = null }) {
-  return html`<button type="button" class=${cx('sw-tile', `sw-tile--${kind}`, on && 'is-on')} onClick=${onClick} title=${title} aria-pressed=${on ? 'true' : 'false'}>
+/** One tile of the right grid. `label` is the accessible name when the tile is only an icon. */
+function Tile({ on, onClick, title, kind, children, badge = null, label = null }) {
+  return html`<button type="button" class=${cx('sw-tile', `sw-tile--${kind}`, on && 'is-on')} onClick=${onClick} title=${title}
+      aria-label=${label || undefined} aria-pressed=${on ? 'true' : 'false'}>
     <span class="sw-tile__in">${children}</span>${badge}
   </button>`;
 }
 
-/** A section of the right grid: a glyph above `[ name ]`, then its tiles. */
-function Section({ name, glyph, children, count = null }) {
-  return html`<section class="sw-sec">
+/** A section of the right grid: a glyph above `[ name ]`, then its tiles. `tier` is the 装备报告's tier chip. */
+function Section({ name, glyph, children, count = null, tier = null }) {
+  return html`<section class=${cx('sw-sec', tier != null && 'sw-sec--tier', tier != null && `sw-sec--t${tier}`)}>
     <header class="sw-sec__head">
       <span class="sw-sec__glyph">${glyph}</span>
       <span class="sw-sec__name"><i>[</i>${name}${count != null ? html`<small class="num">${count}</small>` : null}<i>]</i></span>
@@ -391,6 +436,36 @@ export function EnemyCodexView({ model: { list, cur, counts }, scope, rank, quer
   </section>`;
 }
 
+// ---- 装备报告 (规程) ---------------------------------------------------------------------------------------------------
+
+function EquipPanel({ row, m }) {
+  const { item, golden } = row;
+  // [ASSUMED] flavor is shown as stored: the lines that are quotations already carry their quotation marks.
+  const flavor = typeof item.flavor === 'string' ? item.flavor.trim() : '';
+  return html`<div class="sw-detail">
+    <${Hero} item=${true} src=${itemIconUrl(m, item)} name=${item.name}
+      badge=${html`<${TierChip} tier=${item.tier} size="md" class="sw-hero__tier" />`}
+      fallback=${html`<span class="sw-hero__txt">${[...(item.name || '?')][0]}</span>`} />
+    <div class="sw-text">
+      <h4 class="sw-fx__k">${t('基础效果')}</h4>
+      <${RichText} as="p" text=${item.descRaw || item.desc || ''} />
+      ${golden ? html`<h4 class="sw-fx__k sw-fx__k--gold">${t('进阶效果')}</h4>
+        <${RichText} as="p" text=${golden.descRaw || golden.desc || ''} />` : null}
+      ${flavor ? html`<${RichText} as="p" class="sw-flavor" text=${flavor} />` : null}
+    </div>
+  </div>`;
+}
+
+function EquipTab({ m, groups, sel, onSel }) {
+  return groups.map((g) => html`<${Section} key=${g.tier} tier=${g.tier} name=${t('{tier}阶', { tier: g.tier })}
+      glyph=${html`<${TierChip} tier=${g.tier} size="sm" />`}>
+    ${g.items.map(({ item }) => html`<${Tile} key=${item.id} kind="item" on=${sel === item.id} onClick=${() => onSel(item.id)}
+        title=${item.name} label=${item.name}>
+      <span class="sw-item"><${Img} src=${itemIconUrl(m, item)} fallback=${html`<span class="sw-item__txt">${[...(item.name || '?')][0]}</span>`} /></span>
+    <//>`)}
+  <//>`);
+}
+
 // ---- the screen --------------------------------------------------------------------------------------------------------
 
 /** Escape ownership is decided before any higher layer handles (and closes on) the same event. */
@@ -403,7 +478,8 @@ export function sweepEscapeAction(ev, { loadoutOpen, guideOpen, dialogOpen, code
 
 /** Full-page report; the lobby is not mounted underneath. @param {{ onClose: () => void }} props */
 export function SweepReport({ onClose }) {
-  const ready = useData('bonds', 'bands', 'bosses', 'factions', 'enemies', 'chess', 'assets');
+  const ready = useData('items', 'config', 'bonds', 'bands', 'bosses', 'factions', 'enemies', 'chess', 'assets');
+  const version = shownVersion(pageVersion());
   const notOwned = useStore((s) => s.notOwned, Object.is, loadoutStore);
   const loadoutOpen = useStore((s) => s.open, Object.is, loadoutStore);
   const guideOpen = useStore((s) => s.open, Object.is, guideStore);
@@ -411,6 +487,7 @@ export function SweepReport({ onClose }) {
   const [bondSel, setBondSel] = useState(null);
   const [bandSel, setBandSel] = useState(null);
   const [enemySel, setEnemySel] = useState(null);
+  const [itemSel, setItemSel] = useState(null);
   const [codex, setCodex] = useState(null);
   const pageRef = useRef(null);
   const returnFocus = useRef(null);
@@ -442,7 +519,7 @@ export function SweepReport({ onClose }) {
   return html`<${SweepShell} onBack=${() => codex ? setCodex(null) : onClose()} backTitle=${codex ? t('返回报告') : t('返回大厅')} title=${codex ? t('敌方图鉴') : t('S.W.E.E.P.报告')} micro=${codex ? 'ENEMY INTELLIGENCE' : 'S.W.E.E.P. ARCHIVE'} loadoutOpen=${loadoutOpen} guideOpen=${guideOpen} pageRef=${pageRef}>
     <div class="sw-report-page" hidden=${!!codex}>
       <${SweepView} ready=${ready} tab=${tab} notOwned=${notOwned} bondSel=${bondSel} bandSel=${bandSel} enemySel=${enemySel}
-        onClose=${onClose} onTab=${setTab} onBond=${setBondSel} onBand=${setBandSel} onEnemy=${setEnemySel} onCodex=${openCodex} />
+        version=${version} itemSel=${itemSel} onItem=${setItemSel} onClose=${onClose} onTab=${setTab} onBond=${setBondSel} onBand=${setBandSel} onEnemy=${setEnemySel} onCodex=${openCodex} />
     </div>
     ${codex ? html`<${EnemyCodex} key=${`${codex.title}|${codex.key}`} open=${codex} m=${data.get('assets')} onClose=${() => setCodex(null)} />` : null}
   <//>`;
@@ -456,7 +533,10 @@ export function SweepShell({ loadoutOpen, guideOpen, pageRef, children, onBack, 
 }
 
 /** Hook-free report view. All panels read the same installed, localized data as the rest of the client. */
-export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, onTab, onBond, onBand, onEnemy, onCodex }) {
+export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, onTab, onBond, onBand, onEnemy, onCodex, version, itemSel, onItem }) {
+  const tabs = (versionById(version)?.family === 'regulation' || equipReportOn(data.get('config'))) ? [...TABS, EQUIP_TAB] : TABS;
+  const tabOn = tabs.some(x => x.id === tab) ? tab : 'bonds';
+  const groups = ready && tabOn === 'equip' ? equipReportGroups(data.list('items')) : [];
   const m = data.get('assets');
   const bonds = ready ? data.list('bonds').filter((b) => b?.bondId).sort((a, b) => (a.identifier ?? 99) - (b.identifier ?? 99)) : [];
   const bands = ready ? data.list('bands').filter((b) => b?.bandId).sort((a, b) => (a.sortId ?? 99) - (b.sortId ?? 99)) : [];
@@ -464,14 +544,19 @@ export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, on
   const band = data.lookup('bands', bandSel) || bands[0];
   const firstBoss = ready ? bossList()[0] : null;
   const eSel = enemySel || (firstBoss ? { kind: 'boss', id: firstBoss.bossId } : null);
+  const rows = groups.flatMap(g => g.items);
+  const row = rows.find(r => r.item.id === itemSel) || rows[0] || null;
   let left = null, right;
   if (!ready) right = html`<p class="sw-loading" role="status">${t('正在读取报告…')}</p>`;
-  else if (tab === 'bonds') {
+  else if (tabOn === 'bonds') {
     left = bond ? html`<${BondPanel} key=${bond.bondId} bond=${bond} m=${m} notOwned=${notOwned} />` : null;
     right = html`<${BondsTab} m=${m} sel=${bond?.bondId} onSel=${onBond} />`;
-  } else if (tab === 'bands') {
+  } else if (tabOn === 'bands') {
     left = band ? html`<${BandPanel} key=${band.bandId} band=${band} m=${m} />` : null;
     right = html`<${BandsTab} m=${m} sel=${band?.bandId} onSel=${onBand} />`;
+  } else if (tabOn === 'equip') {
+    left = row ? html`<${EquipPanel} key=${row.item.id} row=${row} m=${m} />` : null;
+    right = html`<${EquipTab} m=${m} groups=${groups} sel=${row?.item.id} onSel=${onItem} />`;
   } else {
     left = eSel ? html`<${EnemyPanel} key=${`${eSel.kind}:${eSel.id}`} sel=${eSel} m=${m} onCodex=${onCodex} />` : null;
     right = html`<${EnemiesTab} m=${m} sel=${eSel || {}} onSel=${onEnemy} onCodex=${onCodex} />`;
@@ -479,8 +564,8 @@ export function SweepView({ ready, tab, notOwned, bondSel, bandSel, enemySel, on
   return html`<div class="sw" data-tab=${tab}>
     <div class="sw__bg" aria-hidden="true"><i class="sw__mist"></i><i class="sw__lines"></i></div>
     <header class="sw-top">
-      <nav class="sw-tabs" role="tablist" aria-label=${t('S.W.E.E.P.报告')}>
-        ${TABS.map((x) => html`<button key=${x.id} type="button" role="tab" aria-selected=${tab === x.id ? 'true' : 'false'} class=${cx('sw-tab', tab === x.id && 'is-on')}
+      <nav class=${cx('sw-tabs', tabs.length > 3 && 'sw-tabs--4')} role="tablist" aria-label=${t('S.W.E.E.P.报告')}>
+        ${tabs.map((x) => html`<button key=${x.id} type="button" role="tab" aria-selected=${tabOn === x.id ? 'true' : 'false'} class=${cx('sw-tab', tabOn === x.id && 'is-on')}
           onClick=${() => onTab(x.id)}><span class="sw-tab__icon">${x.icon()}</span><span>${t(x.name)}</span></button>`)}
       </nav>
     </header>

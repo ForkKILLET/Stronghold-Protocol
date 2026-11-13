@@ -318,7 +318,7 @@ export function disabledBondSets(pub, staticInactive = []) {
   return { drawn, off: new Set() };
 }
 
-export const BOND_GROUP_HINT = N_('可选择一组激活，另外一组在本局内的干员阵容将会不完整');
+export const BOND_GROUP_HINT = N_('请选择一组在本次模拟中激活的盟约，未被选择的盟约将不会出现在本次模拟中');
 export const REGULATION_BOND_LEGEND = N_('有核心盟约的干员，仅当其核心盟约全部置灰时无法出现；仅有附加盟约的干员，仅当其附加盟约全部置灰时无法出现');
 
 /**

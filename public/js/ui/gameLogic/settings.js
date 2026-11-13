@@ -6,6 +6,7 @@ import { VOICE_LANGS, sanitizeVoiceOverrides } from '../../voicePrefs.js';
 import { CAPTION_MODES } from '../../voiceCaptions.js';
 export { VOICE_LANGS } from '../../voicePrefs.js';
 
+import { BUILTIN_ID } from '../../../../shared/uiTheme.js';
 import { clamp, isObj } from './shared.js';
 
 
@@ -28,7 +29,7 @@ export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
 
 /** Shortcuts persist separately in ui/shortcuts.js; voiceLang: VOICE_LANGS.
  *  textSize: TEXT_SIZES (css/theme.css `--t`, applied by ui/settings.js applyTextSize). */
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceSubtitles: false, voiceSubtitleMode: 'ui', officialFx: 'auto', voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, otherSkins: true, deploymentZoom: false, quality: 'high', textSize: 'sm', fpsLimit: 0, skinsEnabled: false, arknightsCursor: false, preload: false, preloadOptional: false, preloadVoiceLang: Object.freeze(['cn']), preloadSkins: false });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceSubtitles: false, voiceSubtitleMode: 'ui', officialFx: 'auto', voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, otherSkins: true, deploymentZoom: false, quality: 'high', textSize: 'sm', fpsLimit: 0, uiTheme: '', officialRegulationHud: false, skinsEnabled: false, arknightsCursor: false, preload: false, preloadOptional: false, preloadVoiceLang: Object.freeze(['cn']), preloadSkins: false });
 const QUALITIES = ['high', 'medium', 'low'];
 /** The values of 设置「官方特效」 (render/vfx/tier.js OFFICIAL_FX). Display order in the dialog is low / medium / high. */
 export const OFFICIAL_FX_MODES = Object.freeze(['auto', 'off', 'lite', 'full']);
@@ -50,6 +51,14 @@ function ammoEnergyCountOf(r) {
  * @returns {{ bgm: number, sfx: number, voice: number, voiceLang: 'cn'|'jp'|'en'|'kr', voiceNative: boolean, voiceSubtitles: boolean, voiceSubtitleMode: 'ui'|'dual'|'voice', voiceOverrides: Record<string, string>, muted: boolean, damageNumbers: boolean, officialDamageNumbers: boolean, ammoCount: boolean, deploymentZoom: boolean, combatMetrics: boolean, mysticEnergy: boolean, quality: 'high'|'medium'|'low', officialFx: 'auto'|'off'|'lite'|'full',
  *   arknightsCursor: boolean, textSize: 'sm'|'md'|'lg'|'xl', keys: Record<'buy'|'refresh'|'freeze'|'levelUp'|'retreat'|'sell'|'ready', string> }}
  */
+const THEME_ID = /^[a-z0-9][a-z0-9_-]{0,39}$/;
+
+/** Empty, the built-in id, or a pack id. Anything else is the built-in look. */
+function uiThemeOf(raw) {
+  if (raw == null || raw === '' || raw === BUILTIN_ID) return '';
+  return typeof raw === 'string' && THEME_ID.test(raw) ? raw : '';
+}
+
 export function sanitizeSettings(raw) {
   const r = isObj(raw) ? raw : {};
   const vol = (v, d) => (Number.isFinite(v) ? clamp(Math.round(v * 100) / 100, 0, 1) : d);
@@ -82,5 +91,7 @@ export function sanitizeSettings(raw) {
     officialFx: OFFICIAL_FX_MODES.includes(r.officialFx) ? r.officialFx : DEFAULT_SETTINGS.officialFx,
 
     textSize: TEXT_SIZES.includes(r.textSize) ? r.textSize : DEFAULT_SETTINGS.textSize,
+    uiTheme: uiThemeOf(r.uiTheme),
+    officialRegulationHud: r.officialRegulationHud === true,
   };
 }

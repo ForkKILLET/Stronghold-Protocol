@@ -56,6 +56,8 @@ import { fxAvailable } from '../render/vfx/available.js';
 import { resolveOfficialFx } from '../render/vfx/tier.js';
 import { ScreenFitSection } from './screenFit.js';
 import { cosmetics } from '../cosmetics.js';
+import { ThemeSection } from './themeSettings.js';
+import { applyUiTheme, bindThemeSettings, bootUiThemes, syncThemeVoiceVolume } from '../uiTheme.js';
 import { applyCursor } from './cursor.js';
 
 const cx = (...parts) => parts.filter(Boolean).join(' ');
@@ -82,6 +84,8 @@ settingsStore.subscribe((s) => {
   audio.setVoiceNative(s.voiceNative);
   applyTextSize(s.textSize);
   applyCursor(s.arknightsCursor);
+  applyUiTheme(s.uiTheme);
+  syncThemeVoiceVolume();
 });
 shortcutsStore.subscribe((s) => savePref('shortcuts', sanitizeShortcuts(s)));
 audio.setVolumes(settingsStore.get());
@@ -446,6 +450,8 @@ export function SettingsModal({ open, onClose }) {
         : html`<p class="set-hint">${t('快捷键可在“修改快捷键”中自定义。')}<kbd>Esc</kbd> ${t('关闭弹窗 · 右键查看详情')}</p>`}
       ` : null}
       ${category === 'appearance' ? html`
+      <${ThemeSection} activeId=${s.uiTheme || ''} />
+      <${Toggle} label=${t('使用规程商店界面')} micro="REGULATION HUD" value=${s.officialRegulationHud} onChange=${v => updateSettings({ officialRegulationHud: v })} />
       <${PersonalizationSection} />
       <${Toggle} label=${t('骷髅手指光标')} micro="PRTS CURSOR" value=${s.arknightsCursor} testId="arknights-cursor" onChange=${v => updateSettings({ arknightsCursor: v })} />
       <p class="set-hint">${t('使用明日方舟的骷髅手指光标；文字输入、拖动和缩放仍保留系统光标。')}</p>
@@ -517,3 +523,9 @@ export function SettingsButton({ class: cls, size = 'sm', variant = 'ghost', lab
       title=${t('设置')} aria-label=${t('设置')} data-testid="settings-btn"><${GIcon} name="gear" class="btn__icon" />${square ? null : label}<//>
     ${open ? html`<${SettingsModal} open=${true} onClose=${() => setOpen(false)} />` : null}`;
 }
+
+bindThemeSettings({
+  get: () => settingsStore.get(),
+  set: (patch) => settingsStore.set(sanitizeSettings({ ...settingsStore.get(), ...patch })),
+});
+bootUiThemes();

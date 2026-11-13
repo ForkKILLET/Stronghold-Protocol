@@ -904,11 +904,11 @@ function attackTargets(b, e, radius, reach, own) {
   if (e.blockedBy && !(radius > 0 && e.profile && e.profile.blockFree)) {
     const bl = e.blockedBy;
     if (radius > 0) {
-      targets = b.alliesInRadius(e.x, e.y, reach, null).filter((a) => a === bl || canTargetAlly(e, a, true));
+      targets = b.alliesInRadius(e.x, e.y, reach, null, { includeDevices: true }).filter((a) => a === bl || canTargetAlly(e, a, true));
       if (!targets.includes(bl) && bl.alive) targets.push(bl);
     } else if (bl.alive && bl.deployed) targets = [bl];
   } else if (radius > 0) {
-    targets = b.alliesInRadius(e.x, e.y, reach, null).filter((a) => canTargetAlly(e, a, true));
+    targets = b.alliesInRadius(e.x, e.y, reach, null, { includeDevices: true }).filter((a) => canTargetAlly(e, a, true));
   }
   if (own && targets.length) targets = targets.filter((a) => own(a));
   return targets;

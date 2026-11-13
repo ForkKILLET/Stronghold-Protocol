@@ -372,6 +372,14 @@ describe('placement mirror (canPlace)', () => {
     const r = piece(RANGED);
     const ctx = ctxFor(privWith({ hand: [m, r] }));
     assert.equal(canPlace(ctx, m.uid, { area: 'board', row: 9, col: 3 }).ok, true);
+    const chest = privWith({ hand: [piece(MELEE)] });
+    chest.prepMapChars = [{ uid: -20, defId: 'enemy_9038_achest', x: 3, y: 9, kind: 'enemy' }];
+    const blocked = ctxFor(chest);
+    assert.equal(canPlace(blocked, chest.hand[0].uid, { area: 'board', row: 9, col: 3 }).ok, false, '模拟宝藏 occupies the tile');
+    assert.equal(canPlace(blocked, chest.hand[0].uid, { area: 'board', row: 9, col: 5 }).ok, true);
+    const medic = privWith({ hand: [piece(MELEE)] });
+    medic.prepMapChars = [{ uid: -1, defId: 'char_605_cmedic', x: 3, y: 9, kind: 'token' }];
+    assert.equal(canPlace(ctxFor(medic), medic.hand[0].uid, { area: 'board', row: 9, col: 3 }).ok, true, 'the reserve medic does not block deploy');
     assert.equal(canPlace(ctx, m.uid, { area: 'board', row: 10, col: 4 }).ok, false, 'melee on high ground');
     assert.equal(canPlace(ctx, r.uid, { area: 'board', row: 10, col: 4 }).ok, true);
     assert.equal(canPlace(ctx, r.uid, { area: 'board', row: 9, col: 3 }).ok, true, 'ranged may use melee tiles');
@@ -773,6 +781,10 @@ describe('keyboard & settings', () => {
     assert.equal(sanitizeSettings({ voiceLang: 'kr' }).voiceLang, 'kr');
     assert.equal(sanitizeSettings({ voiceNative: true }).voiceNative, true);
     for (const bad of ['native', 'JP', 'ja', 1, null]) assert.equal(sanitizeSettings({ voiceLang: bad }).voiceLang, 'cn', String(bad));
+    assert.equal(sanitizeSettings(null).uiTheme, '');
+    assert.equal(sanitizeSettings({ uiTheme: 'iron-fan' }).uiTheme, 'iron-fan');
+    assert.equal(sanitizeSettings({ uiTheme: 'terminal' }).uiTheme, '', 'the built-in id is stored as empty');
+    assert.equal(sanitizeSettings({ uiTheme: '../x' }).uiTheme, '');
     assert.equal(sanitizeSettings({ bgm: 0.333 }).bgm, 0.33);
     assert.equal(sanitizeSettings({ quality: 'low' }).quality, 'low');
     assert.equal(sanitizeSettings(null).preload, false, 'the offline-resource preload is off unless the player turned it on');

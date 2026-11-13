@@ -100,7 +100,7 @@ test('real multiplayer briefings and setup rerolls use the same mode-specific ba
   }
 });
 
-for (const [modeId, size, addons] of [['mode_single_1', 4, 1], ['mode_single_12', 5, 4], ['mode_single_funny', 4, 1]]) {
+for (const [modeId, size, addons] of [['mode_single_1', 4, 2], ['mode_single_12', 5, 5], ['mode_single_funny', 4, 2]]) {
   test(`${modeId}: disjoint groups, pick greys the other; no shop or copies drawn before pick`, t => {
     const h = make(t, { modeId, seed: 29 }), m = h.m, ps = h.ps('p_0');
     const beforeRng = m.rngShop.state();

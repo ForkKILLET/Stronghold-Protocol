@@ -108,7 +108,7 @@ export function canTargetEnemy(attacker, e, profile) {
  * 排气格栅 with nobody else in range, it does not attack (the official game, community report of 2026-10-06, item 24).
  */
 export function canTargetAlly(e, a, ranged) {
-  if (!a.alive || !a.deployed || a.hidden || a.kind === 'device') return false;
+  if (!a.alive || !a.deployed || a.hidden || (a.kind === 'device' && !a.mem?.commandTreasure)) return false;
   const f = a.s.flags;
   if (f.untargetable || f.sleep) return false;
   if (ranged && (f.stealth || f.camou) && (e.blockedBy !== a || (e.profile && e.profile.blockFree))) return false;

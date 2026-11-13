@@ -40,9 +40,9 @@ export function drawDisabledBonds(gd, rng) {
   const core = eligible.filter((b) => gd.bond(b).isCore);
   const addon = eligible.filter((b) => !gd.bond(b).isCore);
   if (gd.regulationBondDraw) {
-    // Solo still uses the existing half split pending evidence; an odd leftover stays active.
-    // Multiplayer uses explicit mode counts: 标准 0 + 2, 险境 and above 5 + 5 (owner 2026-11-12).
-    // Keep the existing shuffle order; LOCAL training also keeps its configured counts.
+    // Solo: two groups of half the core bonds (owner's level 1: 4 + 4; recordings: 规程等级1 / 极速 4 + 4, 规程等级20 5 + 5);
+    // an odd leftover stays active. Co-op greys the profile's `bans.core` (recordings 2026-11-12: 标准 0 of 8 in two
+    // matches of BV11NW869ELq, 险境 / 绝境 / 终极 5 of 10); LOCAL training keeps its configured counts too.
     const half = Math.floor(core.length / 2);
     const shuffled = sample(core, core.length, rng);
     const choice = gd.isSolo ? { groups: [shuffled.slice(0, half), shuffled.slice(half, half * 2)], picked: null } : null;
