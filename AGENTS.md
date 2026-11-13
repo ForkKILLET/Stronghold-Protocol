@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-14 用户确认雪地 RGB 修复版在原 Edge／所报 RTX 3060 Laptop 设备正常，但要求继续查根因。修复同时改 alpha、WebP 编码及 URL，不能单凭成功断言预乘或显卡驱动缺陷；Three opaque 关闭混合、alpha:false，且 Chromium ImageExtractor 有未预乘重解码。tools/research/snow-alpha-probe.py／mjs 生成离线手动运行页，原有损 RGBA、无损 RGBA、PNG 与固定 RGB 保持同 RGB；原始字节、两种上传 API、sRGB、ImageBitmap 和 mip 分开读回，Canvas2D 仅作正对照，不能用它当原图颜色基准。页不联网、不读账号、不改游戏，二进制不入 Git；CPU／语法检查不等于 GPU 复验，浏览器／完整模拟／golden 继续暂停。见 docs/research/snow-albedo-root-cause-20261114.md。
+
 - 2026-11-13 雪地图低地砖缺失的兼容候选：opaque albedo 若含零 alpha 下的有效 RGB，导出器从已编码图生成独立无损 RGB 副本并绑定材质 map，保留原 RGBA 与共享它的 cutout／blend／水面、独立数据贴图；不改 shader、几何或光照拟合，不按地图 ID 特判。本机仅 MAP9／11 两材质使用共用 TX_icewild_A_opaque_rgb，RGB 逐像素相同；沿清单／指纹／ZIP 发布，二进制不入库。受影响 Edge 环境及复测尚缺，不能宣称根因或修复已获设备验证；浏览器、完整模拟及 golden 继续暂停。见 docs/research/snow-albedo-compatibility-20261113.md。
 
 - 2026-11-13 设置“界面主题”沿用普通 set-keys__head／set-row__label，不借用结算页 sw-sec 样式（其绝对定位 glyph 会在标题上方画白色底板）。本机已提取乌萨斯 ac_n_iron 和可露希尔 ac_s_closur 共 569 个可选资源，沿既有 local-assets／指纹／HTTP／ZIP 链路提供“下载并使用”；并发最多四个，失败不覆盖完整主题，默认终端与原版规程商店开关不变。素材不入 Git，不恢复缺失包的旧资源。主线新 1bc95fa9 的通用 prefab 完整 HUD 尚未合入，不能以本次安装宣称已支持该实现；来源及范围见 docs/research/official-themes-20261113.md。浏览器、完整模拟与 golden 继续暂停，定向核验必须保持 OOM 限额。

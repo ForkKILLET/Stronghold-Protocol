@@ -1,0 +1,28 @@
+{
+  "commit": "5c0b8428e9734b96700912add679238262439d88",
+  "sources": [
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/5c0b8428e9734b96700912add679238262439d88/third_party/blink/renderer/platform/image-decoders/webp/webp_image_decoder.cc",
+      "sha256": "c787b4d4cbe221d44aa9ccd47b0a7fbdba02355e265bfd5ea26808d551b14a09"
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/5c0b8428e9734b96700912add679238262439d88/third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+      "sha256": "6e1550298c092ca46fc517a7cc31fb7b6531599e1f33b5a4733fec1a2064b131"
+    },
+    {
+      "url": "https://chromium.googlesource.com/chromium/src/+/5c0b8428e9734b96700912add679238262439d88/third_party/blink/renderer/platform/graphics/gpu/image_extractor.cc",
+      "sha256": "ecf44dabe3069db946940c7f018fda679677e46200432f957f3295d9b5b65415"
+    }
+  ],
+  "playerReport": {
+    "gpuModel": "NVIDIA GeForce RTX 3060 Laptop GPU",
+    "webgl": "Hardware accelerated",
+    "canvas": "Hardware accelerated",
+    "fixWorks": true,
+    "reportDate": "2026-11-14",
+    "edgeVersion": null,
+    "actualAngleRenderer": null,
+    "driverVersion": null
+  },
+  "status": "Player confirms compatibility fix; exact decode/upload/mipmap cause awaits device readback. Chromium source is not pinned to the unknown player Edge version."
+}

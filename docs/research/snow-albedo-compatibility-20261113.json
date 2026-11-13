@@ -1,5 +1,5 @@
 {
-  "hypothesis": "opaque albedo loses useful RGB at alpha=0 in browser/GPU image conversion; affected Edge still needs confirmation",
+  "hypothesis": "opaque albedo may lose useful RGB at alpha=0 in image conversion; player confirms the RGB workaround works, exact stage awaits readback (see snow-albedo-root-cause-20261114.md)",
   "sourceTexture": {
     "path": "/assets/local/scene/tex/TX_icewild_A.webp",
     "sha256": "69eac5ef1323515d8f98774c5ceec60481bb12ec4ffd5df273a44f865bfc4dee",
