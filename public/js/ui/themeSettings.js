@@ -180,7 +180,7 @@ export function ThemeSection({ activeId = '' }) {
           <div class="theme-card__actions">
             ${on
               ? html`<span class="theme-card__using">${t('使用中')}</span>`
-              : html`<${Button} variant="secondary" size="sm" disabled=${busy} onClick=${() => useTheme(card.id)}>${loadingId === card.id ? t('加载中') : t(card.official && !card.loaded ? '下载并使用' : '使用')}<//>`}
+              : html`<${Button} variant="secondary" size="sm" disabled=${busy} onClick=${() => useTheme(card.id)}>${loadingId === card.id ? t('加载中') : card.official && !card.loaded ? t('下载并使用') : t('使用')}<//>`}
             ${card.official ? null : html`<${Button} variant="ghost" size="sm" disabled=${busy} onClick=${() => remove(card)}>${t('删除')}<//>`}
           </div>
         </article>`;

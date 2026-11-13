@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-14 固定合入主线 dev f772ae6b（六个提交），接入两套官方 prefab HUD／动画／横幅、三期开场、全赛季头像连胜与领袖伤害徽章、全赛季领袖排行。保留本服二期默认、分类设置、准备 HUD／暂停投票／字幕／快捷键、个性化大厅、账户／Worker／回放和既有地图／规则修复；开场仅在记住三期版本且仍在标题页时启用，其它赛季流程不恢复旧动画。stats.perfectStreak 经原检查点保存，缺失按零处理。更新两主题 572 文件及开场 41 文件，其它素材逐项不变；JS 与两 Python 工具同步精确 prefab JSON 白名单，主题／开场均可选，不安装第三套默认官方主题。定向回归及本地化复核、Python、类型／导入／构建通过，95 个资源包内 613 条更新逐项读回通过。详见 docs/MERGE_DEV_2026-11-14.md；本轮浏览器、完整模拟及 golden 仍暂停，未推送部署。
+
 - 2026-11-14 原设备像素报告确认 Edge 157（精简 UA）、RTX 3060 Laptop／ANGLE D3D11、MAX_TEXTURE_SIZE=16384。9 项非 Canvas2D 路径的 12 点 LOD0 全零误差，同格式 sRGB 的 mip 1–3 与修复图一致，仅 Canvas2D 正对照丢色；此诊断未复现，不能当作预乘／WebP 解码／NVIDIA 驱动故障证明。报告摘要见 docs/research/snow-albedo-device-result-20261114.md／json。新增 snow-scene-probe 生成页复用真实 Three／BoardScene／MAP9 几何与材质，三布局及 AA 开关下整帧比较旧／新图、输出 alpha 与各向异性控制；无网络／账户，不含 Pixi／干员／持续 FX／真实对局压力。已过 CPU 构造与打包检查，未跑本机 GPU，浏览器／完整模拟／golden 仍暂停；原设备下一轮结果待补。
 
 - 2026-11-14 用户确认雪地 RGB 修复版在原 Edge／所报 RTX 3060 Laptop 设备正常，但要求继续查根因。修复同时改 alpha、WebP 编码及 URL，不能单凭成功断言预乘或显卡驱动缺陷；Three opaque 关闭混合、alpha:false，且 Chromium ImageExtractor 有未预乘重解码。tools/research/snow-alpha-probe.py／mjs 生成离线手动运行页，原有损 RGBA、无损 RGBA、PNG 与固定 RGB 保持同 RGB；原始字节、两种上传 API、sRGB、ImageBitmap 和 mip 分开读回，Canvas2D 仅作正对照，不能用它当原图颜色基准。页不联网、不读账号、不改游戏，二进制不入 Git；CPU／语法检查不等于 GPU 复验，浏览器／完整模拟／golden 继续暂停。见 docs/research/snow-albedo-root-cause-20261114.md。

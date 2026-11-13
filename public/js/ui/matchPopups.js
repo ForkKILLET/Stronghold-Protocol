@@ -12,6 +12,7 @@ import { html } from './components.js';
 import { CoinGlyph } from './gameComponents.js';
 import { PixBot } from './pixbots.js';
 import { t } from '../../../shared/i18n.js';
+import { RegRoundStart } from './prefab/banners.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -58,12 +59,20 @@ function PopArt({ kinds, tag }) {
 
 /**
  * The round-start plate.
- * @param {{ round: number, gain?: number|null, left?: number|null, onDone?: Function }} props
- *   gain: the funds this round start paid (null = not known / not in the round: the coins without a number)
+ * @param {{ round: number, gain?: number|null, left?: number|null, sub?: any, watching?: boolean, onDone?: Function,
+ *   pf?: { pack: any, still?: boolean, spine?: any } | null }} props
+ *   pf: 规程's official pack (乌萨斯齐心团 / 可露希尔) — its own round_start banner instead of this plate
+ *   gain: the funds this round start paid (null = not known: the icon without a number)
  *   left: rounds before the final assault (roundsToBoss) — the red strip on top
  */
-export function RoundPopup({ round, gain = null, left = null, sub = null, watching = false, onDone }) {
+export function RoundPopup({ round, gain = null, left = null, sub = null, watching = false, onDone, pf = null }) {
   const leaving = useTimedLeave(ROUND_POPUP_MS, onDone);
+  // 规程 with 乌萨斯齐心团 / 可露希尔: the pack's round_start banner (ui/prefab/banners.js) on the same clock — its out
+  // clip fits the plate's fold (LEAVE_MS) — not for a watcher with 观战中 under the plate
+  if (pf?.pack && !(watching && sub)) {
+    return html`<${RegRoundStart} pack=${pf.pack} round=${round} gain=${gain} left=${left} watching=${watching} leave=${leaving}
+      outMs=${LEAVE_MS} still=${!!pf.still} spine=${pf.spine || null} />`;
+  }
   const n = Number.isFinite(gain) && gain > 0 ? Math.trunc(gain) : null;
   return html`<div class=${cx('mpop', 'mpop--round', leaving && 'is-leaving')} role="status" aria-live="polite"
       aria-label=${t('第 {r} 回合', { r: round })} data-testid="round-popup">

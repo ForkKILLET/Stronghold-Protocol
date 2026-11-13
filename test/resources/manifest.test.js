@@ -149,6 +149,12 @@ describe('resource manifest building', () => {
     assert.equal(effects.length, 2);
     assert.ok(effects.every(f => f.tier === TIER_REST), 'official FX remain optional even via essential aliases');
     assert.equal(tierForPath('local.groups.themes/ac_n_iron.theme.path'), TIER_REST);
+    assert.equal(tierForPath('local.groups.ui/season/act3autochess/entry.prefabs.json.path'), TIER_REST);
+    const opening = collectResourceFiles({ ui: { entry: '/assets/local/ui/season/act3autochess/entry/prefabs.json' } }, {
+      groups: { 'ui/season/act3autochess/entry': { picture: { path: '/assets/local/ui/season/act3autochess/entry/sprites/card.webp' } } },
+    });
+    assert.equal(opening.length, 2);
+    assert.ok(opening.every(f => f.tier === TIER_REST), 'the optional opening does not enlarge required downloads');
     const themes = collectResourceFiles({ ui: { theme: '/assets/local/themes/ac_n_iron/theme.json',
       character: 'https://cdn.example/prefix/assets/local/themes/ac_n_iron/spine/character.json' } }, {
       groups: { 'themes/ac_n_iron': { layout: { path: '/assets/local/themes/ac_n_iron/layout.json' },

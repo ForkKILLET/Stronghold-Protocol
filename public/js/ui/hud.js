@@ -27,9 +27,9 @@
 // 准备就绪 is refused while the temp overflow row (临时整备区) holds pieces: the reason shows under the button
 // (user playtest #3 item 3; the row's own label is ui/underframe.js TempRowNotice).
 
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { PHASE, DIFFICULTY_NAMES } from '../../../shared/constants.js';
-import { html, Button, Icon, PingPill, Countdown, Tooltip, MicroLabel, DifficultyTag, Modal, useTicker } from './components.js';
+import { html, Button, Icon, PingPill, Countdown, Tooltip, MicroLabel, DifficultyTag, Modal, useTicker, secondsLeft } from './components.js';
 import { useShortcuts } from './settings.js';
 import { shortcutLabel } from './gameLogic.js';
 import { Sprite, LpTower, GIcon, LocalSprite } from './gameComponents.js';
@@ -39,7 +39,10 @@ import { reducedMotion } from './device.js';
 import { serverNow } from '../store.js';
 import { isCombatPhase, isBossPhase, prepCapsuleLabel, bossFrac, bossPctText, fmtNum, shopBlockReason } from './gameLogic.js';
 import { overtimeState, overtimeDrainPerSec, remainAt } from './matchStatus.js';
-import { hotkeyLabelOf } from './settings.js';
+import { hotkeyLabelOf, useSettings, settingsStore } from './settings.js';
+import { regulationFamily } from './regHud.js';
+import { usePrefabPack } from './prefab/view.js';
+import { RegHudBand, RegCountdown, RegReadyFace, packHud, cornerOffset } from './prefab/hud.js';
 
 import { PixBot } from './pixbots.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
@@ -341,19 +344,21 @@ export function ReadyToggle(props) {
 }
 
 /** Pure ready-button view, also used by structural UI tests. */
-export function ReadyToggleView({ priv, onToggle, busy, readyCount, total, shortcuts }) {
+export function ReadyToggleView({ priv, onToggle, busy, readyCount, total, shortcuts, pack = null, corner = false }) {
   const ready = !!priv?.ready;
   const temp = tempInfo(priv);
   const choice = !!(priv?.personalChoice || priv?.commandDraft);
   const reason = !ready ? (choice ? shopBlockReason('ready', { config: data.get('config'), priv, editable: true }) : tempReadyReason(priv) || shopBlockReason('ready', { config: data.get('config'), priv, editable: true })) : null;
   const why = !ready && (choice || temp.count > 0);
-  const btn = html`<button type="button" class=${cx('readybtn', 'tapx', ready && 'is-on', busy && 'is-busy')} disabled=${!!reason || busy}
+  // 规程 with an official pack: its panel_prep_ready face (ui/prefab/hud.js); the words stay for screen readers
+  const face = pack && packHud(pack).ready;
+  const btn = html`<button type="button" class=${cx('readybtn', 'tapx', ready && 'is-on', busy && 'is-busy', face && 'readybtn--pf')} disabled=${!!reason || busy}
       aria-pressed=${ready ? 'true' : 'false'} aria-describedby=${why ? 'readywrap-why' : undefined} onClick=${() => onToggle(!ready)}>
-    <span class="readybtn__box">${ready ? html`<${Icon} name="check" />` : null}</span>
+    ${face ? html`<${RegReadyFace} pack=${pack} ready=${ready} still=${settingsStill()} />` : html`<span class="readybtn__box">${ready ? html`<${Icon} name="check" />` : null}</span>`}
     <span class="readybtn__label">${ready ? t('取消准备') : t('准备就绪')}</span>
     <kbd class="readybtn__key">${shortcutLabel(shortcuts, 'ready')}</kbd>
   </button>`;
-  return html`<div class="readywrap">
+  return html`<div class=${cx('readywrap', corner && 'readywrap--pf')}>
     ${reason ? html`<${Tooltip} text=${reason} placement="bottom">${btn}<//>` : btn}
     ${why ? html`<span class="readywrap__why" id="readywrap-why" role="status" data-testid="ready-why">
       <${Icon} name="warn" />${choice ? html`<span>${reason}</span>`
@@ -361,6 +366,11 @@ export function ReadyToggleView({ priv, onToggle, busy, readyCount, total, short
         : html`<span>${tParts('临时整备区 {n} 个单位待处理', { n: html`<b class="num">${temp.count}</b>`, count: temp.count })}</span>`}</span>` : null}
     ${Number.isFinite(total) && total > 1 ? html`<span class="readywrap__count">${t('已就绪')} <b class="num">${readyCount}</b>/<span class="num">${total}</span></span>` : null}
   </div>`;
+}
+
+/** 设置「主题动画」off: the official pack pieces are drawn still (read at render, like hotkeyLabelOf). */
+function settingsStill() {
+  return settingsStore.get()?.themeMotion === false;
 }
 
 /**
@@ -489,9 +499,20 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
   const btn = checkButtons({ pen, penAvail, infoOpen: !!drawer });
   const shortcuts = useShortcuts();
   const fx = useCapsuleFx(phase, pub?.round, held);
+  // 规程 with 乌萨斯齐心团 / 可露希尔 installed: the pack's own top bar, countdown and ready button (ui/prefab/hud.js)
+  const settings = useSettings();
+  const reg = regulationFamily(data.get('config'));
+  const pack = usePrefabPack(reg ? data.get('local')?.groups : null, reg ? settings?.uiTheme : null);
+  const pf = packHud(pack);
+  const pfRemain = pf.countdown ? (frozenSecs != null ? frozenSecs : secondsLeft(pub?.deadline)) : null;
+  // untimed: the solo rest shows the pack's single-player picture (content_single_plain); elsewhere nothing, like the
+  // hand-made countdown (user playtest #4 item 3)
+  const pfClock = pf.countdown && (pfRemain != null || (phase === PHASE.PREP && (playerCount ?? 1) <= 1));
+  const corner = useMemo(() => (pf.countdown && pf.ready ? cornerOffset(pack) : null), [pack, pf.countdown, pf.ready]);
+  useTicker(pf.countdown && frozenSecs == null && pfRemain != null ? 1000 : 0);
   const onLeft = () => (pen ? onPen(false) : onDrawer('info'));
   const onRight = () => (pen ? onPen(false) : penAvail ? onPen(true) : null);
-  return html`<header class=${cx('gtop', pen && 'is-pen')}>
+  return html`<header class=${cx('gtop', pen && 'is-pen', pf.band && 'gtop--pf')}>
     <div class="gtop__left">
       <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label=${t('离开')} title=${t('离开 / 暂离')} class="gtop__exit tapx" />
       <div class="gtop__meta">
@@ -513,7 +534,10 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
             chev=${btn.left.back ? '◀◀' : null} on=${!!drawer && !pen} onClick=${onLeft} testid="check-player" />
         <//>
       </span>
-      <div class="gtop__band">
+      ${pf.band ? html`<div class="gtop__band gtop__band--pf" role="status" aria-label=${t('第 {round} 回合，生命值 {lp}', { round: roundText, lp: Number.isFinite(lp) ? lp : '--' })}>
+        <${RegHudBand} pack=${pack} phase=${phase} round=${roundText} lp=${Number.isFinite(lp) ? lp : null} pending=${pending} hud=${hud}
+          miss=${phase === PHASE.UNITE && !boss && Number.isFinite(live?.left) ? live.left : null} boss=${hud?.boss || pub?.bossHp || null} still=${!settings?.themeMotion} />
+      </div>` : html`<div class="gtop__band">
         <div class="gtop__half gtop__half--l">
           <div class="roundbox">
             <span class="roundbox__label">${t('回合')}</span>
@@ -528,7 +552,7 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
           <${LpTower} value=${lp} size="lg" tone=${lowLp ? 'danger' : boss ? 'team' : null} pending=${pending}
             note=${pending > 0 && live?.unite ? t('联防中') : null} tip=${pendingTip(lp, pending, { unite: !!live?.unite, cap, left: live?.left ?? null })} />
         </div>
-      </div>
+      </div>`}
       <span class="gtop__frame">
         <${Tooltip} text=${btn.right.tip} placement="bottom">
           <${CheckBtn} sprite=${btn.right.sprite} cls=${cx('enemybtn', btn.right.grey && 'is-grey')} label=${btn.right.label}
@@ -538,15 +562,20 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
     </div>
 
     <div class="gtop__right">
-      <div class="gtop__clock">
-        ${frozenSecs != null
-          ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
-          : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
+      <div class=${cx('gtop__clock', pf.countdown && 'gtop__clock--pf')} style=${corner ? { '--pf-rx': corner.x, '--pf-ry': corner.y } : null}>
+        ${pf.countdown
+          ? (pfClock ? html`<div class="pfclock" role="timer" aria-label=${pfRemain == null ? t('无倒计时') : t('剩余{remain}秒', { remain: pfRemain })}>
+              <${RegCountdown} pack=${pack} remain=${pfRemain} total=${total ?? null} ready=${showReady && !!priv?.ready} still=${!settings?.themeMotion} />
+            </div>` : null)
+          : frozenSecs != null
+            ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
+            : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
         ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} requested=${pause.requested} votes=${pause.votes} required=${pause.required} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
+        ${corner && pfClock && showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} pack=${pack} corner=${true} />` : null}
         <span class="gtop__subtitle-anchor" aria-hidden="true"></span>
       </div>
       <${OvertimeWarning} ot=${ot} />
-      ${showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} />` : null}
+      ${showReady && !(corner && pfClock) ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} pack=${pf.ready ? pack : null} />` : null}
     </div>
   </header>`;
 }

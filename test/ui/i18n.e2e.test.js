@@ -91,6 +91,7 @@ describe('language switch on the title screen', { skip: !ENABLED && 'set SP_E2E=
     page.on('response', (r) => { if (r.status() >= 400 && !/fonts\.(googleapis|gstatic)/.test(r.url())) problems.push(`http ${r.status()}: ${r.url()}`); });
     await page.goto(`${base}/`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('.title-screen [data-testid="lang-toggle"]');
+    // First start keeps the fork default (versions.js startupVersion).
     assert.equal(await text(page, '.title-cn'), '卫戍协议：盟约');
     assert.equal(await text(page, '.title-login .btn--primary'), '开始');
     assert.equal(await page.evaluate(() => document.documentElement.lang), 'zh-CN');
@@ -131,7 +132,7 @@ describe('language switch on the title screen', { skip: !ENABLED && 'set SP_E2E=
     page.on('pageerror', (e) => problems.push(`pageerror: ${e.message}`));
     page.on('response', (r) => { if (r.status() >= 400 && !/fonts\.(googleapis|gstatic)/.test(r.url())) problems.push(`http ${r.status()}: ${r.url()}`); });
     try {
-      fs.writeFileSync(PACK_FILE, JSON.stringify({ _meta: { name: 'Testisch', englishName: 'Test language', fallback: ['en'] }, 卫戍协议: 'Testprotokoll', 盟约: 'Bund', 开始: 'Los' }));
+      fs.writeFileSync(PACK_FILE, JSON.stringify({ _meta: { name: 'Testisch', englishName: 'Test language', fallback: ['en'] }, 卫戍协议: 'Testprotokoll', 盟约: 'Bund', 规程: 'Regel', 开始: 'Los' }));
       fs.mkdirSync(PACK_DIR, { recursive: true });
       fs.writeFileSync(path.join(PACK_DIR, 'pack.json'), JSON.stringify({ type: 'lang', lang: 'qab', name: 'Qabisch', files: { ui: 'ui.json' } }));
       fs.writeFileSync(path.join(PACK_DIR, 'ui.json'), JSON.stringify({ 开始: 'Qab-Start' }));

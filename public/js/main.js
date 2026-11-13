@@ -87,7 +87,7 @@ import { recordError, installTrafficMeter } from './diag.js';
 import { appendChat, validChatText } from '../../shared/chat.js';
 import { installContent, installContentSet } from './content.js';
 import { cosmetics } from './cosmetics.js';
-import { sanitizeVersions, roomVersion, isDefaultVersion, matchFrameVersion, musicSeason } from './versions.js';
+import { sanitizeVersions, roomVersion, isDefaultVersion, matchFrameVersion, musicSeason, seasonOf, startupVersion, REGULATION_SEASON } from './versions.js';
 
 const RESTORE_GRACE_MS = 1500;
 const JOIN_DELAY_MS = 350;
@@ -608,7 +608,14 @@ async function boot() {
     setTimeout(() => splash.remove(), 300);
   }
   installResourcePreload();
-  globalThis.__SP__ = { store, net, data, version: 1 };
+  // Play the new Regulation opening only at its title; keep the existing title flow for other seasons.
+  const entryFilm = import('./ui/entryFilm.js')
+    .then((m) => m.playEntryFilm({
+      skip: () => selectRoute(store.get()) !== 'title' || seasonOf(startupVersion(store.get())) !== REGULATION_SEASON,
+      regulation: () => seasonOf(startupVersion(store.get())) === REGULATION_SEASON,
+    }))
+    .catch((err) => console.warn('[app] entry film unavailable', err));
+  globalThis.__SP__ = { store, net, data, entryFilm, version: 1 };
   // A page keeps the modules it imported at load time for its whole lifetime, so a deploy cannot reach an open tab
   // (ui/buildGuard.js): watch `/healthz.build`. Outside a match the page reloads itself; during a match the guard says
   // so instead (the connection banner offers 刷新页面) and reloads once the match — settlement screen included — is over,

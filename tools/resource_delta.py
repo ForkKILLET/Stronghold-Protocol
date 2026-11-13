@@ -57,8 +57,9 @@ def canonical_resource_path(value):
         raise ValueError(f"Unsafe resource URL: {value}")
     canonical = parsed.path.replace("[", "%5B").replace("]", "%5D")
     extension = canonical.rsplit(".", 1)[-1].lower() if "." in canonical else ""
-    theme_json = re.fullmatch(r"/assets/local/themes/(?:ac_n_initial|ac_n_iron|ac_s_closur)/(?:theme|layout|spine/[A-Za-z0-9_.-]+)\.json", canonical)
-    if canonical not in BOARD_JSON and not theme_json and extension not in EXTENSIONS:
+    entry_json = canonical == "/assets/local/ui/season/act3autochess/entry/prefabs.json"
+    theme_json = re.fullmatch(r"/assets/local/themes/(?:ac_n_initial|ac_n_iron|ac_s_closur)/(?:theme|layout|prefabs|spine/[A-Za-z0-9_.-]+)\.json", canonical)
+    if canonical not in BOARD_JSON and not theme_json and not entry_json and extension not in EXTENSIONS:
         raise ValueError(f"Not an importable resource: {value}")
     return canonical
 

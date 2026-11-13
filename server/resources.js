@@ -106,6 +106,7 @@ export function tierForPath(keyPath) {
   const p = String(keyPath || '');
   const segments = p.split(/[./]/);
   const head = segments[0];
+  if (/^local\.groups\.ui\/season\/act3autochess\/entry\./.test(p)) return TIER_REST;
   if (head === 'local' && segments[1] === 'groups' && ['fx', 'themes'].includes(segments[2])) return TIER_REST;
   if (segments.some((s) => ['audio', 'voice', 'voices', 'sfx', 'bgm', 'guide', 'skins'].includes(s))) return TIER_REST;
   if (head === 'local') return TIER_ESSENTIAL;
@@ -127,7 +128,7 @@ export function collectResourceFiles(assets, local) {
     if (typeof node === 'string') {
       if (!validateResourceUrl(node)) return;
       // Audio, official battle FX and UI themes stay optional under otherwise required sections.
-      const tier = resourceType(node)?.startsWith('audio/') || /\/assets\/local\/(?:fx|themes)\//.test(pathKey(node))
+      const tier = resourceType(node)?.startsWith('audio/') || /\/assets\/local\/(?:(?:fx|themes)\/|ui\/season\/act3autochess\/entry\/)/.test(pathKey(node))
         ? TIER_REST : tierForPath(keyPath);
       const url = canonicalResourceUrl(node);
       const prev = byUrl.get(url);

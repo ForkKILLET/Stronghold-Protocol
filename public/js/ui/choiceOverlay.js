@@ -18,6 +18,12 @@
 // video 10:08, ui/matchPlates.js TurnPopup); the selected card's frame and 确认选择 strip are white, as in the video.
 
 import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useSettings } from './settings.js';
+import { regulationFamily } from './regHud.js';
+import { usePrefabPack } from './prefab/view.js';
+import { RegYourTurn, packBanners } from './prefab/banners.js';
+import { RegDeadlineCountdown } from './prefab/hud.js';
+import { themePack } from '../uiTheme.js';
 import { html, Icon, TierChip, Countdown, Button } from './components.js';
 import { TurnPopup } from './matchPlates.js';
 import { PauseButton } from './hud.js';
@@ -151,6 +157,11 @@ export function ChoiceOverlay(props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [armed]);
+  // 规程 with 乌萨斯齐心团 / 可露希尔: the pack's 轮到你选 banner (effect_choose_self_select) once each time the team pick
+  // reaches this seat (ui/prefab/banners.js)
+  const settings = useSettings();
+  const reg = regulationFamily(data.get('config'));
+  const pack = usePrefabPack(reg ? data.get('local')?.groups : null, reg ? settings?.uiTheme : null);
   // 轮到你选 (the event's video 10:08): the disc drops in each time the pick order comes round to the player
   const [turnPop, setTurnPop] = useState(0);
   const turnNow = turnPopupDue(sp, { myId, solo, personal });
@@ -159,16 +170,20 @@ export function ChoiceOverlay(props) {
     if (turnNow && !turnSeen.current) setTurnPop((k) => k + 1);
     turnSeen.current = turnNow;
   }, [turnNow]);
-  if (!sp) return null;
+  const banner = turnPop ? (packBanners(pack).yourTurn
+    ? html`<${RegYourTurn} key=${turnPop} pack=${pack} still=${settings?.themeMotion === false}
+        spine=${themePack(settings?.uiTheme)?.character || null} onDone=${() => setTurnPop(0)} />`
+    : html`<${TurnPopup} key=${turnPop} onDone=${() => setTurnPop(0)} />`) : null;
+  if (!sp) return banner;
   const tap = (idx) => {
     const card = sp.cards.find((c) => c && c.idx === idx);
     const r = spTap(armed, idx, cardPickable(sp, card, { myId, solo, busyIdx }));
     setSel(r.armed);
     if (r.pick != null) onPick(r.pick);
   };
-  return html`<${ChoiceView} ...${props} armed=${armed} onTap=${tap}
+  return html`<${ChoiceView} ...${props} armed=${armed} onTap=${tap} pfPack=${pack} pfStill=${settings?.themeMotion === false}
     onConfirm=${() => { if (armed != null) tap(armed); }} onDisarm=${() => setSel(null)} onMinimize=${(hidden) => { setSel(null); onMinimize(hidden); }} />
-    ${turnPop ? html`<${TurnPopup} key=${turnPop} onDone=${() => setTurnPop(0)} />` : null}`;
+    ${banner}`;
 }
 
 /**
@@ -208,9 +223,9 @@ export function spMarks(sp, { solo }) {
  * The overlay's view (pure: no hooks — test/ui renders it as a function).
  * @param {{ pub:any, sp:any, myId:string, solo:boolean, personal?:boolean, busyIdx?:number|null, total?:number|null, armed?:number|null,
  *   onTap?:(idx:number)=>void, onConfirm?:()=>void, onDisarm?:()=>void,
- *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void, pause?:object|null }} props
+ *   minimized?:boolean, onMinimize?:(hidden:boolean)=>void, pause?:object|null, pfPack?:any, pfStill?:boolean }} props
  */
-export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = null, total = null, armed = null, onTap = () => {}, onConfirm = () => {}, onDisarm = () => {}, minimized = false, onMinimize = () => {}, pause = null }) {
+export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = null, total = null, armed = null, onTap = () => {}, onConfirm = () => {}, onDisarm = () => {}, minimized = false, onMinimize = () => {}, pause = null, pfPack = null, pfStill = false }) {
   if (!sp) return null;
   const fam = data.get('choices')?.families?.[sp.family] || null;
   const rawFam = data.getRaw('choices')?.families?.[sp.family] || null;
@@ -259,7 +274,9 @@ export function ChoiceView({ pub, sp, myId, solo, personal = false, busyIdx = nu
           ${armed != null ? html`<${Button} variant="primary" size="lg" icon="check" class="spov__confirm" data-testid="sp-confirm"
               title=${armedName ? t('确认选择「{armedName}」（再次点击卡牌亦可）', { armedName }) : t('确认选择')} onClick=${onConfirm}>${t('确认选择')}<//>` : null}
           <div class="spov__clock">
-            ${timed ? html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="sm" />` : null}
+            ${timed ? (pfPack?.doc?.prefabs?.panel_countdown_effect_choose
+              ? html`<${RegDeadlineCountdown} pack=${pfPack} deadline=${pub?.deadline} total=${total ?? null} still=${pfStill} prefabKey="panel_countdown_effect_choose" />`
+              : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="sm" />`) : null}
             ${!personal && pause ? html`<${PauseButton} ...${pause} />` : null}
           </div>
         </div>

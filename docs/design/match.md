@@ -244,7 +244,7 @@ NORMAL/HARD/ABYSS 4, TRAINING 0. No multiplayer screenshot is used to infer solo
 An operator with core bonds is excluded only when ALL of its core bonds are grey/inactive; its add-on bans do not
 affect availability. An operator with no core bonds is excluded only when it has add-ons and ALL are grey/inactive.
 Operators with no bonds remain available. This corrects the earlier independent core OR add-on interpretation
-(2026-11-11 player report). The same
+(2026-11-11 player report; upstream owner confirmed multi-core behavior on 2026-11-13). The same
 rule governs the shared pool, 自选 stock, shop, rewards and grants. INFO_CHECK rolls no shop; a pick rebuilds the
 provisional pool and 自选 stock before the draft, without drawing RNG. Reroll resets the groups/pick and stocks;
 public snapshots, reconnects and input replay retain the choice. Covenant draws and exclusion are unchanged.

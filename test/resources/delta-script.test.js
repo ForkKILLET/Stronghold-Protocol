@@ -49,6 +49,8 @@ test('Python delta ZIP upgrades a legacy base through the existing browser impor
   const baseFiles = [file('/assets/keep.png', 'same'), file('/assets/change.png', 'old'), file('/assets/gone.png', 'gone')];
   const targetFiles = [baseFiles[0], file('/assets/change.png', 'new'),
     file('/assets/local/themes/ac_n_iron/theme.json', '{}'),
+    file('/assets/local/themes/ac_n_iron/prefabs.json', '{}'),
+    file('/assets/local/ui/season/act3autochess/entry/prefabs.json', '{}'),
     file('/assets/local/themes/ac_n_iron/spine/character.json', '{}')];
   const baseBlob = await packageZip(baseFiles, 1);
   const targetBlob = await packageZip(targetFiles, 2);
@@ -63,7 +65,7 @@ test('Python delta ZIP upgrades a legacy base through the existing browser impor
     '--output', outputPath, '--report', reportPath], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(await readFile(reportPath, 'utf8'));
-  assert.deepEqual(['added', 'changed', 'unchanged', 'absentFromTarget'].map((key) => report.summary[key].count), [2, 1, 1, 1]);
+  assert.deepEqual(['added', 'changed', 'unchanged', 'absentFromTarget'].map((key) => report.summary[key].count), [4, 1, 1, 1]);
   const caches = new MemoryCaches();
   const makeStore = (files, version) => new ResourceStore({
     format: 1, version, files, sized: files.length, totalBytes: files.reduce((n, f) => n + f.size, 0),
@@ -72,8 +74,8 @@ test('Python delta ZIP upgrades a legacy base through the existing browser impor
   assert.equal((await importResourceZip(baseStore, baseBlob)).imported, 3);
   const targetStore = makeStore(targetFiles, 'new');
   const imported = await importResourceZip(targetStore, new Blob([await readFile(outputPath)]));
-  assert.equal(imported.packageCount, 3);
-  assert.equal(imported.imported, 3);
+  assert.equal(imported.packageCount, 5);
+  assert.equal(imported.imported, 5);
   assert.equal((await targetStore.status()).complete, true);
   const cache = await caches.open(targetStore.cacheName);
   for (const f of targetFiles) assert.equal(await (await cache.match(targetStore.keyOf(f.url))).text(), f.body);

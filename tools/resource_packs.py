@@ -41,7 +41,7 @@ def canonical(url):
     if any(part in (".", "..", "") for part in url.split("/")[1:-1]):
         raise ValueError(f"unsafe resource URL: {url}")
     suffix = url.rsplit(".", 1)[-1].lower()
-    board_json = re.match(r"^/assets/local/(?:themes/(?:ac_n_initial|ac_n_iron|ac_s_closur)/(?:theme|layout|spine/[A-Za-z0-9_.-]+)|map/(?:fx/(?:materials|prefab)|autochess/(?:materials|tiles))|fx/(?:index|textures|(?:prefabs|mesh)/[A-Za-z0-9_.-]+)|scene/(?:act1autochess_m0[1-7]|act2autochess_m0[1-4]|act3autochess_m(?:0[1-6]|09|1[0-2]))/scene)\.json$", url)
+    board_json = re.match(r"^/assets/local/(?:ui/season/act3autochess/entry/prefabs|themes/(?:ac_n_initial|ac_n_iron|ac_s_closur)/(?:theme|layout|prefabs|spine/[A-Za-z0-9_.-]+)|map/(?:fx/(?:materials|prefab)|autochess/(?:materials|tiles))|fx/(?:index|textures|(?:prefabs|mesh)/[A-Za-z0-9_.-]+)|scene/(?:act1autochess_m0[1-7]|act2autochess_m0[1-4]|act3autochess_m(?:0[1-6]|09|1[0-2]))/scene)\.json$", url)
     if suffix not in EXTENSIONS and not board_json:
         raise ValueError(f"unsupported resource URL: {url}")
     return url.replace("[", "%5B").replace("]", "%5D")

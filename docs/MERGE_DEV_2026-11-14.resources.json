@@ -1,0 +1,29 @@
+{
+  "upstream": "f772ae6b8007ce9af16f0fa68130930a47a17a14",
+  "clientVersion": "26-11-06-12-42-25-70182449",
+  "groups": {
+    "themes/ac_n_iron": {
+      "files": 185,
+      "bytes": 3422494
+    },
+    "themes/ac_s_closur": {
+      "files": 387,
+      "bytes": 7813250
+    },
+    "ui/season/act3autochess/entry": {
+      "files": 41,
+      "bytes": 3553084
+    }
+  },
+  "unrelatedGroupsUnchanged": true,
+  "filesDigestSha256": "c39ded06b2561a66dd96845d6dabe4fb4fa8f3efdd0143b219cdd9f702bbb0a0",
+  "metadataSha256": {
+    "/assets/local/themes/ac_n_iron/theme.json": "18e843868f743678b5ba1483498bd10bffb9f5634a20a89953470fc26aa430e8",
+    "/assets/local/themes/ac_n_iron/layout.json": "92bbccc4cc8a04710047741e42d0336d1ea93538d84d013472e70317572adb31",
+    "/assets/local/themes/ac_n_iron/prefabs.json": "a775c854ec58b9ab596bcb216d09d6a5a7010a7d2c3bd6c9aff724d608641b1f",
+    "/assets/local/themes/ac_s_closur/theme.json": "f4ebf4606a321ae5df735e7cad2701828d4ac5167116151702c3a01957a817b9",
+    "/assets/local/themes/ac_s_closur/layout.json": "cb128fa73a6db8a50ec6038cc6582f4faa86a862b3b6385330a1926961e758cc",
+    "/assets/local/themes/ac_s_closur/prefabs.json": "9650cf8fd74b1bdc1f0019973d57796d699820bc0bf3313a045c5af1c70c5417",
+    "/assets/local/ui/season/act3autochess/entry/prefabs.json": "e0c6ae26100d082c3e403d6e65ddc1e2395f2463237ccb28ad5a16edd3648d42"
+  }
+}

@@ -765,6 +765,11 @@ describe('keyboard & settings', () => {
     assert.deepEqual(sanitizeSettings(null), { ...DEFAULT_SETTINGS });
     assert.deepEqual(sanitizeSettings({ bgm: 3, sfx: -1, voice: 2, muted: 'yes', damageNumbers: false, quality: 'ultra' }),
       { ...DEFAULT_SETTINGS, bgm: 1, sfx: 0, voice: 1, damageNumbers: false });
+    // 主题动画 (§37.144): on by default; only `false` turns the official packs' tweens still
+    assert.equal(DEFAULT_SETTINGS.themeMotion, true);
+    assert.equal(sanitizeSettings({ bgm: 0.5 }).themeMotion, true, 'a profile saved before the switch keeps the animations');
+    assert.equal(sanitizeSettings({ themeMotion: false }).themeMotion, false);
+    assert.equal(sanitizeSettings({ themeMotion: 0 }).themeMotion, true);
     assert.equal(sanitizeSettings({ bgm: 0.5 }).voice, DEFAULT_SETTINGS.voice, 'a saved profile without `voice` gets the default');
     // 语音语言: 中文 by default. en / kr are dubs (0.3.0); anything else, including the per-operator 'native', stays 中文.
     assert.equal(DEFAULT_SETTINGS.voiceLang, 'cn');

@@ -98,14 +98,16 @@ describe('resource manifest validation', () => {
 
   test('only static board JSON sidecars are authorized, including CDN prefixes; bracket paths have one cache key', () => {
     for (const path of ['/assets/local/map/fx/materials.json', '/assets/local/map/fx/prefab.json',
-      '/assets/local/map/autochess/materials.json', '/assets/local/map/autochess/tiles.json']) {
+      '/assets/local/map/autochess/materials.json', '/assets/local/map/autochess/tiles.json', '/assets/local/themes/ac_n_iron/prefabs.json',
+      '/assets/local/ui/season/act3autochess/entry/prefabs.json']) {
       for (const url of [path, `https://cdn.example/prefix${path}`]) {
         assert.equal(isResourceUrl(url), true);
         assert.equal(resourceType(url), 'application/json; charset=utf-8');
       }
     }
     for (const url of ['/assets/local/map/fx/other.json', '/assets/local/ui/materials.json', '/assets/data.json',
-      '/data/local-assets.json', '/i18n/zh.json', '/build/assets/local/map/fx/materials.json']) assert.equal(isResourceUrl(url), false, url);
+      '/assets/local/ui/season/act3autochess/entry/other.json', '/assets/local/ui/season/act2autochess/entry/prefabs.json',
+      '/assets/local/themes/custom/prefabs.json', '/data/local-assets.json', '/i18n/zh.json', '/build/assets/local/map/fx/materials.json']) assert.equal(isResourceUrl(url), false, url);
     const raw = '/assets/local/map/fx/[opt]merged_textures.png';
     assert.equal(absoluteUrl(raw, 'https://game.example'), absoluteUrl(encodeURI(raw), 'https://game.example'));
     assert.equal(absoluteUrl('http://[::1]:3000' + raw), 'http://[::1]:3000/assets/local/map/fx/%5Bopt%5Dmerged_textures.png');

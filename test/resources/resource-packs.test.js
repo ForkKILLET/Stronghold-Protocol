@@ -120,6 +120,8 @@ test('Python packs separate voices, optional FX and official themes without chan
     ['/assets/local/fx/tex/half/probe.webp', 2, 'fx'],
     ['/assets/local/map/fx/materials.json', 1, 'map'],
     ['/assets/local/themes/ac_n_iron/theme.json', 2, 'other'],
+    ['/assets/local/themes/ac_n_iron/prefabs.json', 2, 'other'],
+    ['/assets/local/ui/season/act3autochess/entry/prefabs.json', 2, 'other'],
     ['/assets/local/themes/ac_n_iron/layout.json', 2, 'other'],
     ['/assets/local/themes/ac_n_iron/spine/character.json', 2, 'other'],
   ];
