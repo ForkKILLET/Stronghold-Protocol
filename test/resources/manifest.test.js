@@ -148,6 +148,14 @@ describe('resource manifest building', () => {
       chars: { c: { fx: 'https://cdn.example/prefix/assets/local/fx/tex/a.webp' } } });
     assert.equal(effects.length, 2);
     assert.ok(effects.every(f => f.tier === TIER_REST), 'official FX remain optional even via essential aliases');
+    assert.equal(tierForPath('local.groups.themes/ac_n_iron.theme.path'), TIER_REST);
+    const themes = collectResourceFiles({ ui: { theme: '/assets/local/themes/ac_n_iron/theme.json',
+      character: 'https://cdn.example/prefix/assets/local/themes/ac_n_iron/spine/character.json' } }, {
+      groups: { 'themes/ac_n_iron': { layout: { path: '/assets/local/themes/ac_n_iron/layout.json' },
+        portrait: { path: '/assets/local/themes/ac_n_iron/sprites/portrait.webp' } } },
+    });
+    assert.equal(themes.length, 4);
+    assert.ok(themes.every(f => f.tier === TIER_REST), 'UI themes do not enlarge required downloads');
     assert.equal(tierForPath('chars.c.voice.attack'), TIER_REST);
     assert.equal(tierForPath('audio.voice.c.1'), TIER_REST);
     const nested = collectResourceFiles({ chars: { c: { sound: '/assets/audio/unknown.mp3' } } }, null);

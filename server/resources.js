@@ -99,14 +99,14 @@ const TIER_ESSENTIAL_SECTIONS = new Set(['ui', 'prof', 'bonds', 'items', 'bands'
 
 /**
  * Preload tier of a manifest entry, from its key path (`chars.char_002_amiya.spine.front.skel`). Operators, tokens and
- * images, base Spine and map geometry are required. Audio, official FX and tutorial illustrations are optional. Local groups use
+ * images, base Spine and map geometry are required. Audio, official FX, UI themes and tutorial illustrations are optional. Local groups use
  * slash-containing names (map/autochess, spine/enemy/…), so classification must handle both '/' and '.'.
  */
 export function tierForPath(keyPath) {
   const p = String(keyPath || '');
   const segments = p.split(/[./]/);
   const head = segments[0];
-  if (head === 'local' && segments[1] === 'groups' && segments[2] === 'fx') return TIER_REST;
+  if (head === 'local' && segments[1] === 'groups' && ['fx', 'themes'].includes(segments[2])) return TIER_REST;
   if (segments.some((s) => ['audio', 'voice', 'voices', 'sfx', 'bgm', 'guide', 'skins'].includes(s))) return TIER_REST;
   if (head === 'local') return TIER_ESSENTIAL;
   return TIER_ESSENTIAL_SECTIONS.has(head) ? TIER_ESSENTIAL : TIER_REST;
@@ -126,8 +126,8 @@ export function collectResourceFiles(assets, local) {
   const walk = (node, keyPath, source) => {
     if (typeof node === 'string') {
       if (!validateResourceUrl(node)) return;
-      // Audio and official battle FX stay optional even under otherwise required character/map sections.
-      const tier = resourceType(node)?.startsWith('audio/') || /\/assets\/local\/fx\//.test(pathKey(node))
+      // Audio, official battle FX and UI themes stay optional under otherwise required sections.
+      const tier = resourceType(node)?.startsWith('audio/') || /\/assets\/local\/(?:fx|themes)\//.test(pathKey(node))
         ? TIER_REST : tierForPath(keyPath);
       const url = canonicalResourceUrl(node);
       const prev = byUrl.get(url);

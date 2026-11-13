@@ -1240,7 +1240,7 @@ describe('multi-device & browser compatibility (static)', () => {
     const vp = index.match(/<meta name="viewport" content="([^"]+)"/)?.[1] || '';
     for (const k of ['width=device-width', 'initial-scale=1', 'maximum-scale=1', 'user-scalable=no', 'viewport-fit=cover']) assert.ok(vp.includes(k), `viewport has ${k}`);
     const sheets = [...index.matchAll(/<link rel="stylesheet" href="(\/css\/[^"]+)"/g)].map((x) => x[1]);
-    assert.deepEqual(sheets.slice(-3), ['/css/devices.css', '/css/utility-mobile.css', '/css/navigation.css'],
+    assert.deepEqual(sheets.filter(sheet => sheet !== '/css/ui-theme.css').slice(-3), ['/css/devices.css', '/css/utility-mobile.css', '/css/navigation.css'],
       'shared navigation follows device and management density overrides');
     assert.match(index, /<script nomodule(?:\s[^>]*)?>/, 'a browser without ES modules gets a message');
     assert.match(index, /src="\/js\/boot\.js"/, 'external diagnostics run before the module');

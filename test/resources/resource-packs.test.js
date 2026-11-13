@@ -105,7 +105,7 @@ test('Python packs are byte-stable across clocks, global versions, input orderin
   }
 });
 
-test('Python packs separate English/Korean voices and optional official FX without changing required board FX', async t => {
+test('Python packs separate voices, optional FX and official themes without changing required board FX', async t => {
   const root = await mkdtemp(path.join(tmpdir(), 'sp-resource-pack-scope-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const assets = path.join(root, 'public');
@@ -119,6 +119,9 @@ test('Python packs separate English/Korean voices and optional official FX witho
     ['/assets/local/fx/mesh/probe.json', 2, 'fx'],
     ['/assets/local/fx/tex/half/probe.webp', 2, 'fx'],
     ['/assets/local/map/fx/materials.json', 1, 'map'],
+    ['/assets/local/themes/ac_n_iron/theme.json', 2, 'other'],
+    ['/assets/local/themes/ac_n_iron/layout.json', 2, 'other'],
+    ['/assets/local/themes/ac_n_iron/spine/character.json', 2, 'other'],
   ];
   const files = [];
   for (const [url, tier] of entries) {
@@ -135,7 +138,7 @@ test('Python packs separate English/Korean voices and optional official FX witho
     '--manifest', manifestPath, '--assets-root', assets, '--output', path.join(root, 'packs'), '--index', indexPath], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   const index = JSON.parse(await readFile(indexPath, 'utf8'));
-  assert.equal(index.packs.length, 4);
+  assert.equal(index.packs.length, 5);
   for (const [url, tier, group] of entries) {
     const pack = index.packs.find(p => p.files.some(f => f.url === url));
     assert.ok(pack, url);

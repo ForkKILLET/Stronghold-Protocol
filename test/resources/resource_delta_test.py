@@ -113,6 +113,17 @@ class ResourceDeltaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 delta.canonical_resource_path(path)
 
+    def test_official_theme_json_allowlist_matches_extractor_paths(self):
+        for theme in ("ac_n_initial", "ac_n_iron", "ac_s_closur"):
+            for name in ("theme.json", "layout.json", "spine/character.json"):
+                path = f"/assets/local/themes/{theme}/{name}"
+                self.assertEqual(delta.canonical_resource_path(path), path)
+        for path in ("/assets/local/themes/unknown/theme.json",
+                     "/assets/local/themes/ac_n_iron/character/character.json",
+                     "/assets/local/themes/ac_n_iron/spine/nested/character.json"):
+            with self.assertRaises(ValueError):
+                delta.canonical_resource_path(path)
+
     def test_checks_all_input_digests_including_unchanged_and_absent_resources(self):
         for side, version in (("base", 1), ("target", 2)):
             with self.subTest(side=side):

@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createThemeLibrary } from '../../public/js/uiTheme.js';
 import { characterAnimName } from '../../shared/uiTheme.js';
+import { isBoardResourceJson } from '../../shared/resourcePaths.js';
 import {
   assessTheme, installedOfficialThemes, officialAssetUrl, officialThemeById, themePathsOf,
 } from '../../shared/uiTheme.js';
@@ -40,6 +41,13 @@ test('official card metadata and a safe served URL', () => {
   assert.equal(listed[0].thumbnailUrl, '/assets/local/themes/ac_n_iron/thumb.webp');
   assert.deepEqual(installedOfficialThemes({ groups: {} }), []);
   assert.deepEqual(installedOfficialThemes(null), []);
+  for (const id of IDS) {
+    assert.equal(isBoardResourceJson(`/assets/local/themes/${id}/theme.json`), true);
+    assert.equal(isBoardResourceJson(`/assets/local/themes/${id}/spine/character.json`), true);
+  }
+  assert.equal(isBoardResourceJson('/assets/local/themes/unknown/spine/character.json'), false);
+  assert.equal(isBoardResourceJson('/assets/local/themes/ac_n_iron/character/character.json'), false);
+  assert.equal(isBoardResourceJson('/assets/local/themes/ac_n_iron/spine/sub/character.json'), false);
 });
 
 test('a voice stem picks the skeleton clip, and an unmapped line does not', () => {

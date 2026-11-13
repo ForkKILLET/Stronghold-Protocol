@@ -133,7 +133,7 @@ preload. Failed or manually paused work can be retried without discarding saved 
   `tools/local-extract/extract.py` (local-client art) — plus a `tier`:
   **tier 1 (`essential`, 必备)** — maps and board meshes, operator/enemy/token pictures (including portraits), every
   base Spine model (skel/atlas/textures), board effects, fonts, UI and icons; **tier 2 (`optional`, 可选)** — character
-  voices, official battle effects (`/assets/local/fx/`), sound effects, background music and tutorial illustrations. Required files are preloaded by default; the
+  voices, official battle effects (`/assets/local/fx/`), UI themes, sound effects, background music and tutorial illustrations. Required files are preloaded by default; the
   同时预载 checkbox opts into optional files, persisted as `settings.preloadOptional` (default false, including old
   settings). Unselected optional files still load normally on demand. Sizes are included
   for the files this install has on disk; a CDN-only install omits them and the client reports progress in files
@@ -234,6 +234,10 @@ preload. Failed or manually paused work can be retried without discarding saved 
   board `/assets/local/map/fx/` remains essential. ZIP JSON allowlists and per-file integrity checks are unchanged;
   the pack builder now separates `voice_en`, `voice_kr` and `fx`. Regenerate deployment manifests/ZIP packs after upgrading
   so the new categories and optional effect tier are reflected (old mismatched-tier packs safely fall back to files).
+- Official UI themes under `/assets/local/themes/` are tier 2, including aliases from UI sections. Only the three
+  installed theme IDs (`ac_n_initial`, `ac_n_iron`, `ac_s_closur`) permit `theme.json`, `layout.json` and `spine/*.json`
+  as cacheable JSON resources. JS, category ZIPs and the Python delta builder share that boundary; themes do not
+  increase the required-download total.
 - The client (`public/js/resources/*`) downloads tier 1 first, then tier 2 only when selected: four lanes for small files
   and one for files above 4 MiB, skipping whatever is already cached. Two tabs of the same browser never download the
   same file twice: a Web Lock (`stronghold-resources-preload`, `ifAvailable`) makes one tab do the work while the others
