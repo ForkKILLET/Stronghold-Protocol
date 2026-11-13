@@ -21,7 +21,9 @@ Output per stage, under <out>/scene/<stageId>/ (manifest group scene/<stageId>):
                A = the key light's baked shadow (Lightmap-<i>_comp_shadowmask, R)
 and the materials' albedo, normal (normal_rgb), metallic-gloss and (only with the _EMISSION keyword) emission textures under
 <out>/scene/tex/ (manifest group scene/tex, shared by the scenes). Normal, metallic-gloss and emission are lossless WebP;
-albedo and lightmaps stay lossy. The manifest scene record's version (SCENE_EXTRACT_VERSION) is what
+albedo and lightmaps stay lossy. Opaque albedo with RGB under zero alpha gets a separate lossless RGB companion
+from that encoded image; cutout/blended materials and the native texture keep their alpha.
+The manifest scene record's version (SCENE_EXTRACT_VERSION) is what
 setup treats as fresh; scene.json version stays the mesh layout (SCENE_VERSION).
 Regulation adds ten stages composed from three MapGraphic prefabs by regulation_scenes.py;
 optional groupRects pins logical visibility owners and tileHeightClasses keeps feet aligned with the original platforms.
@@ -359,6 +361,47 @@ def save_image(img, out_dir, stem, sub, lossless=False):
     except Exception:
         pass
     return entry
+
+
+def opaque_albedo(img, info):
+    """Remove unused alpha only for opaque albedo with fully transparent texels.
+
+    Some native atlases store useful RGB under alpha=0 (ice uses alpha as shader data).
+    An opaque RGB companion avoids losing that RGB in browser image/GPU conversion.
+    Never flatten cutout, blended, water, or independent data textures. The caller passes
+    the already encoded albedo so its RGB, including the existing lossy fit, stays exact.
+    """
+    keywords = set(info.get('keywords') or [])
+    if info.get('kind') == 'water' or keywords.intersection({
+            '_ALPHATEST_ON', '_ALPHABLEND_ON', '_ALPHAPREMULTIPLY_ON'}):
+        return None
+    if 'A' not in img.getbands() or img.getchannel('A').getextrema()[0] != 0:
+        return None
+    return img.convert('RGB')
+
+
+def export_opaque_albedo(info, out_root, manifest):
+    """Bind a lossless RGB companion without overwriting the native RGBA resource."""
+    from PIL import Image
+    name = info.get('map')
+    entry = manifest.get(TEX_SUB, {}).get(name)
+    if not name or not entry:
+        return 0
+    folder = Path(out_root) / TEX_SUB
+    source = folder / Path(entry['path']).name
+    with Image.open(source) as encoded:
+        rgb = opaque_albedo(encoded, info)
+    if rgb is None:
+        return 0
+    companion = name + '_opaque_rgb'
+    records = manifest.setdefault(TEX_SUB, {})
+    count = 0
+    if companion not in records or not (folder / Path(records[companion]['path']).name).is_file():
+        records[companion] = {**save_image(rgb, folder, companion, TEX_SUB, lossless=True),
+                              'kind': 'Texture2D', 'derivedFrom': name, 'channels': 'RGB'}
+        count = 1
+    info['map'] = companion
+    return count
 
 
 def hidden_groups(raw, objects):
@@ -766,11 +809,12 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
                 tex = pptr.read()
                 tname = re.sub(r'[^A-Za-z0-9_.\-\[\]]+', '_', tex.m_Name or f'tex_{pptr.m_PathID}')
                 materials[name][key] = tname
-                if tname in manifest.get(TEX_SUB, {}) and (Path(out_root) / TEX_SUB / Path(manifest[TEX_SUB][tname]['path']).name).is_file():
-                    continue
-                img = normal_rgb(tex.image) if key == 'normalMap' else tex.image
-                manifest.setdefault(TEX_SUB, {})[tname] = {**save_image(img, tex_dir, tname, TEX_SUB, key in LOSSLESS_MAPS), 'kind': 'Texture2D'}
-                n += 1
+                if tname not in manifest.get(TEX_SUB, {}) or not (tex_dir / Path(manifest[TEX_SUB][tname]['path']).name).is_file():
+                    img = normal_rgb(tex.image) if key == 'normalMap' else tex.image
+                    manifest.setdefault(TEX_SUB, {})[tname] = {**save_image(img, tex_dir, tname, TEX_SUB, key in LOSSLESS_MAPS), 'kind': 'Texture2D'}
+                    n += 1
+                if key == 'map':
+                    n += export_opaque_albedo(info, out_root, manifest)
             except Exception as e:
                 if source_adapter is not None:
                     raise ValueError(f'{stage_id}: texture {slot} of {name}: {e}') from e

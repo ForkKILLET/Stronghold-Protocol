@@ -50,6 +50,11 @@ function py(code) {
   return JSON.parse(r.stdout);
 }
 
+test('opaque albedo keeps hidden RGB, native cutouts and shared texture identity', { skip: !HAS_PIL && 'no Pillow' }, () => {
+  const result = spawnSync(PY, ['-I', '-B', path.join(ROOT, 'test/local-extract/opaque-albedo.py')], { encoding: 'utf8', env: ENV });
+  assert.equal(result.status, 0, result.stderr);
+});
+
 /** One quad as a scene chunk record + its bytes (the layout of scenes.py pack_chunk). */
 function quadChunk({ x0 = 0, y0 = 0, z = 0, material = 'M', lightmap = 0, group = '' } = {}) {
   const n = 4, idx = [0, 1, 2, 0, 2, 3];

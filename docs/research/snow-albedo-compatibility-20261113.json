@@ -1,0 +1,38 @@
+{
+  "hypothesis": "opaque albedo loses useful RGB at alpha=0 in browser/GPU image conversion; affected Edge still needs confirmation",
+  "sourceTexture": {
+    "path": "/assets/local/scene/tex/TX_icewild_A.webp",
+    "sha256": "69eac5ef1323515d8f98774c5ceec60481bb12ec4ffd5df273a44f865bfc4dee",
+    "decodedRgbSha256": "d52a48b961ffa92f360e506bdfa30894435caa09fee6e616413a9f95fb6b764f"
+  },
+  "maps": {
+    "act3autochess_m09": {
+      "materials": [
+        "MT_icewild",
+        "MT_icewild_reflection"
+      ],
+      "geometrySha256": "31880609ebe42f7715f4887143f752bde29fb6325c6c48cf16ec1ddcd2655666",
+      "sceneSha256": "6ebc2a0b6daac8af60afb3cbab870087bd2cfdedb0d3f28d5a6540cb1275050f"
+    },
+    "act3autochess_m11": {
+      "materials": [
+        "MT_icewild",
+        "MT_icewild_reflection"
+      ],
+      "geometrySha256": "ee437345f1e4fc9df6a0dd09d8df1bbfce6e6175c094207a75e1f9abd295692b",
+      "sceneSha256": "ac4e4e8e23e4a19cf761c871e2d24c6c97ffabc72e264ce403781905714c83e0"
+    }
+  },
+  "companion": {
+    "path": "/assets/local/scene/tex/TX_icewild_A_opaque_rgb.webp",
+    "w": 2048,
+    "h": 2048,
+    "webp": "lossless",
+    "kind": "Texture2D",
+    "derivedFrom": "TX_icewild_A",
+    "channels": "RGB",
+    "bytes": 1891336,
+    "sha256": "e21b306b45b61d4c0ad956f0df1729bd3b1b473712df4f9d2f6d4c4920629113",
+    "decodedRgbSha256": "d52a48b961ffa92f360e506bdfa30894435caa09fee6e616413a9f95fb6b764f"
+  }
+}

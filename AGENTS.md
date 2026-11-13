@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-13 雪地图低地砖缺失的兼容候选：opaque albedo 若含零 alpha 下的有效 RGB，导出器从已编码图生成独立无损 RGB 副本并绑定材质 map，保留原 RGBA 与共享它的 cutout／blend／水面、独立数据贴图；不改 shader、几何或光照拟合，不按地图 ID 特判。本机仅 MAP9／11 两材质使用共用 TX_icewild_A_opaque_rgb，RGB 逐像素相同；沿清单／指纹／ZIP 发布，二进制不入库。受影响 Edge 环境及复测尚缺，不能宣称根因或修复已获设备验证；浏览器、完整模拟及 golden 继续暂停。见 docs/research/snow-albedo-compatibility-20261113.md。
+
 - 2026-11-13 设置“界面主题”沿用普通 set-keys__head／set-row__label，不借用结算页 sw-sec 样式（其绝对定位 glyph 会在标题上方画白色底板）。本机已提取乌萨斯 ac_n_iron 和可露希尔 ac_s_closur 共 569 个可选资源，沿既有 local-assets／指纹／HTTP／ZIP 链路提供“下载并使用”；并发最多四个，失败不覆盖完整主题，默认终端与原版规程商店开关不变。素材不入 Git，不恢复缺失包的旧资源。主线新 1bc95fa9 的通用 prefab 完整 HUD 尚未合入，不能以本次安装宣称已支持该实现；来源及范围见 docs/research/official-themes-20261113.md。浏览器、完整模拟与 golden 继续暂停，定向核验必须保持 OOM 限额。
 
 - 2026-11-13 按用户计划固定集成主线 dev b36f380a，并接入朋友 #940–#943；保留本服 UI、资源、地图、核心优先禁用、二期评语和账户／Worker／回放。单人新增录像证据用主线禁用 2／5，未实测中间等级继续标注假设。主线原版主题采用本服 ZIP 库，三个固定主题的 theme／layout／spine JSON 在 JS 与两个 Python ZIP 工具中保持相同白名单，规程商店 officialRegulationHud 默认关闭；光照图集和准备页原版重排／离屏缩略图暂缓。开局策略的变约映射保留，不被 #941 当前指令映射覆盖；组合检查通过，新增音频已补齐，完整模拟／golden／浏览器继续暂缓。记录 docs/MERGE_DEV_2026-11-13.md。本轮用户授权随后解决现有 PR 冲突，PR 分支独立基于 b36f380a，移除上游重复实现，不能带入本服集成内容。 冲突处理仅恢复四份独立 PR 各 14 场三期 matches 的串行重算，本服及其它家族完整 golden 仍暂停。收尾时追加 f3975b2a，核心优先已被主线覆盖，关闭重复 #928；其余十二份 PR 再对齐，三份规则 PR 重算该新基线的 matches。保留本服准确说明、策略偏好、CPU 预算与 UI，仅增加机器人避开灰色核心和 opt-in 原版价格六边形。client-static 的既有 CSS :has 兼容断言在起点已失败，明确暂缓，不以临时改交流／大厅来规避。
