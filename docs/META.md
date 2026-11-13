@@ -298,7 +298,7 @@ and worker callbacks are deferred. Resume shifts clocks and re-arms the remainin
 
 `drawDisabledBonds` retains the covenant result `{ drawn, staticOff, banned }`. With
 `config.version.rules.bondDraw === 'regulation'`, SINGLE also returns `choice: { groups: [ids, ids], picked: null }`;
-MULTI greys half the available cores immediately. `Match.bondChoice` is settled by `pickBondGroup` during INFO_CHECK.
+MULTI uses its configured counts: 标准 0 core + 2 add-ons, 险境 and above 5 core + 5 add-ons. `Match.bondChoice` is settled by `pickBondGroup` during INFO_CHECK.
 `g.bondGroup { idx, setupRevision }` refuses stale revisions, non-integer/out-of-range indices, repeated choices,
 spectators, co-op, reroll votes and other phases. It responds with the ordinary intent acknowledgement.
 The choice rebuilds the provisional shared pool and every player's 自选 stock; no shop or chess acquisition runs
@@ -306,7 +306,8 @@ while the choice is pending. `enterBandDraft` resolves an unchosen group to inde
 plan's/strategy's core, otherwise index 0. `completeSetupReroll` draws new groups and clears the choice.
 `m.public` adds `bondDraw: 'regulation'` and, for SINGLE, `bondChoice`; neither key is sent for covenant data.
 Reconnect uses the same snapshot, and test-input replay records the choice as an ordinary `handle` call.
-`GameData.bondsExclude` implements the tutorial's core OR all-add-ons rule for both preset and 自选 operators;
+`GameData.bondsExclude` checks all core bonds when present, otherwise the nonempty add-on list;
+add-on bans cannot exclude an operator whose core remains active. This applies to preset and 自选 operators;
 `Match.chessExcluded` also gates named grants/rewards and transformations. Bots use the resulting pool availability.
 Counts, evidence and assumptions are in [design/match.md §6.5](design/match.md#65-waves-wavesjs).
 
@@ -807,7 +808,7 @@ Any `choice:` handler whose EffectRef reuses its own key must guard like this (o
   tickers — sees the operator; a player without picks keeps the match's GameData itself. Each slotted piece that this match keeps (every legal lobby slot, or only the 选择自编 confirmation when `diyBringLimits` is set) has its own
   stock (`ps.diyStock`: `poolCopies` of the slot's tier, 8 / 5 [ASSUMED], doubled in co-op by `coopPoolMultiplier` like
   the shared pool — 16 / 10, GitHub #650, DESIGN §32.14.31; none — `diyBanned` — when every bond of it is off this
-  covenant match, or a core / all add-ons are off in regulation; `initDiyStock` once the bans are drawn); `poolOf(baseId)` routes its copy accounting (buy, reward
+  covenant match, or all cores (when present) / all add-ons (without cores) are off in regulation; `initDiyStock` once the bans are drawn); `poolOf(baseId)` routes its copy accounting (buy, reward
   picks, merges, promotions, sells, temp, elimination; `invariants.js` checks `left + held = cap` per player). The
   shop's chess slots roll it with the shared pool (`pool.roll({ extra: diyRollEntries() })`, copy-weighted like any
   chess of its tier) once the 调度中心 reaches the slot's `shopLevel` (5 / 6). The promotion reward's temporary refresh

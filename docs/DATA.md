@@ -148,7 +148,8 @@ Top level: `{ season, seasonName, modes, economy, lpCapPerRound, bossOvertimeAft
 
 Regulation's profile writes `config.version.rules.bondDraw: 'regulation'`: SINGLE keeps two groups of half the
 available cores (after mode exclusions); MULTI uses explicit mode-level core/add-on counts. Shared `config.bans`
-add-on counts remain editable [ASSUMED] solo defaults: FUNNY/FAST 1, NORMAL/HARD/ABYSS 4, TRAINING 0. A build profile may supply either one
+add-on counts are FUNNY/FAST 2, NORMAL/HARD/ABYSS 5, TRAINING 0. Solo level 1 / FAST and level 20
+have recording evidence; intermediate levels retain the explicitly assumed difficulty grouping. A build profile may supply either one
 `bans: { core, addon }` pair or a per-difficulty map. Covenant output remains byte-identical.
 
 ---
@@ -880,7 +881,7 @@ every file system and URL).
 mode-level inheritance. The owner's 2026-11-12 screenshots / confirmation establish multiplayer 标准 0 core + 2
 add-on bans and 险境 / 绝境 / 终极 5 core + 5 add-on bans. All four multiplayer modes therefore override both counts.
 标准's eight fixed exclusions already come from `modeDataDict.inactiveBondIdList`; they are excluded before sampling,
-not counted as random bans. Solo modes and shared difficulty defaults remain unchanged pending solo evidence.
+not counted as random bans. The same random quotas are now also the shared difficulty defaults, following upstream recordings for solo 1 / FAST / 20; intermediate solo levels remain assumed.
 This does not change the core-first operator exclusion rule, legacy seasons or bounty pools.
 
 Chess equipment capacity comes from `charChessDataDict[chessId].equipSlotNum`. Only non-default positive counts
