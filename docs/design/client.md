@@ -1188,3 +1188,59 @@ permits pioneer skill gains ([ASSUMED] scope approved in #657). SP permits extra
 excluding time, ordinary attack/hurt and initial SP. Full/locked bars and zero receipts show nothing. White COST,
 red deductions and cyan SP follow the issue examples; exact colours, 80% numeric size, centred placement, 0.9 s
 lifetime and up to two decimals are [ASSUMED]. Receipts do not merge. Revision: [§37.3](../history/0.3.4.md).
+
+
+### Preparation progress displays (§37.13)
+
+Commercial Packaging displays each equipment instance's existing sale count and data threshold, including first-period
+original-owner rewards. Chiave displays active refresh progress and rewards earned this round without resetting counters.
+The sidebar and 本局信息 use the watched player's effects in both preparation scouting and combat spectating; a field
+with multiple members has no inferred owner's progress. Battle displays retain the values captured at preparation end.
+
+### Studio class size limits (§37.17)
+
+[ASSUMED] Cosmetic plugin folders may contain 512 MB; other classes retain 200 MB and all retain 5000 files.
+Studio aggregate writes and staged candidates enforce the manifest's class ceiling, using the incoming class for a
+manifest replacement. Downloads/catalogue entries use the 512 MB outer cap until the extracted manifest is checked.
+
+### Summon outfits (§37.18)
+
+召唤物时装沿用主人干员的公开选择，自选主人显式使用所选干员 `charId`；备战、手牌、临时整备、侦察与战斗一致，缺失资源回退默认模型。来源、显示层边界和插件格式见 [SKINS.md](../SKINS.md) 与 [0.3.4 §37.18](../history/0.3.4.md)。
+
+### Regulation bond descriptions
+
+Regulation bond popups use the owner's effective effect id carried by that owner's bond view entry. Replacement
+descriptions and positional values are resolved together from the selected, localized effect, including every
+threshold; the lower description must not retain the base variant's six-person clause. Own and watched players
+use the selected effect's official display thresholds (including Yan's nine-person tier), without changing the
+match's bond state. Effective replacement identities remain available for zero-member, zero-layer popups; the
+strip still hides these inactive zero-state entries. Both views share this path, and composing a popup never
+mutates the shared bond data. This is a display change: command
+replacement and combat effects retain their existing rules.
+
+The effects column resolves the current command's skill record and separate structured entries for the actual
+bond replacement and the original followers strategy's retained draft passive. Command replacement removes the
+old command description. The owner's private view, preparation scout and combat spectator use the same model;
+localized descriptions are selected by record identity rather than matching a newly concatenated sentence.
+
+### Regulation equipment row
+
+The loaded `config.version.rules.equipHand` switch labels row 8 装备区 and accepts item-card moves within its five
+slots. Equipment can be dropped on a unit to equip it; empty character-hand slots refuse equipment, and equipment
+slots refuse characters/summons. The shop checks capacity in the offered card's row. The permanent row has no red
+pending frame. The HUD, Ready reason and row label use private `stashCount`, with the auto-refill/expiry rule;
+the stash itself is not drawn. Boss prep retains the same bench transform (row 8 → boss row 1, mirrored on the right).
+Covenant rendering and controls retain the mixed hand and visible temporary row.
+
+The centralized voice picker shows one operator per table row: name, independent checkboxes for available dubs, and a preview button. Column headers remain visible while scrolling; narrow screens can scroll horizontally.
+
+下载资源管理 is the single title-screen entry for voice download selection (first and initially active), download, local import and completeness checking. Opening the manager or a section starts no transfer; downloading needs its explicit action. Switching sections unmounts the old panel and pauses downloads or cancels imports without deleting stored bytes. The common dialog owns closing and focus trapping.
+
+检查资源 requires all non-voice manifest resources and one complete manifest-listed dub per voiced charId,
+regardless of download selections. Unvoiced operators are exempt. A status-200 import-cache or HTTP-cache entry
+counts when its content-type is not HTML and `Content-Length` is not zero, without reading the body. The worker
+does not answer `cache: 'only-if-cached'`, so the HTTP cache can, and missing art is never fetched. A partial dub
+or an unverifiable file cannot satisfy a requirement. Only manifests may use the network. Results include missing
+files and operators; cancellation or invalid manifests cannot report completeness. `public/js/resourceCheck.js`
+exposes the checker and pure planning/summary functions for downstream deployments. 下载素材 uses the multi-language
+selections from 干员语音.
