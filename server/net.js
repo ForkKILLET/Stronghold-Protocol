@@ -807,7 +807,13 @@ export class Network {
       try { this.onFrame(conn, data, isBinary); } catch (e) { this.log.error('[net] frame handler crashed', e); }
       finally { this.diagnostics.received(conn.frameType, data.length || 0, performance.now() - start); }
     });
-    ws.on('pong', () => { conn.alive = true; if (conn.session && conn.session.ws === ws) conn.session.lastSeen = this.now(); });
+    ws.on('pong', () => {
+      conn.alive = true;
+      if (!conn.closing && !this.closed && conn.session && conn.session.ws === ws) {
+        conn.session.lastSeen = this.now();
+        this.onProfileActivity?.(conn.session.userId, conn.session.lastSeen, conn.session);
+      }
+    });
     ws.on('error', (e) => { this.log.debug?.('[net] socket error', e?.code || e?.message); });
     ws.on('close', () => { try { this.onClose(conn); } catch (e) { this.log.error('[net] close handler crashed', e); } });
   }
@@ -830,7 +836,10 @@ export class Network {
     if (conn.closing || this.closed) return;
     const now = this.now();
     conn.alive = true;
-    if (conn.session && conn.session.ws === conn.ws) conn.session.lastSeen = now;
+    if (conn.session && conn.session.ws === conn.ws) {
+      conn.session.lastSeen = now;
+      this.onProfileActivity?.(conn.session.userId, now, conn.session);
+    }
 
     if (!conn.bucket.take(now)) {
       if (now - conn.dropWindowAt >= 1000) { conn.dropWindowAt = now; conn.drops = 0; }
@@ -1013,6 +1022,7 @@ export class Network {
     session.lastSeen = now;
     session.addr = conn.ip;
     session.limitKey = conn.key;
+    this.onProfileActivity?.(session.userId, now, session);
     negotiateStateDelta(conn.ws, msg.stateDelta ?? msg.delta);
 
     let extra = null;

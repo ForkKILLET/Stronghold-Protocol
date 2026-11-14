@@ -5,6 +5,7 @@ import {createAdminSnapshot} from './snapshot.js';
 import {adminBody} from './body.js';
 import {sendJson, answerClientError} from '../http/common.js';
 import {createAdminPlayers,playerQuery} from './players.js';
+import {createAdminAnalytics,analyticsQuery} from './analytics.js';
 
 export {telemetryToken} from './telemetry-secret.js';
 export async function startTelemetry({token, health, diagnostics, data, users, log, host='127.0.0.1', port=8001, now=Date.now}) {
@@ -12,6 +13,7 @@ export async function startTelemetry({token, health, diagnostics, data, users, l
   const wanted=createHash('sha256').update('Bearer '+token).digest(), instance=randomUUID();
   const snapshot=createAdminSnapshot({health,diagnostics,data,now});
   const players=createAdminPlayers({users,registry:health.registry,snapshot,data,now,log});
+  const analytics=createAdminAnalytics({users,now});
   let writes={until:0,count:0};
   let recoveryWrites={until:0,count:0};
   const controls=diagnostics.announcements?.serverMessage;
@@ -20,10 +22,14 @@ export async function startTelemetry({token, health, diagnostics, data, users, l
     res.setHeader('X-Content-Type-Options','nosniff');
     let url;
     try{url=new URL(req.url,'http://local');}catch{sendJson(req,res,400,{error:'INPUT'});return;}
-    if(!['/v1/snapshot','/v1/server-message','/v1/players','/v1/player-recovery'].includes(url.pathname)){sendJson(req,res,404,{error:'NOT_FOUND'});return;}
+    if(!['/v1/snapshot','/v1/server-message','/v1/players','/v1/player-recovery','/v1/analytics'].includes(url.pathname)){sendJson(req,res,404,{error:'NOT_FOUND'});return;}
     const actual=createHash('sha256').update(String(req.headers.authorization || '')).digest();
     if(!timingSafeEqual(actual,wanted) || req.headers.origin){sendJson(req,res,401,{error:'AUTH'});return;}
     try {
+      if(url.pathname==='/v1/analytics'){
+        if(req.method!=='GET'){sendJson(req,res,405,{error:'METHOD'});return;}
+        sendJson(req,res,200,await analytics(analyticsQuery(url.searchParams,now())));return;
+      }
       if(url.pathname==='/v1/players'){
         if(req.method!=='GET'){sendJson(req,res,405,{error:'METHOD'});return;}
         sendJson(req,res,200,await players.list(playerQuery(url.searchParams)));return;
@@ -45,7 +51,7 @@ export async function startTelemetry({token, health, diagnostics, data, users, l
       if(req.method!=='GET'){sendJson(req,res,405,{error:'METHOD'});return;}
       const value=snapshot.capture();
       sendJson(req,res,200,{...value,server:{...value.server,instance},
-        capabilities:{serverMessage:!!controls,players:true,playerRecovery:!!users},serverMessage:controls?.state() || null});
+        capabilities:{serverMessage:!!controls,players:true,playerRecovery:!!users,analytics:!!users},serverMessage:controls?.state() || null});
     } catch(error) {sendJson(req,res,error.status || 503,{error:error.status===409?'CONFLICT':error.status?'INPUT':'UNAVAILABLE'});}
 
   });

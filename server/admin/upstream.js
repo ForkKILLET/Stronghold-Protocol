@@ -57,6 +57,7 @@ export function createAdminUpstream({url,token,now=Date.now,fetch:doFetch=fetch,
       return {at:value.at,items:rows.slice((page-1)*50,page*50),total:rows.length,page,pages,connection:connection()};
     },
     async playerRecovery(input){if(closed)throw Error('Panel closed');return request('/v1/player-recovery',input);},
+    async analytics(input){if(closed)throw Error('Panel closed');return request('/v1/analytics?'+new URLSearchParams(input));},
     async serverMessage(){if(closed)throw Error('Panel closed');return request('/v1/server-message');},
     async updateServerMessage(input){
       if(closed)throw Error('Panel closed');

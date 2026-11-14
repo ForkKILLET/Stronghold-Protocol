@@ -8,6 +8,7 @@ import {sendJson,sendError} from '../http/common.js';
 import {clientAddress,limitKeyOf,isLocalIp} from '../net.js';
 import {sameOrigin} from '../users/http.js';
 import {PLAYER_STATES,playerQuery,recoveryInput} from './players.js';
+import {analyticsQuery} from './analytics.js';
 
 const derive = promisify(scrypt);
 export const ADMIN_COOKIE = 'sp_admin';
@@ -107,6 +108,11 @@ export function createAdmin({password,publicDir,snapshot,trustProxy,now=Date.now
         if (!readAllowed(current)) {json(req,res,429,{error:'RATE'});return;}
         if (pathname==='/admin/api/session') {json(req,res,200,{ok:true,expires:current.expires});return;}
         if (pathname==='/admin/api/overview') {json(req,res,200,await snapshot.overview());return;}
+        if (pathname==='/admin/api/analytics') {
+          const query=analyticsQuery(new URL(req.url,'http://local').searchParams,now());
+          if(!snapshot.analytics){json(req,res,503,{error:'UNAVAILABLE'});return;}
+          json(req,res,200,await snapshot.analytics(query));return;
+        }
         if (pathname==='/admin/api/list') {
           const params=new URL(req.url,'http://local').searchParams;
           const kind=params.get('kind'),page=Number(params.get('page') || 1),query=params.get('q') || '',status=params.get('status') || 'all';

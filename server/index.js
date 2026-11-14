@@ -37,6 +37,7 @@
 
 import http from 'node:http';
 import {openUserStore} from './users/store.js';
+import {createDailyActivity} from './users/activity.js';
 import {createUserApi} from './users/http.js';
 import {telemetryToken,startTelemetry} from './admin/telemetry.js';
 import { nameModerationFromEnv } from './nameModeration.js';
@@ -256,6 +257,14 @@ export async function startServer(opts = {}) {
   lobby.users=users;
   lobby.replayMaxBytes=users&&opts.replayLimit>0?opts.replayMaxBytes:0;
   network.onProfileName=(id,name)=>{if(users)users.call('rename',{id,name}).catch(()=>log.warn('[users] nickname save failed'));};
+  const dailyActivity=createDailyActivity({users,log});
+  network.onProfileActivity=(id,at,session)=>dailyActivity.record(id,at,lobby.hasActiveMatch(session));
+  const previousMatchStarted=lobby.onMatchStarted;
+  lobby.onMatchStarted=item=>{
+    for(const session of registry.all())if(session.connected&&lobby.activeMatchOf(session)?.match===item.match&&lobby.hasActiveMatch(session))
+      dailyActivity.record(session.userId,Date.now(),true);
+    previousMatchStarted?.(item);
+  };
   // Resume the last state before listening: every reconnecting client is recognized by its token right away.
   const persister = store ? new Persister({ store, registry, lobby, log, now: opts.now, saveMs,
     checkpointConcurrency: opts.checkpointConcurrency, checkpointWaitMs: opts.checkpointWaitMs }) : null;
@@ -374,6 +383,7 @@ export async function startServer(opts = {}) {
   } catch (e) {
     devReload?.close();
     clearInterval(userRetry);
+    await dailyActivity.close();
     await users?.close();
     await store?.close();
     await announcements.stop();
@@ -440,6 +450,7 @@ export async function startServer(opts = {}) {
       });
       try { wss.close(); } catch { /* ignore */ }
       await Promise.allSettled([...(lobby.userWrites || [])]);
+      await dailyActivity.close();
       await users?.close();
       try { await store?.close(); } catch { /* ignore */ }
     })();

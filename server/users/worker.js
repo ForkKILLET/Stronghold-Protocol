@@ -1,6 +1,7 @@
 import {installReplays} from './replays.js';
 import {installCombat} from './combat.js';
 import {installAdminUsers} from './admin.js';
+import {installAnalytics} from './analytics.js';
 import {installPublicProfiles,PUBLIC_PROFILE_SCHEMA_VERSION} from './publicProfiles.js';
 import {publicReplay} from '../replays/public.js';
 import {gzipSync} from 'node:zlib';
@@ -40,12 +41,15 @@ const replays=installReplays(db,workerData.replays);
 const publicProfiles=installPublicProfiles(db);
 const combat=installCombat(db);
 const adminUsers=installAdminUsers(db);
+const analytics=installAnalytics(db);
 const q=sql=>db.prepare(sql);
 const profile=id=>{const user=q('SELECT id,name,avatar_id AS avatarId,created_at AS createdAt FROM users WHERE id=?').get(id);return user?{...user,...publicProfiles.ensure(id)}:null;};
 function transaction(fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
 function credential(userId){const token=secret();q('INSERT INTO credentials(hash,user_id) VALUES(?,?)').run(hash(token),userId);return token;}
 function recoveryCode(id){const code='SP-'+secret();q('DELETE FROM recovery WHERE user_id=?').run(id);q('INSERT INTO recovery(hash,user_id) VALUES(?,?)').run(hash(code),id);return {code};}
 const methods={
+ activity(args){return analytics.activity(args);},
+ adminAnalytics(args){return analytics.report(args);},
  adminPlayers(args){return adminUsers.list(args);},
  adminRecovery({publicId,name}){return transaction(()=>{
   const user=publicProfiles.find(publicId);
