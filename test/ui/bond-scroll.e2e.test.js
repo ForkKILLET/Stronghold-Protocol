@@ -71,13 +71,13 @@ test(`${engine}: bond arrows appear only on overflow and all bonds remain reacha
       await page.click('.bstrip-scroll__arrow:last-child');
       await page.waitForFunction(() => document.querySelector('.bstrip').scrollLeft > 0);
       await page.$eval('.bstrip', el => { el.scrollLeft = el.scrollWidth; });
-      await page.waitForFunction(() => document.querySelector('.bstrip-scroll__arrow:last-child').disabled);
+      await page.waitForFunction(() => !document.querySelector('.bstrip-scroll').classList.contains('is-r'));
       const last = '.bslot:last-child .bond';
       await page.click(last); await page.waitForSelector('.bpop');
       await page.click('.bpop__close');
       // Reset native scroll separately; only ArrowRight below is a keyboard assertion.
       await page.$eval('.bstrip', el => { el.scrollLeft = 0; });
-      await page.waitForFunction(() => document.querySelector('.bstrip-scroll__arrow:first-child').disabled);
+      await page.waitForFunction(() => !document.querySelector('.bstrip-scroll').classList.contains('is-l'));
       await page.focus('.bstrip');
       await page.keyboard.press('ArrowRight');
       await page.waitForFunction(() => document.querySelector('.bstrip').scrollLeft > 0);

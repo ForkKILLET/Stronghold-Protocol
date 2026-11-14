@@ -390,7 +390,8 @@ test('successful ZIP import persists the preload setting and completes only the 
   assert.equal(JSON.parse(prefs.get('sp.pref.settings')).preload, true);
   assert.equal(JSON.parse(prefs.get('sp.pref.settings')).preloadOptional, false);
   assert.equal(mod.resourceState().enabled, true);
-  assert.deepEqual(env.calls.fetch, [MANIFEST_URL, ORIGIN + files[1].url], 'only the missing essential file downloads');
+  // Theme initialization may refresh its metadata; only one missing resource body should download.
+  assert.deepEqual(env.calls.fetch.filter(url => url !== '/data/local-assets.json'), [MANIFEST_URL, ORIGIN + files[1].url], 'only the missing essential file downloads');
 });
 
 test('invalid or cancelled ZIP imports do not enable preload or invoke the persisted-setting callback', async (t) => {

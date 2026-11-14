@@ -50,9 +50,19 @@ function OwnerTag({ owner }) {
   </span>`;
 }
 
+/** Mouse travel (CSS px) before a press on the strip becomes a drag — below it the press stays a disc's click. */
+export const BOND_DRAG_SLOP = 5;
+
+/**
+ * The strip's horizontal scroller. No arrow buttons any more (the owner, 2026-11-14 「盟约行左右箭头取消吧，直接鼠标拖动
+ * 或者手指滑动就好，收起的小箭头还保留」, §37.201): a finger swipes it natively (touch-action pan-x), a mouse drags it
+ * (past BOND_DRAG_SLOP the press is a drag and the click that ends it opens no popup), the wheel scrolls it sideways, the
+ * keyboard's arrows still scroll the focused strip; a fading edge says more bonds wait on that side.
+ */
 function BondScroller({ count, children }) {
   const viewport = useRef(null);
-  const [edges, setEdges] = useState({ overflow: false, left: false, right: false });
+  const [edges, setEdges] = useState({ left: false, right: false });
+  const [dragging, setDragging] = useState(false);
   useEffect(() => {
     const el = viewport.current;
     if (!el) return;
@@ -81,11 +91,68 @@ function BondScroller({ count, children }) {
       el.removeEventListener('scroll', update);
     };
   }, [viewport, count]);
-  const scroll = direction => viewport.current?.scrollBy({ left: direction * Math.max(80, viewport.current.clientWidth * .75), behavior: 'smooth' });
-  return html`<div class="bstrip-scroll">
-    <button type="button" class="bstrip-scroll__arrow" hidden=${!edges.overflow} disabled=${!edges.left} aria-label=${t('向左滚动盟约')} onClick=${() => scroll(-1)}><${Icon} name="chevronLeft" /></button>
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    /** @type {{ id: number, x: number, left: number, moved: boolean }|null} */
+    let press = null;
+    let swallow = false;
+    const down = (e) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0 || el.scrollWidth <= el.clientWidth + 1) return;
+      press = { id: e.pointerId, x: e.clientX, left: el.scrollLeft, moved: false };
+    };
+    const move = (e) => {
+      if (!press || e.pointerId !== press.id) return;
+      const dx = e.clientX - press.x;
+      if (!press.moved) {
+        if (Math.abs(dx) < BOND_DRAG_SLOP) return;
+        press.moved = true;
+        try { el.setPointerCapture(e.pointerId); } catch { /* the pointer is gone */ }
+        setDragging(true);
+      }
+      el.scrollLeft = press.left - dx;
+      e.preventDefault();
+    };
+    const up = (e) => {
+      if (!press || e.pointerId !== press.id) return;
+      if (press.moved) swallow = true;
+      press = null;
+      setDragging(false);
+    };
+    // the click a drag ends with (its target: the disc pressed, or the strip holding the capture) opens nothing
+    const click = (e) => {
+      if (!swallow) return;
+      swallow = false;
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    // a vertical wheel scrolls the row sideways while it has room that way (the board's own wheel zoom never sees it)
+    const wheel = (e) => {
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (!d || el.scrollWidth <= el.clientWidth + 1) return;
+      const max = el.scrollWidth - el.clientWidth;
+      if ((d < 0 && el.scrollLeft <= 0) || (d > 0 && el.scrollLeft >= max - 1)) return;
+      el.scrollLeft = Math.max(0, Math.min(max, el.scrollLeft + d));
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('click', click, true);
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => {
+      el.removeEventListener('pointerdown', down);
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up);
+      el.removeEventListener('pointercancel', up);
+      el.removeEventListener('click', click, true);
+      el.removeEventListener('wheel', wheel);
+    };
+  }, [viewport]);
+  return html`<div class=${cx('bstrip-scroll', edges.left && 'is-l', edges.right && 'is-r', (edges.left || edges.right) && 'can-drag', dragging && 'is-dragging')}>
     ${cloneElement(children, { ref: viewport })}
-    <button type="button" class="bstrip-scroll__arrow" hidden=${!edges.overflow} disabled=${!edges.right} aria-label=${t('向右滚动盟约')} onClick=${() => scroll(1)}><${Icon} name="chevronRight" /></button>
   </div>`;
 }
 
@@ -94,6 +161,7 @@ function BondScroller({ count, children }) {
  *   owner?: string|null }} props — owner: the watched teammate's name (null = your own bonds)
  */
 export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null, owner = null }) {
+  // A zero-count mapped row exists so the popup can resolve it. It is not a strip icon.
   const sorted = sortBonds(bonds, (id) => data.lookup('bonds', id))
     .filter((b) => b.off ? b.count > 0 : b.active || b.count > 0 || b.layers > 0);
   if (!sorted.length) {
@@ -109,7 +177,6 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
       const base = data.lookup('bonds', b.bondId);
       const rec = bondEffectRecord(base, data.lookup('effects', b.effectId || base?.effectId), b.layers ?? 0);
       const th = b.effectId ? rec?.thresholds || [] : Array.isArray(b.thresholds) && b.thresholds.length ? b.thresholds : rec?.thresholds || [];
-      const tier = b.effectId ? bondTier(b.count ?? 0, th, rec?.maxCount) : b.tier ?? 0;
       if (b.off) {
         // a bond the mode never activates, with members: the briefing's grey ✕ disc, no stack count, 本局禁用 under it
         const name = rec?.name || b.bondId;
@@ -122,6 +189,7 @@ export function BondStrip({ bonds, layersDisabled = false, onOpen, openId = null
         </div>`;
       }
       const next = nextThreshold(b.count ?? 0, th);
+      const tier = b.effectId ? bondTier(b.count ?? 0, th, rec?.maxCount) : b.tier ?? 0;
       return html`<div key=${b.bondId} role="listitem" data-bond=${b.bondId} data-harmony=${b.harmony > 0 ? b.harmony : null}
           class=${cx('bslot', b.active && 'is-active', openId === b.bondId && 'is-open')}>
         <${BondDisc} name=${rec?.name || b.bondId} icon=${bondIconUrl(m, b.bondId)} layers=${rec?.noStack ? undefined : b.layers ?? 0}

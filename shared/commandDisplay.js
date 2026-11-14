@@ -1,4 +1,4 @@
-// Display-only rows for the current 规程 command and explicitly retained original-band effects.
+// Display-only rows for the current 规程 command and the effects the opening band still contributes.
 // Rules stay in the match/sim code; this helper only points each row at the record that owns its text.
 
 const RETAINED_BUFFS = new Set(['gain_band_skill_from_pool_in_prep']);
@@ -8,12 +8,15 @@ const rowsOf = (bands) => Array.isArray(bands) ? bands : Object.values(bands || 
 const record = (v) => (v && typeof v === 'object' ? v : null);
 
 /**
- * Build the strategy rows shown in the effects column for a player with the 规程 command chain.
- * The selected command can come from any strategy (追随者's draft draws from all ACTIVE skill rows), while the
- * original band is kept separately so only a buff whose runtime is still tied to that band can add a second row.
+ * Strategy rows for a player on the 规程 command chain.
+ * The selected command can come from any strategy, while the original band is kept so a buff whose
+ * runtime is still tied to that band can add a second row. `effectOverrides` is commandBondOverrides
+ * (opening table, then the live skill); this module does not read skill buffs itself.
+ * [ASSUMED] The preparation counter is shown only while the selected skill contains its writer buff,
+ * even though the server still counts from the opening band.
  * @param {{ bands?: object|object[], originalBandId?: string, commandEffectId?: string, effectOf?: (id: string) => any,
- *   progress?: object|null, commandType?: string, bonds?: object, bondStates?: object, effectOverrides?: Record<string, string> }} opts
- * @returns {any[]|null} null when the input is not a valid command-chain view; an empty list is never returned.
+ *   progress?: object|null, commandType?: string, bonds?: object, bondStates?: object, effectOverrides?: Record<string, string> }} [opts]
+ * @returns {any[]|null} null when this is not a command-chain view; an empty list is never returned.
  */
 export function commandDisplayEffects({ bands, originalBandId, commandEffectId, effectOf = null, progress = null, commandType = null,
   bonds = {}, bondStates = {}, effectOverrides = {} } = {}) {
@@ -40,7 +43,7 @@ export function commandDisplayEffects({ bands, originalBandId, commandEffectId, 
     command: true,
     commandType: commandType || skill.type || null,
   };
-  // This counter belongs to an effect only while that selected skill actually contains its writer buff.
+  // This counter belongs to a row only while that selected skill contains its writer buff.
   if (skillUsesProgress && progress && typeof progress === 'object') Object.assign(current, progress);
   /** @type {any[]} */
   const out = [current];
@@ -88,8 +91,7 @@ export function commandDisplayEffects({ bands, originalBandId, commandEffectId, 
 }
 
 /**
- * Remove command-only placeholders from the effects column. The command HUD expands those through its existing flow;
- * this tooltip displays only the current skill row and independent, structured retained-effect rows.
+ * Drop command-only placeholders. The command HUD expands those itself; this tooltip shows the skill text.
  * @param {string} desc
  */
 export function commandDisplayText(desc) {

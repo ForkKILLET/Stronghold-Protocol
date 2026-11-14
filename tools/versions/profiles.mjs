@@ -18,8 +18,8 @@
 //             export of tools/versions/tables/<id>.mjs) or the table object itself. All four null = left out.
 //   pools     { <pool id>: [charId…] } replaces the operators tools/build-data.mjs writes for a hand-written chess pool,
 //             where the version's trait text names others (omitted = the default's)
-//   recruitTierExempt  base chess ids whose special carrier can recruit its own normal form with the first-bond
-//             communicator, even above shop level; emitted as an opt-in flag, never added to ordinary shop stock
+//   recruitTierExempt  base chess ids whose first-bond communicator can recruit their own normal form above shop level;
+//             an opt-in flag, never ordinary shop stock
 //   config    hiddenCore thresholds; `bans` { core, addon } for every difficulty, or { [difficulty]: { core, addon } }
 //             (omitted = 盟约's per-difficulty counts); `modeBans` { [modeId]: { [difficulty]: { core, addon } } }
 //             writes mode-level bans, inherited over the difficulty defaults by GameData;

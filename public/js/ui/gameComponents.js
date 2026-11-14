@@ -4,7 +4,7 @@
 import { useState, useMemo } from '../../vendor/hooks.module.js';
 import { html, Icon, TierChip, Tooltip } from './components.js';
 import { data, useData, localAsset } from '../data.js';
-import { parseRichText } from './richText.js';
+import { parseRichText, rtClassName } from './richText.js';
 import { formatShowTags } from '../../../shared/showTags.js';
 import { TermMarkup } from './termHelp.js';
 import {AvatarImage} from './avatarImage.js';

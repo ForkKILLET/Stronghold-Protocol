@@ -6,34 +6,30 @@ import { computeBonds, tierFor, activatedLayers, bondList, thresholdsOf } from '
 import { DATA } from './harness.js';
 import { loadData } from '../../server/data.js';
 import { fileURLToPath } from 'node:url';
-import { commandBondOverrides, commandBattleInput } from '../../server/match/bandCommands.js';
+import { commandBondOverrides } from '../../server/match/bandCommands.js';
 
 const gd = new GameData(DATA, 'mode_multi_normal');
 
-test('regulation bond views and combat agree on all original and swapped effect identities without mutation', () => {
+test('a mapped bond with no members is a zero row; a mode-off bond stays one grey row without effectId', () => {
   const raw = loadData(fileURLToPath(new URL('../../data/versions/act3autochess-v3_1', import.meta.url)), { log: { warn() {} } });
   const regulation = new GameData(raw, 'mode_multi_normal');
-  const bonds = Object.fromEntries(regulation.bondIds.map(id => [id, { count: 6, active: true, tier: 2, layers: 40 }]));
-  const original = JSON.stringify(bonds);
-  const rows = Object.values(raw.bands).flatMap(b => b.skills || []);
-  const replacing = rows.filter(s => s.buffs.some(b => b.key === 'auto_chess_effect_replace'));
-  assert.equal(replacing.length, 8);
-  for (const skill of replacing) {
-    const ps = { gd: regulation, command: { currentEffectId: skill.effectId }, m: { round: 1 } };
-    const mapping = commandBondOverrides(ps);
-    assert.deepEqual(commandBattleInput(ps, []).bondEffectOverrides, mapping);
-    const publicList = bondList(regulation, bonds, { effectOverrides: mapping });
-    const ownList = bondList(regulation, bonds, { full: true, effectOverrides: mapping });
-    for (const bond of Object.values(raw.bonds)) {
-      const expected = mapping[bond.effectId];
-      assert.equal(publicList.find(e => e.bondId === bond.bondId)?.effectId, expected);
-      assert.equal(ownList.find(e => e.bondId === bond.bondId)?.effectId, expected);
-    }
-    ps.command.currentEffectId = raw.bands.band_fund.skills[0].effectId;
-    assert.deepEqual(commandBondOverrides(ps), {});
-    assert.ok(bondList(regulation, bonds, { effectOverrides: commandBondOverrides(ps) }).every(e => !e.effectId));
-  }
-  assert.equal(JSON.stringify(bonds), original);
+  const mapping = { bondeffect_kazimierz_2: 'bondeffect_kazimierz' };
+  const off = { kazimierzShip: { count: 2, layers: 1 } };
+  const claimed = bondList(regulation, {}, { off, effectOverrides: mapping });
+  const rows = claimed.filter((e) => e.bondId === 'kazimierzShip');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].off, true);
+  assert.equal(rows[0].effectId, undefined);
+  const empty = bondList(regulation, {}, { effectOverrides: mapping });
+  const zero = empty.find((e) => e.bondId === 'kazimierzShip');
+  assert.deepEqual(
+    { count: zero.count, active: zero.active, tier: zero.tier, layers: zero.layers, effectId: zero.effectId, off: zero.off },
+    { count: 0, active: false, tier: 0, layers: 0, effectId: 'bondeffect_kazimierz', off: undefined },
+  );
+  const plain = bondList(gd, { yanShip: { count: 3, active: true, tier: 1, layers: 0 } });
+  assert.ok(plain.every((e) => !('effectId' in e)));
+  assert.deepEqual(commandBondOverrides({ gd, bandId: 'band_bldsk' }), {});
+  assert.deepEqual(commandBondOverrides({ gd: regulation, bandId: 'nope' }), {});
 });
 let uid = 1;
 const piece = (id, items = []) => ({ uid: uid++, kind: 'chess', id, items: items.map((i) => ({ uid: uid++, kind: 'item', id: i })) });

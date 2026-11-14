@@ -18,8 +18,9 @@
 //     has 1 → 1, exactly the N both official texts give (user playtest #5: 至简 costs 1). The dispatcher runs it before
 //     every other onPrice modifier, so 远见's discount (to 0 at 150 layers since 0.1.3) and strategy caps act on the
 //     lowered price.
-//   * [ASSUMED] 余 SERVER_MOST_BOND: ties between most-member bonds are shuffled; the chess is a copy-weighted pool roll
-//     of any tier (the text gives no tier cap); a bond without an available chess falls through to the next tied one.
+//   * SERVER_MOST_BOND sale rewards are shop-level capped and exclude self; prep-start rewards stay uncapped.
+//   * [ASSUMED] SERVER_MOST_BOND: ties between most-member bonds are shuffled; the chess is a copy-weighted pool roll;
+//     a bond without an available chess falls through to the next tied one.
 //   * [ASSUMED] 松果: the "免费特殊招募" is a free pick-one offer of `rewardOffer.count` (3) chess of the pool's tier.
 //   * 拉普兰德 SERVER_GAIN_BOND_LAYER_BY_REFRESH_CNT "若为本回合首次主动刷新": per copy — the first manual refresh this
 //     operator witnesses in the round (players' report after 0.1.0); an elite merged this round is a new 拉普兰德 and
@@ -32,8 +33,8 @@
 // A `max` on SERVER_ADD_BOND_METHOD / SERVER_ADD_BOND_ROUND_COIN_COST clamps only when that blackboard field is present,
 // so 盟约 rows without it keep today's amount. Behaviour is keyed by effectKey, never by garrison id.
 
+import { garrisonUpgradeKey, nextGarrisonUpgrade } from '../../../../shared/garrisonUpgrades.js';
 import { metaBonds, frontPiece, behindPiece, distinctTiers } from '../support/meta.js';
-import { garrisonUpgradeKey, nextGarrisonUpgrade } from '../../../../shared/showTags.js';
 
 const ids = (s) => String(s ?? '').split(',').map((x) => x.trim()).filter(Boolean);
 const num = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(+v) ? +v : d);
@@ -339,13 +340,24 @@ H.SERVER_POOL_CHAR = {
   },
 };
 
+/**
+ * Fork policy: sale rewards and explicit self-excluding gain rewards are shop-level capped; prep-start rewards retain the prior
+ * uncapped rule until separate evidence is supplied. Event identity also covers copied traits without operator IDs.
+ * @param {{ desc?: string, eventType?: string } | null | undefined} g
+ */
+export function mostBondRules(g) {
+  const sold = g?.eventType === 'SERVER_CHESS_SOLD';
+  const explicitSelfExclusion = /自身除外|无法获得自身/.test(String(g?.desc ?? ''));
+  return { noSelf: sold || explicitSelfExclusion, capped: sold || explicitSelfExclusion };
+}
+
+const baseOf = (ctx, id) => (typeof ctx.gd?.baseIdOf === 'function' ? ctx.gd.baseIdOf(id) : String(id ?? '').replace(/_[ab]$/, ''));
+
 H.SERVER_MOST_BOND = {
   run(ctx) {
     if (!rowCondition(ctx, selfView(ctx))) return;
-    // The sale variant (伊桑, both forms) is shop-level capped and cannot return the sold operator. 余's
-    // prep-start variant has neither restriction. 绝技 counts elites, not members that can be recruited.
+    // Fork retains the existing uncapped prep-start Yu rule pending independent evidence.
     const sold = ctx.source.garrison?.eventType === 'SERVER_CHESS_SOLD';
-    const self = sold ? ctx.gd.baseIdOf(ctx.source.piece.id) : null;
     let best = [], bc = 0;
     for (const id of bondOrder(ctx)) {
       if (sold && ctx.gd.bond(id)?.countMode === 'BOARD_ALL_CHESS') continue;
@@ -353,9 +365,12 @@ H.SERVER_MOST_BOND = {
       if (c > bc) { bc = c; best = [id]; } else if (c === bc && c > 0) best.push(id);
     }
     const order = best.length > 1 ? ctx.rng.shuffle(best.slice()) : best;
+    const { noSelf, capped } = mostBondRules(ctx.source.garrison);
+    const selfId = selfView(ctx)?.id ?? ctx.source.piece?.id;
+    const self = noSelf && selfId ? baseOf(ctx, selfId) : null;
+    const maxTier = capped ? Math.max(1, Math.min(6, Math.floor(num(ctx.shopLevel(), 6)))) : 6;
     for (const bond of order) {
-      const id = ctx.rollChess({ bond, maxTier: sold ? ctx.shopLevel() : 6,
-        ...(sold ? { filter: id => ctx.gd.baseIdOf(id) !== self } : {}) });
+      const id = ctx.rollChess({ bond, maxTier, ...(self ? { filter: (cid) => baseOf(ctx, cid) !== self } : {}) });
       if (id && ctx.grantChess(id)) return;
     }
   },
@@ -487,10 +502,14 @@ function textCapOf(g) {
 }
 
 /**
- * Upgrade every n triggers (default 1), up to count + max_count PER trigger; rewards never run out.
- * The owner confirmed progress belongs to the player's original operator, including rebuy / elite forms.
- * Copied traits use the copied-from operator's progress; investor repeats each advance it once.
+ * max_count caps each payout's increase, not the lifetime rewards; n is the trigger interval.
+ * [ASSUMED: fork maintainer confirmation 2026-11-11] Same-player normal / elite copies and rebuy share progress.
+ * [ASSUMED] Copied traits use the original operator's key; each investor repeat advances it once.
  */
+export function upgradeGive(st, bb) {
+  return nextGarrisonUpgrade(bb, st);
+}
+
 function nextUpgrade(ctx) {
   const { piece, copiedFrom, garrison, bb } = ctx.source;
   const key = garrisonUpgradeKey(garrison, ctx.gd.baseIdOf((copiedFrom || piece).id));
@@ -569,7 +588,7 @@ H.SERVER_GAIN_SPECIAL_REFRESH_BOND_CHAR = {
   },
 };
 
-// Upgrade carried normal equipment and return the upgraded instances (owner-confirmed 2026-11-12).
+// Upgrade carried normal equipment and return the upgraded instances (official footage BV1egWJ66Ejp, 2026-11-08).
 // [ASSUMED, existing] upgradeChessId, else goldenId; this trait takes no second shop copy.
 H.SERVER_UPGRADE_SELF_EQUIP = {
   run(ctx) {

@@ -17,15 +17,11 @@
 // no countdown and say so. When the pick order comes round to the player, 轮到你选 drops in over the cards (the event's
 // video 10:08, ui/matchPlates.js TurnPopup); the selected card's frame and 确认选择 strip are white, as in the video.
 
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { useSettings } from './settings.js';
-import { regulationFamily } from './regHud.js';
 import { usePrefabPack } from './prefab/view.js';
-import { RegYourTurn, packBanners } from './prefab/banners.js';
 import { RegDeadlineCountdown } from './prefab/hud.js';
-import { themePack } from '../uiTheme.js';
 import { html, Icon, TierChip, Countdown, Button } from './components.js';
-import { TurnPopup } from './matchPlates.js';
 import { PauseButton } from './hud.js';
 import { Img, RichText, PlayerAvatar, GIcon } from './gameComponents.js';
 import { itemIconUrl, enemyIconUrl, uiUrl } from './assetUrls.js';
@@ -157,24 +153,11 @@ export function ChoiceOverlay(props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [armed]);
-  // 规程 with 乌萨斯齐心团 / 可露希尔: the pack's 轮到你选 banner (effect_choose_self_select) once each time the team pick
-  // reaches this seat (ui/prefab/banners.js)
+  // The pack also draws its official 机变 countdown. The shared your-turn cue is owned by screens/game.js so a theme
+  // banner and its sound are emitted once from the same place.
   const settings = useSettings();
-  const reg = regulationFamily(data.get('config'));
-  const pack = usePrefabPack(reg ? data.get('local')?.groups : null, reg ? settings?.uiTheme : null);
-  // 轮到你选 (the event's video 10:08): the disc drops in each time the pick order comes round to the player
-  const [turnPop, setTurnPop] = useState(0);
-  const turnNow = turnPopupDue(sp, { myId, solo, personal });
-  const turnSeen = useRef(false);
-  useEffect(() => {
-    if (turnNow && !turnSeen.current) setTurnPop((k) => k + 1);
-    turnSeen.current = turnNow;
-  }, [turnNow]);
-  const banner = turnPop ? (packBanners(pack).yourTurn
-    ? html`<${RegYourTurn} key=${turnPop} pack=${pack} still=${settings?.themeMotion === false}
-        spine=${themePack(settings?.uiTheme)?.character || null} onDone=${() => setTurnPop(0)} />`
-    : html`<${TurnPopup} key=${turnPop} onDone=${() => setTurnPop(0)} />`) : null;
-  if (!sp) return banner;
+  const pack = usePrefabPack(data.get('local')?.groups, settings?.uiTheme);
+  if (!sp) return null;
   const tap = (idx) => {
     const card = sp.cards.find((c) => c && c.idx === idx);
     const r = spTap(armed, idx, cardPickable(sp, card, { myId, solo, busyIdx }));
@@ -183,7 +166,7 @@ export function ChoiceOverlay(props) {
   };
   return html`<${ChoiceView} ...${props} armed=${armed} onTap=${tap} pfPack=${pack} pfStill=${settings?.themeMotion === false}
     onConfirm=${() => { if (armed != null) tap(armed); }} onDisarm=${() => setSel(null)} onMinimize=${(hidden) => { setSel(null); onMinimize(hidden); }} />
-    ${banner}`;
+    `;
 }
 
 /**

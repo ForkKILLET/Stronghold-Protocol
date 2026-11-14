@@ -55,8 +55,11 @@ export class PlayerViews {
   effectsView() {
     const out = [];
     const band = this.bandId ? this.gd.band(this.bandId) : null;
+    const legacyBand = () => ({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId, ...this.bandProgressView() });
     if (band?.skills?.length) {
       const command = commandView(this);
+      // Current command, then the replacement effects the battle uses, then a retained opening passive.
+      // A chain that cannot be resolved keeps the single strategy row, so the column does not go blank.
       const rows = command && commandDisplayEffects({
         bands: this.gd.raw.bands,
         originalBandId: this.bandId,
@@ -68,10 +71,10 @@ export class PlayerViews {
         bondStates: this.bondsView(),
         effectOverrides: commandBondOverrides(this),
       });
-      if (rows) out.push(...rows);
+      if (rows?.length) out.push(...rows);
+      else out.push(legacyBand());
     } else if (band) {
-      // A season without command rows retains its existing strategy description unchanged.
-      out.push({ id: band.effectId || band.bandId, name: band.effectName || band.name, desc: band.desc || '', iconKind: 'band', iconId: band.iconId || band.bandId, ...this.bandProgressView() });
+      out.push(legacyBand());
     }
     for (const e of this.effects) {
       if (e.hidden) continue;

@@ -33,7 +33,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../ven
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS, ROOM_CODE_LEN, MAX_SEATS, MAX_SPECTATORS, modeIdFor, ERR } from '../../../shared/constants.js';
 import { html, confirmDialog, Button, Icon, MicroLabel, Modal, PingPill, Spinner, DifficultyIcon, TextField, Tooltip } from '../ui/components.js';
 import { Sprite, Img } from '../ui/gameComponents.js';
-import { uiUrl } from '../ui/assetUrls.js';
+import { uiUrl, medalIconUrl } from '../ui/assetUrls.js';
 import { peekStatsRecords, trophyMedalOf, aggregateStats, recordsOfSeason } from '../ui/stats.js';
 import { levelProgress, levelOf } from './settle.js';
 import { OwnBackdrop, LobbyScene, LobbyMediaButton } from '../ui/lobbyMedia.js';

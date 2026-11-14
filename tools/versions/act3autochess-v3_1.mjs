@@ -41,10 +41,6 @@ export default Object.freeze({
     tacticDraft: 'act3autochess-v3_1',
     bountyDrafts: 'act3autochess-v3_1',
   }),
-  // Original-game video BV1FVWN6VEAr, ~01:15–01:19: a normal communicator at shop II grants a tier-V Ironhide copy.
-  // https://www.bilibili.com/video/BV1FVWN6VEAr/?t=74 (verified 2026-11-12; advanced and mixed weights not recorded).
-  // This opt-in is only for the carrier's own special copy, not every hidden operator or every recruitment effect.
-  recruitTierExempt: Object.freeze(['chess_char_5_22_a']),
   // Pool members follow this season's official trait/bond text. Exact server-side weights are unpublished:
   // [ASSUMED] 小概率 = 10% total, split equally within the common/rare category; specials are uniform.
   equipmentPools: Object.freeze({
@@ -54,6 +50,11 @@ export default Object.freeze({
     pool_equip_pasngr: { weighted: [['eff_acarm066', 45], ['eff_acarm050', 45], ['eff_acarm069', 10]], assumed: true },
     pool_equip_kjeragbond2: { items: ['eff_acarm062'] },
   }),
+
+  // Official recording BV1FVWN6VEAr 01:15–01:19: a normal communicator on normal Ironhide recruits it at shop II.
+  // Only the carrier's own special copy is admitted; this does not relax every hidden operator or recruitment effect.
+  // [ASSUMED] Advanced communicators and elite carriers use the same exception; the recording verifies normal on normal only.
+  recruitTierExempt: Object.freeze(['chess_char_5_22_a']),
   config: Object.freeze({
     hiddenCore: Object.freeze({ single: 350, multi: 1200 }),
     // Bonds greyed per match, from official recordings (2026-11-12). Add-ons: co-op 终极 greys 5 of 16 in all 15 briefings

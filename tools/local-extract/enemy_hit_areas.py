@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Audit every shipped Boss prefab's root hit collider against a locally installed official client.
 
-Run through check:local --small, with the UnityPy environment used by extract.py:
+Run with the UnityPy environment used by extract.py:
   python tools/local-extract/enemy_hit_areas.py --out <snapshot.json> [--game <install or AB root>]
 Reads one bundle at a time, including active Windows hot updates; never writes game files or generated data.
 Skill selectors and ColliderHolder blocking colliders are deliberately excluded from the root hit body.

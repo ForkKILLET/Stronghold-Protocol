@@ -534,12 +534,9 @@ export class GameData {
   }
 
   /**
-   * Whether an operator stays out of this match. Covenant: every bond of it is off. Regulation: an operator with a core
-   * bond follows its core bonds only and is out when they are all grey; one without a core bond is out when all its
-   * add-ons are (the tutorial: a grey core keeps its members out of the shop, add-ons only when all of an operator's
-   * add-ons are grey). Owner's official play, 2026-11-13: a lit core bond never loses a member — grey add-ons never take
-   * out an operator of a lit core. The same holds for the six operators of two or three core bonds (复奏, 哈洛德, 卡涅利安,
-   * 薇薇安娜, 烛煌, 锏): out only when all their cores are grey (owner, 2026-11-13: one core bond not banned keeps them).
+   * Regulation: core bonds decide when present; otherwise all add-ons must be grey to exclude the operator.
+   * Official multiplayer recording BV1hmWL6fEmQ (00:13 / 01:20): 初雪 is banned with 谢拉格 grey and 协防 lit.
+   * Multiple cores retain the operator while any core is lit. Covenant keeps its original joint every-bond rule.
    */
   bondsExclude(rec, off) {
     const bonds = Array.isArray(rec?.bonds) ? rec.bonds : [];

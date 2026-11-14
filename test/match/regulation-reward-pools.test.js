@@ -48,7 +48,7 @@ test('obtaining normal or elite Catherine always grants one hammer from her own 
   for (const [id, allowed] of [['chess_char_3_22_a', ['eff_acarm041', ...special]], ['chess_char_3_22_b', [...special, 'eff_acarm155']]]) {
     for (let seed = 1; seed <= 16; seed++) {
       const h = fixture(t, seed), ps = h.ps('p_0'), before = new Set(items(ps).map(p => p.uid));
-      assert.ok(ps.acquireChess(id, { source: 'test', fromPool: false }));
+      assert.ok(ps.acquireChess(id, { source: 'test' }));
       const reward = items(ps).filter(p => !before.has(p.uid));
       assert.equal(reward.length, 1, `${id} seed ${seed}`);
       assert.ok(allowed.includes(data.items[reward[0].id].effectId));
@@ -64,7 +64,7 @@ test('every weighted reward is reachable, including electric and ultimate hammer
       let before = 0;
       for (const [item, weight] of pairs) {
         h.m.rngMeta = () => (before + weight / 2) / total;
-        assert.equal(h.m.rollPool(id, { ignoreItemStock: true }).id, item);
+        assert.equal(h.m.rollPool(id).id, item);
         before += weight;
       }
     }
@@ -79,14 +79,14 @@ test('Passenger actually grants equipment at prep start and Kjerag can pay its f
   h.m.dispatch(ps, 'onPrepStart', { round: h.m.round });
   assert.equal(items(ps).length - before, 1);
   assert.ok(['eff_acarm066', 'eff_acarm050', 'eff_acarm069'].includes(data.items[items(ps).at(-1).id].effectId));
-  const ice = h.m.rollPool('pool_equip_kjeragbond2', { ignoreItemStock: true });
+  const ice = h.m.rollPool('pool_equip_kjeragbond2');
   assert.equal(data.items[ice.id].effectId, 'eff_acarm062');
   const counters = {}, oldUids = new Set(items(ps).map(p => p.uid));
   assert.equal(payKjeragIce({
     data, bondActive: () => true, layers: () => 100,
     counter: k => counters[k] || 0, setCounter: (k, v) => { counters[k] = v; },
-    rollItem: options => h.m.rollItemId({ ...options, ignoreStock: true }),
-    grantItem: id => ps.acquireItem(id, { source: 'test', fromPool: false }),
+    rollItem: options => h.m.rollItemId(options),
+    grantItem: id => ps.acquireItem(id, { source: 'test' }),
   }), 1);
   const reward = items(ps).filter(p => !oldUids.has(p.uid));
   assert.equal(reward.length, 1);

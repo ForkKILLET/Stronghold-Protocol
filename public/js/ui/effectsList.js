@@ -73,6 +73,8 @@ export function EffectsList({ effects, command = null }) {
     ${list.slice(0, 10).map((e, i) => {
       const key = e.viewKey ?? e.id ?? i;
       const commandId = command?.props?.command?.effectId;
+      // One control, on the live command row. Other band rows (a replacement, a retained passive) stay plain icons.
+      // A row without `command: false` still takes the control when no effect id is known (older strategy rows).
       const commandControl = e.iconKind === 'band' && e.command !== false && (!commandId || commandId === e.id) ? command : null;
       return html`<div class="effects__row" key=${key}>${commandControl}<${Tooltip} key=${key} placement="bottom" text=${html`<div class="efftip">
         <b>${tName(e.name) || t('效果')}</b><span class="efftip__kind">${t(KIND[e.iconKind] || '')}${e.counterText ? ` · ${bountyCounterText(e)}` : e.counter != null ? ` · ${e.counter}` : ''}</span>

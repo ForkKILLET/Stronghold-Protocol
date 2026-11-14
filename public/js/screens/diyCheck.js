@@ -121,7 +121,7 @@ export function DiyCheckScreen() {
                 <${OperatorImage} class="diy-check__art" chess=${{ charId: pick.charId, assets: unit?.assets }} />
                 <span class="diy-check__name">${rec?.name || pick.charId}</span>
                 <span class="diy-check__bonds">${(rec?.bonds || []).map((b) => html`<${BondGlyph} key=${b} bondId=${b} />`)}</span>
-                ${grey ? html`<small class="diy-check__why">${greyReason(rec, pub.disabledBonds)}</small>` : null}
+                ${grey ? html`<small class="diy-check__why">${greyReason(rec)}</small>` : null}
               </button>`;
             })}
           </div>

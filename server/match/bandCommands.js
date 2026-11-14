@@ -42,11 +42,24 @@ function resetCommandInstance(ps, skill) {
   }
 }
 
-/** [ASSUMED] Bond replacements stay with the selected strategy; command passives stay with the live row. */
+/**
+ * The effect-id map both the battle input and the bond/command displays read.
+ * Starts from the opening band's `auto_chess_effect_replace` (that table stays after a swap), then
+ * applies the live skill's table, so a shared key uses the current row.
+ * [ASSUMED] No pinned pair of rows disagrees on a shared key (歌蕾蒂娅's two tables are identical);
+ * the live row wins when they do. Reading this never advances command state.
+ * @param {any} ps
+ * @returns {Record<string, string>}
+ */
 export function commandBondOverrides(ps) {
   const overrides = {};
-  for (const b of ps.gd.band(ps.bandId)?.buffs || [])
-    if (b.key === 'auto_chess_effect_replace') Object.assign(overrides, paramsOf(b));
+  const apply = (buffs) => {
+    for (const b of buffs || []) if (b?.key === 'auto_chess_effect_replace') Object.assign(overrides, paramsOf(b));
+  };
+  if (ps) {
+    apply(ps.gd?.band?.(ps.bandId)?.buffs);
+    apply(commandSkill(ps)?.buffs);
+  }
   return overrides;
 }
 

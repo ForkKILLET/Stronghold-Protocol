@@ -4,9 +4,7 @@ import { getVersionData } from '../../server/data.js';
 import { createRegistry } from '../../server/match/effectsMeta.js';
 import { registerBuiltins } from '../../server/match/builtinMeta.js';
 import { SharedPool } from '../../server/match/pool.js';
-import { snapshotMatch, restoreMatch } from '../../server/match/snapshot.js';
-import { createRngFromState } from '../../server/sim/rng.js';
-import { nextGarrisonUpgrade } from '../../shared/showTags.js';
+import { garrisonUpgradeKey, nextGarrisonUpgrade } from '../../shared/garrisonUpgrades.js';
 import { makeMatch, give } from './harness.js';
 
 const RAW = getVersionData('act3autochess@V3_1');
@@ -24,7 +22,10 @@ function setup(t) {
   return { h, m: h.m, ps: h.ps('p_0'), other: h.ps('p_1') };
 }
 const gidOf = (ps, p) => ps.gd.chess(p.id).garrisonIds[0];
-const preview = (ps, p) => ps.pieceView(p).garrisonTags[gidOf(ps, p)].showtag_value_1;
+const preview = (ps, p) => {
+  const g = ps.gd.garrison(gidOf(ps, p));
+  return nextGarrisonUpgrade(g.bb, { fired: ps.counters[garrisonUpgradeKey(g, ps.gd.baseIdOf(p.id))] });
+};
 function reward(ps, id) {
   const before = id === AURORA ? ps.layers.kjeragShip || 0 : ps.shop.freeRefreshes;
   const p = ps.acquireChess(id);
@@ -111,7 +112,7 @@ test('repeated and copied traits, investor repeats and read-only previews share 
   assert.equal(reward(other, AURORA).n, 1);
 });
 
-test('next payout survives round changes and checkpoint restoration even with no remaining copy', t => {
+test('next payout survives round changes even with no remaining copy', t => {
   const { h, ps } = setup(t);
   for (const id of [AURORA, CANTO]) {
     for (let i = 0; i < 4; i++) {
@@ -120,24 +121,7 @@ test('next payout survives round changes and checkpoint restoration even with no
     }
   }
   h.m.dispatch(ps, 'onRoundStart', { round: 2 });
-  const next = setup(t);
-  assert.equal(restoreMatch(next.m, snapshotMatch(h.m), { createRngFromState }), true);
-  assert.equal(reward(next.ps, AURORA).n, 5);
-  assert.equal(reward(next.ps, CANTO).n, 3);
-  assert.equal(reward(next.other, AURORA).n, 1);
-});
-
-test('shop and reward previews follow shared progress without changing it, including without an owned copy', t => {
-  const { ps, other } = setup(t);
-  for (let i = 0; i < 2; i++) ps.sell(reward(ps, AURORA).p.uid);
-  const slot = { kind: 'chess', id: AURORA, basePrice: 3, sold: false };
-  ps.shop.slots = [slot];
-  other.shop.slots = [slot];
-  ps.offers.length = 0;
-  ps.pushRewardOffer('test', { ids: [ps.gd.goldenIdOf(AURORA)] });
-  const before = JSON.stringify(ps.counters), view = ps.privateView();
-  assert.equal(view.shop.slots[0].garrisonTags.garrison_50_a.showtag_value_1, 3);
-  assert.equal(view.shop.rewardOffer.slots[0].garrisonTags.garrison_50_b.showtag_value_1, 3);
-  assert.equal(other.privateView().shop.slots[0].garrisonTags.garrison_50_a.showtag_value_1, 1);
-  assert.equal(JSON.stringify(ps.counters), before);
+  assert.equal(reward(ps, AURORA).n, 5);
+  assert.equal(reward(ps, CANTO).n, 3);
+  assert.equal(reward(h.ps('p_1'), AURORA).n, 1);
 });

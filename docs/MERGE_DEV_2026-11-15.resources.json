@@ -1,0 +1,58 @@
+[
+  {
+    "key": "caster",
+    "url": "/assets/prof/mark_caster.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_caster.png",
+    "bytes": 520,
+    "sha256": "823fef94e686798b6d8626fec1505be7474e4416305fc81515d5a4f4bd3eef6a"
+  },
+  {
+    "key": "medic",
+    "url": "/assets/prof/mark_medic.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_medic.png",
+    "bytes": 682,
+    "sha256": "73c0ce66917c4fd113633496d59350267b8d5836d7e35a4181910414b7bb573e"
+  },
+  {
+    "key": "pioneer",
+    "url": "/assets/prof/mark_pioneer.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_pioneer.png",
+    "bytes": 579,
+    "sha256": "547ec1831c6ab8123ea08987836bf9895e135c6c8f63b3e74cc9dfe9d1385e00"
+  },
+  {
+    "key": "sniper",
+    "url": "/assets/prof/mark_sniper.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_sniper.png",
+    "bytes": 731,
+    "sha256": "d89ef2bd580483083631495342141a58cef64b6967acaee7e350063868cc6308"
+  },
+  {
+    "key": "special",
+    "url": "/assets/prof/mark_special.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_special.png",
+    "bytes": 472,
+    "sha256": "f8ffc84e250356d6c6a0d8c72feb35d0cfdad131fb95d25523704f476c50fb6e"
+  },
+  {
+    "key": "support",
+    "url": "/assets/prof/mark_support.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_support.png",
+    "bytes": 537,
+    "sha256": "aa5b4004904289946a882a754814308cff1f0f9b4a03a9e32001ffbca1ba2593"
+  },
+  {
+    "key": "tank",
+    "url": "/assets/prof/mark_tank.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_tank.png",
+    "bytes": 660,
+    "sha256": "fdfcb948a11c72885cc93f16230b58c8ad9526aaf755d8c8a728be6b5db2eb0e"
+  },
+  {
+    "key": "warrior",
+    "url": "/assets/prof/mark_warrior.png",
+    "source": "https://raw.githubusercontent.com/ArknightsAssets/ArknightsAssets2/cn/assets/dyn/arts/misc/profession_icons_v2_hub/icon_profession_warrior.png",
+    "bytes": 570,
+    "sha256": "94e608b05b72cc9cb2b4e0248869938384ce1000e0a2f4dad03bef6df46c3c11"
+  }
+]

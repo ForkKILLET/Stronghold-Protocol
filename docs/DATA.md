@@ -304,7 +304,7 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 | `layerMilestones[]` | `[{"layer":25,"mode":"every","effect":"bond_layer_added_reward_equip"}]` | layer-based powers: `reach` (while L ≥ layer), `every` (each multiple), `first` (latched once) |
 | `desc`, `descRaw` | | bond panel text |
 | `effectId`, `effectName`, `effectDesc`, `effectDescRaw` | `"bondeffect_deput"`, …, `"所有干员防御力+{0:0%}（受层数影响）…"` | in-battle text with **positional** placeholders |
-| `effectDescParams[]` | `[{"index":0,"format":"0%","base":"base_def","perStack":"def_per_stack"}]` | `{i:fmt}` = `bb[base] + bb[perStack] × layers`; optional positive `max` caps the displayed value — layers never exceed 999 (the official `MAX_GARRISON_STACK`, not in any table: shared/constants.js `BOND_LAYER_CAP`, research 11) |
+| `effectDescParams[]` | `[{"index":0,"format":"0%","base":"base_def","perStack":"def_per_stack"}]` | `{i:fmt}` = `bb[base] + bb[perStack] × layers` — layers never exceed 999 (the official `MAX_GARRISON_STACK`, not in any table: shared/constants.js `BOND_LAYER_CAP`, research 11). 盟约's bond rows list the keys (`descParamBaseList` / `descParamPerStackList`); 规程 keeps them in `effectDescParamDataDict[effectId].descParamInfos`, whose `descParamMax` becomes `max` (the number never exceeds it: 萨尔贡's slow 60 %, the chances 100 %; §37.208) |
 | `bb`, `bbStr` | `{"base_def":0.15,"def_per_stack":0.012,"respawn_time":-0.3,"layer":2,"count":3,"more_layer":4}` | all buffs merged (first wins) |
 | `buffs[]` | `[{"key":"env_gbuff_new","bb":{…},"bbStr":{"key":"act1autochess_bond_eff_deput"}}, …]` | exact official buffs (e.g. 萨尔贡 has a second buff valid only with `band_narant`) |
 | `baseParams`, `perStackParams` | `["base_def"]`, `["def_per_stack"]` | official descParamBaseList / descParamPerStackList |
@@ -356,7 +356,7 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 | `rangeGrid` | `[[0,0]]` | Arts area (画卷 `[[0,0],[0,1]]`) |
 | `flavor` | | |
 
-A version build may set `canFuse`, `fuseWith` and `fuseResult` together: both partners equipped on one carrier become the result (规程·序列Ⅰ has five pairs). It may also set `kind` to `consume_on_equip` on an EQUIP row whose trap duration is 0 and whose research kind was empty. The default `data/items.json` has neither fusion field; its 115 count above is unchanged.
+A version build may set `canFuse`, `fuseWith` and `fuseResult` together: acquiring either partner consumes both owned components, including an equipped partner, and stows the result unequipped in the equipment row (规程·序列Ⅰ has five pairs; official playtest reported 2026-11-14). A `deferMerge` gain (prep end, or `skill_copy_char_with_equip`) waits until the next prep's merge pass and does not take an equipped partner off before the fight. No item pool means no combination. This emits one item `onMerge`, including for Mechanist's 精巧设计 reward. It may also set `kind` to `consume_on_equip` on an EQUIP row whose trap duration is 0 and whose research kind was empty. The default `data/items.json` has neither fusion field; its 115 count above is unchanged.
 
 ## 6. `bands.json` — `{ [bandId]: Band }` (40)
 
@@ -390,10 +390,16 @@ Types: `BAND_INITIAL` 41, `BOND` 23, `EQUIP` 115, `ENEMY_GAIN` 129 (悬赏), `BU
 | `counterType`, `continuedRound`, `decoIconId`, `enemyPrice` | `"NONE"`, `-1`, `null`, `0` | `enemyPrice` = bounty coins |
 | `buffs[]` | `{"key":"…","countType":"NONE","bb":{…},"bbStr":{…}}` | |
 | `params` | `{"layer":2}` | merged convenience view |
+| `effectDescParams[]`, `displayThresholds[]` (规程 `BOND` only) | `{ index, format, base, perStack, max? }`, `[3,6,9]` | Present when `effectDescParamDataDict[effectId].descParamInfos` is non-empty. Same `{i:fmt}` binding as a bond's `effectDescParams` (§3), read from that effect so a strategy's `auto_chess_effect_replace` target formats its own numbers. `displayThresholds` is `bondPhaseCountList` when `phaseType` is `PEOPLE_COUNT`. `max` is omitted unless `descParamMax` > 0. Older seasons omit both. |
 
 ## 8. `choices.json` — 机变 draft data
 
-规程的服务端赠品池由 `tools/versions/act3autochess-v3_1.mjs` 的 `equipmentPools` 覆盖，按稳定的装备 `effectId` 生成本季实际 ID；不会继承同名旧池的物品。普通凯瑟琳 `pool_equip_kathe_0` 为普通维式重锤／五种特殊重锤，精锐 `pool_equip_rockr` 为五种特殊重锤／终极重锤，维多利亚池包含电流重锤；异客池为盟约之币、萨尔贡浓茶、拟态物质，谢拉格池固定为不融冰。物品范围依据固定官方表 `6f63c14e` 的 `garrison_139`、`garrison_161` 与 `bondeffect_kjerag_2`。原表不提供服务端权重，带“小概率”的池暂按常见／稀有总权重 90／10，同组均分 `[ASSUMED]`，可在 profile 中校正；不融冰的单一物品不需要概率推定。生成器拒绝特质或效果引用未定义的奖励池。
+Regulation's `equipmentPools` in `tools/versions/act3autochess-v3_1.mjs` overrides historical pool names by stable
+equipment effect ID. Catherine's normal pool contains the ordinary hammer and five special hammers; her elite pool
+contains the five specials and the ultimate hammer. Victoria includes the electric hammer, Passenger draws the
+coin/tea/mimic items, and Kjerag grants ice. Members follow the pinned official table `6f63c14e` (`garrison_139`,
+`garrison_161`, `bondeffect_kjerag_2`). Exact weights are server-side: [ASSUMED] small chance = 10% total, common
+group = 90%, equal within groups; Victoria is uniform. The generator rejects missing trait/effect pool references.
 
 | Key | Example | Meaning |
 |---|---|---|
@@ -563,7 +569,7 @@ Glyph legend (`rows`):
 | `stats`, `rangeGrid`, `dmgType`, `attackKind`, `projectile`, `canHitFly` | first owner's values | defaults |
 | `skill` | `{"skillId":"sktok_vigil_wolf_3","bb":{…}}` | default token skill (same slot as the owner's skill) |
 | `deployLimit`, `count` | `1`, `1` | `deployLimit` = the first owner's `stats.deployLimit`. `count` = copies sent to the hand / spawned (talent/skill `cnt`); `null` ⇒ use `deployLimit` |
-| `abnormal[]` | `["healFree"]` | abnormal effects the summon holds from the start, no official table carries them — `tools/build-data.mjs TOKEN_ABNORMAL` from the PRTS summon pages (user playtest #6 item 18): `healFree` = 禁疗 (“小自在”, “耀阳”, 斯卡蒂的海嗣, 沙之碑, 流形, 狼群, 迷迭香的战术装备, 黄金盟誓, 保护目标（冻结状态）), `isolated` = 孤立 "无法被同阵营选中" (“炎佑”, 从不混淆的方向); `[]` otherwise. The sim sets `noHeal` / `isolated` (docs/SIM.md §3) |
+| `abnormal[]` | `["healFree"]` | abnormal effects the summon holds from the start, no official table carries them — `tools/build-data.mjs TOKEN_ABNORMAL` from the PRTS summon pages (user playtest #6 item 18): `healFree` = 禁疗 (“小自在”, “耀阳”, 斯卡蒂的海嗣, 沙之碑, 流形, 狼群, 迷迭香的战术装备, 黄金盟誓, 保护目标（冻结状态）, 夜莺的幻影 — PRTS 幻影 备注 "持有禁疗。", §37.201), `isolated` = 孤立 "无法被同阵营选中" (“炎佑”, 从不混淆的方向); `[]` otherwise. The sim sets `noHeal` / `isolated` (docs/SIM.md §3) |
 | `variants[ownerChessId]` | `{"phase":2,"level":1,"stats":{…},"immunities":{…},"rangeGrid":…,"trait":{…},"dmgType":…,"skill":{full skill record},"talents":[…],"count":1,"sources":["talent","display"]}` | stats at the owner's phase/level (clamped to the token's max level) — **none of the owner's potential attribute modifiers** (a token has no potential ranks) — + golden module `tokenAttributeBlackboard` + the token's own talent additions to `deployLimit` / `deckStack` (blackboard `max_deploy_count` / `max_deck_stack_cnt` — the hidden "TOKEN数" talent of 麦哲伦's / 令's summons and 白铁's devices, 夜莺's 幻影; a module token part of the same talent replaces it: `tools/build-data.mjs tokenTalentDeckBonus`, 0.2.0 — no tokens.json summon has one; PRTS 幻影 备注 "最大可部署数量为3", the owners' "最多同时部署3个"); its `talents` / `trait` candidates are picked at the **owner's potential** (full; their `requiredPotentialRank` mirrors the owner's 「天赋效果增强」 — 夕's “小自在” 18 层, 凯尔希's Mon3tr, 望's 棋子 +1 持有 / 部署 — and the variant chains the lower ones, §2.3: `atPotential(variant, ownerPotential)`); the owner's module parts flagged `isToken` upgrade the variant's `trait` (+`moduleDesc`) and `talents` (伺夜's wolves, 缪尔赛思's 流形 `scale` 1, 浊心斯卡蒂's 海嗣 30 s, “耀阳” `atk_scale` 1.15). `sources` ⊆ `talent`/`skill`/`display`: how the owner produces it (`display` only = listed on the character but unused by its default skill/talents, e.g. 迷迭香 S2, 凛御银灰 eagle1/3). `count` = copies from a talent `cnt` or the default skill's `cnt` when that skill overrides this token; `null` ⇒ use `deployLimit` |
 | `variants[o].bySkill[i]` | `{"skill":{…},"count":1,"sources":["talent","display"]}` | owner loadout with the non-default skill index `i` (one entry per other selectable owner skill): the token skill of that slot (伺夜's wolves, 缪尔赛思's 流形, 凛御银灰's eagles…), the count and how the chess then produces it (`sources` may be `[]`: 风丸 S1 makes no 纸偶; 赫默 / 巫恋 S1 only `display` ⇒ no hand piece). The sim resolves them for an owner loadout: `simdata getToken(id, ownerChessId, loadout)` → `def.sources` / `def.count` |
 | `variants[o].byModule[m]` | `{"stats":{…},"immunities":{…},"trait":{…},"talents":[…]}` | golden owner with another module `m` or `'none'`: the token as that module makes it (module `tokenAttributeBlackboard`, `isToken` trait/talent parts) |
@@ -1015,10 +1021,12 @@ Mixed draws reuse the existing per-tier copy model [ASSUMED weights], not a newl
   rewrite `12e0a020` added it), so the build writes no 下半 value as official data. The lobby's own fallback then keeps a
   dropped solo run resumable for 24 h (`server/lobby.js SOLO_RECONNECT_FALLBACK_SEC`). That 24 h window is a carried-over
   convenience [ASSUMED], not official 第一期 data: M2 did not add the constant, and the code path is unchanged (§35.23.10).
+  `bans` is 上半's own since §37.205 (tools/versions/act1autochess*.mjs `config.bans`): 2 of its 6 core bonds in 险境 / 绝境 /
+  终极 — a guide written in the season (2025-12-09) says 「核心盟约ban2留4」; until then 下半's 3 of 8 banned half of them — and 4
+  add-ons as on 下半 [ASSUMED]; 标准 0 + 1.
   **Carried over unreviewed [ASSUMED]**: the rule constants `tools/build-data.mjs` writes as literals (its `buildConfig`
-  return block is the full set; a script comparing `data/config.json` with both 上半 configs finds them equal) go into
-  上半's `config.json` as measured on 下半. Among them: `bans` (NORMAL / HARD 3 core + 4 addon: 下半 has 8 core bonds, 上半 6, so the same
-  draw bans half of 上半's), the `hiddenCore` extras (`minTeamLpExclusive`, `checkedAfterRound`, and `difficulties`,
+  return block is the full set; a script comparing `data/config.json` with both 上半 configs finds them equal but for `bans`) go into
+  上半's `config.json` as measured on 下半. Among them: the `hiddenCore` extras (`minTeamLpExclusive`, `checkedAfterRound`, and `difficulties`,
   which names ABYSS although 上半 and V2_1 have no ABYSS mode — inert, since no mode reads it; so do `trophies.hiddenCore`
   and `rewards.difficultyFactor`), `trophies`, `bossOvertimeAfter` / `bossOvertimeDrainPerSec` /
   `bossHpScale`, `unite`, `finalAssault` and `bandDraft`; the economy literals — the tier stock `poolCopies`
@@ -1170,3 +1178,39 @@ keep their existing format.
 `((8,12),(12,18))`。它只供渲染与预览分区使用，不替代 `rows`、部署、寻路或波次／回放坐标；
 `renderLayouts.unite` 使用 sub_02 行 +8，仅显示其原有单排整备台（行 8），不拼入普通场景的装备／临时整备行；
 联防可见带为行 8–13。Boss 仍使用规范网格。两份展示布局均不改变玩法坐标；普通本方手牌、装备和道路仍使用原坐标。
+
+
+### Per-form equipment capacity and special recruitment
+
+Equipment capacity uses the official `charChessDataDict.equipSlotNum`: regulation Ironhide has 4 normal / 6 elite slots.
+The generator emits only non-default positive counts; other records inherit `economy.equipPerChess` (normally 2).
+`equipmentCapacity` is shared by placement, replacement, AI, invariants and own / spectated UI; morph occupancy remains separate.
+`equipSlotNum` and `recruitTierExempt` are chess identity fields when composing replacement records.
+
+The profile's `recruitTierExempt` explicitly marks only Ironhide. A first-bond communicator used on that special carrier
+can recruit its normal form above shop level without placing it in ordinary stock. Ordinary candidates keep their level,
+stock and ban gates; exact-tier draws and the paging module do not inherit the exception.
+[Official recording BV1FVWN6VEAr](https://www.bilibili.com/video/BV1FVWN6VEAr/?t=74), 01:15–01:19, confirms a normal
+communicator at shop II produces a new normal Ironhide while retaining the carrier. [ASSUMED] Advanced / elite carrier
+cases follow the same handler, and mixed-candidate weights reuse the existing copy model; the recording does not establish those.
+
+### Upgrade reward interpretation
+
+The official pinned regulation activity table (`6f63c14e`) gives Aurora `garrison_50_a/b` count=1, delta_count=1,
+max_count=11; Vulpisfoglia `garrison_74_a/b` count=1, n=2, delta_count=1, max_count=2. `max_count` caps each payout's increase,
+not a lifetime allowance: Aurora pays 1, 2, …, 12, 12, …; Vulpisfoglia 1, 1, 2, 2, 3, 3, … .
+
+Shared pure math lives in `shared/garrisonUpgrades.js`. Progress uses existing player counters keyed by original base chess
+and effect key; ordinary and elite copies, rebuy and later rounds share it, while players and matches are isolated.
+[ASSUMED: fork maintainer confirmation 2026-11-11, pending official recording] These sharing boundaries also include copied
+traits using the copied-from operator and investor repeats advancing once each. No official state-layout claim is made.
+Other garrison counters are unchanged. No persistence or replay infrastructure is introduced by this fix. Runtime text is handled separately by #926, which reads
+shared counters when present and otherwise keeps the legacy display path; this payout fix builds independently.
+
+### Regulation concealment terrain
+
+The generator keeps MAP09's official `w` cells and emits `special.duelGrass` with `groundUnitsGainStealth`,
+`clearedOnLeave:true` and `enemyStealthRestoreSec:0`. The sim reads `enemyStealthRestoreSec` (fallback 0) into the
+terrain stealth buff; the official 0 restores concealment as soon as the block ends. Missing blackboard values do not imply plain ground: these
+rules come from the official tile and buff templates, recorded in
+[the field receipt](research/regulation-map09-20261112.json). No other map record changes.

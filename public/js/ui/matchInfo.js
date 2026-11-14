@@ -23,8 +23,8 @@ import { BondPopup } from './bondStrip.js';
 import { UnitThumb } from './gameComponents.js';
 import { bannedPerBond, disabledBondSets, briefingBondTip, diyBannedPieces } from './gameLogic.js';
 import { bondIconUrl } from './assetUrls.js';
-import { data } from '../data.js';
-import { BOND_GROUP_HINT, REGULATION_BOND_LEGEND } from './gameLogic/bonds.js';
+import { data, localAsset } from '../data.js';
+import { BOND_GROUP_HINT, REGULATION_BOND_LEGEND, REGULATION_LEGEND_CHIP } from './gameLogic/bonds.js';
 import { t, dn, N_ } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -98,10 +98,42 @@ function BondBannedAside(bond, model, banned) {
 }
 
 /**
- * One row of bond discs (核心盟约 / 附加盟约): a greyed disc for a bond in the drawn set D or one the mode never
- * activates, the red badge with its banned members, a red ring on an enabled bond that lost members; the tooltip says
- * which (briefingBondTip). A bond with banned members lists them in a second box beside the tooltip (BondBannedAside).
- * @param {{ title: string, micro: string, bonds: any[], model: MatchInfoModel, onBond?: (id:string)=>void }} props
+ * 规程 header: the section title, the legend chip, and a decorative icon pair.
+ * [ASSUMED] the pair does nothing (the recordings show it; no control is named). The chip's title is the longer
+ * regulation legend, so that sentence stays reachable when the chip ellipsizes.
+ * @param {{ title: string }} props
+ */
+export function RegulationHead({ title }) {
+  return html`<h3 class="brief-h reg-h">
+    <span class="reg-h__title">${title}</span>
+    <span class="reg-chip" title=${t(REGULATION_BOND_LEGEND)}>
+      <span class="brief-legend__off" aria-hidden="true"></span>
+      <span class="reg-chip__txt">${t(REGULATION_LEGEND_CHIP)}</span>
+    </span>
+    <span class="reg-htools" aria-hidden="true"><i></i><i></i></span>
+  </h3>`;
+}
+
+/**
+ * The official 阵容不完整 corner of a bond the draw greyed (ui/outer img_bond_banned: a dark fold with two figures, on
+ * the disc's top-right corner — recording BV13LWM6BEvY 0:12, no number on it); without the local art a CSS fold with a
+ * person glyph (§37.200).
+ */
+export function BondLackTag() {
+  const url = localAsset('ui/outer', 'img_bond_banned');
+  return url
+    ? html`<span class="bond__tag" style=${`--tag:url("${url}")`} aria-hidden="true"></span>`
+    : html`<span class="bond__tag is-plain" aria-hidden="true"><${Icon} name="user" /></span>`;
+}
+
+/**
+ * One row of bond discs (核心盟约 / 附加盟约): a greyed disc for a bond in the drawn set D (the official 阵容不完整
+ * corner, BondLackTag) or one the mode never activates (✕), a red ring on an enabled bond that lost members; the
+ * tooltip says which and how many members cannot appear (briefingBondTip), and a bond with banned members lists them
+ * in a second box beside it (BondBannedAside). The disc carries no count since §37.200 (the official has none; the
+ * count badge sat on the ✕).
+ * `head`: null keeps this h3; false omits it (a 规程 group panel titles itself once); a vnode replaces the h3.
+ * @param {{ title: string, micro: string, bonds: any[], model: MatchInfoModel, onBond?: (id:string)=>void, head?: any }} props
  */
 export function MatchBondRow({ title, micro, bonds, model, onBond, children }) {
   const m = data.get('assets');
@@ -116,9 +148,9 @@ export function MatchBondRow({ title, micro, bonds, model, onBond, children }) {
         return html`<${Tooltip} key=${b.bondId} text=${briefingBondTip(b.name, state, bannedN, model.regulation && b.isCore)}
           aside=${bannedN > 0 ? BondBannedAside(b, model, banned) : null}>
           <div class=${cx('brief-bond', off && 'is-off', state === 'drawn' && 'is-incomplete', !off && bannedN > 0 && 'is-partial')} data-bond=${b.bondId}>
-            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId)} active=${!off} disabled=${off} showDisabledBadge=${false} tier=${off ? 0 : (b.thresholds?.length || 1)}
-              maxTier=${Math.max(1, b.thresholds?.length || 1)} size="md" onClick=${onBond ? () => onBond(b.bondId) : undefined} />
-            ${bannedN > 0 ? html`<span class="brief-bond__ban num"><${Icon} name="user" />${bannedN}</span>` : null}
+            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId)} active=${!off} disabled=${off} tier=${off ? 0 : (b.thresholds?.length || 1)}
+              maxTier=${Math.max(1, b.thresholds?.length || 1)} size="md" onClick=${onBond ? () => onBond(b.bondId) : undefined}
+              cross=${state === 'off'} tag=${state === 'drawn' ? html`<${BondLackTag} />` : null} />
           </div>
         <//>`;
       })}
@@ -127,9 +159,9 @@ export function MatchBondRow({ title, micro, bonds, model, onBond, children }) {
 }
 
 /**
- * A regulation core this match has greyed: the mode excludes it, or the draw left it out (the group that
- * lost, or multi's grey half). Members with another active core can still appear. False before a solo pick, and false
- * for an add-on or for covenant data (`bondDraw` is the season rule, not a bond id).
+ * A regulation core this match has greyed: the mode never activates it, or the draw left it out (the group that
+ * lost, or multi's grey half). Its operators appear only through another lit bond (§37.200). False before a solo pick
+ * greys either group, and false for an add-on or for covenant data (`bondDraw` is the season rule, not a bond id).
  * @param {MatchInfoModel|null|undefined} model
  * @param {string|null|undefined} bondId
  */
@@ -160,11 +192,12 @@ export function MatchBondGroups({ model, onPick, onBond, disabled = false, busy 
 }
 
 /**
- * The legend under the bond rows ("或本模式禁用" only when the mode switches bonds off).
+ * The legend under the bond rows ("或本模式禁用" only when the mode switches bonds off; the count of a bond's members
+ * that cannot appear is in its tooltip since §37.200).
  * @param {{ model: MatchInfoModel }} props
  */
 export function MatchLegend({ model }) {
-  return html`<p class="brief-legend"><span class="brief-legend__off"></span>${t(model.regulation ? REGULATION_BOND_LEGEND : N_('灰色：部分盟约所含干员阵容不完整（仍可通过其他盟约的干员或装备激活）'))}${model.sets.off.size ? t('，或本模式禁用') : ''} · <span class="brief-legend__ban"><${Icon} name="user" /></span>${t('该盟约中无法出现的干员数')}</p>`;
+  return html`<p class="brief-legend"><span class="brief-legend__off"></span>${t(model.regulation ? REGULATION_BOND_LEGEND : N_('灰色：部分盟约所含干员阵容不完整（仍可通过其他盟约的干员或装备激活）'))}${model.sets.off.size ? t('，或本模式禁用') : ''}</p>`;
 }
 
 /**
