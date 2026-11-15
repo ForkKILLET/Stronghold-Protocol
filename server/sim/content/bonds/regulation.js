@@ -9,6 +9,7 @@
 // threshold is not reached on version data, same rule as core.reached.
 
 import * as S from '../support/index.js';
+import { ursusTempExtra } from '../garrisons.js';
 import { lendItemEffects } from '../items.js';
 import { damageAttackType, isHpLoss } from '../../attack.js';
 import { COLS } from '../../constants.js';
@@ -52,9 +53,12 @@ const GIANT = 'enemy_9024_acsgnt';
 const KJERAG_ICE = 'bond:kjerag:ice';
 // Official abnormal set of act3autochess_bond_eff_siracusa (buff template abnormal_buff[random_creator]).
 const SIRACUSA_STATUS = Object.freeze(['stun', 'fear', 'attract', 'cold', 'palsy', 'groundbind']);
-// Official element gauges. The 炎 template rolls element_type 1..6; the engine has these five.
-// [ASSUMED] 5 → necrosis and 6 → neural again. No sixth gauge exists in the sim.
-const YAN_ELEMENTS = Object.freeze(['neural', 'erosion', 'burn', 'apoptosis', 'necrosis', 'neural']);
+// The 炎 template (act3autochess_bond_eff_yan_power) rolls element_type with RandomSetter over [1, 6): the client
+// computes min + (max − min) · NextDouble() and floors it (FP.AsInt), so 1..5 are equally likely; 6 comes up only when
+// the float cast of NextDouble() rounds to 1 (about 3e-8), and 6 is E_NUM, not an element.
+// Torappu.ElementType: 1 SANITY 神经, 2 WATER 侵蚀, 3 FIRE 灼燃, 4 DARK 凋亡, 5 ANGER 狂躁 (6 is E_NUM, the count).
+// [ASSUMED] The engine has no 狂躁 gauge; the existing necrosis approximation stands in for it.
+const YAN_ELEMENTS = Object.freeze(['neural', 'erosion', 'burn', 'apoptosis', 'necrosis']);
 
 let legacy = {};
 /** core.js passes its 盟约 installers once they exist. */
@@ -94,15 +98,15 @@ function rider(dmg) {
   if (damageAttackType(dmg) === 'ADDITION' || tagged(dmg, 'addition') || tagged(dmg, 'dot') || tagged(dmg, 'periodic')) return true;
   return false;
 }
-function onLayers(battle, pid, bondId, fn) {
-  const st = S.battleStore(battle, 'bonds:reg:layers', () => ({ map: new Map(), pending: new Set(), hooked: false }));
-  const k = `${pid}|${bondId}`;
+function onBondEvent(battle, eventName, pid, bondId, fn) {
+  const st = S.battleStore(battle, 'bonds:reg:layers', () => ({ hooks: new Set(), map: new Map(), pending: new Set() }));
+  const k = `${eventName}|${pid}|${bondId}`;
   if (!st.map.has(k)) st.map.set(k, []);
   st.map.get(k).push(fn);
-  if (st.hooked) return;
-  st.hooked = true;
-  battle.on('layerGain', (c) => {
-    const key = `${c.playerId}|${c.bondId}`;
+  if (st.hooks.has(eventName)) return;
+  st.hooks.add(eventName);
+  battle.on(eventName, (c) => {
+    const key = `${eventName}|${c.playerId}|${c.bondId}`;
     const list = st.map.get(key);
     if (!list || st.pending.has(key)) return;
     st.pending.add(key);
@@ -110,16 +114,33 @@ function onLayers(battle, pid, bondId, fn) {
   }, { priority: -100 });
 }
 
-/** Temp layers (乌萨斯 kill node `_isTemp`). Not normal layers; a garrison may convert them later. */
+function onLayers(battle, pid, bondId, fn) {
+  onBondEvent(battle, 'layerGain', pid, bondId, fn);
+}
+
+function onTempLayers(battle, pid, bondId, fn) {
+  onBondEvent(battle, 'tempLayerGain', pid, bondId, fn);
+}
+
+/** Temp layers (乌萨斯 kill node `_isTemp`, `garrison_13` `addTempLayers`). Not normal layers; converted at settle. */
 export function tempBondLayers(battle, pid, bondId) {
   const st = S.battleStore(battle, 'bonds:reg:temp', () => ({}));
-  return num(st[`${pid}|${bondId}`]);
+  const recorded = typeof battle?.tempLayers === 'function' ? num(battle.tempLayers(pid, bondId)) : 0;
+  return recorded + num(st[`${pid}|${bondId}`]);
 }
 function addTemp(battle, pid, bondId, n) {
   if (!(n > 0)) return;
+  // In normal battles (`layerGainsEnabled`), route kills through `battle.addTempLayers` so `result.tempLayerGains`
+  // reaches settle (乌啾 / 折桠 conversion). [ASSUMED] With gains disabled (boss/unite), keep them combat-local so wire
+  // validation still sees `tempLayerGains` omitted.
+  if (battle?.flags?.layerGainsEnabled !== false && typeof battle?.addTempLayers === 'function') {
+    battle.addTempLayers(pid, bondId, n);
+    return;
+  }
   const st = S.battleStore(battle, 'bonds:reg:temp', () => ({}));
   const k = `${pid}|${bondId}`;
   st[k] = num(st[k]) + n;
+  battle?.emit?.('tempLayerGain', { playerId: pid, bondId, n });
 }
 
 function enemyRaw(battle, id) {
@@ -442,8 +463,9 @@ function installEgir2(battle, pid, effectId, members) {
 
 function installUrsus(battle, pid, effectId, members) {
   const bb = bbOf('ursusShip', effectId, K.ursus);
+  const ursusLayers = () => S.bondLayers(battle, pid, 'ursusShip') + tempBondLayers(battle, pid, 'ursusShip');
   const apply = () => {
-    const L = S.bondLayers(battle, pid, 'ursusShip');
+    const L = ursusLayers();
     const mods = S.directMods({
       atk: num(bb.atk_base) + num(bb.atk_per_stack) * L,
       hp: num(bb.hp_base) + num(bb.hp_per_stack) * L,
@@ -452,6 +474,7 @@ function installUrsus(battle, pid, effectId, members) {
   };
   apply();
   onLayers(battle, pid, 'ursusShip', apply);
+  onTempLayers(battle, pid, 'ursusShip', apply);
   const set = new Set(members);
   const six = reached(battle, pid, 'ursusShip', bb.power_bond_char_cnt);
   battle.on('death', (c) => {
@@ -460,13 +483,13 @@ function installUrsus(battle, pid, effectId, members) {
     const who = killer && killer.kind === 'token' ? killer.ownerUnit : killer;
     if (!set.has(who)) return;
     const n = six ? num(bb['temp_bond_stack_cnt[power]'], 4) : num(bb.temp_bond_stack_cnt, 2);
-    const extra = num(bb.extra_bond_stack_cnt, 0);
+    const extra = ursusTempExtra(battle, pid);
     addTemp(battle, pid, 'ursusShip', n + (extra > 0 ? extra : 0));
   });
   battle.on('hit', (c) => {
     const u = c.target, dmg = c.dmg;
     if (!set.has(u) || !dmg || dmg.type === 'true' || tagged(dmg, 'bond:ursus')) return;
-    const L = S.bondLayers(battle, pid, 'ursusShip');
+    const L = ursusLayers();
     const r = scaled(bb, 'damage_one_minus_base', 'damage_one_minus_per_stack', L, 'damage_one_minus_max');
     const cut = Math.max(0, Math.min(num(bb.damage_one_minus_max, 1), r));
     if (!(cut > 0)) return;
@@ -486,7 +509,7 @@ function installUrsus(battle, pid, effectId, members) {
   });
   if (!six) return;
   battle.every(1, () => {
-    const L = S.bondLayers(battle, pid, 'ursusShip');
+    const L = ursusLayers();
     const scale = num(bb.atk_scale_base) + num(bb.atk_scale_per_stack) * L;
     if (!(scale > 0)) return;
     for (const m of members) {
@@ -576,8 +599,25 @@ function installLethania(battle, pid, effectId, members) {
       }
     }
   };
+  // 一个乐部's attack-speed aura (talent Aura, buff acltm[atk-spd]): AutochessCreateBuffToSpecifiedChar gives every
+  // 【莱塔尼亚】 operator on the field (bond filter, no range) ATTACK_SPEED + base_attack_speed + attack_speed_per_stack ·
+  // floor(layers / stackStep) for as long as the chorus lives; the chorus itself is not an operator and gets nothing.
+  // Each chorus adds its own buff (disableOverride), so two choruses give +40. The client refreshes the value every
+  // second; here it is recomputed when a chorus spawns or dies and when the layers change (same value: per_stack is 0).
+  // [ASSUMED] only the bond owner's operators: the client's side + map-layer check is read as one player's board.
+  const chorusAura = () => {
+    const tb = talentBb(enemyRaw(battle, CHORUS));
+    const step = num(tb['Aura.stackStep'], 0);
+    const L = S.bondLayers(battle, pid, 'lethaniaShip');
+    const each = num(tb['Aura.base_attack_speed']) + num(tb['Aura.attack_speed_per_stack']) * (step > 0 ? Math.floor(L / step) : 0);
+    const n = battle.allyUnits.filter((u) => u.alive && u.ownerId === pid && u.kind === 'token' && u.defId === CHORUS).length;
+    for (const u of members) {
+      if (n > 0 && each) S.passiveBuff(battle, u, 'bond:lethania:aura', { aspd: n * each });
+      else battle.removeBuff(u, 'bond:lethania:aura');
+    }
+  };
   apply();
-  onLayers(battle, pid, 'lethaniaShip', apply);
+  onLayers(battle, pid, 'lethaniaShip', () => { apply(); chorusAura(); });
   const aliveNotes = () => battle.allyUnits.filter((u) => u.ownerId === pid && u.alive && u.kind === 'token'
     && (u.defId === NOTE || u.defId === CHORUS)).length;
   const summonOne = (anchor) => {
@@ -607,8 +647,7 @@ function installLethania(battle, pid, effectId, members) {
     if (!u) return;
     if (id === NOTE) captureLethaniaBirthMode(battle, u);
     const tb = talentBb(raw);
-    const aspd = num(tb['Aura.base_attack_speed']);
-    if (aspd) S.passiveBuff(battle, u, 'bond:lethania:aura', { aspd });
+    if (id === CHORUS) chorusAura();
     const ratio = num(tb['Bleeding.hp_ratio']);
     const iv = num(tb['Bleeding.interval'], 1);
     if (ratio > 0 && iv > 0) {
@@ -621,6 +660,7 @@ function installLethania(battle, pid, effectId, members) {
   };
   battle.on('death', (c) => {
     const u = c.unit;
+    if (u && u.defId === CHORUS && u.ownerId === pid) chorusAura();
     if (!u || c.reason !== 'killed') return;
     if (u.side === 'enemy') { summonOne(u); return; }
     if (power && u.side === 'ally' && u.kind === 'op' && u.ownerId === pid) summonOne(u);

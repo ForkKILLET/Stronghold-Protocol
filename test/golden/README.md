@@ -371,3 +371,16 @@ The six corpora live under `<versionSlug>/`; root JSON files remain the default.
 ## 2026-11-05 主线 v0.3.3 对齐
 
 本分支继续保留模式不完整盟约仅过滤干员池、仍可激活盟约，以及特质赠送装备不占库存、Boss 按存活人数缩放的已记录规则。合入主线新玩法、AI 与隐秘核心重新配对后，重新核对 7 个 FUNNY roster、2 个 FUNNY stand-in 和 4 场完整对局的摘要；这些场景与主线基准存在上述明确规则差异，且引擎、调度、模拟和分发错误均为零。其余家族与场景保留合入后的基准，并通过比较验证。不能将本分支摘要作为主线原版规则的摘要。
+
+## 2026-11-16：三期 PR 批次，基线等待恢复验证
+
+本服吸纳 #953、#954、#955、#956、#962、#965 的玩法修复。用户此前暂停完整模拟／golden 的决定仍有效，因此没有执行重算，也没有复制各 PR 独立分支的 golden JSON：炎、乐部和乌萨斯会共同影响同一场景，直接拼接独立期望不成立。现存 JSON 仍是本轮前的基线，不代表它与新玩法一致；恢复后须按本服完整组合重新比较，再审查／更新。妮芙与银灰的组合影响也需要复核。
+
+以下只是逐文件对比上游 PR 各自旧／新 golden 得到的影响清单，不是本服已经运行的结果：
+
+- #953：bonds = bond-yanShip-high；matches = coop2-NORMAL-3, coop2-NORMAL-70-diy, coop4-FUNNY-6。
+- #955：fields = boss-boss_17-pair, boss-boss_17-solo；roster = roster-011。
+- #956：bonds = bond-lethaniaShip-high；matches = coop2-NORMAL-3, coop2-NORMAL-5-coverage-diy, coop2-NORMAL-8-serverrun, coop3-ABYSS-5。
+- #962：bonds = bond-miraShip-high, bond-preciShip-low, bond-ursusShip-high, bond-ursusShip-low；fields = boss-boss_13-pair, boss-boss_2-pair, hidden-boss_15-pair；matches = coop2-NORMAL-14-standins, coop4-ABYSS-7；roster = roster-012, roster-036。
+
+本轮完成的定向检查及证据见 [集成记录](../../docs/MERGE_DEV_2026-11-15.md#2026-11-16开放-pr-筛选与集成)。

@@ -322,3 +322,24 @@ test('规程 round multipliers use its own 攻坚装备 / 补给线II / 急行�
   assert.equal(d7.speed, 1.15);
   assert.equal(V.config.modes.mode_multi_abyss.enemyScale['2'].speed, 1, '急行军 from round 3');
 });
+
+test('后兽 Punishment hits a diagonal within 1.5 tiles, excludes farther allies, and hits its lock once', () => {
+  const h = fight({ units: [
+    { chessId: 't_gun', row: 9, col: 8 },
+    { chessId: 't_gun', row: 10, col: 9 },
+    { chessId: 't_gun', row: 11, col: 8 },
+  ] });
+  h.step();
+  const tail = put(h, TAIL, [9, 14]);
+  const record = V.enemies[TAIL].skills.find(s => s.prefabKey === 'Punishment');
+  const sk = { ...record, cd: record.cooldown, icd: record.initCooldown };
+  const ability = REGULATION_BOSS_KITS[TAIL]({ t: V.enemies[TAIL].talents.bb, sk: { Punishment: sk } })
+    .find(a => a?.sk === sk);
+  const [lock, diagonal, outside] = h.allies();
+  const before = [lock.hp, diagonal.hp, outside.hp];
+  ability.fire(h.b, tail, {});
+  assert.equal(before[0] - lock.hp, tail.s.atk, 'locked ally takes one hit');
+  assert.equal(before[1] - diagonal.hp, tail.s.atk, 'sqrt(2) is inside 1.5 but outside the old 1.25 radius');
+  assert.equal(outside.hp, before[2], 'two tiles from the lock is outside the splash');
+  assert.deepEqual(h.b.errors, []);
+});

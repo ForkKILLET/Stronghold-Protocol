@@ -979,8 +979,10 @@
 }
 
 /* ---- ping pill ------------------------------------------------------------------------------------- */
+/* Resolve the low-latency color before season accents override mint on the screen. */
+:root { --ping-low: var(--mint-400); }
 .ping {
-  --pc: var(--mint-400);
+  --pc: var(--ping-low);
   display: inline-flex;
   align-items: center;
   gap: calc(.04 * var(--ui-unit, 1rem));
@@ -998,7 +1000,7 @@
 }
 .ping__icon { width: calc(.15 * var(--ui-unit, 1rem)); height: calc(.15 * var(--ui-unit, 1rem)); margin-right: calc(.03 * var(--ui-unit, 1rem)); }
 .ping__unit { font-size: calc(.13 * var(--utility-text, var(--t))); color: var(--text-lo); font-weight: 500; }
-.ping--low { --pc: var(--mint-400); }
+.ping--low { --pc: var(--ping-low); }
 .ping--medium { --pc: var(--amber); }
 .ping--high { --pc: var(--red-premium); }
 .ping--off { --pc: var(--text-dim); }

@@ -113,6 +113,8 @@ function fight(t, spec) {
   }));
   return makeBattle({
     seed: spec.seed ?? 1,
+    kind: spec.kind,
+    flags: spec.flags,
     data,
     stage: spec.stage,
     timeLimit: spec.timeLimit ?? 90,
@@ -272,6 +274,18 @@ describe('规程·序列Ⅰ bonds', { concurrency: 1 }, () => {
     h.b.dealDamage({ source: u, target: e, amount: 100, type: 'phys' });
     close(hp0 - e.hp, 100, 'yan phys');
     close(gauges(e), 0.06 * u.s.atk, 'yan element');
+    // act3autochess_bond_eff_yan_power: RandomSetter element_type over [1, 6) floored → 1..5, one fifth each
+    // (神经, 侵蚀, 灼燃, 凋亡, 狂躁 — necrosis stands in for 狂躁). The top fifth of the roll is not 神经 again.
+    const rng = h.b.rng;
+    const rolled = [];
+    for (const r of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+      const t5 = tank(h, [9, 4]);
+      h.b.rng = () => r;
+      h.b.dealDamage({ source: u, target: t5, amount: 1, type: 'phys' });
+      h.b.rng = rng;
+      rolled.push(Object.keys(t5.elem || {}).find((k) => t5.elem[k] > 0));
+    }
+    assert.deepEqual(rolled, ['neural', 'erosion', 'burn', 'apoptosis', 'necrosis']);
     const lock = h.b.addBuff(e, { key: 'lock', duration: 10, flags: { burstLock: true } });
     const left0 = (lock && lock.timeLeft) || e.findBuff('lock').timeLeft;
     h.run(0.55);
@@ -642,6 +656,63 @@ describe('规程·序列Ⅰ bonds', { concurrency: 1 }, () => {
     const food = tank(h6, [9, 16]);
     h6.b.dealDamage({ source: m, target: food, amount: 1e9, type: 'true' });
     assert.equal(tempBondLayers(h6.b, 'p1', 'ursusShip'), 4);
+  });
+
+  test('乌萨斯: temp layers boost ATK/HP, cut/bleed, and block arts without raising permanent layers', (t) => {
+    const h = fight(t, {
+      bonds: { ursusShip: bond(1, 1, 1) },
+      pieces: [piece('reg_ur_t', ['ursusShip'])],
+    });
+    h.step();
+    const u = h.unit('reg_ur_t');
+    const kill = () => h.b.dealDamage({ source: u, target: tank(h, [9, 16]), amount: 1e9, type: 'true' });
+    kill();
+    assert.equal(tempBondLayers(h.b, 'p1', 'ursusShip'), 2);
+    assert.equal(h.b.getPlayer('p1').bonds.ursusShip.layers, 1);
+    assert.equal(h.b.result().perPlayer.p1.tempLayerGains.ursusShip, 2);
+    assert.equal(h.b.result().perPlayer.p1.layerGains.ursusShip, undefined);
+    h.step();
+    close(u.s.atk, 500 * (1 + 0.35 + 0.0075 * 3), 'atk includes L=1 perm + 2 temp');
+    close(u.s.maxHp, 2000 * (1 + 0.1 + 0.003 * 3), 'maxHp includes L=1 perm + 2 temp');
+
+    const h6 = fight(t, {
+      bonds: { ursusShip: bond(6, 0) },
+      pieces: [piece('reg_ur6_t', ['ursusShip'])],
+    });
+    h6.step();
+    const m = h6.unit('reg_ur6_t');
+    for (let i = 0; i < 5; i++) {
+      h6.b.dealDamage({ source: m, target: tank(h6, [9, 16]), amount: 1e9, type: 'true' });
+    }
+    assert.equal(tempBondLayers(h6.b, 'p1', 'ursusShip'), 20);
+    h6.step();
+    close(m.s.atk, 500 * (1 + 0.35 + 0.0075 * 20), '6-ursus atk includes 20 temp');
+
+    const foe = tank(h6, [9, 9]);
+    const hpBefore = m.hp;
+    h6.b.dealDamage({ source: foe, target: m, amount: 1000, type: 'phys' });
+    close(hpBefore - m.hp, 840, '16% cut (15% + 20 * 0.05%)');
+    h6.step();
+    close(hpBefore - m.hp, 856, 'bleed deals 16% / 10 = 16 on first pulse');
+
+    const blk = tank(h6, [9, 8]);
+    h6.b.on('tick', () => { m.blocking = [blk]; });
+    const blkHp = blk.hp;
+    h6.run(1.1);
+    close(blkHp - blk.hp, (0.5 + 0.0025 * 20) * m.s.atk, 'block arts scales with temp layers');
+
+    const off = fight(t, {
+      bonds: { ursusShip: bond(1, 0, 0) },
+      pieces: [piece('reg_ur_off', ['ursusShip'])],
+      flags: { layerGainsEnabled: false },
+    });
+    off.step();
+    const uo = off.unit('reg_ur_off');
+    off.b.dealDamage({ source: uo, target: tank(off, [9, 16]), amount: 1e9, type: 'true' });
+    assert.equal(tempBondLayers(off.b, 'p1', 'ursusShip'), 2, 'combat-local temp layers still apply when gains are disabled');
+    assert.equal(off.b.result().perPlayer.p1.tempLayerGains, undefined, 'wire tempLayerGains stays omitted');
+    off.step();
+    close(uo.s.atk, 500 * (1 + 0.35 + 0.0075 * 2), 'combat-local temp layers boost atk');
   });
 
   test('伊比利亚: slow, DoT, per-source interval, splash', (t) => {
@@ -1256,6 +1327,35 @@ describe('规程·序列Ⅰ bonds', { concurrency: 1 }, () => {
     assertLethaniaRuntime(h);
   });
 
+  test('莱塔尼亚: the chorus aura reaches every 莱塔尼亚 operator, stacks per chorus, and ends with the chorus', (t) => {
+    // acltm[atk-spd]: AutochessCreateBuffToSpecifiedChar(filterByBondIds 莱塔尼亚), no range; one buff per chorus.
+    const h = fight(t, {
+      bonds: { lethaniaShip: bond(6, 700) },
+      pieces: [
+        piece('reg_le_aura_near', ['lethaniaShip'], { row: 12, col: 2, skill: null, rangeGrid: [[0, 0]] }),
+        piece('reg_le_aura_far', ['lethaniaShip'], { row: 10, col: 9, skill: null, rangeGrid: [[0, 0]] }),
+        piece('reg_le_aura_other', [], { row: 11, col: 5, skill: null, rangeGrid: [[0, 0]] }),
+      ],
+    });
+    h.step();
+    const near = h.unit('reg_le_aura_near'), far = h.unit('reg_le_aura_far'), other = h.unit('reg_le_aura_other');
+    close(far.s.aspd, 100, 'no chorus, no aura');
+    const rng = h.b.rng;
+    h.b.rng = () => 0;
+    h.b.kill(tank(h, [10, 4]), null);
+    h.b.kill(tank(h, [11, 7]), null);
+    h.b.rng = rng;
+    const choruses = lethaniaSummons(h).filter((u) => u.defId === CHORUS);
+    assert.equal(choruses.length, 2);
+    close(near.s.aspd, 140, 'two choruses: +20 each');
+    close(far.s.aspd, 140, 'no range limit');
+    close(other.s.aspd, 100, 'operators without 莱塔尼亚 get nothing');
+    h.b.kill(choruses[0], null);
+    close(far.s.aspd, 120, 'one chorus left');
+    h.b.kill(choruses[1], null);
+    close(far.s.aspd, 100, 'the aura ends with the last chorus');
+  });
+
   test('莱塔尼亚: a chorus advances at range, attacks with arts, and holds its ranged position', (t) => {
     const h = fight(t, {
       bonds: { lethaniaShip: bond(6, 700) },
@@ -1272,7 +1372,9 @@ describe('规程·序列Ⅰ bonds', { concurrency: 1 }, () => {
     assert.equal(chorus.profile.attackRangeRadius, 2.4);
     assert.equal(!!chorus.profile.requiresBlocking, false);
     close(chorus.s.moveSpeed, 0.5, 'chorus movement speed');
-    close(chorus.s.aspd, 120, 'chorus aura attack speed');
+    close(chorus.s.aspd, 100, 'the aura is not on the chorus itself');
+    const member = h.unit('reg_le_chorus_member');
+    close(member.s.aspd, 120, 'a living chorus gives every 莱塔尼亚 operator +20 attack speed');
     h.run(1.1);
     close(chorus.hp, 8500 - 850, 'chorus true bleed');
 
