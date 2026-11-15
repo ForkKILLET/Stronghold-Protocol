@@ -849,6 +849,8 @@ Docker 运行镜像及源码包需保留根目录 `CHANGELOG.md`，升级需重�
 
 ## 7. 打包发布（维护者）
 
+0.4.0 便携完整／更新包默认不附带可露希尔组及其未使用的外层贴纸，`node tools/package.mjs --theme-packs --out <目录>` 将本机已提取的主题导出为可单独导入的 ZIP。此策略仅作用于便携包；本服 Docker 与资源站继续提供现有乌萨斯／可露希尔主题。本分支不恢复 `--assets`。主题制作示例随便携包提供，说明见 [主题制作指南](THEME-GUIDE.md)。
+
 本分支打包前运行 `npm run build`，两个 ZIP 都包含现有 `public/build/`，运行时不需要 Vite。完整包同时包含本机生成的 `data/asset-hashes.json`（存在时），以支持 ZIP 资源校验；更新素材后先运行 `node tools/asset-hashes.mjs`。这些生成文件不提交源码仓库。
 
 完整包、精简包及可选更新包 由 `tools/package.mjs` 生成，在**源码仓库**里运行（整合包里没有这个工具）：

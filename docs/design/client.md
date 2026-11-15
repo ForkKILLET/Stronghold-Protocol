@@ -550,7 +550,7 @@ preference, then the own-language dub when the switch is on and the operator has
 falls back to the Chinese file of the same name. Changing the global language does not clear per-operator choices.
 
 The selected-piece underframe uses fixed viewport positioning, matching `tileScreen` client coordinates; screen-fit
-insets must not be added again by the HUD containing block (#889, [0.3.4](../history/0.3.4.md)).
+insets must not be added again by the HUD containing block (#889, [0.4.0](../history/0.4.0.md)).
 
 异形屏适配 (`ui/screenFit.js`) persists `sp.pref.screenFit` — four whole pixel offsets `{ l, r, t, b }` in ±100 (inward
 positive; the settings show each as a 0–100 slider, 50 = 0, 2 px a step) — on this device only. While any offset is
@@ -1216,7 +1216,7 @@ switch. Official mode permits agent skill/charger kill COST gains and actual mer
 permits pioneer skill gains ([ASSUMED] scope approved in #657). SP permits extra bond/talent/skill recovery only,
 excluding time, ordinary attack/hurt and initial SP. Full/locked bars and zero receipts show nothing. White COST,
 red deductions and cyan SP follow the issue examples; exact colours, 80% numeric size, centred placement, 0.9 s
-lifetime and up to two decimals are [ASSUMED]. Receipts do not merge. Revision: [§37.3](../history/0.3.4.md).
+lifetime and up to two decimals are [ASSUMED]. Receipts do not merge. Revision: [§37.3](../history/0.4.0.md).
 
 
 ### Preparation progress displays (§37.13)
@@ -1234,7 +1234,7 @@ manifest replacement. Downloads/catalogue entries use the 512 MB outer cap until
 
 ### Summon outfits (§37.18)
 
-召唤物时装沿用主人干员的公开选择，自选主人显式使用所选干员 `charId`；备战、手牌、临时整备、侦察与战斗一致，缺失资源回退默认模型。来源、显示层边界和插件格式见 [SKINS.md](../SKINS.md) 与 [0.3.4 §37.18](../history/0.3.4.md)。
+召唤物时装沿用主人干员的公开选择，自选主人显式使用所选干员 `charId`；备战、手牌、临时整备、侦察与战斗一致，缺失资源回退默认模型。来源、显示层边界和插件格式见 [SKINS.md](../SKINS.md) 与 [0.4.0 §37.18](../history/0.4.0.md)。
 
 ### Regulation bond descriptions
 

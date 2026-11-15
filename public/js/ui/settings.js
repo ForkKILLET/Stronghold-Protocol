@@ -58,7 +58,7 @@ import { resolveOfficialFx } from '../render/vfx/tier.js';
 import { ScreenFitSection } from './screenFit.js';
 import { cosmetics } from '../cosmetics.js';
 import { ThemeSection } from './themeSettings.js';
-import { applyUiTheme, bindThemeSettings, bootUiThemes, syncThemeVoiceVolume } from '../uiTheme.js';
+import { applyUiTheme, bindThemeSettings, bootUiThemes, composeLocalManifest, importedThemeGroups, onImportedThemeGroups, syncThemeVoiceVolume } from '../uiTheme.js';
 import { themeNeedsRegulationShop } from '../../../shared/uiTheme.js';
 import { applyCursor } from './cursor.js';
 
@@ -545,4 +545,24 @@ bindThemeSettings({
 data.subscribe((name) => {
   if (name === 'config') applyUiTheme(settingsStore.get().uiTheme);
 });
+
+// The official themes this browser imported (§37.232) join the local art manifest every screen reads
+// (data.get('local').groups): the prefab HUD, the 规程 card faces and the banners find their sprites there. A group the
+// server serves wins; with nothing imported the manifest is the server's own.
+let localIn = null;
+let groupsIn = null;
+let localOut = null;
+function localWithImportedThemes(local) {
+  const groups = importedThemeGroups();
+  if (local !== localIn || groups !== groupsIn) {
+    localIn = local;
+    groupsIn = groups;
+    localOut = composeLocalManifest(local, groups);
+  }
+  return localOut;
+}
+localWithImportedThemes.withMissing = true;
+data.setView('local', localWithImportedThemes);
+onImportedThemeGroups(() => data.setView('local', localWithImportedThemes));
+
 bootUiThemes();
