@@ -2,8 +2,24 @@ name: Local extractor Python compatibility
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'tools/local-extract/**'
+      - 'tools/setup.mjs'
+      - 'test/local-extract-python-ci.test.js'
+      - '.github/workflows/local-extract-python.yml'
   pull_request:
+    branches: [main]
+    paths:
+      - 'tools/local-extract/**'
+      - 'tools/setup.mjs'
+      - 'test/local-extract-python-ci.test.js'
+      - '.github/workflows/local-extract-python.yml'
   workflow_dispatch:
+
+concurrency:
+  group: local-extract-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

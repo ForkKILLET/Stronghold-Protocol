@@ -15,7 +15,14 @@ test('local extractor CI compiles every Python source with setup\'s minimum vers
   assert.match(src, /^    runs-on: ubuntu-24\.04$/m);
   assert.match(src, /^permissions:\n  contents: read\n/m);
   assert.doesNotMatch(src, /write|continue-on-error|pip install|npm |pull_request_target/);
-  assert.match(src, /^on:\n  push:\n  pull_request:\n  workflow_dispatch:/m);
+  for (const event of ['push', 'pull_request']) {
+    const block = src.match(new RegExp(`^  ${event}:\n((?: {4}[^\n]*\n| {6}[^\n]*\n)*)`, 'm'))?.[1];
+    assert.match(block, /^    branches: \[main\]$/m);
+    for (const path of ['tools/local-extract/**', 'tools/setup.mjs', 'test/local-extract-python-ci.test.js', '.github/workflows/local-extract-python.yml']) {
+      assert.ok(block.includes(`- '${path}'`), `${event}: ${path}`);
+    }
+  }
+  assert.match(src, /^  workflow_dispatch:$/m);
   assert.ok(Number(src.match(/timeout-minutes: (\d+)/)?.[1]) <= 5);
   const steps = parseWorkflow(src).jobs.compile.steps;
   assert.equal(steps[0].uses, main.match(/uses: (actions\/checkout@v\d+)/)?.[1]);

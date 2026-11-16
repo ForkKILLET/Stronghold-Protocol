@@ -1,61 +1,50 @@
 name: CI
 
+# This fork deploys main. PR branches are checked through pull_request, not again on push.
 on:
   push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**']
   pull_request:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
+    inputs:
+      compatibility:
+        description: Also run Windows / Node 22 and the Node 24 guards
+        type: boolean
+        default: false
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: test (${{ matrix.os }}, node ${{ matrix.node }}, shard ${{ matrix.shard }})
-    runs-on: ${{ matrix.os }}
-    # The plugin integration suites spawn real children; Windows needs more headroom than Linux.
-    timeout-minutes: 40
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        # 22 = the LTS line the whole suite runs on, one job per shard. Node 24 has its own light lane (job `node24`).
-        node: [22]
-        # the shards of ci-shards.json: together they are exactly the full `npm test`, apart they are four shorter jobs
-        shard: [0, 1, 2, 3]
+  # Build and smoke once. All test shards consume this run's immutable client artifact.
+  tooling:
+    name: checks (build, smoke, lint, imports, types)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
-      # Browser/E2E suites gate themselves on these (and on a local Chrome + downloaded game assets, which CI never
-      # has): keep them off explicitly. Suites that need .cache/gamedata, public/assets or data/local-assets.json skip.
       SP_E2E: '0'
       SP_REAL_E2E: '0'
       RENDER_E2E: '0'
       NO_COLOR: '1'
-      # tools/test-run.mjs runs this shard's files: `npm run test` stays the whole suite everywhere else
-      SHARD: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: npm
-
       - name: Install (npm ci → postinstall copies public/vendor)
         run: npm ci --no-audit --no-fund
-
       - name: Setup check (no downloads)
         run: node tools/setup.mjs --check --no-local
-
       - name: Build production client
         run: npm run build
-
-      # package.json "test": node tools/test-run.mjs over the test files of this job's SHARD (the whole suite when
-      # SHARD is unset). A bare `node --test` would also run every helper and fixture under test/.
-      - name: Unit & integration tests
-        run: npm run test
 
       - name: Server smoke test (boot, /healthz, index.html, doctor)
         shell: bash
@@ -77,54 +66,102 @@ jobs:
           node tools/doctor.mjs || true
           kill $pid || true
 
-  # The node 24 lane: the other maintained LTS line gets a cheap check, not a second full suite. A full 24 run is the
-  # 20-minute job the shards were introduced to remove, so 24 runs the CI guards — the shard table and the wiring of
-  # this file — which are also the tests that exercise node's own test runner and glob.
+      - name: Lint (warnings allowed)
+        run: npm run lint
+      - name: Import boundaries
+        run: npm run check:imports
+      - name: Typecheck
+        run: npm run typecheck
+      - uses: actions/upload-artifact@v7
+        with:
+          name: production-client
+          path: public/build/
+          if-no-files-found: error
+          retention-days: 1
+
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }}, shard ${{ matrix.shard }})
+    needs: tooling
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node: [22]
+        shard: [0, 1, 2, 3]
+    env:
+      SP_E2E: '0'
+      SP_REAL_E2E: '0'
+      RENDER_E2E: '0'
+      NO_COLOR: '1'
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install (npm ci → postinstall copies public/vendor)
+        run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v8
+        with:
+          name: production-client
+          path: public/build/
+      - name: Unit & integration tests
+        run: npm run test
+
+  # These lanes are opt-in at dispatch; normal pushes / PRs run six jobs in total.
   node24:
-    name: node 24 (CI guards)
+    if: github.event_name == 'workflow_dispatch' && inputs.compatibility
+    name: node 24 (CI guards, manual)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-
       - name: Install (npm ci → postinstall copies public/vendor)
         run: npm ci --no-audit --no-fund
-
-      - name: CI guard tests (sharding and workflow wiring)
+      - name: CI guard tests (Node 24)
         run: npm run test:guards
 
-  # Separate from the test matrix so lint / types / import boundaries run once, outside the eight test jobs.
-  # Lint warnings do not fail the job (npm run lint does not pass --max-warnings=0).
-  tooling:
-    name: tooling (lint, imports, typecheck)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  windows:
+    if: github.event_name == 'workflow_dispatch' && inputs.compatibility
+    name: compatibility (${{ matrix.os }}, node ${{ matrix.node }}, shard ${{ matrix.shard }})
+    needs: tooling
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+        node: [22]
+        shard: [0, 1, 2, 3]
+    env:
+      SP_E2E: '0'
+      SP_REAL_E2E: '0'
+      RENDER_E2E: '0'
+      NO_COLOR: '1'
+      SHARD: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
-
       - name: Install (npm ci → postinstall copies public/vendor)
         run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v8
+        with:
+          name: production-client
+          path: public/build/
+      - name: Windows compatibility tests
+        run: npm run test
 
-      - name: Lint (warnings allowed)
-        run: npm run lint
-
-      - name: Import boundaries
-        run: npm run check:imports
-
-      - name: Typecheck
-        run: npm run typecheck
-
-  # Compare the full corpus once, independently of the OS × Node test matrix; never update expected results here.
+  # Independent full comparison, with the original corpus and no automatic updates.
   golden:
     name: golden (full corpus, ubuntu, node 22)
     runs-on: ubuntu-latest

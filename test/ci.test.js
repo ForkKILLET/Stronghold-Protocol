@@ -43,7 +43,7 @@ test('every ci.yml step is mirrored by a tools/ci.mjs step or skipped on purpose
     assert.ok(ciSteps.some((s) => s.job === l.ci.job && s.name === l.ci.name), `${l.id} mirrors no ci.yml step (${l.ci.job}: ${l.ci.name})`);
   }
   for (const k of SKIPPED_CI_STEPS) assert.ok(ciSteps.some((s) => isSkippedCiStep(s) && (k.uses ? s.uses?.startsWith(k.uses) : s.name === k.name)), `stale skip ${k.uses || k.name}`);
-  // the local order is the workflow's (job test, then job tooling)
+  // the local order follows the shared checks, then the test shard job
   const order = ciSteps.filter((s) => !isSkippedCiStep(s)).map((s) => STEPS.find((l) => l.ci.job === s.job && l.ci.name === s.name).id);
   assert.deepEqual(order, STEPS.map((s) => s.id));
 });
@@ -57,17 +57,16 @@ test('the commands match ci.yml: the run lines, the npm scripts ci.yml calls, th
       assert.equal(pkg.scripts[l.npm], l.describe, `package.json script ${l.npm} is what ${l.id} runs`);
     } else if (l.id !== 'smoke') assert.equal(r, l.describe, l.id);
   }
-  const smokeRun = run('test', STEPS.find((s) => s.id === 'smoke').ci.name);
+  const smokeRun = run('tooling', STEPS.find((s) => s.id === 'smoke').ci.name);
   const urls = [...smokeRun.matchAll(/http:\/\/127\.0\.0\.1:3000([^\s;]*)/g)].map((m) => m[1] || '/');
   assert.deepEqual([...new Set(urls)].sort(), [...SMOKE_PATHS].sort());
   // The whole smoke script, comments and indentation aside: any edit to it (the wait loop, the page check, …) fails
   // here, so that smoke() in tools/ci.mjs is looked at and this copy updated with it.
   const normalized = smokeRun.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
   assert.deepEqual(normalized, SMOKE_CI_RUN, "ci.yml's smoke step changed: update smoke() in tools/ci.mjs and SMOKE_CI_RUN");
-  // job env: ci.yml's job test env is CI_TEST_ENV plus the matrix's shard; any other job has none (stepEnv gives the
-  // tooling steps nothing)
+  // Shared checks and the two shard jobs explicitly disable optional browser suites.
   for (const [job, j] of Object.entries(workflow.jobs)) {
-    assert.deepEqual(j.env, job === 'test' ? { ...CI_TEST_ENV, ...CI_SHARD_ENV } : {}, `env of job ${job}`);
+    assert.deepEqual(j.env, ['test', 'windows'].includes(job) ? { ...CI_TEST_ENV, ...CI_SHARD_ENV } : job === 'tooling' ? CI_TEST_ENV : {}, `env of job ${job}`);
   }
   // per-step config (env, if, continue-on-error, working-directory, with, …) on a mirrored step is not mirrored
   for (const l of STEPS) {
@@ -97,7 +96,7 @@ test('the full Golden check runs independently once on Ubuntu / Node 22 and cann
   assert.match(jobText, /^          cache: npm$/m);
   assert.doesNotMatch(jobText, /^\s*(strategy|needs|if|continue-on-error|defaults|env):/m);
   assert.equal(pkg.scripts.golden, 'node tools/golden.mjs');
-  assert.deepEqual(STEPS.map((s) => s.id), ['setup', 'build', 'test', 'smoke', 'guards', 'lint', 'imports', 'typecheck']);
+  assert.deepEqual(STEPS.map((s) => s.id), ['setup', 'build', 'smoke', 'lint', 'imports', 'typecheck', 'test', 'guards']);
 });
 
 test('the separate Golden skip is scoped to its job, step name and unfiltered comparison command', () => {
@@ -133,22 +132,61 @@ test('npm test runs every test file and nothing else under test/: no helper, no 
   }
 });
 
-test('the test matrix runs every shard exactly once, on both systems, for node 22', () => {
+test('Linux runs every shard automatically; Windows and Node 24 remain complete opt-in compatibility lanes', () => {
   const matrix = parseMatrix(workflowText);
-  assert.deepEqual(Object.keys(matrix), ['test'], 'only the test job is a matrix');
-  const m = matrix.test;
-  // The shard numbers, not the count: a matrix that listed [0, 1, 3] would run three quarters of the suite and stay
-  // green — the table's own guard (test/ci-shards.test.js) only proves the partition inside ci-shards.json.
-  assert.deepEqual((m.shard ?? []).map(Number), [...Array(SHARD_COUNT).keys()], 'matrix.shard must list 0..SHARD_COUNT-1 once each');
-  assert.deepEqual(m.os, ['ubuntu-latest', 'windows-latest']);
-  assert.deepEqual((m.node ?? []).map(Number), [22], 'the full suite runs on node 22; node 24 has its own lane');
-  // the job hands its shard to tools/test-run.mjs, which is what turns the number into files
-  assert.equal(workflow.jobs.test.env.SHARD, '${{ matrix.shard }}');
-  // the node 24 lane is a job of its own, with the guards and without the suite
-  assert.ok(workflow.jobs.node24, 'ci.yml has the node 24 lane');
-  assert.deepEqual(workflow.jobs.node24.env, {}, 'the node 24 lane needs no job env');
-  assert.ok(workflow.jobs.node24.steps.some((s) => s.run === 'npm run test:guards'), 'the node 24 lane runs the guards');
-  assert.ok(!workflow.jobs.node24.steps.some((s) => s.run === 'npm run test'), 'the node 24 lane does not run the suite');
+  assert.deepEqual(Object.keys(workflow.jobs), ['tooling', 'test', 'node24', 'windows', 'golden']);
+  assert.deepEqual(Object.keys(matrix), ['test', 'windows']);
+  for (const [job, os] of [['test', 'ubuntu-latest'], ['windows', 'windows-latest']]) {
+    assert.deepEqual(matrix[job].os, [os]);
+    assert.deepEqual(matrix[job].node.map(Number), [22]);
+    assert.deepEqual(matrix[job].shard.map(Number), [...Array(SHARD_COUNT).keys()], `${job}: no omitted / duplicated shard`);
+    assert.equal(workflow.jobs[job].env.SHARD, '${{ matrix.shard }}');
+  }
+  for (const job of ['node24', 'windows']) {
+    const text = workflowText.match(new RegExp(`^  ${job}:\n((?:\n| {4}[^\n]*\n)*)`, 'm'))?.[1];
+    assert.match(text, /^    if: github.event_name == 'workflow_dispatch' && inputs.compatibility$/m);
+  }
+  assert.match(workflowText, /compatibility:\n[\s\S]*?type: boolean\n        default: false/);
+  assert.deepEqual(workflow.jobs.node24.env, {});
+  assert.ok(workflow.jobs.node24.steps.some(s => s.run === 'npm run test:guards'));
+  assert.ok(!workflow.jobs.node24.steps.some(s => s.run === 'npm run test'));
+});
+
+test('all shards consume one required build artifact; build / smoke run exactly once and golden stays independent', () => {
+  for (const command of ['npm run build', 'node server/index.js > server.log 2>&1 &']) {
+    assert.equal(Object.values(workflow.jobs).flatMap(j => j.steps).filter(s => s.run?.split('\n').includes(command)).length, 1, command);
+  }
+  assert.equal(workflow.jobs.tooling.steps.filter(s => s.uses?.startsWith('actions/upload-artifact@')).length, 1);
+  const shared = workflowText.match(/^  tooling:\n((?:\n| {4}[^\n]*\n)*)/m)?.[1];
+  assert.match(shared, /name: production-client\n          path: public\/build\/\n          if-no-files-found: error\n          retention-days: 1/);
+  for (const job of ['test', 'windows']) {
+    const text = workflowText.match(new RegExp(`^  ${job}:\n((?:\n| {4}[^\n]*\n)*)`, 'm'))?.[1];
+    assert.match(text, /^    needs: tooling$/m);
+    assert.match(text, /actions\/download-artifact@[^\n]+\n        with:\n          name: production-client\n          path: public\/build\//);
+    assert.ok(workflow.jobs[job].steps.some(s => s.run === 'npm run test'));
+    assert.ok(!workflow.jobs[job].steps.some(s => s.run === 'npm run build'));
+  }
+});
+
+test('only main push / PR run automatically; documentation-only changes skip CI and dispatch stays available', () => {
+  for (const event of ['push', 'pull_request']) {
+    const text = workflowText.match(new RegExp(`^  ${event}:\n((?: {4}[^\n]*\n)*)`, 'm'))?.[1];
+    assert.match(text, /^    branches: \[main\]$/m);
+    assert.match(text, /^    paths-ignore: \['\*\*\/\*\.md', 'docs\/\*\*'\]$/m);
+  }
+  assert.match(workflowText, /^  workflow_dispatch:$/m);
+  assert.match(workflowText, /^permissions:\n  contents: read$/m);
+  assert.doesNotMatch(workflowText, /pull_request_target|continue-on-error/);
+});
+
+test('manual duplicate steps are skipped only for the exact full-suite / guard commands', () => {
+  for (const step of [
+    { job: 'windows', name: 'Windows compatibility tests', run: 'npm run test' },
+  ]) {
+    assert.equal(isSkippedCiStep(step), true);
+    assert.equal(isSkippedCiStep({ ...step, run: step.run + ' -- --fast' }), false);
+    assert.equal(isSkippedCiStep({ ...step, job: 'tooling' }), false);
+  }
 });
 
 test('the matrix reader: flow lists, block lists, include/exclude left out, other jobs ignored', () => {
@@ -188,7 +226,7 @@ test('the workflow reader: jobs, flat env, named and uses steps, run blocks; com
 test('arguments: --keep-going, --only (comma list, repeated, = form) in workflow order, --list, --help; bad ones throw', () => {
   assert.deepEqual(parseArgs([]), { keepGoing: false, only: null, list: false, help: false });
   assert.deepEqual(parseArgs(['-k', '--only', 'lint,test', '--only=smoke']), { keepGoing: true, only: ['lint', 'test', 'smoke'], list: false, help: false });
-  assert.deepEqual(selectSteps(['lint', 'test', 'smoke']).map((s) => s.id), ['test', 'smoke', 'lint']);
+  assert.deepEqual(selectSteps(['lint', 'test', 'smoke']).map((s) => s.id), ['smoke', 'lint', 'test']);
   assert.equal(selectSteps(null).length, STEPS.length);
   assert.equal(parseArgs(['--list']).list, true);
   assert.equal(parseArgs(['-h']).help, true);
@@ -197,11 +235,11 @@ test('arguments: --keep-going, --only (comma list, repeated, = form) in workflow
   assert.throws(() => parseArgs(['--fast']), /unknown option --fast/);
 });
 
-test("env: the job test steps get ci.yml's env for unset keys only; the tooling steps get the caller's env as is", () => {
+test("env: test and shared checks inherit browser gates for unset keys, retaining caller overrides", () => {
   const test_ = STEPS.find((s) => s.id === 'test');
   const lint = STEPS.find((s) => s.id === 'lint');
   assert.deepEqual(stepEnv(test_, { PATH: 'p', SP_E2E: '1' }), { PATH: 'p', SP_E2E: '1', SP_REAL_E2E: '0', RENDER_E2E: '0', NO_COLOR: '1' });
-  assert.deepEqual(stepEnv(lint, { PATH: 'p' }), { PATH: 'p' });
+  assert.deepEqual(stepEnv(lint, { PATH: 'p' }), { PATH: 'p', ...CI_TEST_ENV });
 });
 
 test('summary: one row per step (status, name, duration, note), the failed steps named; durations', () => {
