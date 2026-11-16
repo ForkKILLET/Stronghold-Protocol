@@ -101,6 +101,8 @@ export function useLeaderRankSpot(active) {
     const column = document.querySelector('.gtop__right');
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(later) : null;
     if (column && ro) ro.observe(column);
+    const panel = document.querySelector('.ldmg');
+    if (panel && ro) ro.observe(panel);
     addEventListener('resize', later);
     later();
     return () => { ro?.disconnect(); removeEventListener('resize', later); if (frame != null) cancelAnimationFrame(frame); };
@@ -121,11 +123,15 @@ export function LeaderRank({ rows, players, maxHp, hidden, onToggle, spot = null
   }
   return html`<aside class=${spot ? 'ldmg is-moved' : 'ldmg'} aria-label=${t('领袖伤害排行')}
       style=${spot ? `top:${spot.top}px;right:${spot.right}px` : null}>
-    <button type="button" class="ldmg__toggle" onClick=${onToggle}>${hidden ? t('显示') : t('隐藏')}</button>
+    <div class="ldmg__head">
+      <strong class="ldmg__title" title=${t('领袖伤害排行')}>${t('领袖伤害排行')}</strong>
+      <button type="button" class="ldmg__toggle" aria-expanded=${!hidden} onClick=${onToggle}>${hidden ? t('显示') : t('隐藏')}</button>
+    </div>
     ${hidden ? null : html`<ol class="ldmg__list">
-      ${list.map((row) => html`<li key=${`${row.pid}:${row.uid}`} class="ldmg__row">
+      ${list.map((row) => html`<li key=${`${row.pid}:${row.uid}`} class="ldmg__row"
+          style=${`--ldmg-share:${Math.min(100, leaderSharePct(row.dmg, maxHp))}%`}>
         <${UnitThumb} kind="chess" id=${row.chess} tier=${row.tier} size="xs" ownerId=${row.pid} />
-        <span class="ldmg__name">${names.get(row.pid) || row.pid}</span>
+        <span class="ldmg__name" title=${names.get(row.pid) || row.pid}>${names.get(row.pid) || row.pid}</span>
         <span class="ldmg__share" title=${t('对领袖伤害占比')}><${Icon} name="sword" />${`${leaderSharePct(row.dmg, maxHp)}%`}</span>
       </li>`)}
     </ol>`}

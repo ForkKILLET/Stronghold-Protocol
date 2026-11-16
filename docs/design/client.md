@@ -7,6 +7,10 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
 ## 9. Client rendering contract (public/js/render)
 
+本服 Boss 伤害排行沿用服务器前三名与对领袖总生命的占比；紧凑标题栏、01–03 名次、首名金色及底部占比线
+只调整展示，不改排序、伤害口径或归属。玩家名省略时可悬停查看完整文本；隐藏后保留标题与显示按钮。
+浮窗宽度与右侧锚点不变，三行须适配手机横屏的可用高度；尺寸变化也重新测量，以避让主题倒计时及 DP 框。
+
 Shop cards are grouped by each existing slot's `kind`, preserving its original purchase index.
 `shop.layout` classifies only empty positions (including the first-season equipment unlock); a stale layout must
 not reinterpret an operator as equipment, lose a card outside its declared range, or change its detail/buy target.

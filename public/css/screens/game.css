@@ -1067,7 +1067,7 @@
    Top clears the ticker (bottom 1.3rem) and the overtime-grown top bar (~1.38rem). Right sits just left of the
    effects column (right .3rem + width .5rem). The bottom stops .7rem above the screen's middle, which clears the
    DP box (its half-height is under that). Width stays right of the team dock (--dock-team-right: 2.8rem).
-   Three rows plus the toggle have to fit a ~81px band on a 375px-tall phone, so the row and the toggle are
+   Three rows plus the heading have to fit a ~81px band on a 375px-tall phone, so the row and the toggle are
    smaller than a 44px touch target. [ASSUMED] during a leader fight the plugin slot yields the upper right and
    sits below the DP box — its max box otherwise reaches this panel on a phone. */
 .ldmg {
@@ -1076,22 +1076,40 @@
   top: 1.95rem;
   width: min(2.2rem, calc(100vw - 3.4rem - .92rem - .3rem));
   max-height: calc(50% - 1.95rem - .7rem);
-  display: flex; flex-direction: column; align-items: stretch; gap: .04rem;
-  padding: .04rem; pointer-events: auto; overflow: hidden;
-  background: rgba(8, 11, 10, .85); border: 1px solid var(--line-2);
+  display: flex; flex-direction: column; align-items: stretch; gap: .05rem;
+  padding: .06rem .08rem .08rem; pointer-events: auto; overflow: hidden;
+  background: rgba(8, 15, 13, .92); border: 1px solid var(--line-2); border-top-color: var(--mint-500);
+  box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .2);
 }
+.ldmg__head { display: flex; align-items: center; gap: .06rem; min-height: .28rem; padding-bottom: .04rem; border-bottom: 1px solid var(--line); }
+.ldmg__title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--mint-400); font-size: calc(.12 * var(--t)); font-weight: 700; letter-spacing: .04em; }
 .ldmg__toggle {
-  min-height: .32rem; padding: 0 .06rem; align-self: flex-end;
-  background: none; border: 0; color: var(--text-md); font-size: calc(.14 * var(--t)); cursor: pointer;
+  flex: none; min-height: .28rem; padding: 0 .03rem;
+  background: none; border: 0; color: var(--text-md); font-size: calc(.11 * var(--t)); cursor: var(--sp-cursor-pointer, pointer);
 }
-.ldmg__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .02rem; min-height: 0; }
-.ldmg__row { min-height: .34rem; display: flex; align-items: center; gap: .04rem; min-width: 0; }
+.ldmg__toggle:hover { color: var(--mint-400); background: var(--mint-a10); }
+.ldmg__toggle:focus-visible { outline: 1px solid var(--mint-400); outline-offset: -1px; }
+.ldmg__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .03rem; min-height: 0; counter-reset: leader-rank; }
+.ldmg__row {
+  position: relative; min-height: .42rem; display: grid; grid-template-columns: .14rem .34rem minmax(0, 1fr) auto;
+  align-items: center; column-gap: .05rem; padding: .04rem .03rem; min-width: 0;
+  background: rgba(78, 216, 175, .035); counter-increment: leader-rank;
+}
+.ldmg__row::before { content: counter(leader-rank, decimal-leading-zero); color: var(--text-lo); font: 600 .1rem var(--font-num); text-align: center; }
+.ldmg__row::after {
+  content: ''; position: absolute; left: .22rem; right: .03rem; bottom: 0; height: 1px; pointer-events: none;
+  background: linear-gradient(to right, var(--mint-a35) var(--ldmg-share), transparent var(--ldmg-share));
+}
+.ldmg__row:first-child { background: rgba(242, 189, 62, .06); }
+.ldmg__row:first-child::before { color: var(--gold-2); }
+.ldmg__row:first-child::after { background: linear-gradient(to right, var(--gold-2) var(--ldmg-share), transparent var(--ldmg-share)); }
 .ldmg__name {
-  flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: calc(.13 * var(--t)); color: var(--text-hi);
 }
-.ldmg__share { flex: 0 0 auto; display: flex; align-items: center; gap: .02rem; color: var(--gold); font-size: calc(.13 * var(--t)); }
-.ldmg__share .icon { width: .16rem; height: .16rem; }
+.ldmg__share { display: flex; justify-content: flex-end; align-items: center; gap: .02rem; min-width: .4rem; color: var(--text-hi); font: 600 calc(.15 * var(--t)) var(--font-num); font-variant-numeric: tabular-nums; }
+.ldmg__share .icon { width: .12rem; height: .12rem; color: var(--text-lo); }
+.ldmg__row:first-child .ldmg__share { color: var(--gold-2); }
 .gm.is-boss .gm__ui-slot { bottom: .3rem; max-height: calc(50% - 1.2rem); }
 .chud__bottom { position: absolute; left: 50%; bottom: .3rem; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .12rem; pointer-events: none; }
 .chud__bottom > * { pointer-events: auto; }
