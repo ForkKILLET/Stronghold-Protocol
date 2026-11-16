@@ -111,7 +111,7 @@ import { watchingTeammate } from '../ui/gameLogic/watch.js';
 import { CombatHud } from '../ui/combatHud.js';
 import { WatchHint } from '../ui/watchHint.js';
 import { LeaderRank, loadLeaderRankHidden, saveLeaderRankHidden, useLeaderRankSpot } from '../ui/leaderRank.js';
-import { CombatMetricsPanel } from '../ui/combatMetrics.js';
+import { GameTools } from '../ui/gameTools.js';
 import { SettingsModal, shortcutsStore, useSettings } from '../ui/settings.js';
 import { ConsoleModal } from '../ui/console.js';
 import { ExitModal, AwayOverlay, awayStore } from '../ui/matchChrome.js';
@@ -318,7 +318,6 @@ function MatchScreen() {
   const [emoteOpen, setEmoteOpen] = useState(false);
   const [emotePinned, setEmotePinned] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [metricsOpen, setMetricsOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [drag, setDrag] = useState(null);                // { uid, kind, id } while dragging a piece
@@ -2061,17 +2060,12 @@ function MatchScreen() {
 
       <div class="gm__corner">
         <${AiTakeoverPanel} />
-        ${metricsOpen && !spectator ? html`<${CombatMetricsPanel} myId=${myId} onClose=${() => setMetricsOpen(false)} />` : null}
         ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} pinned=${emotePinned} onPinChange=${setEmotePinned} onSend=${(id) => actions.emote(id)}
           onChat=${actions.chat} history=${chatHistory} myId=${myId} disabled=${conn.status !== 'online'} />`}
-        ${spectator ? null : html`<button type="button" class="gm__gear gm__metrics" aria-label=${t('作战统计')} title=${t('作战统计')} aria-expanded=${metricsOpen}
-          aria-controls="combat-metrics-panel" onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }} onClick=${() => {
-            setMetricsOpen(!metricsOpen);
-            if (!emotePinned) setEmoteOpen(false);
-            setDetail(null);
-            setSel(null);
-            setBondOpen(null);
-          }}><${Icon} name="signal" /></button>`}
+        ${spectator ? null : html`<${GameTools} myId=${myId} pub=${pub} connected=${conn.status === 'online'} onOpen=${() => {
+          if (!emotePinned) setEmoteOpen(false);
+          setDetail(null); setSel(null); setBondOpen(null);
+        }} />`}
         ${prepLoadoutOpen && phase === PHASE.PREP && priv && !priv.ready && !spectator
           ? html`<${LoadoutButton} from="prep" size="sm" />` : null}
         <button type="button" class="gm__gear" aria-label=${t('设置')} title=${t('设置')} onClick=${() => setSettingsOpen(true)}><${GIcon} name="gear" /></button>

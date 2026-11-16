@@ -642,6 +642,8 @@ export const C2S = {
   // the stats the own board's units start their next battle with (user playtest #4 item 7; prep phases): answered by
   // the push m.unitStats { seq, round, units: [unitStatsEntry] }; `seq` is echoed so the client keeps the newest answer
   'g.unitStats': { seq: (v) => isInt(v, 0, 2 ** 31), $optional: ['seq'] },
+  // Requester-only, read-only shared chess stock and natural shop odds; no shop/offer identities are exposed.
+  'g.cardCounter': { chessId: isId, seq: (v) => isInt(v, 0, 2 ** 31) },
   // Developer console: only accepted by a server-authorized private/solo room match.
   'g.console': {
     kind: (v) => v === 'item' || v === 'chess' || v === 'bond',
@@ -706,6 +708,7 @@ export const S2C = [
   'm.layer',
   // m.unitStats { seq, round, units: [unitStatsEntry] } — the answer to g.unitStats (the requester only)
   'm.unitStats',
+  'm.cardCounter',
   // client-side combat (DESIGN §14): b.start { battleId, fieldId, kind, spec, authoritative, startAt, serverNow, elapsed,
   // speed, watch? } · b.pool { hp, max, teamLp, acked: { [fieldId]: cumulative boss damage counted } } ·
   // b.end { battleId, fieldId, reason }

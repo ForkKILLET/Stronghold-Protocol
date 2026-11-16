@@ -1,10 +1,10 @@
-import { useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, Spinner, useTicker } from './components.js';
 import { UnitThumb } from './gameComponents.js';
 import { battleRunner } from '../battle/runner.js';
 import { historyPage } from '../battle/combatHistory.js';
 import { t, N_ } from '../../../shared/i18n.js';
-import { combatMetricsLayout } from './combatMetricsLayout.js';
+import { useCornerPanel } from './cornerPanel.js';
 
 const TYPES = Object.freeze([
   { id: 'phys', label: N_('物理') }, { id: 'arts', label: N_('法术') },
@@ -21,55 +21,7 @@ export function CombatMetricsPanel({ myId, onClose, runner = battleRunner, initi
   const closeRef = useRef(null);
   const panelRef = useRef(null);
   useTicker(250);
-  useLayoutEffect(() => {
-    const previous = document.activeElement;
-    closeRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key !== 'Escape' || document.querySelector('.modal, .guide')) return;
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => { window.removeEventListener('keydown', onKey); previous?.focus?.(); };
-  }, []);
-  useLayoutEffect(() => {
-    const panel = panelRef.current;
-    const corner = panel?.parentElement;
-    const viewport = window.visualViewport;
-    const archiveHeader=historical?panel?.closest('.st--replay')?.querySelector('.app-header'):null;
-    const measure = () => {
-      if (!panel || !corner) return;
-      const rect = corner.getBoundingClientRect();
-      const rootStyle = getComputedStyle(document.documentElement);
-      const layout = combatMetricsLayout({
-        cornerTop: rect.top, cornerBottom: rect.bottom,
-        viewportHeight: viewport?.height || window.innerHeight,
-        viewportTop: viewport?.offsetTop || 0,
-        rem: parseFloat(rootStyle.fontSize) || 40,
-        safeTop: Math.max(parseFloat(rootStyle.getPropertyValue('--sa-t')) || 0,
-          archiveHeader?archiveHeader.getBoundingClientRect().bottom-(viewport?.offsetTop || 0):0),
-        safeBottom: parseFloat(rootStyle.getPropertyValue('--sa-b')) || 0,
-      });
-      panel.style.setProperty('--combat-corner-height', `${rect.height || 44}px`);
-      panel.style.setProperty('--combat-available-height', `${layout.availableHeight}px`);
-      panel.style.setProperty('--combat-viewport-height', `${layout.viewportSpace}px`);
-      panel.style.setProperty('--combat-viewport-top', `${layout.viewportPanelTop}px`);
-      panel.dataset.viewportDocked = String(layout.viewportDocked);
-    };
-    measure();
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (corner) observer?.observe(corner);
-    if (archiveHeader) observer?.observe(archiveHeader);
-    window.addEventListener('resize', measure);
-    viewport?.addEventListener('resize', measure);
-    viewport?.addEventListener('scroll', measure);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener('resize', measure);
-      viewport?.removeEventListener('resize', measure);
-      viewport?.removeEventListener('scroll', measure);
-    };
-  }, []);
+  useCornerPanel(panelRef, closeRef, onClose, historical);
   const result = (myId ? runner?.combatMetrics({ scope, ownerId: myId, round: page.round }) : null) || { rows: [], damage: 0, healing: 0 };
   const maximum = Math.max(1, ...result.rows.map((r) => r.damage));
   return html`<section ref=${panelRef} id="combat-metrics-panel" class="combat-metrics brackets" role="dialog" aria-label=${t('作战统计')}

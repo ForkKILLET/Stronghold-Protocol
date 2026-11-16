@@ -1,0 +1,111 @@
+/* Optional modeless match tools share the combat meter's corner placement, palette and viewport measurements. */
+.gm__tools[aria-expanded="true"], .gm__cards[aria-expanded="true"] { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-900); }
+.combat-metrics.game-tools__menu, .combat-metrics.card-counter {
+  height: auto; max-height: min(max(7.4rem, 340px), var(--combat-available-height, calc(100dvh - 1rem)));
+}
+.combat-metrics.game-tools__menu[data-viewport-docked="true"], .combat-metrics.card-counter[data-viewport-docked="true"] {
+  max-height: var(--combat-viewport-height, calc(100dvh - 12px));
+}
+.combat-metrics.game-tools__menu { width: min(max(3.6rem, 280px), calc(100vw - .48rem - var(--sa-l, 0px) - var(--sa-r, 0px))); }
+.game-tools__list { min-height: 0; overflow-y: auto; padding: 8px max(.14rem, 10px); }
+.game-tools__row { display: flex; align-items: stretch; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.game-tools__open { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; padding: 6px; border: 1px solid transparent; background: transparent; color: var(--text-hi); text-align: left; }
+.game-tools__open > .icon { width: 24px; height: 24px; flex: none; color: var(--mint-500); }
+.game-tools__open span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.game-tools__open b { font-size: inherit; }
+.game-tools__open small, .game-tools__note { color: var(--text-lo); font-size: .85em; }
+.game-tools__pin { flex: none; align-self: center; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line-2); background: var(--bg-1); color: var(--text-lo); }
+.game-tools__pin .icon { width: 18px; height: 18px; }
+.game-tools__pin[aria-pressed="true"] { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-a10); }
+.game-tools__note { margin: 0; padding: 0 max(.14rem, 10px) 10px; }
+.card-counter__body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 10px max(.14rem, 10px); }
+.card-counter__selection { display: flex; gap: 8px; }
+.card-counter__target { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 10px; background: var(--bg-1); border: 1px solid var(--line-2); color: var(--text-hi); text-align: left; }
+.card-counter__target > .uthumb { flex: none; }
+.card-counter__target > span:not(.uthumb) { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+.card-counter__target b { font-size: 1.15em; }
+.card-counter__target small { color: var(--text-lo); font-size: .85em; }
+.card-counter__target > .icon { width: 20px; height: 20px; margin-left: auto; flex: none; color: var(--mint-500); }
+.card-counter__favorite { width: 42px; flex: none; display: grid; place-items: center; border: 1px solid var(--line-2); color: var(--text-lo); background: var(--bg-1); }
+.card-counter__favorite .icon { width: 20px; height: 20px; }
+.card-counter__favorite[aria-pressed="true"] { color: var(--gold-2); border-color: var(--gold-2); }
+.card-counter__favorites { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
+.card-counter__favorites button, .card-picker__chips button, .card-picker__favorite-filter { padding: 5px 9px; border: 1px solid var(--line-2); color: var(--text-md); background: var(--bg-1); font-size: inherit; }
+.card-counter__favorites button[aria-pressed="true"], .card-picker__chips button[aria-pressed="true"], .card-picker__favorite-filter[aria-pressed="true"] { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-a10); }
+.card-counter__favorites small { color: var(--text-lo); }
+.card-counter__totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); background: var(--bg-1); }
+.card-counter__totals > div { display: flex; flex-direction: column; gap: 4px; padding: 10px 8px; border-right: 1px solid var(--line); }
+.card-counter__totals > div:last-child { border-right: 0; }
+.card-counter__totals small { color: var(--text-lo); font-size: .85em; }
+.card-counter__totals b { font-family: var(--font-num); font-size: 1.8em; color: var(--text-hi); line-height: 1; }
+.card-counter__totals > div:nth-child(2) b { color: var(--mint-400); }
+.card-counter__holders { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 10px; }
+.card-counter__holders th { text-align: left; font-weight: 500; }
+.card-counter__holders th:first-child { width: 44%; }
+.card-counter__holders th:nth-child(2) { width: 38%; }
+.card-counter__holders td, .card-counter__holders th { padding: 8px 6px; border-bottom: 1px solid var(--line); overflow: hidden; text-overflow: ellipsis; }
+.card-counter__holders thead { color: var(--text-lo); font-size: .85em; }
+.card-counter__holders tbody th { color: var(--text-hi); overflow-wrap: anywhere; }
+.card-counter__holders b { color: var(--text-hi); font: 600 1.15em var(--font-num); font-variant-numeric: tabular-nums; }
+.card-counter__holders small { display: block; color: var(--text-lo); font-size: .8em; margin-top: 2px; }
+.card-counter__holders .card-counter__extra { color: var(--gold-2); }
+.card-counter__holders .is-self { background: var(--mint-a10); }
+.card-counter__odds { margin-top: 12px; }
+.card-counter__odds h3 { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 6px; color: var(--mint-400); font-size: inherit; margin: 0 0 8px; }
+.card-counter__odds h3 small { color: var(--text-lo); font-size: .8em; font-weight: 400; }
+.card-counter__odds > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 3px 0; }
+.card-counter__odds b { font-family: var(--font-num); font-variant-numeric: tabular-nums; color: var(--text-hi); }
+.card-counter__note { margin-top: 12px; color: var(--text-lo); font-size: .85em; line-height: 1.5; }
+.card-counter__note summary { cursor: var(--sp-cursor-pointer, pointer); color: var(--text-md); }
+.card-counter__note p { margin: 6px 0 0; }
+.card-counter__status { margin: 8px 0; color: var(--gold-2); font-size: .9em; }
+.card-counter__error { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; color: var(--amber); background: var(--bg-1); }
+.card-counter__error button { padding: 4px 8px; color: var(--text-hi); background: none; border: 1px solid var(--line-2); }
+.card-counter__data.is-stale { opacity: .55; }
+.card-counter__empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 22px 8px; color: var(--text-lo); }
+.card-picker { height: min(7.5rem, calc(100dvh - max(.4rem, 16px))); }
+.card-picker .modal__body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; gap: 12px; }
+.card-picker__filters { flex: none; display: flex; flex-direction: column; gap: 8px; }
+.card-picker__search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line-2); background: var(--bg-1); padding: 7px 10px; }
+.card-picker__search .icon { flex: none; width: 20px; height: 20px; color: var(--mint-500); }
+.card-picker__search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-hi); font-size: inherit; outline: none; }
+.card-picker__search:focus-within { border-color: var(--mint-500); }
+.card-picker__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-picker__more { display: flex; align-items: stretch; gap: 8px; }
+.card-picker__more .game-select { flex: 1; min-width: 0; }
+.card-picker__favorite-filter { display: flex; align-items: center; gap: 6px; flex: none; }
+.card-picker__favorite-filter .icon { width: 16px; height: 16px; }
+.card-picker__results { min-height: 0; flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 8px; padding: 4px; overscroll-behavior: contain; }
+.card-picker__operator { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 10px; border: 1px solid var(--line-2); color: var(--text-hi); background: var(--bg-1); text-align: left; }
+.card-picker__operator > .uthumb { flex: none; }
+.card-picker__operator > span:not(.uthumb) { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.card-picker__operator b, .card-picker__operator small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-picker__operator b { font-size: inherit; }
+.card-picker__operator small { font-size: .8em; color: var(--text-lo); }
+.card-picker__operator.is-banned .uthumb { filter: grayscale(1); opacity: .5; }
+.card-picker__operator.is-banned small { color: var(--red-premium); }
+.card-picker__star { width: 14px; height: 14px; flex: none; margin-left: auto; color: var(--gold-2); }
+.card-picker button:focus-visible { outline: 2px solid var(--mint-500); outline-offset: -2px; }
+.card-picker__operator:hover { border-color: var(--mint-700); background: var(--mint-a10); }
+@media (max-height: 600px) {
+  .combat-metrics.card-counter { width: min(320px, calc(100vw - .48rem - var(--sa-l, 0px) - var(--sa-r, 0px))); font-size: max(calc(.17 * var(--t)), 10px); }
+  .card-counter .combat-metrics__head h2, .game-tools__menu .combat-metrics__head h2 { font-size: max(calc(.22 * var(--t)), 13px); }
+  .card-counter .combat-metrics__close, .game-tools__menu .combat-metrics__close { width: 30px; height: 30px; min-width: 30px; min-height: 30px; }
+  .card-counter__target { padding: 7px; }
+  .card-counter__target > .uthumb { --ut: 30px; }
+  .card-counter__favorite { width: 34px; }
+  .card-counter__holders td, .card-counter__holders th { padding: 6px 4px; }
+  .card-counter__totals > div { padding: 8px 6px; }
+  .card-picker { height: calc(100dvh - max(.4rem, 16px)); font-size: max(calc(.18 * var(--t)), 11px); }
+  .card-picker .modal__head { padding: 8px 14px; }
+  .card-picker .modal__title { font-size: max(calc(.26 * var(--t)), 16px); }
+  .card-picker .modal__body { padding: 8px 14px; gap: 6px; }
+  .card-picker .modal__actions { padding: 6px 14px; }
+  .card-picker__filters { gap: 4px; }
+  .card-picker__search { padding: 5px 8px; }
+  .card-picker__chips { gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
+  .card-picker__chips button { flex: none; white-space: nowrap; padding: 2px 6px; }
+  .card-picker__operator { padding: 7px; }
+  .card-picker__operator > .uthumb { --ut: 28px; }
+}
+@media (max-width: 720px) { .card-picker__results { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

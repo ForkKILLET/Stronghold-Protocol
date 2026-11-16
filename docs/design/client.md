@@ -1142,6 +1142,17 @@ No new route or gameplay rule is introduced.
 
 ### Combat metrics (作战统计) — ported from the xinhai-ai fork, opt-in
 
+The live HUD's tools launcher (`GameTools`) lists combat metrics and the card counter, with local pinned shortcuts.
+The combat meter remains pinned by default; explicit empty pin/favorite lists stay empty. The card counter defaults
+to favorite `char_249_mlyss`, resolves identities in the current content set, and offers roster-style search plus
+profession/tier/bond filters with match bans. It displays held equivalents separately from actual pool occupation.
+Only its open, connected, visible surface polls `g.cardCounter` every two seconds, with one request in flight;
+match/player/target/sequence correlation rejects obsolete responses. Close/disconnect cancels the subscription,
+errors retain a visibly stale reading, and absent data is not zero. Both panels share the existing measured corner
+placement and focus restoration (`cornerPanel.js`); the selector uses the existing Modal. Archived metrics keep their
+previous entry and behavior; the live card ledger is not an archived replay feature. See
+[stock semantics and probability](../research/card-counter-20261116.md).
+
 This fork retains its existing always-on local collector and modeless panel: own player only, 当前战斗 first,
 same-name operators merged, four damage types, effective healing and mobile viewport positioning.
 The panel remains available during gameplay-plugin battles: `simWorkerRuntime.js` collects inside the simulation

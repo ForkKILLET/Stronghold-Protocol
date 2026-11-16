@@ -11,6 +11,7 @@ import { syntheticResult } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, OK, fail } from './common.js';
 import { msg } from '../../../shared/i18n.js';
 import { ruleOption } from '../../../shared/plugins/rules.js';
+import { cardCounterView } from '../cardCounter.js';
 
 const GAME_TYPES = new Set(Object.keys(C2S).filter((t) => Object.hasOwn(C2S, t) && (t.startsWith('g.') || t.startsWith('b.'))));
 
@@ -79,6 +80,15 @@ export class MatchPlatform {
       return this.clientCombat && msg && (msg.t === 'b.progress' || msg.t === 'b.result') ? OK : fail(ERR.WRONG_PHASE);
     }
     if (!msg || typeof msg !== 'object' || typeof msg.t !== 'string' || !GAME_TYPES.has(msg.t)) return fail(ERR.BAD_MSG);
+    // Inspection is allowed during pause. It never flushes views, journals an action or changes match state.
+    if (msg.t === 'g.cardCounter') {
+      try {
+        const view = cardCounterView(this, ps, msg.chessId, msg.seq);
+        if (!view) return fail(ERR.BAD_TARGET);
+        this.sendTo(ps.playerId, view);
+        return OK;
+      } catch (e) { this.reportError('handle g.cardCounter', e); return fail(ERR.INTERNAL); }
+    }
     if (this.paused && !['g.pause', 'g.watch', 'g.emote', 'b.progress', 'b.result'].includes(msg.t)) return fail(ERR.WRONG_PHASE, 'match paused');
     let res;
     try {

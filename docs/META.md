@@ -25,6 +25,7 @@ server/match/
   gamedata.js      typed, defaulted view of data/*.json (config tunables with research defaults) + the balance layer
                    (data/tuning.json, §3.1)
   pool.js          SharedPool (copies per base chess, across players), per-match bans, copy-weighted rolls
+  cardCounter.js   requester-only read-only stock ledger and natural slot/refresh odds (g.cardCounter); no RNG or writes
   board.js         placement legality from the stage legend on the deploy field (own board / boss half); a 高台
                    also takes a melee chess whose Chinese trait reads 可以放置于远程位 (`placeOnRanged`, shared/highGround.js), slot helpers,
                    reading order (boardOrder), a merge's elite tile in deployment order (mergeTile)
