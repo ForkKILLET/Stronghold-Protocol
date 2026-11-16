@@ -110,7 +110,7 @@ import { EffectsList } from '../ui/effectsList.js';
 import { watchingTeammate } from '../ui/gameLogic/watch.js';
 import { CombatHud } from '../ui/combatHud.js';
 import { WatchHint } from '../ui/watchHint.js';
-import { LeaderRank, loadLeaderRankHidden, saveLeaderRankHidden, useLeaderRankSpot } from '../ui/leaderRank.js';
+import { LeaderRank, useLeaderRankTool, useLeaderRankSpot } from '../ui/leaderRank.js';
 import { GameTools } from '../ui/gameTools.js';
 import { SettingsModal, shortcutsStore, useSettings } from '../ui/settings.js';
 import { ConsoleModal } from '../ui/console.js';
@@ -344,22 +344,14 @@ function MatchScreen() {
   const [camKind, setCamKind] = useState('prep');        // kind of the last camera request (data-camera)
   const [replace, setReplace] = useState(null);          // equip-replace dialog: { request, resolve }
   const [pauseBusy, setPauseBusy] = useState(false);
-  // the leader ranking (ui/leaderRank.js, every version since §37.149). Shown whenever m.public carries leaderTop —
-  // spectators included.
-  // The 隐藏 choice is this browser's, remembered across reloads.
-  const [leaderHidden, setLeaderHidden] = useState(() => loadLeaderRankHidden());
-  const toggleLeaderRank = () => setLeaderHidden((v) => {
-    const next = !v;
-    saveLeaderRankHidden(next);
-    return next;
-  });
+  const leader = useLeaderRankTool(pub);
   const [armedCard, setArmedCard] = useState(null);     // the shop bar's armed card { kind, id } (merge tile cue)
   const cc = isClientCombat(pub);
   const battleState = useStore((s) => s.match.battle, shallowEqual); // local battle runner (client-side combat)
 
   const phase = pub?.phase;
   // the ranking leaves a tall right column alone (可露希尔's TV countdown, the overtime warning under it: §37.201)
-  const leaderSpot = useLeaderRankSpot(isBossPhase(phase) && Array.isArray(pub?.leaderTop));
+  const leaderSpot = useLeaderRankSpot(leader.open);
   const mode = phaseMode(phase);
   const combat = isCombatPhase(phase);
   const solo = roomSolo || String(pub?.modeId || '').includes('single');
@@ -2053,8 +2045,9 @@ function MatchScreen() {
 
       <${Ticker} />
 
-      ${isBossPhase(phase) && Array.isArray(pub?.leaderTop) ? html`<${LeaderRank} rows=${pub.leaderTop} players=${pub.players}
-        maxHp=${pub.bossHp && pub.bossHp.max} hidden=${leaderHidden} onToggle=${toggleLeaderRank} spot=${leaderSpot} />` : null}
+      ${leader.open ? html`<${LeaderRank} rows=${pub?.leaderTop} playerRows=${pub?.leaderPlayers} players=${pub?.players}
+        maxHp=${pub?.bossHp?.max} mode=${leader.mode} onMode=${leader.onMode} auto=${leader.auto} onAuto=${leader.onAuto}
+        onClose=${leader.close} boss=${leader.boss} spot=${leaderSpot} />` : null}
 
       <div class="ui-slot gm__ui-slot" data-ui-slot="hud.right" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
 
@@ -2062,7 +2055,7 @@ function MatchScreen() {
         <${AiTakeoverPanel} />
         ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} pinned=${emotePinned} onPinChange=${setEmotePinned} onSend=${(id) => actions.emote(id)}
           onChat=${actions.chat} history=${chatHistory} myId=${myId} disabled=${conn.status !== 'online'} />`}
-        ${spectator ? null : html`<${GameTools} myId=${myId} pub=${pub} connected=${conn.status === 'online'} onOpen=${() => {
+        ${html`<${GameTools} myId=${myId} pub=${pub} spectator=${spectator} boss=${leader} connected=${conn.status === 'online'} onOpen=${() => {
           if (!emotePinned) setEmoteOpen(false);
           setDetail(null); setSel(null); setBondOpen(null);
         }} />`}

@@ -11,7 +11,7 @@ import { createRng, deriveSeed } from '../../sim/rng.js';
 import { creditedKillsOf } from '../../sim/spec.js';
 import { buildBossWave, bountySpawns } from '../waves.js';
 import { pairPlayers, bossPairSalt, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
-import { cleanLeaderOps, syncFieldLeaderOps, leaderTopRows } from '../leaderRank.js';
+import { cleanLeaderOps, syncFieldLeaderOps, leaderTopRows, leaderPlayerRows } from '../leaderRank.js';
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL } from '../fields.js';
 import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS } from './common.js';
 
@@ -267,6 +267,11 @@ export class MatchBoss {
       const ps = this.players.get(pid);
       return ps && Number.isInteger(ps.seat) ? ps.seat : 1e9;
     });
+  }
+
+  /** Read after _leaderTopView folds the fields; totals include unattributed credited damage. */
+  _leaderPlayersView() {
+    return leaderPlayerRows(this.bossPool, pid => this.players.get(pid)?.seat ?? 1e9);
   }
 
   /** A boss field's LP cost (leaks × lpr + leader LP effects): `cumulative` totals from its client, deltas from the server run. */

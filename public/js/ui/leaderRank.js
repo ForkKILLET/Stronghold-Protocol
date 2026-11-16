@@ -1,39 +1,40 @@
-// The leader-fight ranking (the right-edge list under 隐藏), every version (§37.149; 规程 only from §37.124). A pure
-// function of m.public: spectators and a replay that restores public frames see the same rows. The percentage is this
-// operator's damage over the pool's max HP: the official rows only grow within a fight (solo recording BV12ZWP6pE7m)
-// and sum well under 100, a share of the damage dealt so far could shrink.
-// The viewer’s 隐藏 choice is local (this browser), not part of the match.
+// Current Boss pool only; server-credited operator and player rows, shared by all viewers.
 
 import { useEffect, useState } from '../../vendor/hooks.module.js';
 import { html, Icon } from './components.js';
-import { UnitThumb } from './gameComponents.js';
+import { PlayerAvatar, UnitThumb } from './gameComponents.js';
 import { t } from '../../../shared/i18n.js';
 import { loadPref, savePref } from '../store.js';
 
-const PREF = 'leaderRankHidden';
-
-/**
- * Integer percent of the pool. 0 when the pool or the damage is not a positive finite number.
- * A positive hit that would round to 0% is shown as 1%. [ASSUMED] display rounding.
- * @param {number} dmg
- * @param {number} maxHp
- */
+/** Percent of the original shared Boss HP, not a share of damage dealt so far. */
 export function leaderSharePct(dmg, maxHp) {
-  const max = Number(maxHp);
-  const n = Number(dmg);
+  const n = Number(dmg), max = Number(maxHp);
   if (!(max > 0) || !Number.isFinite(max) || !Number.isFinite(n) || !(n > 0)) return 0;
-  const pct = Math.round((n / max) * 100);
-  return pct > 0 ? pct : 1;
+  return Math.max(1, Math.round(n / max * 100));
 }
 
-/** @returns {boolean} true when this viewer last hid the list. A missing or throwing store reads as shown. */
-export function loadLeaderRankHidden() {
-  return loadPref(PREF, false) === true;
+/** The open choice lasts for this phase only. Each new Boss round auto-opens by default,
+ * including reconnect; data ticks, mode changes and pinning do not reopen a dismissed chart. */
+export function useLeaderRankTool(pub) {
+  const [open, setOpen] = useState(false);
+  const [auto, setAuto] = useState(() => loadPref('leaderRankAuto', true) !== false);
+  const [mode, setMode] = useState(() => loadPref('leaderRankMode', 'operators') === 'players' ? 'players' : 'operators');
+  const boss = pub?.phase === 'FINAL_ASSAULT' || pub?.phase === 'HIDDEN_CORE';
+  const key = boss ? `${pub.combatHistoryKey || ''}:${pub.round}:${pub.phase}` : null;
+  useEffect(() => { setOpen(key != null && auto); }, [key]);
+  return { open, auto, mode, boss,
+    toggle: () => setOpen(v => !v), close: () => setOpen(false),
+    onAuto: value => { setAuto(value); savePref('leaderRankAuto', value); },
+    onMode: value => { setMode(value); savePref('leaderRankMode', value); },
+  };
 }
 
-/** @param {boolean} hidden */
-export function saveLeaderRankHidden(hidden) {
-  savePref(PREF, hidden === true);
+/** Stable identities keep existing DOM rows alive while their ranks move. Do not manufacture
+ * player totals from legacy top-three frames: older servers/replays have no complete total. */
+export function leaderChartRows(rows, playerRows, mode) {
+  return (mode === 'players' ? playerRows : rows)?.filter(r => r && typeof r.pid === 'string' && Number.isFinite(r.dmg) && r.dmg > 0)
+    .map(r => ({ ...r, key: mode === 'players' ? `player:${r.pid}` : `unit:${r.pid}:${r.uid}` }))
+    .sort((a, b) => b.dmg - a.dmg) || [];
 }
 
 /** @typedef {{ left: number, top: number, right: number, bottom: number }} Box */
@@ -51,9 +52,11 @@ export function saveLeaderRankHidden(hidden) {
  * @returns {{ top: number, right: number }|null}
  */
 export function leaderRankSpot({ panel, column, hud, bonds = null, dp = null, floor = null, gap = 6 }) {
-  if (!panel || !column || !hud) return null;
+  if (!panel || !hud) return null;
+  const dpCross = dp && panel.left < dp.right && panel.right > dp.left && panel.top < dp.bottom && panel.bottom > dp.top;
+  if (!column) return dpCross ? { top: Math.round(panel.top - hud.top), right: Math.round(hud.right - dp.left + gap) } : null;
   const crosses = panel.left < column.right && panel.right > column.left && panel.top < column.bottom && panel.bottom > column.top;
-  if (!crosses) return null;
+  if (!crosses) return dpCross ? { top: Math.round(panel.top - hud.top), right: Math.round(hud.right - dp.left + gap) } : null;
   const height = panel.bottom - panel.top;
   const below = column.bottom + gap;
   if (below + height <= (floor ?? hud.bottom)) {
@@ -110,30 +113,45 @@ export function useLeaderRankSpot(active) {
   return spot;
 }
 
-/**
- * Hook-free. `rows` is m.public.leaderTop, `players` is m.public.players, `maxHp` is bossHp.max; `spot` (useLeaderRankSpot)
- * moves the list off a tall right column. Hidden: only the show button remains.
- * @param {{ rows: any[]|null|undefined, players: any[]|null|undefined, maxHp: number, hidden: boolean, onToggle: () => void, spot?: { top: number, right: number }|null }} props
- */
-export function LeaderRank({ rows, players, maxHp, hidden, onToggle, spot = null }) {
-  const list = Array.isArray(rows) ? rows.slice(0, 3) : [];
-  const names = new Map();
-  if (Array.isArray(players)) {
-    for (const p of players) if (p && p.playerId) names.set(p.playerId, typeof p.name === 'string' && p.name ? p.name : p.playerId);
-  }
-  return html`<aside class=${spot ? 'ldmg is-moved' : 'ldmg'} aria-label=${t('领袖伤害排行')}
-      style=${spot ? `top:${spot.top}px;right:${spot.right}px` : null}>
+/** A quiet chart in the existing HUD slot. Controls reveal on hover, keyboard focus or touch. */
+export function LeaderRank({ rows, playerRows, players, maxHp, mode = 'operators', onMode, auto = true, onAuto,
+  onClose, boss = true, spot = null }) {
+  const list = boss ? leaderChartRows(rows, playerRows, mode) : [];
+  const names = new Map((players || []).map(p => [p.playerId, p]));
+  const maximum = Math.max(1, ...list.map(r => r.dmg));
+  return html`<aside id="leader-rank-panel" class=${spot ? 'ldmg is-moved' : 'ldmg'} aria-label=${t('领袖伤害排行')}
+      tabindex="0" onPointerDown=${e => { if (e.pointerType === 'touch') e.currentTarget.focus({ preventScroll: true }); }} style=${spot ? `top:${spot.top}px;right:${spot.right}px` : null}
+      onKeyDown=${e => { if (e.key === 'Escape') { onClose?.(); e.stopPropagation(); } }}>
     <div class="ldmg__head">
-      <strong class="ldmg__title" title=${t('领袖伤害排行')}>${t('领袖伤害排行')}</strong>
-      <button type="button" class="ldmg__toggle" aria-expanded=${!hidden} onClick=${onToggle}>${hidden ? t('显示') : t('隐藏')}</button>
+      <strong class="ldmg__title">${t('领袖伤害排行')}<small>${mode === 'players' ? t('玩家') : t('干员')}</small></strong>
+      <div class="ldmg__controls">
+        <div class="ldmg__modes" role="group" aria-label=${t('排行模式')}>
+          ${[['operators', t('干员')], ['players', t('玩家')]].map(([id, label]) => html`<button type="button"
+            aria-pressed=${mode === id} onClick=${() => onMode?.(id)}>${label}</button>`)}
+        </div>
+        <label class="ldmg__auto" title=${t('领袖回合自动打开')}><input type="checkbox" checked=${auto}
+          onChange=${e => onAuto?.(e.currentTarget.checked)} />${t('自动')}</label>
+        <button type="button" class="ldmg__close" aria-label=${t('关闭领袖伤害排行')} onClick=${onClose}><${Icon} name="close" /></button>
+      </div>
     </div>
-    ${hidden ? null : html`<ol class="ldmg__list">
-      ${list.map((row) => html`<li key=${`${row.pid}:${row.uid}`} class="ldmg__row"
-          style=${`--ldmg-share:${Math.min(100, leaderSharePct(row.dmg, maxHp))}%`}>
-        <${UnitThumb} kind="chess" id=${row.chess} tier=${row.tier} size="xs" ownerId=${row.pid} />
-        <span class="ldmg__name" title=${names.get(row.pid) || row.pid}>${names.get(row.pid) || row.pid}</span>
-        <span class="ldmg__share" title=${t('对领袖伤害占比')}><${Icon} name="sword" />${`${leaderSharePct(row.dmg, maxHp)}%`}</span>
-      </li>`)}
-    </ol>`}
+    <div class="ldmg__viewport" tabindex="0">
+      <ol class="ldmg__list" style=${{ height: `calc(${list.length} * var(--ldmg-step))` }}>
+      ${list.map((row, index) => {
+        const player = names.get(row.pid), name = player?.name || row.pid;
+        return html`<li key=${row.key} class=${`ldmg__row${index === 0 ? ' is-first' : ''}`} data-row-key=${row.key}
+            style=${{ transform: `translateY(calc(${index} * var(--ldmg-step)))` }}>
+          ${row.chess ? html`<${UnitThumb} kind="chess" id=${row.chess} tier=${row.tier} size="xs" ownerId=${row.pid} />`
+            : html`<${PlayerAvatar} player=${player || { name }} size="sm" />`}
+          <div class="ldmg__unit"><span class="ldmg__name" title=${name}>${name}</span>
+            <div class="ldmg__track"><span class="ldmg__bar" style=${{ width: `${row.dmg / maximum * 100}%` }}></span></div>
+          </div>
+          <span class="ldmg__share" title=${`${t('对领袖伤害占比')} · ${Math.round(row.dmg).toLocaleString()}`}>${leaderSharePct(row.dmg, maxHp)}%</span>
+        </li>`;
+      })}
+      </ol>
+      ${!list.length ? html`<p class="ldmg__empty">${!boss ? t('领袖回合开始后显示')
+        : mode === 'players' && !Array.isArray(playerRows) ? t('当前记录未提供玩家总伤害') : t('等待领袖伤害数据')}</p>` : null}
+    </div>
+    <span class="ldmg__hint">${t('百分比按领袖总生命值计算；条长相对榜首')}</span>
   </aside>`;
 }

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { getVersionData } from '../../server/data.js';
 import { validateC2S } from '../../shared/protocol.js';
 import { makeMatch } from './harness.js';
-import { leaderTopRows, syncFieldLeaderOps } from '../../server/match/leaderRank.js';
+import { leaderTopRows, leaderPlayerRows, syncFieldLeaderOps } from '../../server/match/leaderRank.js';
 
 const act3 = getVersionData('act3autochess@V3_1');
 const BOSS_IDS = Object.keys(act3.bosses);
@@ -65,6 +65,12 @@ test('two pair fields: top 3 from the reports, the same player twice, a second r
     h.sched.advance(4000);
     report(m, b1, [row(a, 1, 5000, 'op_a', 5), row(a, 2, 1000, 'op_b', 4), row(b, 3, 800, 'op_c', 3)]);
     report(m, b2, [row(c, 4, 9000, 'op_d', 6), row(d, 5, 100, 'op_e', 2)]);
+    const playerRows = m.publicView().leaderPlayers;
+    assert.equal(playerRows.length, 4, 'all four players, including the fourth-place operator');
+    for (const r of playerRows) assert.equal(r.dmg, Math.max(1, Math.round(m.bossPool.byPlayer.get(r.pid))));
+    assert.equal(playerRows.find(r => r.pid === a).chess, 'op_a');
+    const totals = playerRows.map(r => r.dmg);
+    assert.deepEqual(totals, [...totals].sort((a, b) => b - a));
     const top = m.publicView().leaderTop;
     assert.deepEqual(top.map((r) => [r.pid, r.uid, r.dmg]), [[c, 4, 9000], [a, 1, 5000], [a, 2, 1000]]);
     assert.equal(top.filter((r) => r.pid === a).length, 2, 'one player can hold two of the three rows');
@@ -253,4 +259,20 @@ test('b.progress ops is optional and strict', () => {
     many,
     'ops',
   ]) assert.notEqual(validateC2S({ ...base, ops: bad }), null, JSON.stringify(bad).slice(0, 80));
+});
+
+test('player view includes unattributed damage and picks a stable portrait without summing the top three', () => {
+  const pool = { byPlayer: new Map([['a', 90.4], ['b', 90.4], ['c', 10], ['zero', 0]]), ops: new Map([
+    [1, { pid: 'a', uid: 5, dmg: 40, chess: 'later', tier: 4 }],
+    [2, { pid: 'a', uid: 2, dmg: 40, chess: 'earlier', tier: 5 }],
+    [3, { pid: 'b', uid: 1, dmg: 2, chess: 'b', tier: 3 }],
+  ]) };
+  const before = [...pool.byPlayer];
+  assert.deepEqual(leaderPlayerRows(pool, pid => pid === 'b' ? 0 : 1), [
+    { pid: 'b', dmg: 90, uid: 1, chess: 'b', tier: 3 },
+    { pid: 'a', dmg: 90, uid: 2, chess: 'earlier', tier: 5 },
+    { pid: 'c', dmg: 10 },
+  ]);
+  assert.deepEqual([...pool.byPlayer], before);
+  assert.deepEqual(leaderPlayerRows(null, () => 0), []);
 });

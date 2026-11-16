@@ -174,3 +174,23 @@ export function leaderTopRows(pool, seatOf) {
     dmg: Math.max(1, Math.round(r.dmg)),
   }));
 }
+
+/** Player totals come from the credited pool, never the truncated operator top three.
+ * The best attributed operator supplies the portrait only; missing attribution keeps the total.
+ * @param {any} pool
+ * @param {(pid: string) => number} seatOf
+ */
+export function leaderPlayerRows(pool, seatOf) {
+  if (!pool?.byPlayer) return [];
+  const best = new Map();
+  for (const row of pool.ops?.values() || []) {
+    const prev = best.get(row.pid);
+    if (row.dmg > DUST && (!prev || row.dmg > prev.dmg || row.dmg === prev.dmg && row.uid < prev.uid)) best.set(row.pid, row);
+  }
+  return [...pool.byPlayer].filter(([, dmg]) => Number.isFinite(dmg) && dmg > DUST)
+    .sort(([a, x], [b, y]) => y - x || seatOf(a) - seatOf(b) || a.localeCompare(b))
+    .map(([pid, dmg]) => {
+      const r = best.get(pid);
+      return { pid, dmg: Math.max(1, Math.round(dmg)), ...(r ? { uid: r.uid, chess: r.chess, tier: r.tier } : {}) };
+    });
+}

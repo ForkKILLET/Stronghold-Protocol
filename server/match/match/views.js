@@ -173,7 +173,10 @@ export class MatchViews {
     if (this.bossPool) {
       v.bossHp = { hp: Math.max(0, Math.round(this.bossPool.hp)), max: Math.round(this.bossPool.maxHp) };
       // the leader ranking's top 3 while the pool runs, every version (§37.149; 规程 only from §37.124)
-      if (this.bossPool.ops) v.leaderTop = this._leaderTopView();
+      if (this.bossPool.ops) {
+        v.leaderTop = this._leaderTopView();
+        v.leaderPlayers = this._leaderPlayersView();
+      }
     }
     if (this.phase === PHASE.CUSTOM_CHECK && this.gd.diyBringLimits) {
       const picks = {};

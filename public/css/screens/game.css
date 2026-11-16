@@ -1063,53 +1063,59 @@
 }
 .dpbox__icon { width: .26rem; height: .26rem; color: var(--mint-500); }
 .dpbox b { font-size: .34rem; line-height: 1; color: #fff; }
-/* The leader ranking (ui/leaderRank.js, every version). .gm__hud is pointer-events: none, so the panel opts back in.
-   Top clears the ticker (bottom 1.3rem) and the overtime-grown top bar (~1.38rem). Right sits just left of the
-   effects column (right .3rem + width .5rem). The bottom stops .7rem above the screen's middle, which clears the
-   DP box (its half-height is under that). Width stays right of the team dock (--dock-team-right: 2.8rem).
-   Three rows plus the heading have to fit a ~81px band on a 375px-tall phone, so the row and the toggle are
-   smaller than a 44px touch target. [ASSUMED] during a leader fight the plugin slot yields the upper right and
-   sits below the DP box — its max box otherwise reaches this panel on a phone. */
+/* Quiet Boss tool: the frame and controls reveal without changing the chart's geometry.
+   Keyed absolute rows animate rank changes; bar widths animate independently. */
 .ldmg {
-  position: absolute; z-index: 5;
-  right: .92rem;
-  top: 1.95rem;
-  width: min(2.2rem, calc(100vw - 3.4rem - .92rem - .3rem));
-  max-height: calc(50% - 1.95rem - .7rem);
-  display: flex; flex-direction: column; align-items: stretch; gap: .05rem;
-  padding: .06rem .08rem .08rem; pointer-events: auto; overflow: hidden;
-  background: rgba(8, 15, 13, .92); border: 1px solid var(--line-2); border-top-color: var(--mint-500);
-  box-shadow: 0 .04rem .16rem rgba(0, 0, 0, .2);
+  --ldmg-step: max(28px, .48rem);
+  position: absolute; z-index: 5; right: .92rem; top: 1.95rem;
+  width: min(max(210px, 3.2rem), calc(100vw - 3.4rem - .92rem - .3rem));
+  max-height: calc(100% - 1.95rem - 1.5rem);
+  display: flex; flex-direction: column; align-items: stretch; gap: .04rem;
+  padding: .06rem .09rem .09rem; pointer-events: auto; overflow: visible;
+  background: transparent; border: 1px solid transparent;
+  transition: background .18s, border-color .18s;
 }
-.ldmg__head { display: flex; align-items: center; gap: .06rem; min-height: .28rem; padding-bottom: .04rem; border-bottom: 1px solid var(--line); }
-.ldmg__title { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--mint-400); font-size: calc(.12 * var(--t)); font-weight: 700; letter-spacing: .04em; }
-.ldmg__toggle {
-  flex: none; min-height: .28rem; padding: 0 .03rem;
-  background: none; border: 0; color: var(--text-md); font-size: calc(.11 * var(--t)); cursor: var(--sp-cursor-pointer, pointer);
+.ldmg:hover, .ldmg:focus-within {
+  background: rgba(8, 15, 13, .94); border-color: var(--line-2); border-top-color: var(--mint-500);
 }
-.ldmg__toggle:hover { color: var(--mint-400); background: var(--mint-a10); }
-.ldmg__toggle:focus-visible { outline: 1px solid var(--mint-400); outline-offset: -1px; }
-.ldmg__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .03rem; min-height: 0; counter-reset: leader-rank; }
+.ldmg:focus-visible { outline: 1px solid var(--mint-400); }
+.ldmg__head { position: relative; flex: none; height: max(28px, .34rem); display: flex; align-items: center; }
+.ldmg__title { display: flex; align-items: baseline; gap: .1rem; color: var(--text-md); font-size: max(10px, calc(.13 * var(--t))); text-shadow: 0 1px 3px #000; }
+.ldmg__title small { font-size: .85em; color: var(--mint-400); }
+.ldmg__controls { position: absolute; inset: 0; display: flex; align-items: stretch; gap: .05rem; opacity: 0; visibility: hidden; }
+.ldmg:hover .ldmg__title, .ldmg:focus-within .ldmg__title { visibility: hidden; }
+.ldmg:hover .ldmg__controls, .ldmg:focus-within .ldmg__controls { opacity: 1; visibility: visible; }
+.ldmg__modes { display: flex; flex: 1; min-width: 0; }
+.ldmg__controls button { border: 0; background: transparent; padding: 0 .08rem; color: var(--text-md); font-size: max(10px, calc(.13 * var(--t))); cursor: var(--sp-cursor-pointer, pointer); }
+.ldmg__modes button { flex: 1; }
+.ldmg__modes button[aria-pressed="true"] { color: var(--mint-400); box-shadow: inset 0 -2px var(--mint-400); }
+.ldmg__controls button:hover { background: var(--mint-a10); color: var(--mint-400); }
+.ldmg__controls button:focus-visible { outline: 1px solid var(--mint-400); outline-offset: -1px; }
+.ldmg__auto { display: flex; align-items: center; gap: .03rem; color: var(--text-md); font-size: max(10px, calc(.11 * var(--t))); white-space: nowrap; }
+.ldmg__auto input { width: max(12px, .14rem); height: max(12px, .14rem); margin: 0; accent-color: var(--mint-500); }
+.ldmg__close .icon { width: max(14px, .18rem); height: max(14px, .18rem); }
+.ldmg__viewport { min-height: 0; overflow: auto; scrollbar-width: thin; }
+.ldmg__list { position: relative; list-style: none; margin: 0; padding: 0; }
 .ldmg__row {
-  position: relative; min-height: .42rem; display: grid; grid-template-columns: .14rem .34rem minmax(0, 1fr) auto;
-  align-items: center; column-gap: .05rem; padding: .04rem .03rem; min-width: 0;
-  background: rgba(78, 216, 175, .035); counter-increment: leader-rank;
+  position: absolute; top: 0; left: 0; right: 0; height: var(--ldmg-step);
+  display: grid; grid-template-columns: max(22px, .34rem) minmax(0, 1fr) auto;
+  align-items: center; column-gap: .09rem; min-width: 0;
+  transition: transform .65s cubic-bezier(.22, .61, .36, 1);
 }
-.ldmg__row::before { content: counter(leader-rank, decimal-leading-zero); color: var(--text-lo); font: 600 .1rem var(--font-num); text-align: center; }
-.ldmg__row::after {
-  content: ''; position: absolute; left: .22rem; right: .03rem; bottom: 0; height: 1px; pointer-events: none;
-  background: linear-gradient(to right, var(--mint-a35) var(--ldmg-share), transparent var(--ldmg-share));
+.ldmg__row > .uthumb, .ldmg__row > .pavatar { width: max(22px, .34rem); height: max(22px, .34rem); }
+.ldmg__unit { min-width: 0; display: flex; flex-direction: column; gap: .055rem; }
+.ldmg__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: max(10px, calc(.15 * var(--t))); color: var(--text-hi); text-shadow: 0 1px 3px #000, 0 0 4px #000; }
+.ldmg__track { height: max(4px, .065rem); background: rgba(78, 216, 175, .13); overflow: hidden; }
+.ldmg__bar { display: block; height: 100%; background: var(--mint-500); transition: width .65s cubic-bezier(.22, .61, .36, 1), background-color .3s; }
+.ldmg__share { min-width: 3ch; text-align: right; color: var(--text-hi); font: 600 max(11px, calc(.17 * var(--t))) var(--font-num); font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #000, 0 0 4px #000; }
+.ldmg__row.is-first .ldmg__bar { background: var(--gold-2); }
+.ldmg__row.is-first .ldmg__share { color: var(--gold-2); }
+.ldmg__empty { margin: .1rem 0; font-size: max(10px, calc(.13 * var(--t))); color: var(--text-md); text-shadow: 0 1px 3px #000; }
+.ldmg__hint { display: none; }
+.ldmg:hover .ldmg__hint, .ldmg:focus-within .ldmg__hint { display: block; position: absolute; right: -1px; top: 100%; width: calc(100% + 2px); padding: .06rem .09rem; font-size: max(9px, calc(.1 * var(--t))); color: var(--text-md); background: rgba(8, 15, 13, .94); border: 1px solid var(--line-2); }
+@media (prefers-reduced-motion: reduce) {
+  .ldmg, .ldmg__row, .ldmg__bar { transition: none; }
 }
-.ldmg__row:first-child { background: rgba(242, 189, 62, .06); }
-.ldmg__row:first-child::before { color: var(--gold-2); }
-.ldmg__row:first-child::after { background: linear-gradient(to right, var(--gold-2) var(--ldmg-share), transparent var(--ldmg-share)); }
-.ldmg__name {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-size: calc(.13 * var(--t)); color: var(--text-hi);
-}
-.ldmg__share { display: flex; justify-content: flex-end; align-items: center; gap: .02rem; min-width: .4rem; color: var(--text-hi); font: 600 calc(.15 * var(--t)) var(--font-num); font-variant-numeric: tabular-nums; }
-.ldmg__share .icon { width: .12rem; height: .12rem; color: var(--text-lo); }
-.ldmg__row:first-child .ldmg__share { color: var(--gold-2); }
 .gm.is-boss .gm__ui-slot { bottom: .3rem; max-height: calc(50% - 1.2rem); }
 .chud__bottom { position: absolute; left: 50%; bottom: .3rem; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .12rem; pointer-events: none; }
 .chud__bottom > * { pointer-events: auto; }

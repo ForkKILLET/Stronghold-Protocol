@@ -3,6 +3,7 @@ import { N_ } from '../../../shared/i18n.js';
 export const GAME_TOOLS = Object.freeze([
   { id: 'metrics', label: N_('作战统计'), icon: 'signal', description: N_('查看本机作战伤害与治疗') },
   { id: 'cards', label: N_('记牌器'), icon: 'copy', description: N_('查看共享卡池与干员持有分布') },
+  { id: 'boss', label: N_('领袖伤害排行'), icon: 'sword', description: N_('查看领袖战干员与玩家伤害排行') },
 ]);
 
 export function pinnedTools(pref) {

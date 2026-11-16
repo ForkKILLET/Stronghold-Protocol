@@ -148,13 +148,13 @@ describe('leader plates and endings (headless Chrome)', { skip: !ENABLED && 'set
     await context.close();
   });
 
-  test('leader ranking: three rows under 隐藏, clear of the phone HUD at 844×390 and 667×375', async () => {
+  test('leader ranking tool: three rows, transparent rest state, phone HUD clearance and reopening', async () => {
     const { page, problems, context } = await open();
     await setPhase(page, 'FINAL_ASSAULT');
     await page.waitForSelector('[data-testid="final-plate"]', { timeout: 3000 });
     await page.waitForFunction(() => !document.querySelector('[data-testid="final-plate"]'), { timeout: 4000 });
     await mutate(page, `
-      s.pub.bossHp = { hp: 78, max: 100 };
+      s.pub.bossHp = { hp: 68, max: 100 };
       const a = s.pub.players[0].playerId, b = s.pub.players[1].playerId;
       s.pub.leaderTop = [
         { pid: a, uid: 1, chess: 'op_a', tier: 5, dmg: 22 },
@@ -183,7 +183,7 @@ describe('leader plates and endings (headless Chrome)', { skip: !ENABLED && 'set
       }
       return {
         rows: document.querySelectorAll('.ldmg__row').length,
-        toggle: document.querySelector('.ldmg__toggle')?.textContent,
+        background: getComputedStyle(document.querySelector('.ldmg')).backgroundColor,
         shares: [...document.querySelectorAll('.ldmg__share')].map((el) => el.textContent),
         overlaps,
         boss: document.querySelector('.gm')?.classList.contains('is-boss'),
@@ -197,13 +197,18 @@ describe('leader plates and endings (headless Chrome)', { skip: !ENABLED && 'set
       assert.equal(s.boss, true, `${w}×${h}`);
       assert.equal(s.rows, 3, `${w}×${h}`);
       assert.equal(s.clicks, 'auto', `${w}×${h}`);
-      assert.equal(s.toggle, '隐藏');
+      assert.equal(s.background, 'rgba(0, 0, 0, 0)');
       assert.deepEqual(s.shares, ['22%', '6%', '4%']);
       for (const [sel, over] of Object.entries(s.overlaps)) assert.equal(over, false, `${w}×${h} overlaps ${sel}`);
     }
-    await page.click('.ldmg__toggle');
-    await page.waitForFunction(() => document.querySelectorAll('.ldmg__row').length === 0 && document.querySelector('.ldmg__toggle')?.textContent === '显示');
-    assert.equal(await page.evaluate(() => localStorage.getItem('sp.pref.leaderRankHidden')), 'true');
+    await page.hover('.ldmg');
+    await page.click('.ldmg__close');
+    await page.waitForFunction(() => !document.querySelector('.ldmg'));
+    await mutate(page, 's.pub.bossHp.hp = 67;');
+    assert.equal(await page.$('.ldmg'), null, 'data ticks do not reopen a dismissed tool');
+    await page.click('.gm__tools');
+    await page.$$eval('.game-tools__row', rows => rows.find(r => r.textContent.includes('领袖伤害排行')).querySelector('.game-tools__open').click());
+    await page.waitForSelector('.ldmg__row');
     assert.deepEqual(problems.filter((p) => p.startsWith('pageerror')), []);
     await context.close();
   });

@@ -1142,9 +1142,30 @@ latest draft and disable save while pending. Trial bodies match the 160 MiB auth
 are embedded for the replay lifetime (8 MiB compressed image total inside the 16 MiB result cap [ASSUMED]).
 No new route or gameplay rule is introduced.
 
+### Leader damage tool (领袖伤害排行)
+
+The ranking is a quiet right-edge tool. It auto-opens on each FINAL_ASSAULT / HIDDEN_CORE entry (including reconnect)
+by default; a local checkbox disables this behavior. Dismissing it lasts until the next Boss phase, without data ticks
+or mode changes reopening it. Pinning and mode selection are local. Spectators get the same ranking menu but not
+participant-only tools. The chart may coexist with the detailed combat meter or card counter.
+
+Its transparent resting state shows portraits, player names, bars and percentages; hover, keyboard focus or touch
+reveals the frame, mode controls, auto-open checkbox and close button. Operator mode retains the server's top three
+individual units. Player mode uses the current shared pool's complete `byPlayer` credit via `m.public.leaderPlayers`,
+not the truncated operator list or lifetime result statistics. A player's best attributed operator supplies the portrait;
+without attribution the player avatar is used. Old servers / replay frames without player totals show unavailable data,
+never an invented sum. This adds a bounded public presentation field; battle credit, LP, simulation and checkpoint
+formats stay unchanged. Existing public-frame recording captures the new field normally.
+
+Percentages retain the existing damage / Boss max-HP rounding (positive hits show at least 1%, ASSUMED display rule).
+Bars are normalized to the chart leader; the explanation is available on hover. Stable player or owner+unit keys keep
+rows mounted while transform transitions animate rank changes, independently from bar-width transitions. Reduced
+motion disables both. Placement still avoids themed countdowns / overtime warnings and now also checks the DP box
+when the countdown itself does not intersect the chart. No official assets or runtime animation library are added.
+
 ### Combat metrics (作战统计) — ported from the xinhai-ai fork, opt-in
 
-The live HUD's tools launcher (`GameTools`) lists combat metrics and the card counter, with local pinned shortcuts.
+The live HUD's tools launcher (`GameTools`) lists combat metrics, the card counter and leader damage ranking, with local pinned shortcuts.
 The combat meter remains pinned by default; explicit empty pin/favorite lists stay empty. The card counter defaults
 to favorite `char_249_mlyss`, resolves identities in the current content set, and offers roster-style search plus
 profession/tier/bond filters with match bans. It displays held equivalents separately from actual pool occupation.
