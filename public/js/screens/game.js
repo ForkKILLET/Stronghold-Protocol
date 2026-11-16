@@ -1083,15 +1083,19 @@ function MatchScreen() {
   }, [battleState?.battleId, battleState?.loading, !!pub]);
 
   // timer ticks (≤ 10 s) while the player still has something to do
-  const cd = countdownState(pub?.deadline, serverNow(), total);
-  useTicker(cd.remain != null && cd.remain <= 10 ? 1000 : 0);
+  const cd = countdownState(pub?.deadline, frozenAt ?? serverNow(), total);
+  useTicker(!paused && cd.remain != null && cd.remain <= 10 ? 1000 : 0);
   const lastTick = useRef(null);
   useEffect(() => {
-    if (cd.remain == null || cd.remain > 10 || cd.remain === lastTick.current) return;
+    if (paused || cd.remain == null || cd.remain > 10 || cd.remain === lastTick.current) return;
     lastTick.current = cd.remain;
     const busyPrep = phase === PHASE.PREP && priv && !priv.ready && alive;
     const myPick = sp && (solo || sp.turnPid === myId) && !sp.pickOf.has(myId);
-    if ((busyPrep || myPick) && cd.remain > 0) audio.sfx('timer', { volume: 0.6 });
+    if ((busyPrep || myPick) && cd.remain > 0) audio.sfx('timer', {
+      volume: 0.6,
+      // A decode requested before a pause or a new view must not sound after its owner has changed.
+      isCurrent: () => !live.current.paused && live.current.pub === pub && live.current.priv === priv,
+    });
   });
 
   // Interface-theme voice (docs/THEMES.md). The snapshot is compared by value; an unchanged view adds no line.

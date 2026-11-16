@@ -38,6 +38,11 @@ does not replay a consumed turn. The round plate may finish before the cue; it n
 Source: player report and confirmed acceptance criteria, 2026-11-14; [official solo recording](https://github.com/sganggs/Stronghold-Protocol/pull/946#issuecomment-6881541711),
 2026-11-15 (round 3, about 36.5 s); no gameplay or simulation changes.
 
+The final-ten-second preparation / own-draft-turn cue shares the HUD's frozen pause clock. An effective pause
+stops its ticker and suppresses new cues; a pending pause vote alone does not. Audio still decoding is guarded by
+the requesting public/private view, so pausing, changing phase or becoming ready cannot release a stale warning.
+Resuming continues at the remaining seconds without replaying the last sounded second. Music is unchanged.
+
 Match-information bond entries (#915, history §37.98) open the existing `BondPopup` directly: the in-game chips,
 briefing discs and strategy information discs share its effects, member list and ban marks. `MatchBondDialog` shares
 Modal's focus stack; Escape or its backdrop closes the card alone and restores its trigger. A strategy-turn change
