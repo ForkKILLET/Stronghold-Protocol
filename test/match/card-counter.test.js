@@ -98,10 +98,14 @@ test('natural odds use the actual weighted slot candidates, with this player\'s 
   assert.equal(result.odds.denominator, total + 5);
   assert.equal(result.odds.numerator, m.pool.left(id));
   assert.equal(result.total, m.pool.cap(id));
-  a.shop.level = 5;
-  result = read();
-  assert.equal(result.odds.numerator, 0);
-  assert.equal(result.odds.slot, 0);
+  for (const level of [4, 5]) {
+    a.shop.level = level;
+    result = read();
+    assert.equal(result.odds.level, a.privateView().shop.level);
+    assert.equal(result.odds.numerator, 0);
+    assert.equal(result.odds.slot, 0);
+    assert.equal(result.odds.refresh, 0);
+  }
   a.diyStock = b.diyStock = null;
 });
 
