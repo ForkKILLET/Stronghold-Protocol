@@ -30,8 +30,8 @@
 .card-counter__favorite .icon { width: 20px; height: 20px; }
 .card-counter__favorite[aria-pressed="true"] { color: var(--gold-2); border-color: var(--gold-2); }
 .card-counter__favorites { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
-.card-counter__favorites button, .card-picker__chips button, .card-picker__favorite-filter { padding: 5px 9px; border: 1px solid var(--line-2); color: var(--text-md); background: var(--bg-1); font-size: inherit; }
-.card-counter__favorites button[aria-pressed="true"], .card-picker__chips button[aria-pressed="true"], .card-picker__favorite-filter[aria-pressed="true"] { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-a10); }
+.card-counter__favorites button { padding: 5px 9px; border: 1px solid var(--line-2); color: var(--text-md); background: var(--bg-1); font-size: inherit; }
+.card-counter__favorites button[aria-pressed="true"] { color: var(--mint-400); border-color: var(--mint-700); background: var(--mint-a10); }
 .card-counter__favorites small { color: var(--text-lo); }
 .card-counter__totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); background: var(--bg-1); }
 .card-counter__totals > div { display: flex; flex-direction: column; gap: 4px; padding: 10px 8px; border-right: 1px solid var(--line); }
@@ -63,19 +63,26 @@
 .card-counter__error button { padding: 4px 8px; color: var(--text-hi); background: none; border: 1px solid var(--line-2); }
 .card-counter__data.is-stale { opacity: .55; }
 .card-counter__empty { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 22px 8px; color: var(--text-lo); }
-.card-picker { height: min(7.5rem, calc(100dvh - max(.4rem, 16px))); }
+.card-picker { height: min(8.6rem, calc(100dvh - max(.4rem, 16px))); }
 .card-picker .modal__body { display: flex; flex: 1; flex-direction: column; min-height: 0; overflow: hidden; gap: 12px; }
-.card-picker__filters { flex: none; display: flex; flex-direction: column; gap: 8px; }
-.card-picker__search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line-2); background: var(--bg-1); padding: 7px 10px; }
-.card-picker__search .icon { flex: none; width: 20px; height: 20px; color: var(--mint-500); }
-.card-picker__search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text-hi); font-size: inherit; outline: none; }
-.card-picker__search:focus-within { border-color: var(--mint-500); }
-.card-picker__chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.card-picker__more { display: flex; align-items: stretch; gap: 8px; }
-.card-picker__more .game-select { flex: 1; min-width: 0; }
-.card-picker__favorite-filter { display: flex; align-items: center; gap: 6px; flex: none; }
-.card-picker__favorite-filter .icon { width: 16px; height: 16px; }
-.card-picker__results { min-height: 0; flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 8px; padding: 4px; overscroll-behavior: contain; }
+.card-picker__filters .lo-frow:first-child { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+.card-picker .lo-search { min-width: 0; max-width: none; width: 100%; margin: 0; }
+.card-picker .lo-chips { flex-wrap: nowrap; overflow-x: auto; min-width: 0; }
+.card-picker .lo-chip { flex: none; }
+.card-picker .lo-chips--prof { flex: 1; }
+.card-picker__bond-toggle { display: none; }
+.card-picker__catalog { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(190px, .8fr) minmax(0, 2fr); gap: 12px; }
+.card-picker__bonds { min-height: 0; overflow-y: auto; padding: 4px 10px 8px 0; border-right: 1px solid var(--line); overscroll-behavior: contain; touch-action: pan-y; }
+.card-picker__all-bonds { width: 100%; }
+.card-picker__bond-group h3 { margin: 12px 0 8px; color: var(--text-lo); font-size: max(calc(.14 * var(--t)), 11px); font-weight: 600; }
+.card-picker__bond-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); gap: 6px; }
+.card-picker__bond { min-width: 0; display: grid; justify-items: center; align-content: start; padding: 7px 2px; border: 1px solid transparent; background: none; color: var(--text-hi); touch-action: manipulation; }
+.card-picker__bond:hover { border-color: var(--line-2); background: var(--bg-1); }
+.card-picker__bond.is-selected { border-color: var(--mint-500); background: var(--mint-a10); }
+.card-picker__bond .bond { --disc: max(.42rem, 30px); width: 100%; }
+.card-picker__bond .bond__name { max-width: 100%; white-space: normal; overflow-wrap: anywhere; font-size: max(calc(.13 * var(--t)), 10px); line-height: 1.3; }
+.card-picker__results { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 8px; padding: 4px; overscroll-behavior: contain; touch-action: pan-y; }
+.card-picker__results > .card-counter__empty { grid-column: 1 / -1; }
 .card-picker__operator { display: flex; gap: 10px; align-items: center; min-width: 0; padding: 10px; border: 1px solid var(--line-2); color: var(--text-hi); background: var(--bg-1); text-align: left; }
 .card-picker__operator > .uthumb { flex: none; }
 .card-picker__operator > span:not(.uthumb) { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
@@ -102,10 +109,23 @@
   .card-picker .modal__body { padding: 8px 14px; gap: 6px; }
   .card-picker .modal__actions { padding: 6px 14px; }
   .card-picker__filters { gap: 4px; }
-  .card-picker__search { padding: 5px 8px; }
-  .card-picker__chips { gap: 4px; flex-wrap: nowrap; overflow-x: auto; }
-  .card-picker__chips button { flex: none; white-space: nowrap; padding: 2px 6px; }
   .card-picker__operator { padding: 7px; }
   .card-picker__operator > .uthumb { --ut: 28px; }
 }
-@media (max-width: 720px) { .card-picker__results { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px), (max-height: 600px) {
+  .card-picker .lo-chip__lbl { display: none; }
+  .card-picker .lo-frow { flex-wrap: nowrap; gap: 6px; }
+  .card-picker .lo-chip, .card-picker .lo-toggle { min-height: 28px; }
+  .card-picker__bond-toggle { display: inline-flex; clip-path: none; max-width: 40%; gap: 6px; }
+  .card-picker__bond-toggle span { color: var(--text-lo); font-weight: 400; }
+  .card-picker__bond-toggle b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-picker__bond-toggle .icon { flex: none; width: 14px; height: 14px; transform: rotate(90deg); }
+  .card-picker__bond-toggle[aria-expanded="true"] .icon { transform: rotate(-90deg); }
+  .card-picker__catalog { grid-template-columns: minmax(0, 1fr); }
+  .card-picker__bonds { display: none; }
+  .card-picker.is-bonds-open .card-picker__catalog { grid-template-columns: minmax(160px, .8fr) minmax(0, 2fr); gap: 8px; }
+  .card-picker.is-bonds-open .card-picker__bonds { display: block; }
+  .card-picker__bond-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; }
+  .card-picker__bond { padding: 5px 1px; }
+}
+@media (min-width: 1600px) and (min-height: 601px) { .card-picker__results { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

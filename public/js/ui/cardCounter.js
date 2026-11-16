@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
-import { html, Button, Icon, Modal, Spinner } from './components.js';
-import { Select } from './select.js';
+import { html, Button, Icon, Modal, Spinner, BondDisc } from './components.js';
 import { UnitThumb } from './gameComponents.js';
 import { data } from '../data.js';
 import { net } from '../net.js';
@@ -9,40 +8,55 @@ import { t } from '../../../shared/i18n.js';
 import { useCornerPanel } from './cornerPanel.js';
 import { counterRoster, favoriteOperators, oddsText } from './gameToolsModel.js';
 import { watchCardCounter } from './cardCounterClient.js';
-import { filterRoster, PROF_ORDER, PROF_NAME } from './loadoutModel.js';
+import { filterRoster } from './loadoutModel.js';
+import { RosterSearch, TierFilter, ProfFilter } from './rosterFilters.js';
+import { bondIconUrl } from './assetUrls.js';
+import { disabledBondSets } from './gameLogic/bonds.js';
 
-function OperatorPicker({ roster, favorites, banned, onPick, onClose }) {
+function OperatorPicker({ roster, favorites, banned, pub, onPick, onClose }) {
   const [query, setQuery] = useState('');
   const [tier, setTier] = useState(null);
   const [prof, setProf] = useState(null);
   const [bond, setBond] = useState(null);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [bondsOpen, setBondsOpen] = useState(false);
   const shown = filterRoster(roster, { query, tier, prof, bond }, {}, id => data.lookup('chess', id), id => data.lookup('bonds', id))
     .filter(c => !onlyFavorites || favorites.includes(c.charId));
-  const bonds = data.list('bonds').filter(b => roster.some(c => c.bonds?.includes(b.bondId)));
-  return html`<${Modal} open=${true} title=${t('搜索并选择干员')} onClose=${onClose} class="card-picker" width="min(max(9rem, 640px), calc(100vw - .4rem))"
+  const bonds = data.list('bonds').filter(b => roster.some(c => c.bonds?.includes(b.bondId)))
+    .sort((a, b) => (a.bondOrder ?? 0) - (b.bondOrder ?? 0) || (a.identifier ?? 0) - (b.identifier ?? 0));
+  const m = data.get('assets');
+  const sets = disabledBondSets(pub, data.get('config')?.modes?.[pub?.modeId]?.inactiveBondIds);
+  const incomplete = new Set([...sets.drawn, ...sets.off]);
+  const pickBond = id => { setBond(bond === id ? null : id); setBondsOpen(false); };
+  return html`<${Modal} open=${true} title=${t('搜索并选择干员')} onClose=${onClose} class=${`card-picker${bondsOpen ? ' is-bonds-open' : ''}`} width="min(max(11.6rem, 860px), calc(100vw - .4rem))"
       actions=${html`<${Button} onClick=${onClose}>${t('取消')}<//>`}>
-    <div class="card-picker__filters">
-      <label class="card-picker__search"><${Icon} name="search" /><input type="search" data-autofocus="true" aria-label=${t('搜索干员')}
-        placeholder=${t('搜索干员')} value=${query} maxlength="64" onInput=${e => setQuery(e.target.value)} /></label>
-      <div class="card-picker__chips" role="group" aria-label=${t('职业')}>
-        ${PROF_ORDER.map(p => html`<button type="button" key=${p} aria-pressed=${prof === p} onClick=${() => setProf(prof === p ? null : p)}>${t(PROF_NAME[p])}</button>`)}
-      </div>
-      <div class="card-picker__chips" role="group" aria-label=${t('等阶')}>
-        <button type="button" aria-pressed=${tier == null} onClick=${() => setTier(null)}>${t('全部等阶')}</button>
-        ${[1, 2, 3, 4, 5, 6].map(n => html`<button type="button" key=${n} aria-pressed=${tier === n} onClick=${() => setTier(tier === n ? null : n)}>${['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ', 'Ⅴ', 'Ⅵ'][n - 1]}</button>`)}
-      </div>
-      <div class="card-picker__more"><${Select} value=${bond || ''} onChange=${v => setBond(v || null)} label=${t('盟约')}
-        options=${[{ value: '', label: t('全部盟约') }, ...bonds.map(b => ({ value: b.bondId, label: b.name }))]} />
-        <button type="button" class="card-picker__favorite-filter" aria-pressed=${onlyFavorites} onClick=${() => setOnlyFavorites(!onlyFavorites)}><${Icon} name="star" />${t('仅显示收藏')}</button>
+    <div class="lo-filters card-picker__filters">
+      <div class="lo-frow"><${TierFilter} tier=${tier} onTier=${setTier} /><${RosterSearch} query=${query} onQuery=${setQuery} modalFocus=${true} /></div>
+      <div class="lo-frow"><${ProfFilter} m=${m} prof=${prof} onProf=${setProf} />
+        <button type="button" class="lo-chip card-picker__bond-toggle" aria-expanded=${bondsOpen} aria-controls="card-picker-bonds"
+          onClick=${() => setBondsOpen(!bondsOpen)}><span>${t('盟约')}</span><b>${bonds.find(b => b.bondId === bond)?.name || t('全部盟约')}</b><${Icon} name="chevronRight" /></button>
+        <button type="button" class=${`lo-toggle${onlyFavorites ? ' is-on' : ''}`} aria-pressed=${onlyFavorites} onClick=${() => setOnlyFavorites(!onlyFavorites)}><i class="lo-toggle__box"><${Icon} name="check" /></i>${t('仅显示收藏')}</button>
       </div>
     </div>
-    <div class="card-picker__results" aria-label=${t('干员列表')}>
-      ${shown.length ? shown.map(c => html`<button type="button" key=${c.chessId} class=${`card-picker__operator${banned.has(c.chessId) ? ' is-banned' : ''}`}
+    <div class="card-picker__catalog">
+      <aside id="card-picker-bonds" class="card-picker__bonds" aria-label=${t('按盟约筛选')}>
+        <button type="button" class=${`lo-chip card-picker__all-bonds${!bond ? ' is-on' : ''}`} aria-pressed=${!bond} onClick=${() => { setBond(null); setBondsOpen(false); }}>${t('全部盟约')}</button>
+        ${[[true, t('核心盟约')], [false, t('附加盟约')]].map(([core, label]) => html`<section class="card-picker__bond-group" key=${label}>
+          <h3>${label}</h3><div class="card-picker__bond-grid">${bonds.filter(b => !!b.isCore === core).map(b => html`<button type="button" key=${b.bondId}
+            class=${`card-picker__bond${bond === b.bondId ? ' is-selected' : ''}`} data-bond=${b.bondId} aria-pressed=${bond === b.bondId}
+            title=${`${b.name}${incomplete.has(b.bondId) ? ` · ${t('部分盟约所含干员阵容不完整')}` : ''}`} onClick=${() => pickBond(b.bondId)}>
+            <${BondDisc} name=${b.name} icon=${bondIconUrl(m, b.bondId)} active=${!incomplete.has(b.bondId)} disabled=${incomplete.has(b.bondId)}
+              cross=${false} tier=${incomplete.has(b.bondId) ? 0 : 1} maxTier=${1} size="sm" />
+          </button>`)}</div>
+        </section>`)}
+      </aside>
+      <div class="card-picker__results" aria-label=${t('干员列表')}>
+      ${shown.length ? shown.map(c => html`<button type="button" key=${c.chessId} data-chess=${c.chessId} class=${`card-picker__operator${banned.has(c.chessId) ? ' is-banned' : ''}`}
         onClick=${() => onPick(c.chessId)}><${UnitThumb} id=${c.chessId} ownerId=${null} size="sm" /><span><b>${c.name}</b>
           <small>${banned.has(c.chessId) ? t('本局禁用') : (c.bonds || []).map(id => data.lookup('bonds', id)?.name).filter(Boolean).join(' · ')}</small></span>
         ${favorites.includes(c.charId) ? html`<${Icon} name="star" class="card-picker__star" />` : null}</button>`)
         : html`<p class="card-counter__empty">${t('无匹配干员')}</p>`}
+      </div>
     </div>
   <//>`;
 }
@@ -117,5 +131,5 @@ export function CardCounterPanel({ myId, pub, connected = true, onClose, client 
           ${t('仅计算自然刷新，不含冻结保留、特殊刷新和赠送；自编库存计入你的抽取分母。')}</p></details>
       </div>` : !error ? html`<p class="card-counter__empty" role="status">${target ? html`<${Spinner} />${t('正在读取卡池…')}` : t('请选择一名干员查看存量。')}</p>` : null}
     </div>
-  </section>${picker ? html`<${OperatorPicker} roster=${roster} favorites=${favorites} banned=${banned} onPick=${pick} onClose=${() => setPicker(false)} />` : null}`;
+  </section>${picker ? html`<${OperatorPicker} roster=${roster} favorites=${favorites} banned=${banned} pub=${pub} onPick=${pick} onClose=${() => setPicker(false)} />` : null}`;
 }

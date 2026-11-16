@@ -615,9 +615,9 @@
    own controls (返回, 全部恢复默认, 恢复默认, the search field) keep a readable size and a tappable height (review fix) */
 .lo .lo-back { height: max(calc(.5 * var(--ui-unit, 1rem)), 32px); padding: 0 max(calc(.2 * var(--ui-unit, 1rem)), 10px) 0 max(calc(.12 * var(--ui-unit, 1rem)), 6px); font-size: max(calc(.18 * var(--utility-text, var(--t))), 12px); }
 .lo .lo-top__right .btn, .lo .lo-dhead__reset { height: max(calc(.36 * var(--ui-unit, 1rem)), 28px); padding: 0 max(calc(.16 * var(--ui-unit, 1rem)), 8px); font-size: max(calc(.15 * var(--utility-text, var(--t))), 11px); }
-.lo .lo-search .field__box { height: max(calc(.56 * var(--ui-unit, 1rem)), 28px); padding: 0 max(calc(.16 * var(--ui-unit, 1rem)), 6px); }
-.lo .lo-search .field__input { font-size: max(calc(.2 * var(--utility-text, var(--t))), 12px); }
-.lo .lo-search .field__icon { width: max(calc(.22 * var(--ui-unit, 1rem)), 14px); height: max(calc(.22 * var(--ui-unit, 1rem)), 14px); }
+:is(.lo, .card-picker) .lo-search .field__box { height: max(calc(.56 * var(--ui-unit, 1rem)), 28px); padding: 0 max(calc(.16 * var(--ui-unit, 1rem)), 6px); }
+:is(.lo, .card-picker) .lo-search .field__input { font-size: max(calc(.2 * var(--utility-text, var(--t))), 12px); }
+:is(.lo, .card-picker) .lo-search .field__icon { width: max(calc(.22 * var(--ui-unit, 1rem)), 14px); height: max(calc(.22 * var(--ui-unit, 1rem)), 14px); }
 .sp-coarse .lo-chip, .sp-coarse .lo-toggle, .sp-coarse .lo-select { min-height: 30px; }
 .sp-coarse .lo-seg button { min-height: 28px; }
 @media (prefers-reduced-motion: reduce) { .lo, .lo .lo-card { animation: none; transition: none; } }

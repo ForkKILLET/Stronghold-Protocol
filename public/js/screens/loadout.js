@@ -32,7 +32,8 @@ import { SkinSection } from '../ui/skinPicker.js';
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.js';
 import { usePresence, LEAVE_MS } from '../ui/transitions.js';
-import { html, Icon, MicroLabel, Button, TierChip, TextField, Countdown, Spinner, confirmDialog, hasDeadline, Modal, Fragment } from '../ui/components.js';
+import { html, Icon, MicroLabel, Button, TierChip, Countdown, Spinner, confirmDialog, hasDeadline, Modal, Fragment } from '../ui/components.js';
+import { RosterSearch, TierFilter } from '../ui/rosterFilters.js';
 import { Img, RichText, UnitThumb } from '../ui/gameComponents.js';
 import { chessAvatarUrl, subProfIconUrl, bondIconUrl, moduleTypeIconUrl } from '../ui/assetUrls.js';
 import { OperatorImage, PromotionIcon } from '../ui/gameComponents.js';
@@ -271,13 +272,8 @@ function Filters({ m, filters, onFilters, bonds, onDeck = null }) {
   const set = (patch) => onFilters({ ...filters, ...patch });
   return html`<div class="lo-filters">
     <div class="lo-frow">
-      <div class="lo-chips" role="group" aria-label=${t('阶级')}>
-        <button type="button" class=${cx('lo-chip', !filters.tier && 'is-on')} onClick=${() => set({ tier: null })}>${t('全部')}</button>
-        ${[1, 2, 3, 4, 5, 6].map((tier) => html`<button key=${tier} type="button" class=${cx('lo-chip', 'lo-chip--tier', `lo-chip--t${tier}`, filters.tier === tier && 'is-on')}
-          aria-pressed=${filters.tier === tier ? 'true' : 'false'} title=${t('{tier}阶', { tier })} onClick=${() => set({ tier: filters.tier === tier ? null : tier })}><span class="num">${ROMAN[tier]}</span></button>`)}
-      </div>
-      <${TextField} size="sm" icon="search" value=${filters.query} placeholder=${t('搜索干员 / 职业 / 盟约')} class="lo-search"
-        onInput=${(v) => set({ query: String(v).slice(0, 24) })} />
+      <${TierFilter} tier=${filters.tier} onTier=${tier => set({ tier })} />
+      <${RosterSearch} query=${filters.query} onQuery=${query => set({ query })} />
     </div>
     <div class="lo-frow">
       <${ProfFilter} m=${m} prof=${filters.prof} onProf=${(prof) => set({ prof })} />

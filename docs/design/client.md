@@ -1146,6 +1146,11 @@ The live HUD's tools launcher (`GameTools`) lists combat metrics and the card co
 The combat meter remains pinned by default; explicit empty pin/favorite lists stay empty. The card counter defaults
 to favorite `char_249_mlyss`, resolves identities in the current content set, and offers roster-style search plus
 profession/tier/bond filters with match bans. It displays held equivalents separately from actual pool occupation.
+`rosterFilters.js` supplies the same search, tier chips and profession glyph chips to the loadout and live picker;
+the existing DIY profession import is re-exported from `loadoutSections.js`. The live picker replaces its bond dropdown
+with core/add-on disc groups in an independently scrollable left column. Match-greyed bonds remain filterable,
+with selected borders independent of their match state. Short/narrow viewports collapse this column behind an inline
+toggle; choosing a bond closes it and leaves the selected name visible. Search and the operator list remain available.
 Only its open, connected, visible surface polls `g.cardCounter` every two seconds, with one request in flight;
 match/player/target/sequence correlation rejects obsolete responses. Close/disconnect cancels the subscription,
 errors retain a visibly stale reading, and absent data is not zero. Both panels share the existing measured corner

@@ -9,10 +9,11 @@
 
 import { html, Icon, MicroLabel } from '../ui/components.js';
 import { Img, RichText } from '../ui/gameComponents.js';
-import { moduleTypeIconUrl, profGlyphUrl } from '../ui/assetUrls.js';
+import { moduleTypeIconUrl } from '../ui/assetUrls.js';
 import { data, localAsset } from '../data.js';
 import { t } from '../../../shared/i18n.js';
-import { MODULE_NONE, PROF_ORDER, PROF_NAME, skillLabel, moduleBadge, attrRows, skillTags, traitLines, moduleRecord } from '../ui/loadoutModel.js';
+import { MODULE_NONE, skillLabel, moduleBadge, attrRows, skillTags, traitLines, moduleRecord } from '../ui/loadoutModel.js';
+export { ProfFilter } from '../ui/rosterFilters.js';
 import { atPotential } from '../../../shared/potential.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
@@ -38,20 +39,6 @@ export function rowControlHit(e) {
   if (!hit) return false;
   const row = target.closest('.lo-card') ?? null;
   return !!row && row.contains(hit);
-}
-
-/**
- * The 职业 filter chips of the 干员调配 roster (screens/loadout.js `Filters`), drawn from here because the 自选编队 picker
- * filters its list by profession too: one markup, so the two rows cannot drift apart. Hook-free — the caller passes the
- * current profession and its setter. A chip toggles: the active one clears the filter.
- * @param {{ m: any, prof: string|null, onProf: (prof: string|null) => void }} props
- */
-export function ProfFilter({ m, prof, onProf }) {
-  return html`<div class="lo-chips lo-chips--prof" role="group" aria-label=${t('职业')}>
-    ${PROF_ORDER.map((p) => html`<button key=${p} type="button" class=${cx('lo-chip', 'lo-chip--prof', prof === p && 'is-on')}
-      aria-pressed=${prof === p ? 'true' : 'false'} title=${t(PROF_NAME[p])} onClick=${() => onProf(prof === p ? null : p)}>
-      <${Img} src=${profGlyphUrl(m, p)} class="lo-chip__icon lo-profglyph" fallback=${html`<span>${t(PROF_NAME[p])[0]}</span>`} /><span class="lo-chip__lbl">${t(PROF_NAME[p])}</span></button>`)}
-  </div>`;
 }
 
 /** Skill icon URL for a SkillRecord (assets manifest `skills[iconId]` / `skillsById`), null when absent. */
