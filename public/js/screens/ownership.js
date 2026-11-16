@@ -15,10 +15,9 @@ import { OperatorImage } from '../ui/gameComponents.js';
 import { data } from '../data.js';
 import { PROF_NAME } from '../ui/loadoutModel.js';
 import { ownershipRoster, rosterByTier, isOwned, standInSummary } from '../ui/ownershipModel.js';
-import { t, tParts } from '../../../shared/i18n.js';
+import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 /** The roster of the tab, refreshed when the data, language or room's content changes. */
 export function useOwnershipRoster(ready) {
@@ -70,7 +69,7 @@ export function OwnershipPanel({ m, roster, notOwned, onToggle }) {
     </div>
     <div class="own__list">
       ${groups.length ? groups.map((g) => html`<section key=${g.tier} class="own-tier" data-tier=${g.tier} aria-label=${t('{tier}阶', { tier: g.tier })}>
-        <h3 class="own-tier__head"><${TierChip} tier=${g.tier} size="sm" />${tParts('{tier}阶', { tier: html`<span class="num">${ROMAN[g.tier]}</span>` })}<span class="num t-dim">${g.list.length}</span></h3>
+        <h3 class="own-tier__head"><${TierChip} tier=${g.tier} size="sm" /><span>${t('阶')}</span><span class="num t-dim">${g.list.length}</span></h3>
         <div class="own-grid">
           ${g.list.map((c) => html`<${OwnCard} key=${c.chessId} m=${m} chess=${c} backups=${backups} owned=${isOwned(notOwned, c.chessId)} onToggle=${onToggle} />`)}
         </div>

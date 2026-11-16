@@ -1,4 +1,5 @@
 {
+  "顶部常驻等阶、职业、盟约与搜索筛选；卡片和经典列表共用筛选条件，导入导出在「更多」中。": "Tier, class, bond and search filters stay visible. Both views share filters; import and export are in More.",
   "此处编辑下局候选编队；本局带入人选在「选择自编」阶段确认，修改候选不会改变本局编队": "Edit candidates for the next match here. This match’s roster is confirmed during Custom Squad Selection; changing candidates will not change it.",
   "此处编辑候选编队；进入模拟后，在「选择自编」阶段确认本局带入人选": "Edit your candidate roster here. After entering a simulation, confirm who to bring during Custom Squad Selection.",
   "候选": "Candidates",

@@ -32,9 +32,9 @@ import { LoadoutStats } from '../ui/loadoutStats.js';
 import { CultivationSelects, CultivationSection } from './cultivation.js';
 import { SkillIcon, ModuleGlyph, SkillSection, ModuleSection, ProfFilter, rowControlHit } from './loadoutSections.js';
 import { t } from '../../../shared/i18n.js';
+import { RosterTierMark, useRosterDeckScroll } from '../ui/rosterDeck.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 /** The data the 自选 rules read (shared/diy.js): chess.json + backups.json (localized copies). */
 export const diyData = () => ({ chess: data.get('chess'), backups: data.get('backups') });
@@ -63,7 +63,8 @@ function Bonds({ bonds }) {
 }
 
 /** One slot: the pick (operator, class, bonds, skill, module, an owned pick's 潜能 / 练度) or an empty slot to fill. */
-function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = null }) {
+function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = null, view = 'list' }) {
+  if (view === 'deck') return html`<${DiyDeckSlot} m=${m} slot=${slot} pick=${pick} illegal=${illegal} onOpen=${onOpen} onClear=${onClear} />`;
   const D = diyData();
   const rec = pick ? slotRecord(slot.slotId, pick, D) : null;
   const elite = pick ? slotRecord(slot.slotId, pick, D, { elite: true }) : null;
@@ -104,6 +105,39 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = n
     <div class="diy-slot__acts">
       <${Button} variant="secondary" size="sm" icon="refresh" data-testid="diy-change" onClick=${() => onOpen(slot.slotId)}>${t('更换')}<//>
       <${Button} variant="secondary" size="sm" icon="close" data-testid="diy-clear" onClick=${() => onClear(slot.slotId)}>${t('清空')}<//>
+    </div>
+  </div>`;
+}
+
+/** Candidate cards share the operator deck's rail, portrait and two-row flow; editing stays in the common picker. */
+export function DiyDeckSlot({ m, slot, pick, illegal, onOpen, onClear }) {
+  const D = diyData();
+  const rec = pick ? slotRecord(slot.slotId, pick, D) : null;
+  const elite = rec ? slotRecord(slot.slotId, pick, D, { elite: true }) : null;
+  const sk = rec?.skill;
+  const mod = elite?.module?.active ? elite.module : null;
+  const label = t('{tier}阶 自选', { tier: slot.tier });
+  return html`<div class=${cx('lo-op', 'diy-slot', 'diy-card', `lo-op--t${slot.tier}`, !rec && 'is-empty', illegal && 'is-bad')}
+    data-slot=${slot.slotId} data-char=${rec?.charId}>
+    <div class="lo-op__card" onClick=${e => { if (!e.target.closest?.('button, select, input')) onOpen(slot.slotId); }}>
+      <div class="lo-op__rail">
+        <${TierChip} tier=${slot.tier} size="sm" class="lo-op__tier" />
+        ${rec ? html`<button type="button" class="diy-card__clear" data-testid="diy-clear" aria-label=${t('清空')}
+          title=${t('清空')} onClick=${() => onClear(slot.slotId)}><${Icon} name="close" /></button>` : null}
+      </div>
+      <button type="button" class=${cx('lo-op__pick', !rec && 'diy-slot__fill')} data-testid=${rec ? 'diy-change' : undefined}
+        aria-label=${rec ? t('更换') + ' · ' + rec.name : t('{slot}：选择干员', { slot: label })}
+        title=${rec ? rec.name : t('选择干员')} onClick=${() => onOpen(slot.slotId)}>
+        ${rec ? html`<span class="lo-op__art diy-card__art"><${OperatorPortrait} m=${m} chess=${elite || rec} fallback=${html`<b>${[...(rec.name || '?')][0]}</b>`} /></span>
+          <span class="lo-op__kit">
+            <${Img} src=${skillRecordIconUrl(m, sk, { empty: false })} class="diy-slot__sicon" fallback=${html`<b class="num">${skillLabel(sk?.index)}</b>`} />
+            ${mod ? html`<${Img} src=${moduleTypeIconUrl(data.get('local'), mod.type)} class="diy-slot__micon" />` : null}
+          </span>` : html`<span class="diy-slot__plus"><${Icon} name="plus" /></span>`}
+      </button>
+      <span class="lo-op__meta"><span class="lo-op__name">${rec?.name || t('选择干员')}</span></span>
+      <span class="lo-op__bonds">${rec ? (rec.bonds || []).map(b => html`<span key=${b} class="lo-op__bond" title=${bondName(b)}><${BondGlyph} bondId=${b} /></span>`)
+        : html`<small>${label}</small>`}</span>
+      ${illegal ? html`<span class="diy-card__bad" title=${t('这项自选在当前版本不可用，开局时会被移除')}><${Icon} name="warn" /></span>` : null}
     </div>
   </div>`;
 }
@@ -430,11 +464,12 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
  */
 export function DiyPanel(props) {
   const [picking, setPicking] = useState(null);
-  return DiyPanelView({ ...props, picking, onPicking: setPicking });
+  const scroll = useRosterDeckScroll();
+  return DiyPanelView({ ...props, picking, onPicking: setPicking, scroll });
 }
 
 /** The tab's view (no hooks: the tests draw it): `picking` = the slot being filled, or null. */
-export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPicking: setPicking, ops = {}, onOps = null, view = 'list' }) {
+export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPicking: setPicking, ops = {}, onOps = null, view = 'list', scroll = {} }) {
   const slots = diySlotList(diyData());
   const slot = picking ? slots.find((s) => s.slotId === picking) : null;
   const tiers = [...new Set(slots.map((s) => s.tier))];
@@ -450,11 +485,12 @@ export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPickin
     <div class="own__bar">
       <p class="own__lead">${lead}</p>
     </div>
-    <div class="diy__body">
+    <div class=${cx('diy__body', view === 'deck' && 'lo-deck')} ...${view === 'deck' ? scroll : {}}>
       ${tiers.map((tier) => html`<section key=${tier} class="own-tier diy-tier" data-tier=${tier} aria-label=${t('{tier}阶', { tier })}>
-        <h3 class="own-tier__head"><${TierChip} tier=${tier} size="sm" /><span class="num">${ROMAN[tier]}</span><span>${t('阶')}</span></h3>
+        ${view === 'deck' ? html`<${RosterTierMark} tier=${tier} count=${slots.filter(s => s.tier === tier).length} />`
+          : html`<h3 class="own-tier__head"><${TierChip} tier=${tier} size="sm" /><span>${t('阶')}</span></h3>`}
         <div class="diy-grid">
-          ${slots.filter((s) => s.tier === tier).map((s) => html`<${SlotCard} key=${s.slotId} m=${m} slot=${s} pick=${picks[s.slotId] || null}
+          ${slots.filter((s) => s.tier === tier).map((s) => html`<${SlotCard} view=${view} key=${s.slotId} m=${m} slot=${s} pick=${picks[s.slotId] || null}
             illegal=${!!picks[s.slotId] && !legal[s.slotId]} onOpen=${setPicking} onClear=${(id) => onSet(id, null)} ops=${ops} onOps=${onOps} />`)}
         </div>
       </section>`)}

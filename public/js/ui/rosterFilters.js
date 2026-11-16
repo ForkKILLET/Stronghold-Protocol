@@ -1,5 +1,5 @@
 // Shared operator search and chips: the loadout, DIY picker and live stock picker use the same controls.
-import { html, TextField } from './components.js';
+import { html, TextField, TierChip } from './components.js';
 import { Img } from './gameComponents.js';
 import { profGlyphUrl } from './assetUrls.js';
 import { PROF_ORDER, PROF_NAME } from './loadoutModel.js';
@@ -17,7 +17,7 @@ export function TierFilter({ tier, onTier }) {
   return html`<div class="lo-chips lo-chips--tier" role="group" aria-label=${t('阶级')}>
     <button type="button" class=${cx('lo-chip', !tier && 'is-on')} aria-pressed=${!tier} onClick=${() => onTier(null)}>${t('全部')}</button>
     ${[1, 2, 3, 4, 5, 6].map(n => html`<button key=${n} type="button" class=${cx('lo-chip', 'lo-chip--tier', `lo-chip--t${n}`, tier === n && 'is-on')}
-      aria-pressed=${tier === n} title=${t('{tier}阶', { tier: n })} onClick=${() => onTier(tier === n ? null : n)}><span class="num">${['I', 'II', 'III', 'IV', 'V', 'VI'][n - 1]}</span></button>`)}
+      aria-pressed=${tier === n} title=${t('{tier}阶', { tier: n })} onClick=${() => onTier(tier === n ? null : n)}><${TierChip} tier=${n} size="sm" /></button>`)}
   </div>`;
 }
 

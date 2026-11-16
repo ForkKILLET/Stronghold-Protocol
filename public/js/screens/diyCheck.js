@@ -20,7 +20,6 @@ import { diySlot, diySlotIds } from '../../../shared/diy.js';
 import { t } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 
 const bundle = () => ({ chess: data.get('chess'), backups: data.get('backups') });
 
@@ -106,7 +105,7 @@ export function DiyCheckScreen() {
         const cap = diyBringCap(limits, g.tier);
         const got = g.ids.filter((id) => selected.has(id)).length;
         return html`<section key=${g.tier} class="diy-check__tier">
-          <h2 class="diy-check__tierhead"><${TierChip} tier=${g.tier} size="sm" /><span class="num">${ROMAN[g.tier] || g.tier}</span><span>${t('阶')}</span>
+          <h2 class="diy-check__tierhead"><${TierChip} tier=${g.tier} size="sm" /><span>${t('阶')}</span>
             ${cap != null ? html`<b class="num diy-check__count">${got}/${cap}</b>` : null}</h2>
           <div class="diy-check__grid">
             ${g.ids.map((id) => {

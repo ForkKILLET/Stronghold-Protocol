@@ -605,33 +605,28 @@ Overrides are local listening preferences, absent from room loadouts and their e
 卡片／经典列表切换与导入导出等操作融入同一导航行，说明区也使用共同高度规则，不再保留单独视图切换行。
 窄屏导航可横向滚动，并自动露出当前页签，避免覆盖右侧操作。
 返回统一关闭调配页；切换表示不改活动页签、筛选或保存的配置，但收起抽屉、弹出菜单、快速配置及窄屏详情。
-自选编队以同一槽位／选人器／保存路径绘制横向经典条目或纵向卡片；干员持有共用原有持有管理。
+自选编队以同一槽位／选人器／保存路径绘制经典条目或横向卡组；干员持有共用原有持有管理。
 三期的候选编队仍在局外预设，进入模拟后 CUSTOM_CHECK 仅确认本局带入槽位，不是现场替换候选；
 运行中的候选修改留待下一局。页签、计数与说明明确这一边界，短屏保留说明；不改阶段、协议或服务端规则。
 
-干员调配's 卡片视图 (`screens/loadout.js` DeckView / DeckCard / TierMark / DeckBar, optional; PR #811, §35.18) persists
-`sp.pref.loadout.view` — `'list'` (aligned rows) or `'deck'` (this fork's default) — in this browser only. The deck lays the
-干员调配 tab out after the event's 物资调配处: a group per tier scrolling sideways (two rows behind a tall tier marker),
-the 甄选干员 cards of the 自选编队 slots closing tiers 5 and 6 (they open that tab), a bottom bar jumping to a tier, and
-快速配置 — a column of the skills, the elite's modules or the 潜能 / 练度 selects beside every card, with the list rows'
-own handlers. A card's picture is an `OperatorImage` portrait (the owner's picture-only outfit, B6). A card opens the
-list's Detail in a drawer over the deck's left; on that tab Esc closes a popover, 快速配置, the drawer, then the
-overlay, and leaving the tab (干员持有, the 甄选干员 card, `openLoadout(…, tab)`) closes all three, so one Esc there
-closes the overlay. The tier marker is the official `shopLevelSprite/shop_level_tag_N` (data/assets.json) at its
-design size, a CSS marker (NO. and the numeral, no slogan of our own) its fallback; [ASSUMED] that the event screen
-draws this sprite (its name and look; activity_table `shopLevelDisplayDataDict` confirms one group per shop level).
-While the match's loadout is locked the bottom bar carries a 「本局已锁定 · 下一局生效」 chip; the shared note also explains the lock, including on short screens. The bar holds the tier at the deck's left edge
-as its own state (DeckBarLive), so a scroll across tiers redraws the bar, not the 112 cards. ⓘ opens 「卡片视图说明」,
-the remake's own tips (the official tutorial chapter keeps the name 调度手册). The opening 转场 is the card view's only
-(maintainer's decision, 2026-10-21): the list keeps its 200 ms `lo-in`, and its ≤1000 px roster / detail toggle replays
-nothing. [ASSUMED], with no screenshot or video of the event screen offline: the card frame and colours, the two-row
-flow, the bottom bar, the 快速配置 columns, the 转场 timings, and ONE combined 甄选干员 card per tier where the official
-data lists two DIY slots (`charChessDiySlotIdList`). Both views read and write the same loadout store, so the room and
-the server see nothing new. Normal / elite level indicators read each form's `status.phase` and `status.level`:
-`PromotionIcon` uses the official `elite/elite_0..2` sprites (missing art: `E0` / `E1` / `E2`), never a fixed two-bar
-glyph or a phase inferred from shop tier. The tier badge reserves the full square image height above these indicators,
-including at every text size and UI scale. Settlement uses the same icon and the resolved chess / stand-in / DIY
-record's status; absent records have no phase icon and show `—` for level (§35.18 card-icon review).
+干员调配的卡片视图（源自主线 PR #811，当前采用本服布局）在本机保存 `sp.pref.loadout.view`，
+`deck` 为默认横向卡组，`list` 为经典列表。两种视图共用常驻的搜索／等阶／职业／盟约／仅看已调整筛选，
+不保留底部的等阶跳转栏；等阶只负责筛选。筛选只修改本机视图，不参与规则、库存或随机过程。
+顶部的快速配置、更多、视图切换与说明入口采用统一控件高度、边框和字重；两种视图的导入／导出／恢复默认
+都在「更多」。快速配置激活时在筛选区选择技能／模组／潜能练度，原按钮变为确认配置；编辑仍调用原 setter。
+三项页签统一为纯文字，底部分隔为普通边线，保留选中项下划线。
+
+`ui/rosterDeck.js` 共用横向滚轮、鼠标拖动及拖动后的点击抑制，供普通干员卡组和自选编队使用。
+两者按等阶分组，桌面默认两行，容器可用高度不超过 240px 时改为一行横向浏览，避免短屏卡片溢出。
+自选卡片只显示身份、头像、技能／模组与盟约摘要及清空入口；点击卡面或名字打开同一个选人器，
+技能／模组／潜能练度／皮肤／语音仍在共用详情中配置。清空不打开选人器，不改变预设与本局带入的边界。
+空槽、非法候选、4／12 槽位与两种保存路径保持不变。
+
+等阶筛选、普通／自选卡片、分组、持有管理、选人详情及三期带入页共用 `TierChip` 的原版八边形／CSS 回退；
+不再同时画徽标和另一套罗马数字标记。分组使用 `RosterTierMark`，字号与最小尺寸限于这些管理／选人界面。
+记牌器复用同一 TierFilter，因此同步显示同一等阶徽标；不改局内战斗渲染或卡池数据。
+普通干员卡片仍跟随本人皮肤、未持有替补及原技能／模组选择，详情抽屉和 Esc 逐层退出保持。
+布局及卡片排布属于本服设计，不将之当作官服 UI 取证。
 
 Automatic combat screen wake lock restores the official mobile client's screen-awake experience. App requests it
 for players and spectators when `isCombatPhase(phase)` holds for a valid ongoing match; an ended/absent room or an
