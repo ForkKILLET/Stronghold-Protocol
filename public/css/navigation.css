@@ -72,7 +72,7 @@
 .sweep-host .sw-codex { flex:1; min-height:0; height:auto; }
 .lo > .lo-top { height:auto; min-height:54px; padding-block:8px; }
 .lo .lo-top__left:empty { display:none; }
-.lo .lo-top { grid-template-columns:auto minmax(0,1fr) auto; }
+.lo .lo-top:not(.lo-top--shared) { grid-template-columns:auto minmax(0,1fr) auto; }
 .st .doctor-top { grid-template-columns:minmax(0,1fr) auto; min-height:90px; }
 .st .doctor-identity { grid-column:1; }
 .st .doctor-top > .st-top__right { grid-column:2; }

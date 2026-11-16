@@ -607,7 +607,7 @@
   .lo-card__bonds { display: none; }
 }
 @media (max-height: 520px) {
-  .lo-note { display: none; }
+  .lo-note { font-size: 10px; padding-block: 4px; }
   .lo-dhead { grid-template-columns: max(calc(1 * var(--ui-unit, 1rem)), 48px) minmax(0, 1fr); padding: calc(.1 * var(--ui-unit, 1rem)) calc(.14 * var(--ui-unit, 1rem)); }
   .lo-dhead__en { display: none; }
 }
@@ -787,7 +787,6 @@
 }
 
 /* ---- top bar ---- */
-.lo-top--deck { grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); }
 .lo-info { display: grid; place-items: center; width: max(calc(.5 * var(--ui-unit, 1rem)), 32px); height: max(calc(.5 * var(--ui-unit, 1rem)), 32px); padding: 0; color: var(--text-hi);
   background: rgba(255, 255, 255, .06); border: 1px solid var(--line-2); cursor: var(--sp-cursor-pointer, pointer); }
 .lo-info:hover { border-color: var(--mint-500); color: var(--mint-400); }
@@ -966,13 +965,11 @@
 .lo-help dd { margin: 0; color: var(--text-md); }
 
 @media (max-width: 1100px) {
-  .lo-top--deck .lo-count, .lo-top--deck .lo-sync { display: none; }
+  .lo-toolbar .lo-count, .lo-toolbar .lo-sync { display: none; }
   .lo-top__note { max-width: calc(4.6 * var(--ui-unit, 1rem)); }
 }
 @media (max-width: 900px) {
-  .lo-top--deck .lo-tbtn__l, .lo-quickbtn__txt small, .lo-assist__k { display: none; }
-  .lo-top--deck .lo-top__center { display: none; }
-  .lo-top--deck { grid-template-columns: max-content minmax(0, 1fr); }
+  .lo-toolbar .lo-tbtn__l, .lo-quickbtn__txt small, .lo-assist__k { display: none; }
   .lo-bbar__tier > span:not(.lo-bbar__roman):not(.lo-bbar__diy) { display: none; }
 }
 @media (max-height: 520px) {
@@ -1009,10 +1006,17 @@
 @media (prefers-reduced-motion: reduce) {
   .lo, .lo *, .own *, .diy * { animation-delay: 0ms !important; }
 }
-/* Always visible: returning users can choose the original practical list without opening a filter menu. */
-.lo-viewbar { flex:none; display:flex; align-items:center; gap:12px; padding:6px max(calc(.26 * var(--ui-unit, 1rem)),12px); border-bottom:1px solid var(--line-2); color:var(--text-lo); font-size:max(calc(.14 * var(--utility-text, var(--t))),12px); background:var(--bg-1); }
-.lo-view-switch { display:flex; border:1px solid var(--line-2); }
-.lo-view-switch button { min-height:30px; padding:4px 14px; border:0; border-radius:0; background:transparent; color:var(--text-md); font:inherit; cursor: var(--sp-cursor-pointer, pointer); }
+/* Both renderers share navigation and action geometry. View changes never change the meaning of the active tab. */
+.lo .lo-top--shared { grid-template-columns: minmax(0, 1fr) auto auto; height: auto; min-height: max(calc(.8 * var(--ui-unit, 1rem)), 48px); padding-block: 4px; }
+.lo .lo-top--shared .lo-top__center { grid-column: 1; grid-row: 1; align-items: flex-start; }
+.lo .lo-top--shared .lo-top__left { grid-column: 3; grid-row: 1; }
+.lo-toolbar { grid-column: 2; grid-row: 1; display: flex; align-items: center; height: max(calc(.5 * var(--ui-unit, 1rem)), 36px); }
+.lo-toolbar .lo-top__right { width: auto; justify-content: flex-end; }
+.lo-toolbar .lo-quickbtn { height: max(calc(.5 * var(--ui-unit, 1rem)), 32px); }
+.lo-toolbar .lo-qbar__k { margin-right: auto; }
+.lo > .lo-note { min-height: 32px; margin-block: 0; padding-block: 6px; }
+.lo-view-switch { display:flex; flex: none; font-size:max(calc(.14 * var(--utility-text,var(--t))),12px); border:1px solid var(--line-2); }
+.lo-view-switch button { min-height:30px; padding:4px 10px; white-space:nowrap; border:0; border-radius:0; background:transparent; color:var(--text-md); font:inherit; cursor: var(--sp-cursor-pointer, pointer); }
 .lo-view-switch button + button { border-left:1px solid var(--line-2); }
 .lo-view-switch .is-on { background:var(--mint-a15); color:var(--mint-400); box-shadow:inset 0 -2px var(--mint-400); }
 @media (any-pointer:coarse) { .lo-view-switch button { min-height:36px; } }
@@ -1030,3 +1034,29 @@
 .lo .lo-voice > span:first-child { flex:none; }
 .lo .lo-voice .lo-select { flex:0 1 210px; min-width:140px; height:36px; padding:0; }
 .lo .lo-voice__preview { height:36px; box-sizing:border-box; }
+
+/* Card mode uses the same slots, picker and save path as the classic roster. */
+.diy--deck .diy-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, max(calc(2.6 * var(--ui-unit, 1rem)), 220px)), 1fr)); }
+.diy--deck .diy-slot { display: flex; flex-direction: column; padding: max(calc(.12 * var(--ui-unit, 1rem)), 8px); border-left-width: 1px; border-top: 3px solid var(--tc); }
+.diy--deck .diy-slot__art { width: 100%; height: max(calc(2 * var(--ui-unit, 1rem)), 140px); }
+.diy--deck .diy-slot__art img { min-width: 0; min-height: 0; max-height: 100%; object-fit: contain; object-position: center; }
+.diy--deck .diy-slot__body { width: 100%; flex: 1; }
+.diy--deck .diy-slot__acts { flex-direction: row; width: 100%; margin-top: 6px; }
+.diy--deck .diy-slot__acts > * { flex: 1; }
+.lo .diy-slot__acts .btn { height: auto; min-height: 32px; padding: 4px 8px; font-size: max(calc(.15 * var(--utility-text, var(--t))), 12px); }
+.diy--deck .diy-slot__fill { flex: 1; min-height: 300px; }
+@media (max-width: 900px) {
+  .lo .lo-top--shared { gap: 6px; }
+  .lo .lo-top--shared .lo-tab { font-size: max(calc(.19 * var(--utility-text, var(--t))), 12px); padding-inline: 6px; letter-spacing: 0; }
+  .lo .lo-top--shared .lo-top__icon { display: none; }
+  .lo .lo-top--shared .lo-view-switch button { padding-inline: 7px; }
+  .lo-toolbar .btn__icon + .btn__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+
+@media (max-height: 600px) {
+  .diy--deck .diy-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+  .diy--deck .diy-slot:not(.is-empty) { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 6px; }
+  .diy--deck .diy-slot__art { width: 72px; height: 100px; }
+  .diy--deck .diy-slot__acts { grid-column: 1 / -1; }
+  .diy--deck .diy-slot__fill { min-height: 170px; }
+}

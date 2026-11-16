@@ -530,8 +530,6 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
   .lobby-hub .hub-side { padding-top: .1rem; }
   .lobby-hub .hub-side .tips { display: none; }
   .room-screen .rseat__actions .btn { min-width: 0; padding: .1rem; white-space: normal; }
-  .lo--deck .lo-top--deck { height: auto; min-height: 1.2rem; flex-shrink: 0; gap: .12rem; padding: .12rem .2rem; }
-  .lo--deck .lo-top__right { flex-wrap: wrap; gap: .1rem; }
   .lo--deck .lo-deck { touch-action: pan-x; }
   .hub-ach__scene { height: max(.64rem, 32px); }
   .hub-ach__label { min-height: 30px; height: auto; padding-block: 5px; }

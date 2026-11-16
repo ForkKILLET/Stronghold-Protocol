@@ -283,6 +283,29 @@ describe('自选编队 tab (screens/diy.js)', () => {
     assert.ok(hasClass(slots[1], 'is-empty') && textOf(slots[1]).includes('选择干员'));
   });
 
+  test('card and classic DIY layouts open, clear and confirm the same stored slots', () => {
+    for (const view of ['list', 'deck']) {
+      const calls = [];
+      const props = { view, m: null, picks: { [T5A]: SIEGE_PICK }, legal: { [T5A]: SIEGE_PICK }, kitted: KIT,
+        onSet: (...args) => calls.push(args), picking: null, onPicking: (id) => calls.push(['open', id]) };
+      let tree = expand(DiyPanelView(props));
+      const main = [...walk(tree)].find((v) => v.props?.['data-testid'] === 'diy');
+      assert.equal(main.props['data-view'], view);
+      assert.equal(hasClass(main, 'diy--deck'), view === 'deck');
+      const slots = [...walk(tree)].filter((v) => hasClass(v, 'diy-slot'));
+      assert.equal(slots.length, 4);
+      [...walk(slots[0])].find((v) => v.props?.['data-testid'] === 'diy-change').props.onClick();
+      [...walk(slots[0])].find((v) => v.props?.['data-testid'] === 'diy-clear').props.onClick();
+      [...walk(slots[1])].find((v) => hasClass(v, 'diy-slot__fill')).props.onClick();
+      assert.deepEqual(calls, [['open', T5A], [T5A, null], ['open', T5B]]);
+      tree = DiyPanelView({ ...props, picking: T5B });
+      const picker = [...walk(tree)].find((v) => v.type?.name === 'DiyPicker');
+      picker.props.onDone(SIEGE_PICK);
+      assert.deepEqual(calls.slice(-2), [[T5B, SIEGE_PICK], ['open', null]]);
+      assert.deepEqual(props.picks, { [T5A]: SIEGE_PICK }, 'rendering and drafting never mutate saved picks');
+    }
+  });
+
   test('the picker: the slot\'s operators; choosing one and its skill / module confirms the pick', () => {
     const done = [];
     let draft = { ...SIEGE_PICK };

@@ -99,7 +99,6 @@ function SlotCard({ m, slot, pick, illegal, onOpen, onClear, ops = {}, onOps = n
       </span>
       ${proto ? html`<small class="diy-slot__cult t-dim">${t('原型干员没有潜能与练度')}</small>`
         : onOps ? html`<span class="diy-slot__cult"><${CultivationSelects} charId=${rec.charId} ops=${ops} onSet=${onOps} /></span>` : null}
-      <${OperatorVoice} charId=${rec.assets?.voice || rec.charId} />
       ${illegal ? html`<p class="diy-slot__bad"><${Icon} name="warn" />${t('这项自选在当前版本不可用，开局时会被移除')}</p>` : null}
     </div>
     <div class="diy-slot__acts">
@@ -435,7 +434,7 @@ export function DiyPanel(props) {
 }
 
 /** The tab's view (no hooks: the tests draw it): `picking` = the slot being filled, or null. */
-export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPicking: setPicking, ops = {}, onOps = null }) {
+export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPicking: setPicking, ops = {}, onOps = null, view = 'list' }) {
   const slots = diySlotList(diyData());
   const slot = picking ? slots.find((s) => s.slotId === picking) : null;
   const tiers = [...new Set(slots.map((s) => s.tier))];
@@ -447,7 +446,7 @@ export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPickin
   const lead = bringLead
     ? t('5阶与6阶各有 {slots} 个自选名额。进入模拟时每阶至多带入 {n} 名，未选择的干员不会进入本次模拟。', { slots: 6, n: cap5 })
     : t('5阶与6阶各有两个自选名额：选择持有的 6★ 干员（任选技能与模组）或原型干员（技能锁定）。自选干员只出现在你自己的商店里，调度中心达到该阶等级后才会刷新，价格与同阶干员相同；盟约按干员实际所属阵营分配，没有特质。');
-  return html`<main class="diy" data-testid="diy">
+  return html`<main class=${cx('diy', view === 'deck' && 'diy--deck')} data-testid="diy" data-view=${view}>
     <div class="own__bar">
       <p class="own__lead">${lead}</p>
     </div>

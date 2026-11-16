@@ -601,8 +601,16 @@ their unscaled size, since the text floors and px paddings inside do not shrink 
 guards every floor. At 100 % no property is set: the page is the design itself.
 Overrides are local listening preferences, absent from room loadouts and their exports.
 
+2026-11-17 本服统一两种调配视图的导航与头部几何：三项页签（干员调配／干员持有／自选编队）始终可用，
+卡片／经典列表切换与导入导出等操作融入同一导航行，说明区也使用共同高度规则，不再保留单独视图切换行。
+窄屏导航可横向滚动，并自动露出当前页签，避免覆盖右侧操作。
+返回统一关闭调配页；切换表示不改活动页签、筛选或保存的配置，但收起抽屉、弹出菜单、快速配置及窄屏详情。
+自选编队以同一槽位／选人器／保存路径绘制横向经典条目或纵向卡片；干员持有共用原有持有管理。
+三期的候选编队仍在局外预设，进入模拟后 CUSTOM_CHECK 仅确认本局带入槽位，不是现场替换候选；
+运行中的候选修改留待下一局。页签、计数与说明明确这一边界，短屏保留说明；不改阶段、协议或服务端规则。
+
 干员调配's 卡片视图 (`screens/loadout.js` DeckView / DeckCard / TierMark / DeckBar, optional; PR #811, §35.18) persists
-`sp.pref.loadout.view` — `'list'` (the default, the aligned rows) or `'deck'` — in this browser only. The deck lays the
+`sp.pref.loadout.view` — `'list'` (aligned rows) or `'deck'` (this fork's default) — in this browser only. The deck lays the
 干员调配 tab out after the event's 物资调配处: a group per tier scrolling sideways (two rows behind a tall tier marker),
 the 甄选干员 cards of the 自选编队 slots closing tiers 5 and 6 (they open that tab), a bottom bar jumping to a tier, and
 快速配置 — a column of the skills, the elite's modules or the 潜能 / 练度 selects beside every card, with the list rows'
@@ -612,8 +620,7 @@ overlay, and leaving the tab (干员持有, the 甄选干员 card, `openLoadout(
 closes the overlay. The tier marker is the official `shopLevelSprite/shop_level_tag_N` (data/assets.json) at its
 design size, a CSS marker (NO. and the numeral, no slogan of our own) its fallback; [ASSUMED] that the event screen
 draws this sprite (its name and look; activity_table `shopLevelDisplayDataDict` confirms one group per shop level).
-While the match's loadout is locked the bottom bar carries a 「本局已锁定 · 下一局生效」 chip — the top bar's note is cut
-short or hidden on narrow screens and gives way to the hints in 快速配置. The bar holds the tier at the deck's left edge
+While the match's loadout is locked the bottom bar carries a 「本局已锁定 · 下一局生效」 chip; the shared note also explains the lock, including on short screens. The bar holds the tier at the deck's left edge
 as its own state (DeckBarLive), so a scroll across tiers redraws the bar, not the 112 cards. ⓘ opens 「卡片视图说明」,
 the remake's own tips (the official tutorial chapter keeps the name 调度手册). The opening 转场 is the card view's only
 (maintainer's decision, 2026-10-21): the list keeps its 200 ms `lo-in`, and its ≤1000 px roster / detail toggle replays
