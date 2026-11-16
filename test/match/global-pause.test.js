@@ -2,7 +2,49 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {makeMatch} from './harness.js';
 import {PHASE, ERR} from '../../shared/constants.js';
+import { snapshotMatch, restoreMatch } from '../../server/match/snapshot.js';
+import { createRngFromState } from '../../server/sim/rng.js';
+import { wireOptions } from '../../server/match/host/proxy.js';
 const vote = (h,id,on=true) => h.m.handle(id,{t:'g.pause',on});
+test('veto pause starts on one request and any eligible teammate can reject it', () => {
+ const h=makeMatch({mode:'coop',humans:3,bots:1,pauseMode:'veto',fake:true,instant:false}).start();
+ try {
+  assert.ok(h.drive(()=>h.m.phase===PHASE.PREP,{ready:false}));
+  const deadline=h.m.deadline, at=h.sched.now();
+  assert.deepEqual(vote(h,'p_0'),{ok:true});assert.equal(h.m.paused,true);
+  assert.equal(h.m.publicView().pauseMode,'veto');
+  h.sched.advance(60000);assert.equal(h.m.phase,PHASE.PREP);
+  assert.deepEqual(vote(h,'p_1',false),{ok:true},'a non-requester can veto');
+  assert.equal(h.m.paused,false);assert.equal(h.m.deadline,deadline+60000);
+  assert.equal(h.m.pauseRequests.size,0,'rejection closes this request');
+  assert.deepEqual(vote(h,'p_2'),{ok:true});assert.equal(h.m.paused,true);
+  assert.deepEqual(vote(h,'p_2',false),{ok:true},'the requester can also resume');
+  assert.equal(h.m.paused,false);assert.equal(h.m._pausedAt,0);
+  assert.equal(h.m.pausedMs,60000);assert.ok(h.sched.now()>=at);
+ } finally {h.m.dispose();}
+});
+test('veto mode does not grant AI, spectators or eliminated players pause or rejection rights', () => {
+ const h=makeMatch({mode:'coop',humans:2,bots:1,spectators:['viewer'],pauseMode:'veto',fake:true,instant:false}).start();
+ try {
+  assert.ok(h.drive(()=>h.m.phase===PHASE.PREP,{ready:false}));
+  vote(h,'p_0');assert.equal(h.m.paused,true);
+  for(const id of ['ai_0','viewer']) assert.ok(vote(h,id,false).error,id);
+  h.ps('p_1').alive=false;assert.ok(vote(h,'p_1',false).error);
+  assert.equal(h.m.paused,true);
+  h.m.onDisconnect('p_0');assert.equal(h.m.paused,false);assert.equal(h.m.pauseRequests.size,0);
+ } finally {h.m.dispose();}
+});
+test('pause policy crosses Worker options and checkpoints, while legacy checkpoints retain voting', () => {
+ assert.equal(wireOptions({pauseMode:'veto'}).pauseMode,'veto');
+ const a=makeMatch({mode:'coop',humans:2,pauseMode:'veto',fake:true}).start();
+ const b=makeMatch({mode:'coop',humans:2,fake:true});
+ try {
+  a.toPrep(1);const doc=snapshotMatch(a.m);assert.ok(doc);assert.equal(doc.pauseMode,'veto');
+  assert.equal(restoreMatch(b.m,doc,{createRngFromState}),true);assert.equal(b.m.pauseMode,'veto');
+  delete doc.pauseMode;
+  assert.equal(restoreMatch(b.m,doc,{createRngFromState}),true);assert.equal(b.m.pauseMode,'vote');
+ } finally {a.m.dispose();b.m.dispose();}
+});
 test('unanimous co-op pause freezes preparation and inputs; withdrawing resumes the remaining deadline exactly', () => {
  const h = makeMatch({mode:'coop',humans:2,bots:1,seed:5190,fake:true,instant:false}).start();
  assert.ok(h.drive(()=>h.m.phase===PHASE.PREP,{ready:false}));

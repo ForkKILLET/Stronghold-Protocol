@@ -1,4 +1,5 @@
 import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prepTime.js';
+import { normalizePauseMode } from '../../shared/roomOptions.js';
 import { operatorCharIds } from '../../shared/protocol.js';
 import { freezeSkins } from '../../shared/skins.js';
 // server/match/snapshot.js — checkpoints of a running match (Redis persistence, docs/DEPLOY.md「断点续玩」).
@@ -182,7 +183,7 @@ function withProps(value, extra) {
  */
 const MATCH_FIELDS = Object.freeze([
   'version', 'test', 'testActions', 'testLog', 'testReplayable', 'aiTakeoverEnabled', 'soloUnlimited',
-  'combatArchive', 'replayArchive', 'userMatchId', 'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'battlePrefix', 'timerScale', 'gameSpeed',
+  'combatArchive', 'replayArchive', 'userMatchId', 'roomCode', 'mode', 'difficulty', 'modeId', 'seed', 'isSolo', 'consoleEnabled', 'prepSeconds', 'prepMultiplier', 'pauseMode', 'battlePrefix', 'timerScale', 'gameSpeed',
   'botRehearsal', 'clientCombat', 'verifyMode', 'headlessSliceMs', 'verifyStats', '_battleSeq', 'pausedMs',
   'bondChoice', 'stageId', 'factions', 'bossId', 'hiddenBossId', 'disabledBonds', 'staticInactiveBonds', 'bannedChess',
   'aiPicksLast', 'setupRevision', '_setupVoteSeq',
@@ -328,6 +329,7 @@ export function restoreMatch(m, doc, { createRngFromState, log = console, bestEf
   for (const k of MATCH_FIELDS) if (k !== 'round') field(m, doc, k, k);
   m.prepSeconds = normalizePrepSeconds(m.prepSeconds);
   m.prepMultiplier = normalizePrepMultiplier(m.prepMultiplier);
+  m.pauseMode = normalizePauseMode(Object.hasOwn(doc, 'pauseMode') ? m.pauseMode : undefined);
   // A pre-0.2.5 checkpoint can already contain boss preparation waves with authoritative partners/sides.
   // Keep those instead of drawing again after a restart.
   const validPairs = pairs => Array.isArray(pairs) && pairs.length > 0

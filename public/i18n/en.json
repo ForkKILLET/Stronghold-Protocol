@@ -3507,5 +3507,12 @@
   "准备就绪前": "Before you ready",
   "指令未使用": "Command unused",
   "{name}：该核心盟约的干员无法出现，同属其他亮着的核心盟约的除外": "{name}: operators of this core bond are unavailable, except those that also belong to another lit core bond",
-  "这台服务器已经带有这个官方主题，直接在下面选用即可。": "This server already has this official theme. Pick it in the list below."
+  "这台服务器已经带有这个官方主题，直接在下面选用即可。": "This server already has this official theme. Pick it in the list below.",
+  "暂停模式": "Pause mode",
+  "投票通过": "Unanimous vote",
+  "一票否决": "Pause unless vetoed",
+  "投票通过：所有在线且未淘汰的玩家同意后暂停。": "Unanimous vote: pause after all connected, active players agree.",
+  "一票否决：一人发起即可暂停，任一队友可拒绝并恢复。": "Pause unless vetoed: one player can pause; any teammate can reject it and resume.",
+  "公共匹配使用投票通过暂停模式。": "Public matchmaking uses unanimous-vote pausing.",
+  "拒绝暂停": "Reject pause"
 }

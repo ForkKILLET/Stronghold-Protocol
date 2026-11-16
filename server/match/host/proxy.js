@@ -49,7 +49,7 @@ const noopLog = { info() {}, warn() {}, error() {}, debug() {} };
 /** The lobby options a worker can take (JSON-safe: no callbacks, no data, no class). */
 export function wireOptions(opts) {
   const out = {};
-  for (const k of ['prepSeconds', 'prepMultiplier', 'combatSpeed', 'replayMaxBytes', 'userPersistence', 'roomCode', 'mode', 'difficulty', 'modeId', 'aiPicksLast', 'soloUnlimited', 'kitted', 'version', 'seats', 'spectators', 'seed', 'matchNo', 'cs', 'vs', 'requireCs', 'consoleEnabled', 'hostId', 'checkpoint', 'departedPlayerIds']) {
+  for (const k of ['prepSeconds', 'prepMultiplier', 'pauseMode', 'combatSpeed', 'replayMaxBytes', 'userPersistence', 'roomCode', 'mode', 'difficulty', 'modeId', 'aiPicksLast', 'soloUnlimited', 'kitted', 'version', 'seats', 'spectators', 'seed', 'matchNo', 'cs', 'vs', 'requireCs', 'consoleEnabled', 'hostId', 'checkpoint', 'departedPlayerIds']) {
     if (opts[k] !== undefined) out[k] = opts[k];
   }
   // A test room must arrive as a test match. Forwarding these only when the flag is set keeps every other

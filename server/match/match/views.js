@@ -90,6 +90,7 @@ export class MatchViews {
       prepSeconds: this.prepSeconds,
       prepMultiplier: this.prepMultiplier,
       battleSpeed: this.gameSpeed,
+      pauseMode: this.pauseMode,
       prepDuration: this.prepTime(),
       stageId: this.stageId,
       // a non-default official version's match (DESIGN §35.23): its registry id, so a page that never saw the room (a

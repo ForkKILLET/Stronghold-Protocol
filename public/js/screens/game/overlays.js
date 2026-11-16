@@ -17,8 +17,8 @@ export function MatchEnded() {
   </div>`;
 }
 
-/** Solo pause (m.public.paused): the field dims under the 暂停中 plate; 继续作战 resumes (g.pause off). */
-export function PausedOverlay({ canResume, busy, onResume, onExit }) {
+/** Global pause (m.public.paused): resume / veto sends g.pause off. */
+export function PausedOverlay({ canResume, busy, onResume, onExit, reject = false }) {
   const plate = localAsset('ui/battle', 'matte_pause');
   return html`<div class="pauseov" role="dialog" aria-label=${t('暂停中')} data-testid="paused">
     <div class="pauseov__box">
@@ -28,8 +28,8 @@ export function PausedOverlay({ canResume, busy, onResume, onExit }) {
       </div>
       <p class="pauseov__note">${t('模拟已暂停，计时与游戏操作均已停止')}</p>
       <div class="pauseov__btns">
-        ${onExit ? html`<${Button} variant="secondary" size="lg" icon="exit" onClick=${onExit}>${t('放弃模拟')}<//>` : null}
-        ${canResume ? html`<${Button} variant="primary" size="lg" icon="play" loading=${busy} onClick=${onResume} data-autofocus>${t('继续作战')}<//>` : null}
+        ${onExit ? html`<${Button} variant="danger" size="lg" icon="exit" onClick=${onExit}>${t('放弃模拟')}<//>` : null}
+        ${canResume ? html`<${Button} variant="primary" size="lg" icon="play" loading=${busy} onClick=${onResume} data-autofocus>${reject ? t('拒绝暂停') : t('继续作战')}<//>` : null}
       </div>
     </div>
   </div>`;

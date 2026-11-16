@@ -13,13 +13,14 @@ export class MatchPause {
     if ([PHASE.LOBBY, PHASE.RESULT].includes(this.phase) || this._finalEnding) return fail(ERR.WRONG_PHASE);
     if (!this.pauseVoters().includes(ps)) return fail(ERR.WRONG_PHASE);
     if (!on) {
-      this.pauseRequests.delete(ps.playerId);
+      if (this.pauseMode === 'veto') this.pauseRequests.clear();
+      else this.pauseRequests.delete(ps.playerId);
       this._resume();
       this.markPublic();
       return OK;
     }
     this.pauseRequests.add(ps.playerId);
-    if (!this.paused && this.pauseVoters().every(p => this.pauseRequests.has(p.playerId))) {
+    if (!this.paused && (this.pauseMode === 'veto' || this.pauseVoters().every(p => this.pauseRequests.has(p.playerId)))) {
       this.paused = true;
       this._pausedAt = this.sched.now();
       this._suspendTimers();

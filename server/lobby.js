@@ -1,4 +1,4 @@
-import { normalizeBattleSpeed, isBattleSpeed } from '../shared/roomOptions.js';
+import { normalizeBattleSpeed, isBattleSpeed, normalizePauseMode, isPauseMode } from '../shared/roomOptions.js';
 import { isPrepSeconds, normalizePrepSeconds, isPrepMultiplier, normalizePrepMultiplier } from '../shared/prepTime.js';
 import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatarId, cardAvatarOperatorId } from '../shared/playerCard.js';
 // server/lobby.js — rooms, seats, host, AI seats, ready/start, reconnect, and room → Match wiring
@@ -452,6 +452,7 @@ export class Room {
     this.prepSeconds = null;
     this.prepMultiplier = null;
     this.battleSpeed = 2;
+    this.pauseMode = mode === 'coop' ? 'veto' : 'vote';
     this.createdAt = now;
     this.disposed = false;
     /**
@@ -512,6 +513,7 @@ export class Room {
       prepSeconds: this.prepSeconds,
       prepMultiplier: this.prepMultiplier,
       battleSpeed: this.battleSpeed,
+      pauseMode: this.pauseMode,
       seats: this.seats.map((s) => (s
         ? { seat: s.seat, playerId: s.playerId, name: s.name, ...(s.avatarId?{avatarId:s.avatarId}:{}), ...(s.publicId?{publicId:s.publicId}:{}), isBot: s.isBot, ready: s.ready, connected: s.connected && !s.left,
           ...(!s.isBot && s.card ? { card: s.card } : {}),
@@ -1086,6 +1088,7 @@ export class Lobby {
       room.prepSeconds = mode === 'coop' ? normalizePrepSeconds(d.prepSeconds) : null;
       room.prepMultiplier = mode === 'coop' ? normalizePrepMultiplier(d.prepMultiplier) : null;
       room.battleSpeed = normalizeBattleSpeed(d.battleSpeed);
+      room.pauseMode = normalizePauseMode(d.pauseMode);
       room.aiPicksLast = mode !== 'solo' && d.aiPicksLast === true;
       for (const s of Array.isArray(d.seats) ? d.seats : []) {
         if (!s || typeof s.playerId !== 'string' || !Number.isInteger(s.seat) || s.seat < 0 || s.seat >= MAX_SEATS || room.seats[s.seat]) continue;
@@ -1606,7 +1609,7 @@ export class Lobby {
     }
   }
 
-  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, modeId: askedMode, prepSeconds = null, prepMultiplier = null, battleSpeed = 2 } = {}) {
+  create(session, { mode, difficulty: asked, test, version: askedVersion, soloUnlimited, modeId: askedMode, prepSeconds = null, prepMultiplier = null, battleSpeed = 2, pauseMode } = {}) {
     // A test room exists only when the process switch allowed it. The check runs before the room is built.
     if (test === true && this.testEnabled !== true) return fail(ERR.TEST_DISABLED);
     // the official version (header "Official versions"): left out, the server's default
@@ -1617,7 +1620,7 @@ export class Lobby {
     // left out: the default (header); the protocol refuses any other value that is not a difficulty; one the version
     // lacks is lowered (终极 → 绝境)
     const difficulty = this.fallbackDifficulty(version, mode, DIFFICULTIES.includes(asked) ? asked : DEFAULT_DIFFICULTY);
-    if (!isBattleSpeed(battleSpeed) || !isPrepSeconds(prepSeconds) || !isPrepMultiplier(prepMultiplier) || (prepSeconds != null && prepMultiplier != null)) return fail(ERR.BAD_MSG, 'invalid preparation time');
+    if (!isPauseMode(pauseMode) || !isBattleSpeed(battleSpeed) || !isPrepSeconds(prepSeconds) || !isPrepMultiplier(prepMultiplier) || (prepSeconds != null && prepMultiplier != null)) return fail(ERR.BAD_MSG, 'invalid room options');
     if (this.queueByPlayer.has(session.playerId)) return fail(ERR.MATCHING);
     const cur = this.roomOf(session);
     if (this.activeMatchOf(session)) return fail(ERR.ROOM_STARTED, 'leave your running match first');
@@ -1681,6 +1684,7 @@ export class Lobby {
     room.prepSeconds = mode === 'coop' ? normalizePrepSeconds(prepSeconds) : null;
     room.prepMultiplier = mode === 'coop' ? normalizePrepMultiplier(prepMultiplier) : null;
     room.battleSpeed = normalizeBattleSpeed(battleSpeed);
+    room.pauseMode = mode === 'coop' ? normalizePauseMode(pauseMode, 'veto') : 'vote';
     // 「不限时」 only on a solo room of a version whose solo is timed (header). Anywhere else the key is ignored, so a
     // stray true cannot change a default or co-op create.
     if (mode === 'solo' && soloUnlimited === true && this.versionSoloTimed(version)) room.soloUnlimited = true;
@@ -1861,13 +1865,13 @@ export class Lobby {
     return OK;
   }
 
-  setOptions(session, { difficulty, modeId: askedMode, prepMultiplier, battleSpeed }) {
+  setOptions(session, { difficulty, modeId: askedMode, prepMultiplier, battleSpeed, pauseMode: askedPauseMode }) {
     const room = this.roomOf(session);
     if (!room) return fail(ERR.NOT_IN_ROOM);
     if (room.hostId !== session.playerId) return fail(ERR.NOT_HOST);
     if (room.match) return fail(ERR.ROOM_STARTED);
     if (room.matching) return fail(ERR.MATCHING);
-    if (!DIFFICULTIES.includes(difficulty) || !isPrepMultiplier(prepMultiplier)
+    if (!isPauseMode(askedPauseMode) || !DIFFICULTIES.includes(difficulty) || !isPrepMultiplier(prepMultiplier)
       || ![1, 2, 3, 4].includes(battleSpeed)) return fail(ERR.BAD_MSG);
     if (!this.offered(room.version, room.mode).includes(difficulty)) return fail(ERR.BAD_TARGET, 'not a mode of this version');
     const laddered = this.laddered(room.version, room.mode);
@@ -1879,14 +1883,15 @@ export class Lobby {
       difficulty = DIFFICULTIES.includes(selected.difficulty) ? selected.difficulty : 'FUNNY';
     }
     const prep = room.mode === 'coop' ? normalizePrepMultiplier(prepMultiplier) : null;
+    const pauseMode = room.mode === 'coop' ? normalizePauseMode(askedPauseMode, room.pauseMode) : 'vote';
     if (room.difficulty !== difficulty || room.modeId !== modeId || room.prepMultiplier !== prep
-      || room.prepSeconds != null || room.battleSpeed !== battleSpeed) {
+      || room.prepSeconds != null || room.battleSpeed !== battleSpeed || room.pauseMode !== pauseMode) {
       this.dropReplay(room, session.playerId);
       // Changing pacing preserves a plugin mode; choosing another official difficulty leaves it.
       if (room.difficulty !== difficulty && room.content?.modeId) {
         const {modeId:_modeId,...content}=room.content;room.content=Object.freeze(content);
       }
-      Object.assign(room, {difficulty, modeId, prepMultiplier: prep, prepSeconds: null, battleSpeed});
+      Object.assign(room, {difficulty, modeId, prepMultiplier: prep, prepSeconds: null, battleSpeed, pauseMode});
       for (const seat of room.seats) if (seat && !seat.isBot && seat.playerId !== room.hostId) seat.ready = false;
       this.broadcastState(room);
     }
@@ -2884,7 +2889,7 @@ export class Lobby {
         seats, spectators: room.spectators.map((s) => s.playerId), consoleEnabled: !!room.consoleEnabled,
         hostId: room.hostId, ...(room.test === true ? { test: true } : {}), ...(room.content ? { cs: room.content.cs } : {}),
         seed, matchNo, aiPicksLast: !!room.aiPicksLast,
-        prepSeconds: room.prepSeconds, prepMultiplier: room.prepMultiplier, combatSpeed: room.battleSpeed,
+        prepSeconds: room.prepSeconds, prepMultiplier: room.prepMultiplier, combatSpeed: room.battleSpeed, pauseMode: room.pauseMode,
       }, {
         created: (match) => {
           ctx.match = match;
@@ -2965,6 +2970,7 @@ export class Lobby {
         consoleEnabled: !!room.consoleEnabled,
         prepSeconds: room.prepSeconds,
         prepMultiplier: room.prepMultiplier,
+        pauseMode: room.pauseMode,
         combatSpeed: room.battleSpeed,
         ...(room.test === true ? { test: true } : {}),
         seed,
@@ -3097,7 +3103,7 @@ export class Lobby {
     try {
       const match = await this.matchWorkerPool.create(matchCode, {
         userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: matchCode, mode: owner.mode, difficulty: owner.difficulty, modeId: modeIdFor(owner.mode, owner.difficulty),
-        seats, consoleEnabled: !!room?.consoleEnabled, aiPicksLast: !!room?.aiPicksLast, seed, matchNo: room ? room.matchCount + 1 : 1,
+        seats, pauseMode: 'vote', consoleEnabled: !!room?.consoleEnabled, aiPicksLast: !!room?.aiPicksLast, seed, matchNo: room ? room.matchCount + 1 : 1,
       }, {
         created: (match) => {
           this.attachQueuedWorker(ctx, room, match);
@@ -3159,6 +3165,7 @@ export class Lobby {
       const match = new this.MatchClass({
         userPersistence:!!this.users, replayMaxBytes:this.replayMaxBytes || 0, roomCode: matchCode,
         mode: owner.mode,
+        pauseMode: 'vote',
         difficulty: owner.difficulty,
         modeId: modeIdFor(owner.mode, owner.difficulty),
         seats,

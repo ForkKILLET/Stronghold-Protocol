@@ -1809,7 +1809,7 @@ function MatchScreen() {
       if (act === 'pause' && L.canPause) {
         e.preventDefault();
         if (e.target instanceof HTMLElement && e.target.closest('button, [role="button"]')) e.target.blur();
-        togglePauseRef.current(!L.pauseRequested);
+        togglePauseRef.current(L.paused ? false : !L.pauseRequested);
         return;
       }
       if (L.pub?.phase !== PHASE.PREP || !L.priv) return;
@@ -1990,7 +1990,7 @@ function MatchScreen() {
         onExit=${() => setExitOpen(true)} onDrawer=${(t) => setDrawer((d) => (d ? null : t))} onReady=${toggleReady}
         readyBusy=${readyBusy} readyCount=${readyCount} playerCount=${solo ? 1 : aliveCount}
         pen=${pen} penAvail=${penAvail} onPen=${togglePen} config=${gd.config} frozenAt=${frozenAt}
-        pause=${canPause ? { show: canPause, paused, requested: pauseRequested, votes: pub.pauseRequests?.length || 0, required: pub.pauseRequired?.length || 1, busy: pauseBusy, onToggle: () => togglePause(!pauseRequested) } : null}
+        pause=${canPause ? { show: canPause, paused, mode: pub.pauseMode, requested: pauseRequested, votes: pub.pauseRequests?.length || 0, required: pub.pauseRequired?.length || 1, busy: pauseBusy, onToggle: () => togglePause(paused ? false : !pauseRequested) } : null}
         live=${liveLpNow} spectator=${spectator}
         spectators=${specFacts.list} myId=${myId} isHost=${specFacts.isHost} onRemoveSpectator=${removeSpectator} room=${modRoom}
         held=${hudIn === 'wait'} />
@@ -2108,7 +2108,7 @@ function MatchScreen() {
     ${showPrep && priv?.commandDraft && !spectator ? html`<${CommandDraft} key=${priv.commandDraft.id} draft=${priv.commandDraft} />` : null}
     ${hasOffers && !sp && !personalChoice ? html`<${OfferOverlay} pub=${pub} myId=${myId} readOnly=${spectator || !alive} onAction=${actions.offer} />` : null}
     ${sp ? html`<${ChoiceOverlay} minimized=${choiceHidden} onMinimize=${(hidden) => setChoiceHiddenKey(hidden ? choiceKey : null)} pub=${pub} sp=${sp} myId=${myId} solo=${solo} busyIdx=${spBusy} total=${total}
-      pause=${canPause ? { paused, requested:pauseRequested, votes:pub.pauseRequests?.length || 0, required:pub.pauseRequired?.length || 1, busy:pauseBusy, onToggle:()=>togglePause(!pauseRequested) } : null}
+      pause=${canPause ? { paused, mode: pub.pauseMode, requested:pauseRequested, votes:pub.pauseRequests?.length || 0, required:pub.pauseRequired?.length || 1, busy:pauseBusy, onToggle:()=>togglePause(paused ? false : !pauseRequested) } : null}
       onPick=${async (i) => { setSpBusy(i); await actions.choice(i); setSpBusy(null); }} />` : null}
     ${personalChoice ? html`<${ChoiceOverlay} key=${personalChoice.id} pub=${pub} sp=${personalChoice} myId=${myId} solo=${solo} personal=${true}
       busyIdx=${personalBusy?.choiceId === personalChoice.id ? personalBusy.idx : null} total=${total}
@@ -2152,7 +2152,7 @@ function MatchScreen() {
     ${facing && view ? html`<${FacingWheel} key=${`${facing.uid}:${facing.row},${facing.col}`} view=${view} row=${facing.row} col=${facing.col}
       grid=${facing.grid} healing=${facing.healing} name=${facing.name} onPreview=${previewFacing} onCommit=${commitFacing} onCancel=${cancelFacing} />` : null}
 
-    ${paused ? html`<${PausedOverlay} canResume=${alive && !spectator} busy=${pauseBusy} onResume=${() => togglePause(false)} onExit=${() => setExitOpen(true)} />` : null}
+    ${paused ? html`<${PausedOverlay} reject=${pub?.pauseMode === 'veto' && !pauseRequested} canResume=${alive && !spectator} busy=${pauseBusy} onResume=${() => togglePause(false)} onExit=${() => setExitOpen(true)} />` : null}
 
     ${replace ? html`<${EquipReplaceDialog} request=${replace.request} getItem=${gd.item}
       onConfirm=${(uid) => closeReplace(uid)} onCancel=${() => closeReplace(null)} />` : null}

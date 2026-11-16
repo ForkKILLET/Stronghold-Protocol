@@ -81,6 +81,7 @@ export function makeMatch(o = {}) {
     timerScale: o.timerScale,
     prepSeconds: o.prepSeconds,
     prepMultiplier: o.prepMultiplier,
+    pauseMode: o.pauseMode,
     combatSpeed: o.combatSpeed,
     // bot layout rehearsal (extra simulated battles per bot prep) is off unless a test asks for it: it multiplies the
     // simulation work of full-match suites; test/match/bot.test.js covers it

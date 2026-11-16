@@ -444,13 +444,13 @@ function PauseGlyph() {
  * Solo pause / resume control (g.pause): pressed while paused.
  * @param {{ paused: boolean, busy?: boolean, onToggle: () => void }} props
  */
-export function PauseButton({ paused, requested = paused, votes = 0, required = 1, busy = false, onToggle }) {
+export function PauseButton({ paused, requested = paused, mode = 'vote', votes = 0, required = 1, busy = false, onToggle }) {
   const shortcuts = useShortcuts();
-  const label = paused ? t('继续作战') : requested ? t('撤回暂停请求') : t('请求暂停');
+  const label = paused ? mode === 'veto' && !requested ? t('拒绝暂停') : t('继续作战') : requested ? t('撤回暂停请求') : t('请求暂停');
   return html`<${Tooltip} text=${`${label}（${shortcutLabel(shortcuts, 'pause')}）`} placement="bottom">
     <button type="button" class=${cx('pausebtn', 'tapx', requested && 'is-on', busy && 'is-busy')} aria-pressed=${requested ? 'true' : 'false'}
         aria-label=${label} disabled=${busy} data-testid="pause" onClick=${() => onToggle?.()}>
-      ${required > 1 ? html`<small>${votes}/${required}</small>` : null}
+      ${mode !== 'veto' && required > 1 ? html`<small>${votes}/${required}</small>` : null}
       ${paused ? html`<${Icon} name="play" class="pausebtn__glyph" />` : html`<${PauseGlyph} />`}
     </button>
   <//>`;

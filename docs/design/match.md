@@ -451,14 +451,16 @@ adjusted count and reset scope stay limited to its own operators; the DIY export
 Room creation validates `prepMultiplier` (null/1 = data default, 0 = untimed,
 0.5–4 in 0.25 steps) and `battleSpeed` (1/2/3/4, default 2). Preparation scales
 each round's own default and rounds to whole seconds; one human remains untimed.
-Custom rules cannot join public matchmaking. Both values survive room/match
-snapshots. Battle pacing changes real-time scheduling only: `TICK = 1/30` and
+Custom preparation/speed rules cannot join public matchmaking. These values survive room/match
+snapshots. Hosts also choose `pauseMode: 'vote'|'veto'`: new co-op rooms default to veto; solo and legacy
+rooms/checkpoints retain vote. Public matchmaking always uses vote regardless of the party's private preference. Battle pacing changes real-time scheduling only: `TICK = 1/30` and
 simulation-time budgets stay unchanged.
 
 Pause is available in every active phase, excluding LOBBY/RESULT and terminal
 settlement. Voters are connected, alive, non-left humans; AI and spectators do
-not count. All voters must request pause. Any withdrawal resumes; disconnect or
-leave clears votes and resumes. `pausedAt`, `pauseRequests` and `pauseRequired`
+not count. In vote mode all voters must request pause, and any withdrawal resumes. In veto mode one request
+pauses immediately; any eligible human may reject/resume with `on:false`, clearing that request set.
+Disconnect or leave clears votes and resumes in both modes. `pausedAt`, `pauseRequests` and `pauseRequired`
 are published alongside `paused`. Stable timer tokens retain remaining delays;
 resume shifts phase/draft/battle deadlines. Gameplay inputs are rejected while
 paused; watch, emote and late battle reports remain accepted. Late reports,

@@ -3,7 +3,23 @@ import assert from 'node:assert/strict';
 import {RoomOptionsPage,RoomPacingControls} from '../../public/js/ui/roomOptions.js';
 import {PrepTimePicker} from '../../public/js/ui/prepTime.js';
 import {PageHeader} from '../../public/js/ui/pageHeader.js';
+import { PausedOverlay } from '../../public/js/screens/game/overlays.js';
 function* walk(v){if(Array.isArray(v)){for(const x of v)yield*walk(x);return;}if(!v||typeof v!=='object')return;yield v;if(v.type===RoomPacingControls)yield*walk(RoomPacingControls(v.props));yield*walk(v.props?.children);}
+test('party pause choices use veto by default; matching stays on fixed voting rules',()=>{
+ let selected;
+ const nodes=[...walk(RoomPacingControls({mode:'coop',onPauseModeChange:v=>selected=v}))];
+ const buttons=nodes.filter(n=>n.type==='button'&&['vote','veto'].includes(n.key));
+ assert.equal(buttons.length,2);assert.equal(buttons.find(n=>n.key==='veto').props['aria-pressed'],true);
+ buttons.find(n=>n.key==='vote').props.onClick();assert.equal(selected,'vote');
+ const matching=[...walk(RoomPacingControls({mode:'match'}))];
+ assert.equal(matching.some(n=>n.type==='button'),false);
+ assert.match(JSON.stringify(matching),/所有在线且未淘汰的玩家同意后暂停/);
+});
+test('paused abandonment uses danger styling and a non-requester can reject',()=>{
+ const buttons=[...walk(PausedOverlay({canResume:true,reject:true,onExit:()=>{},onResume:()=>{}}))];
+ assert.equal(buttons.find(n=>n.props?.icon==='exit').props.variant,'danger');
+ assert.equal(buttons.find(n=>n.props?.icon==='play').props.children,'拒绝暂停');
+});
 test('separate page uses the existing picker with the original draft and can return',()=>{
  let back=0;const change=()=>{};
  const nodes=[...walk(RoomOptionsPage({mode:'coop',prepChoice:'2',onPrepChange:change,onBack:()=>back++}))];

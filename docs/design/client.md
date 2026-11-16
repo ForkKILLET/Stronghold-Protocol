@@ -42,6 +42,8 @@ The final-ten-second preparation / own-draft-turn cue shares the HUD's frozen pa
 stops its ticker and suppresses new cues; a pending pause vote alone does not. Audio still decoding is guarded by
 the requesting public/private view, so pausing, changing phase or becoming ready cannot release a stale warning.
 Resuming continues at the remaining seconds without replaying the last sounded second. Music is unchanged.
+The paused overlay uses the danger variant for abandonment. In veto mode a non-requesting teammate sees
+“拒绝暂停”; the overlay, HUD, draft button and Space all send `g.pause {on:false}` to resume.
 
 Match-information bond entries (#915, history §37.98) open the existing `BondPopup` directly: the in-game chips,
 briefing discs and strategy information discs share its effects, member list and ban marks. `MatchBondDialog` shares

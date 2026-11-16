@@ -357,7 +357,7 @@ function ProtocolPage(props) {
 }
 
 /** Full secondary page with the fork's visual treatment and this branch's protocol. */
-export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{}, difficulties = DIFFICULTIES, soloTime = null, loading = false, ladder = null, modeId = null, onMode = ()=>{} }) {
+export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, online, busy, onClose, onStart, queue, onCancel, pageRef, prepChoice = null, onPrepChange = ()=>{}, battleSpeed = 2, onSpeedChange = ()=>{}, pauseMode = 'veto', onPauseModeChange = ()=>{}, difficulties = DIFFICULTIES, soloTime = null, loading = false, ladder = null, modeId = null, onMode = ()=>{} }) {
   const info = ladder && modeId ? modeInfo(modeId) : difficultyInfo(roomMode, difficulty);
   difficulty = info.difficulty || difficulty;
   return html`<main ref=${pageRef} class="screen protocol-screen" aria-label=${`${t(card.name)} · ${t('选择模拟协议')}`}>
@@ -380,7 +380,7 @@ export function ProtocolSelect({ card, roomMode, difficulty, onDifficulty, onlin
             <div class="proto-facts"><span>${t('共')} <b class="num">${info.rounds}</b> ${tc('rounds','回合')}${info.hidden?t(' + 隐秘核心'):''}</span><span>${info.stageNote}</span></div>
             <ul>${info.effects.map(e=>html`<li key=${e}>${e}</li>`)}</ul>
           </section></section>
-          <div class="proto-settings"><${RoomPacingControls} soloControl=${soloTime ? html`<${Button} size="sm" variant="secondary" icon=${soloTime.on ? 'check' : null} role="switch" data-testid="solo-unlimited" aria-checked=${soloTime.on} disabled=${!!queue || !!busy} onClick=${() => soloTime.onToggle(!soloTime.on)}>${t('不限时')}<//>` : null} soloTimeLabel=${soloTime?.text} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} disabled=${!!queue || !!busy} />
+          <div class="proto-settings"><${RoomPacingControls} soloControl=${soloTime ? html`<${Button} size="sm" variant="secondary" icon=${soloTime.on ? 'check' : null} role="switch" data-testid="solo-unlimited" aria-checked=${soloTime.on} disabled=${!!queue || !!busy} onClick=${() => soloTime.onToggle(!soloTime.on)}>${t('不限时')}<//>` : null} soloTimeLabel=${soloTime?.text} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${onPrepChange} battleSpeed=${battleSpeed} onSpeedChange=${onSpeedChange} pauseMode=${pauseMode} onPauseModeChange=${onPauseModeChange} disabled=${!!queue || !!busy} />
             ${roomMode!=='match'?html`<p class="proto-plugin-note">${t('玩法：原版规则。创建后，房主可在模拟配置中选择插件。')}</p>`:null}
           </div>
           </div>
@@ -579,6 +579,7 @@ export function LobbyScreen() {
   const [prepChoice, setPrepChoice] = useState(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [battleSpeed, setBattleSpeed] = useState(2);
+  const [pauseMode, setPauseMode] = useState('veto');
   const [panel, setPanel] = useState(null); // protocol | join | achievements | sweep; existing server actions only
   useLayoutEffect(() => {
     setResourceCheckBlocker('lobby-panel', !!panel);
@@ -659,7 +660,7 @@ export function LobbyScreen() {
   };
   const create = () => {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
-    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed }));
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed, ...(roomMode === 'coop' ? { pauseMode } : {}) }));
   };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
@@ -695,7 +696,7 @@ export function LobbyScreen() {
   };
 
   if (optionsOpen) return html`<${RoomOptionsPage} mode=${roomMode} prepChoice=${prepChoice} onPrepChange=${setPrepChoice}
-    ladder=${roomMode === 'solo' ? ladder : null} modeId=${shownMode} onMode=${pickMode} difficulty=${difficulty} onDifficultyChange=${pickDifficulty} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
+    ladder=${roomMode === 'solo' ? ladder : null} modeId=${shownMode} onMode=${pickMode} difficulty=${difficulty} onDifficultyChange=${pickDifficulty} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} pauseMode=${pauseMode} onPauseModeChange=${setPauseMode} onBack=${() => setOptionsOpen(false)} disabled=${!!busy} />`;
   const card = MODE_CARDS.find((c) => c.id === roomMode) || MODE_CARDS[1];
   const openMode = (mode) => { setRoomMode(mode); savePref('lobby.mode', mode); setPanel('protocol'); };
   // Replace the lobby instead of covering an interactive lobby with a dialog/backdrop.
@@ -703,7 +704,7 @@ export function LobbyScreen() {
     : html`<${SweepLoadingPage} onClose=${() => setPanel(null)} />`;
   if (panel === 'protocol') return html`<${ProtocolPage} ladder=${roomMode === 'solo' ? ladder : null} modeId=${shownMode} onMode=${pickMode} card=${card} roomMode=${roomMode} difficulty=${roomMode === 'solo' ? shownSolo : shownCoop} onDifficulty=${pickDifficulty}
     online=${online} busy=${busy} onClose=${() => setPanel(null)} onStart=${roomMode === 'match' ? matchmaking : create}
-    difficulties=${roomMode === 'solo' ? solo : coop} loading=${versionLoading} soloTime=${roomMode === 'solo' && soloTimed ? { on: soloFree, onToggle: setSoloFreePref, text:t(soloTimeMsgid('brief',{timed:soloTimed,unlimited:soloFree})) } : null} queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} />`;
+    difficulties=${roomMode === 'solo' ? solo : coop} loading=${versionLoading} soloTime=${roomMode === 'solo' && soloTimed ? { on: soloFree, onToggle: setSoloFreePref, text:t(soloTimeMsgid('brief',{timed:soloTimed,unlimited:soloFree})) } : null} queue=${matchQueue} onCancel=${cancelMatchmaking} prepChoice=${prepChoice} onPrepChange=${setPrepChoice} battleSpeed=${battleSpeed} onSpeedChange=${setBattleSpeed} pauseMode=${pauseMode} onPauseModeChange=${setPauseMode} />`;
   return html`<div ref=${lobbyRef} class="screen lobby-screen lobby-hub" data-hub-theme=${backdropTheme(bg)}>
     <${HubBackdrop} bg=${bg} />
     <${PageHeader} onBack=${backToTitle} backTitle=${t('返回标题')} title=${t('开始模拟')} micro="OPERATIONS HUB" />

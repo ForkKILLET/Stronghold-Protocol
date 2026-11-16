@@ -674,20 +674,20 @@ export function RoomScreen() {
     note=${[bannerText, versionEditable ? versionWhy || (facts.humans.length > 1 ? t('其他博士同意后才会切换；切换后需要重新准备。') : null) : t('由创建者发起')].filter(Boolean).join(' ')}
     onPick=${proposeVersion} onClose=${() => setVersionOpen(false)} />` : null;
 
-  const currentDraft=(tab='basic')=>({difficulty:room.difficulty,modeId:room.modeId,prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier),battleSpeed:room.battleSpeed??2,tab});
+  const currentDraft=(tab='basic')=>({difficulty:room.difficulty,modeId:room.modeId,prepChoice:room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier),battleSpeed:room.battleSpeed??2,pauseMode:room.pauseMode??'vote',tab});
   if (configDraft) {
     const readOnly = !facts.isHost || !!room.matching;
     const change = (key, value) => setConfigDraft(d => ({...d, [key]:value}));
     const switchTab=tab=>{
       if(tab===(configDraft.tab||'basic'))return;
-      if(tab==='plugins'&&!readOnly)return run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,...(configDraft.modeId?{modeId:configDraft.modeId}:{}),prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(d=>({...d,tab}));});
+      if(tab==='plugins'&&!readOnly)return run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,...(configDraft.modeId?{modeId:configDraft.modeId}:{}),prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed,pauseMode:configDraft.pauseMode});setConfigDraft(d=>({...d,tab}));});
       setConfigDraft(currentDraft(tab));
     };
     return html`<${RoomOptionsPage} ladder=${ladderModes(getConfig(),room.mode)} modeId=${readOnly?room.modeId:configDraft.modeId} onMode=${id=>{const m=getConfig()?.modes?.[id];change('modeId',id);change('difficulty',DIFFICULTIES.includes(m?.difficulty)?m.difficulty:'FUNNY');}} soloTimeLabel=${t(soloBrief)} difficulties=${offeredDifficulties(getConfig(),room.mode)} tab=${configDraft.tab||'basic'} onTabChange=${switchTab}
       pluginContent=${PluginView?html`<${PluginView} open=${true} room=${room} myId=${me.playerId} embedded=${true} />`:html`<p>${t('正在读取插件列表…')}</p>`} mode=${room.mode} difficulty=${readOnly?room.difficulty:configDraft.difficulty} onDifficultyChange=${v=>change('difficulty',v)}
       prepChoice=${readOnly?(room.prepMultiplier==null?null:room.prepMultiplier===0?0:String(room.prepMultiplier)):configDraft.prepChoice} onPrepChange=${v=>change('prepChoice',v)}
-      battleSpeed=${readOnly?room.battleSpeed:configDraft.battleSpeed} onSpeedChange=${v=>change('battleSpeed',v)} readOnly=${readOnly} disabled=${!!busy || !online}
-      onBack=${()=>setConfigDraft(null)} onSave=${()=>run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,...(configDraft.modeId?{modeId:configDraft.modeId}:{}),prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed});setConfigDraft(null);})}>
+      battleSpeed=${readOnly?room.battleSpeed:configDraft.battleSpeed} onSpeedChange=${v=>change('battleSpeed',v)} pauseMode=${readOnly?room.pauseMode:configDraft.pauseMode} onPauseModeChange=${v=>change('pauseMode',v)} readOnly=${readOnly} disabled=${!!busy || !online}
+      onBack=${()=>setConfigDraft(null)} onSave=${()=>run('config',async()=>{await net.request('room.setOptions',{difficulty:configDraft.difficulty,...(configDraft.modeId?{modeId:configDraft.modeId}:{}),prepMultiplier:prepChoiceMultiplier(configDraft.prepChoice),battleSpeed:configDraft.battleSpeed,pauseMode:configDraft.pauseMode});setConfigDraft(null);})}>
       ${(configDraft.tab || 'basic') === 'basic' ? html`<section class="prep-setting">
         <div class="prep-setting__title"><${Icon} name="book" /><span>${t('游戏版本')}</span></div>
         ${versionCtl ? html`<${Tooltip} text=${versionCtl.why}><${Button} size="sm" variant="secondary" icon="book" data-testid="room-version" disabled=${versionCtl.disabled} onClick=${versionCtl.onOpen}>${versionLabel(curVersion)}<//><//>` : null}
@@ -729,7 +729,7 @@ export function RoomScreen() {
 
     <footer class="room-bar">
       <div class="room-bar__left">
-        <${RoomConfigSummary} modeName=${room.modeId?info.name:null} soloTimeLabel=${soloTimeMsgid('short', {timed:soloTimedOf(getConfig(),curVersion),unlimited:room.soloUnlimited===true})} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed}
+        <${RoomConfigSummary} modeName=${room.modeId?info.name:null} soloTimeLabel=${soloTimeMsgid('short', {timed:soloTimedOf(getConfig(),curVersion),unlimited:room.soloUnlimited===true})} mode=${room.mode} difficulty=${room.difficulty} prepMultiplier=${room.prepMultiplier} prepSeconds=${room.prepSeconds} battleSpeed=${room.battleSpeed} pauseMode=${room.pauseMode}
           contentLabel=${curVersion === DEFAULT_VERSION ? roomRulesLabel(room) : facts.modded ? `${versionLabel(curVersion)} ${roomRulesLabel(room)}` : versionLabel(curVersion)}
           editable=${facts.isHost && !room.matching} disabled=${!!busy} onOpen=${()=>setConfigDraft(currentDraft())} />
         <div class="room-bar__tools">
@@ -742,7 +742,7 @@ export function RoomScreen() {
           <${AiLastToggle} option=${aiLastOption(room, me.playerId)} busy=${busy} onToggle=${setAiLast} />
           ${facts.isHost && coop && !room.matching ? html`<${RoomOptionSwitch} label=${t('匹配同盟队友')}
             checked=${matchTeammates} disabled=${curVersion !== DEFAULT_VERSION || !!room.consoleEnabled || facts.modded || !!busy || (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2)}
-            hint=${room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : facts.modded ? t('插件房间不能参加公共匹配') : (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : null}
+            hint=${room.consoleEnabled ? t('控制台已启用，不能匹配同盟队友') : facts.modded ? t('插件房间不能参加公共匹配') : (room.prepSeconds != null || room.prepMultiplier != null || (room.battleSpeed ?? 2) !== 2) ? t('自定义房间配置仅支持好友 / AI 组队') : t('公共匹配使用投票通过暂停模式。')}
             onChange=${setMatchTeammates} />` : null}
         </div>
       </div>

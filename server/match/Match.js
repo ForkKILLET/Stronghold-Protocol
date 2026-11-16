@@ -1,4 +1,5 @@
 import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prepTime.js';
+import { normalizePauseMode } from '../../shared/roomOptions.js';
 // server/match/Match.js — the match & meta engine: state machine, timers, round loop, co-op orchestration,
 // broadcasting views (DESIGN §6, §8). Rules are documented in the module headers of ./PlayerState.js, ./pool.js,
 // ./board.js, ./bondsMeta.js, ./effectsMeta.js, ./choices.js, ./waves.js, ./unite.js, ./finalAssault.js,
@@ -11,6 +12,7 @@ import { normalizePrepSeconds, normalizePrepMultiplier } from '../../shared/prep
 // new Match(opts)
 //   opts.roomCode    string                     4-letter room code (logging only)
 //   opts.mode        'solo' | 'coop'
+//   opts.pauseMode   'vote' | 'veto' (optional; defaults to vote for legacy and public matches)
 //   opts.difficulty  'FUNNY'|'NORMAL'|'HARD'|'ABYSS'
 //   opts.modeId      string                     modeIdFor(mode, difficulty), e.g. 'mode_multi_hard'
 //   opts.aiPicksLast boolean (optional)         the co-op room option 「AI 队友最后选择」 (room.setAiPicksLast, GitHub #338):
@@ -355,6 +357,7 @@ export class Match {
     this.gd = new GameData(this.data, this.modeId);
     this.prepSeconds = normalizePrepSeconds(opts.prepSeconds);
     this.prepMultiplier = normalizePrepMultiplier(opts.prepMultiplier);
+    this.pauseMode = normalizePauseMode(opts.pauseMode);
     if (!this.difficulty) this.difficulty = this.gd.difficulty;
     this.isSolo = this.mode === 'solo' || this.gd.isSolo;
     // Only a room created by the lobby can opt in. Public matchmaking passes false and has no room console.

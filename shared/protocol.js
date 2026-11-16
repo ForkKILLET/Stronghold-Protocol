@@ -1,4 +1,4 @@
-import { isBattleSpeed } from './roomOptions.js';
+import { isBattleSpeed, isPauseMode } from './roomOptions.js';
 import { isPrepSeconds, isPrepMultiplier } from './prepTime.js';
 // Normative message catalogue (DESIGN §8). Used by server (validation) and client (building requests).
 // Every client→server message is `{ t, rid?, ...fields }`. Unknown `t` or invalid fields ⇒ ERR.BAD_MSG.
@@ -513,13 +513,13 @@ export const C2S = {
   // the server applies `true` solely to a solo room of a version whose solo is timed, and ignores it otherwise, so a
   // default create stays the message it was.
   'state.resync': {},
-  'room.create': { mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), test: (v) => v === true, version: isVersionId, soloUnlimited: isBool, modeId: isId, prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, battleSpeed: isBattleSpeed, $optional: ['test', 'difficulty', 'version', 'soloUnlimited', 'modeId', 'prepSeconds', 'prepMultiplier', 'battleSpeed'] },
+  'room.create': { pauseMode: isPauseMode, mode: (v) => v === 'solo' || v === 'coop', difficulty: (v) => DIFFICULTIES.includes(v), test: (v) => v === true, version: isVersionId, soloUnlimited: isBool, modeId: isId, prepSeconds: isPrepSeconds, prepMultiplier: isPrepMultiplier, battleSpeed: isBattleSpeed, $optional: ['test', 'difficulty', 'version', 'soloUnlimited', 'modeId', 'prepSeconds', 'prepMultiplier', 'battleSpeed', 'pauseMode'] },
   'room.join': { $optional: ['testAck'], testAck: (v) => v === true, code: (v) => isStr(v, ROOM_CODE_LEN + 2) && /^[A-Za-z0-9]+$/.test(v) },
   'room.leave': {},
   'room.emote': { id: (v) => EMOTES.includes(v) },
   'room.chat': { text: validChatText },
   'room.ready': { ready: isBool },
-  'room.setOptions': { modeId: isId, $optional: ['modeId'], difficulty: (v) => DIFFICULTIES.includes(v), prepMultiplier: isPrepMultiplier, battleSpeed: (v) => [1, 2, 3, 4].includes(v) },
+  'room.setOptions': { pauseMode: isPauseMode, modeId: isId, $optional: ['modeId', 'pauseMode'], difficulty: (v) => DIFFICULTIES.includes(v), prepMultiplier: isPrepMultiplier, battleSpeed: (v) => [1, 2, 3, 4].includes(v) },
   'room.setDifficulty': { difficulty: (v) => DIFFICULTIES.includes(v) },
   // the co-op room option 「AI 队友最后选择」 (GitHub #338; host, before the match): the strategy and 机变 drafts order every
   // human seat before every AI seat (server/match/match/phases.js humansFirst); room.state.aiPicksLast

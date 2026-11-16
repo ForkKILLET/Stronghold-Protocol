@@ -288,9 +288,14 @@ A `choice:<effectId>` registry handler overrides the default application (§2.4)
   left it ends as `'eliminated'`.
 
 ### 1.3a Global pause
-`g.pause {on}` (`Match.setPause`, DESIGN §14 Global pause) records a participant's vote. All connected active humans
-must request the pause; AI and spectators are excluded. Any withdrawal resumes; disconnect/leave clears votes.
-`m.public.paused`, `pausedAt`, `pauseRequests` and `pauseRequired` expose the state. All phase timers, draft turns,
+`g.pause {on}` (`Match.setPause`, DESIGN §14 Global pause) follows the room's `pauseMode`. `vote` requires all
+connected active humans to request it; `veto` pauses immediately on one request, and any eligible participant may
+reject/resume with `on:false`, clearing the request set. AI and spectators are excluded. In vote mode any withdrawal
+resumes; disconnect/leave clears votes in both modes. New co-op rooms default to veto; public matchmaking always
+uses vote, even for a party with a different private-room preference. Solo and legacy rooms/checkpoints retain vote.
+Hosts choose the policy in room configuration (`room.create` / optional `room.setOptions.pauseMode`); changing it
+resets other humans' readiness, and it cannot change after queueing or starting. Room documents, checkpoints and
+Worker options retain the choice. `m.public.pauseMode`, `m.public.paused`, `pausedAt`, `pauseRequests` and `pauseRequired` expose the state. All phase timers, draft turns,
 battle clocks, boss overtime and server/client pacers freeze. Gameplay inputs are blocked, late battle reports
 and worker callbacks are deferred. Resume shifts clocks and re-arms the remaining timer durations.
 

@@ -91,6 +91,7 @@ export function roomDoc(room) {
     prepSeconds: room.prepSeconds ?? null,
     prepMultiplier: room.prepMultiplier ?? null,
     battleSpeed: room.battleSpeed ?? 2,
+    pauseMode: room.pauseMode ?? 'vote',
     hostId: room.hostId || null,
     ownerKey: room.ownerKey || null,
     matchKey: room.matchKey || null,
@@ -218,7 +219,7 @@ export function restoreServer({ doc, registry, lobby, now = Date.now(), log = no
     if (r && typeof r.code === 'string' && r.code.length === ROOM_CODE_LEN && !roomDocs.has(r.code)) roomDocs.set(r.code, r);
   }
   for (const [key, cp] of matches) if (!key.startsWith('queue:') && key.length === ROOM_CODE_LEN && !roomDocs.has(key) && cp) {
-    roomDocs.set(key, { code: key, version: cp.version, modeId: cp.modeId, test: !!cp.test, soloUnlimited: !!cp.soloUnlimited, mode: cp.mode, difficulty: cp.difficulty, prepSeconds: cp.prepSeconds ?? null, prepMultiplier: cp.prepMultiplier ?? null, battleSpeed: cp.gameSpeed ?? 2, seats: [], queueMatch: true });
+    roomDocs.set(key, { code: key, version: cp.version, modeId: cp.modeId, test: !!cp.test, soloUnlimited: !!cp.soloUnlimited, mode: cp.mode, difficulty: cp.difficulty, prepSeconds: cp.prepSeconds ?? null, prepMultiplier: cp.prepMultiplier ?? null, battleSpeed: cp.gameSpeed ?? 2, pauseMode: cp.pauseMode ?? 'vote', seats: [], queueMatch: true });
     log.warn?.(`[persist] ${key}: rebuilding missing room from its checkpoint`);
   }
   for (const [key, original] of roomDocs) {
