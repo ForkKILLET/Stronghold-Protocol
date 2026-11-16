@@ -15,6 +15,7 @@ import { validateC2S } from '../../shared/protocol.js';
 import { validateClientResult, runHeadless } from '../../server/match/fields.js';
 import { PHASE } from '../../shared/constants.js';
 import { DATA, makeMatch } from './harness.js';
+import { InPageSimHost } from '../../public/js/battle/simHost.js';
 import { archivedCombatReader } from '../../public/js/battle/combatHistory.js';
 
 const DS = new DataSource(DATA, null);
@@ -658,4 +659,27 @@ test('finished own battles emit compact account snapshots; a spectator never sub
   const count=snapshots.length;r.store.set({me:{playerId:'spectator'}});r.runner.clear({keepMetrics:true});
   assert.equal(snapshots.length,count);
  } finally {r.runner.dispose();}
+});
+
+
+test('temporary layer display publishes without permanent gains and resets at a new battle', async () => {
+  let host;
+  const r = rig({ createHost: () => (host = new InPageSimHost()) });
+  try {
+    const start = realStart(7391), pid = start.spec.players[0].playerId;
+    start.spec.players[0].bonds = { ursusShip: { count: 0, tier: 0, active: false, layers: 100 } };
+    await r.runner.onStart(start); await r.settle();
+    host.battle.addTempLayers(pid, 'ursusShip', 20);
+    r.advance(100); await r.settle();
+    assert.equal(r.runner.state().bondTempLayers[pid].ursusShip, 20);
+    assert.equal(r.runner.state().bondLayers[pid]?.ursusShip, 100, 'temporary receipts never become permanent');
+    const previous = r.runner.state();
+    host.battle.addTempLayers(pid, 'ursusShip', 2);
+    r.advance(100); await r.settle();
+    assert.equal(r.runner.state().bondTempLayers[pid].ursusShip, 22);
+    assert.equal(previous.bondTempLayers[pid].ursusShip, 20, 'published views are not aliases of the mutable host');
+    const next = structuredClone(start); next.battleId += '-next';
+    await r.runner.onStart(next); await r.settle();
+    assert.equal(r.runner.state().bondTempLayers?.[pid]?.ursusShip, undefined);
+  } finally { r.runner.dispose(); }
 });

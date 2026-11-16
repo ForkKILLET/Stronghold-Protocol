@@ -90,6 +90,17 @@ play the same `bondUp` cue. A gain of several layers plays once, including gains
 bond activation cues use this same channel. State snapshots, settlement backfill and buffered field-entry events
 do not generate layer cues. Field entry, leaving the game and muting cancel playing or still-decoding layer audio.
 
+Temporary bond layers (#961 / #962 follow-up, fork 2026-11-16) use a display-only receipt map on the client
+simulation host. The in-page and simulation Worker hosts observe actual `tempLayerGain` amounts, including the
+existing combat-local gains in boss / joint-defense fields, without altering permanent bonds, results or RNG.
+The runner publishes `bondTempLayers` only for the displayed unfinished battle; switching fields, finishing or
+returning to prep removes that battle's temporary view. Permanent live gains retain their existing round scope.
+The strip and popup show the permanent-plus-temporary total in yellow while the temporary amount is positive
+(user-confirmed official display: 100 + 20 appears as yellow 120), then restore the permanent value. The permanent
+999 cap is applied before adding temporary layers, never to the combined display. This adds no server battle event
+or simulation tuple; it uses the existing client battle display path. Sources: [issue #961](https://github.com/sganggs/Stronghold-Protocol/issues/961),
+[PR #962](https://github.com/sganggs/Stronghold-Protocol/pull/962) (the frontend was explicitly excluded), and the user's color / total confirmation.
+
 `import { createFieldView } from './render/app.js'`
 
 ```js
