@@ -1,6 +1,6 @@
 # 本服待 PR 清单（2026-11-17）
 
-执行更新：已提交 [#968 MapEffect 生命周期](https://github.com/sganggs/Stronghold-Protocol/pull/968)、[#969 移动召唤者保留合法召唤物](https://github.com/sganggs/Stronghold-Protocol/pull/969)（附完整官服录像）与 [#970 临时层数显示](https://github.com/sganggs/Stronghold-Protocol/pull/970)（明确依赖 #962）。用户随后要求整份“战斗中查看队友及 Boss 跨组查看”PR 暂缓，待找到合适依据；本地分支 `feat/battle-teammate-viewing`／`79c378ab0` 已适配，未推送、未开 PR，浏览器验证中止且不计通过。地图拆分已另写成[地图系列计划](map-pr-plan-20261117.md)。下文保留清点时的范围判断，提交顺序以本段更新为准。
+执行更新：已提交 [#968 MapEffect 生命周期](https://github.com/sganggs/Stronghold-Protocol/pull/968)、[#969 移动召唤者保留合法召唤物](https://github.com/sganggs/Stronghold-Protocol/pull/969)（附完整官服录像）与 [#970 临时层数显示](https://github.com/sganggs/Stronghold-Protocol/pull/970)（明确依赖 #962）。观战 PR 最初因缺依据暂缓；同日用户补充官服 Boss 直播片段后，完成 Firefox 两尺寸／三阶段的真实 Match 动作桥接验证，已提交 [#971 战斗中查看队友及 Boss 跨组查看](https://github.com/sganggs/Stronghold-Protocol/pull/971)，分支 `feat/battle-teammate-viewing`／`9390a808`，普通战斗明确为 QoL。源码 PR 不含视频或截图二进制；审阅证据固定在独立证据分支 `3f6dc6326`。完整 CI／golden 交主线 Actions。地图拆分见[地图系列计划](map-pr-plan-20261117.md)。下文保留初次清点时的范围判断，当前状态以本段为准。
 
 初次清点时只整理，没有创建、推送或修改 GitHub PR。清点基线为主线 `dev 55f528e9f`、本服 `3edb85a5f`，并实时读取开放 PR、Issue 和本方未合入／手动关闭 PR 的评论与检查结果。主线没有新增 dev 提交；下列“待 PR”包含已经在本服推送、部署，但尚未向主线提交的内容。后续执行状态见上段。
 
