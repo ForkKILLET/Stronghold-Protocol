@@ -587,7 +587,7 @@
 @keyframes modal-in { from { opacity: 0; transform: translateY(calc(.14 * var(--ui-unit, 1rem))) scale(.985); } }
 
 /* ---- tooltip -------------------------------------------------------------------------------------- */
-.voice-subtitles { position:fixed; z-index:70; box-sizing:border-box; width:520px; max-width:calc(100vw - 24px - var(--sa-l,0px) - var(--sa-r,0px)); display:flex; flex-direction:column; gap:4px; padding:9px 14px; border:1px solid var(--line-2); background:rgba(10,16,14,.94); color:var(--text-hi); pointer-events:none; font-size:clamp(12px,calc(.17 * var(--utility-text, var(--t))),18px); line-height:1.45; box-shadow:0 3px 14px #0006; }
+.voice-subtitles { position:fixed; z-index:calc(var(--z-modal) + 5); box-sizing:border-box; width:520px; max-width:calc(100vw - 24px - var(--sa-l,0px) - var(--sa-r,0px)); display:flex; flex-direction:column; gap:4px; padding:9px 14px; border:1px solid var(--line-2); background:rgba(10,16,14,.94); color:var(--text-hi); pointer-events:none; font-size:clamp(12px,calc(.17 * var(--utility-text, var(--t))),18px); line-height:1.45; box-shadow:0 3px 14px #0006; }
 .voice-subtitles__speaker { display:flex; align-items:baseline; gap:6px; width:100%; color:var(--mint-400); font-weight:700; }
 .voice-subtitles__speaker .icon { flex:none; align-self:flex-start; width:14px; height:14px; margin-top:2px; }
 .voice-subtitles__speaker span { min-width:0; overflow-wrap:anywhere; }
@@ -595,6 +595,13 @@
 .voice-subtitles__line { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; margin:0; overflow:hidden; overflow-wrap:anywhere; white-space:pre-line; }
 .voice-subtitles__line.is-translation { color:var(--text-lo); }
 .voice-subtitles__line + .voice-subtitles__line { margin-top:3px; }
+/* Full-page overlays give captions their own lower lane instead of covering or hiding them.
+   Only visible captions apply this class; audio end/disable/unmount restore the original geometry. */
+.voice-caption-reserved { bottom:var(--voice-caption-reserve) !important; height:auto !important; max-height:calc(min(100dvh, calc(var(--sp-vh, 1dvh) * 100)) - var(--voice-caption-reserve)) !important; }
+.voice-caption-reserved > :is(.modal__box,.guide__box) { max-height:var(--voice-caption-content-height) !important; min-height:0; }
+.voice-caption-reserved > .spov__inner { overflow:auto; }
+.voice-caption-reserved .guide__stage { min-height:0; overflow:auto; }
+.voice-caption-reserved :is(.guide__head,.guide__foot) { flex-shrink:0; }
 .voice-subtitles.is-held { border-color:var(--mint-400); }
 @media (max-height:560px) { .voice-subtitles { gap:3px; padding:6px 10px; } .voice-subtitles__line { -webkit-line-clamp:1; } }
 

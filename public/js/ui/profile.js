@@ -12,6 +12,13 @@ import {NAME_MAX_LEN} from '../../../shared/constants.js';
 import {profileAvatarUrl,profileAvatarAnimationUrl} from './assetUrls.js';
 import {doctorLink,openPublicDoctor} from './doctorLinks.js';
 import {formatDoctorId,PRIVATE_PROFILE} from '../../../shared/publicProfiles.js';
+import {operatorSearch} from './operatorSearch.js';
+
+/** Keep catalogue grouping/order shared; phonetic aliases belong only to the presentation layer. */
+export function searchProfileAvatars(avatars,group='all',query=''){
+ const matches=operatorSearch(query);
+ return filterProfileAvatars(avatars,group).filter(a=>matches([a.name,a.id]));
+}
 
 export const profileStore=createStore({enabled:false,user:null,open:false,tab:'overview',status:'idle'});
 export async function userRequest(path,body,{timeoutMs=5000,signal}={}){
@@ -71,7 +78,7 @@ export function ProfileEditor({user}){
  const catalogReady=!!catalog?.avatars;
  const selected=Object.hasOwn(avatars,avatar)?avatar:null;
  const [query,setQuery]=useState('');const [group,setGroup]=useState('all');const [shown,setShown]=useState(48);
- const choices=filterProfileAvatars(avatars,group,query);
+ const choices=searchProfileAvatars(avatars,group,query);
  const groups=[['all',t('全部')],['default',t('默认头像')],['special',t('特殊头像')],['event',t('活动头像')],['dynamic',t('动态头像')]];
  const save=()=>run(async()=>{const {user:next}=await userRequest('/api/user/profile',{name,avatarId:selected});remember(next);if(net.status==='online')net.setName(next.name);toast(t('个人档案已保存'),'ok');});
  return html`<section class="doctor-editor"><h3 class="st-sec__h">${t('个人资料')}</h3>

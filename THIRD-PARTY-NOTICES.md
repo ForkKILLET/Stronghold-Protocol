@@ -41,6 +41,14 @@ at all, this project grants an additional permission under GPL-3.0 section 7 for
 | Novecento Wide (Jan Tonellato / Synthview) | the authors' free-font terms (not GPL) | as above |
 | Noto Sans SC, Oxanium, Rajdhani | SIL Open Font License 1.1 | loaded by the browser from Google Fonts at runtime; not distributed |
 
+## Mandarin search data
+
+The generated, presentation-only `public/js/ui/searchReadings.js` contains selected readings from
+[Unicode Unihan 17.0.0](https://www.unicode.org/Public/17.0.0/ucd/Unihan.zip), under Unicode-3.0.
+Copyright © 1991-2026 Unicode, Inc. The fixed source checksums, selected fields and regeneration command
+are documented in [docs/OPERATOR_SEARCH.md](docs/OPERATOR_SEARCH.md). This data is not part of the GPL grant.
+The operator name aliases are from the existing game tables and keep the game-data terms below.
+
 ## Game data, art and audio
 
 All names, characters, artwork, Spine models, UI graphics, music, sound effects and game data of *Arknights* /
@@ -569,3 +577,47 @@ THE SOFTWARE.
 The Apache-2.0 licence text reproduced above applies to SES and its listed Endo dependencies as well.
 Their package licence files remain in the release bundle. Copyright and source notices are also retained
 in the vendored SES bundle.
+
+### Unicode Unihan — Unicode-3.0
+
+```text
+UNICODE LICENSE V3
+
+COPYRIGHT AND PERMISSION NOTICE
+
+Copyright © 1991-2026 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
+```

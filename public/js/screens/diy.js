@@ -33,6 +33,7 @@ import { CultivationSelects, CultivationSection } from './cultivation.js';
 import { SkillIcon, ModuleGlyph, SkillSection, ModuleSection, ProfFilter, rowControlHit } from './loadoutSections.js';
 import { t } from '../../../shared/i18n.js';
 import { RosterTierMark, useRosterDeckScroll } from '../ui/rosterDeck.js';
+import { operatorSearch } from '../ui/operatorSearch.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -329,10 +330,10 @@ export function DiyPickerView({ m, slot, picks, kitted, onDone, onClose, filter,
   const cur = picks[slot.slotId] || null;
   const options = pickOptions(slot.slotId, picks, D, kitted);
   const tiers = new Map(diySlotList(D).map((s) => [s.slotId, s.tier]));
-  const q = query.trim().toLowerCase();
+  const matches = operatorSearch(query);
   const list = options.filter((o) => (filter === 'all' || (filter === 'proto') === o.proto)
     && (!prof || o.unit?.profession === prof)
-    && (!q || [o.unit?.name, o.unit?.appellation, o.unit?.subProfessionName, t(PROF_NAME[o.unit?.profession] || ''), ...o.bonds.map(bondName)].some((x) => typeof x === 'string' && x.toLowerCase().includes(q))));
+    && matches([o.unit?.name, o.unit?.appellation, o.unit?.subProfessionName, t(PROF_NAME[o.unit?.profession] || ''), ...o.bonds.map(bondName)], o.charId));
   const ch = draft ? rowChoices(draft.charId, slot.slotId, D) : null;
   // Selecting a row keeps the draft's edits when it is already the chosen operator (the picker's own rule, 0.2.0). On a
   // phone the first tap only selects: the detail slides over on the next tap of the row that is already selected, so a

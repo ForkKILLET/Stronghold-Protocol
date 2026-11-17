@@ -32,19 +32,21 @@ export function formatVoiceCaption(text, nickname) {
   return text.replaceAll('{@nickname}', () => nickname);
 }
 
-// The ready-row anchor survives combat: captions never follow the shop, effects list or detail card.
+// Prefer the stable ready-row anchor; relocate around panels instead of hiding a playing caption.
 export function voiceCaptionHudPosition(viewport, box, anchor, obstacles) {
   const margin = 12, gap = 12;
   const minLeft = margin + (viewport.safeLeft || 0);
   const right = Math.min(anchor.left - gap, viewport.width - margin - (viewport.safeRight || 0));
   const width = Math.min(Math.max(280, Math.min(400, viewport.width * .22)), right - minLeft);
-  if (width < 240) return null;
+  if (width < 240) return findCaptionSpace(viewport, box, obstacles);
   const height = box.heightAtWidth ? box.heightAtWidth(width) : box.height;
   const left = right - width;
   const crosses = r => r.width > 0 && r.height > 0 && r.right + gap > left && r.left - gap < right;
   const top = Math.max(margin + (viewport.safeTop || 0), anchor.top);
-  if (top + height > viewport.height - margin - (viewport.safeBottom || 0)) return null;
-  if (obstacles.some(r => crosses(r) && r.bottom + 8 > top && r.top - 8 < top + height)) return null;
+  if (top + height > viewport.height - margin - (viewport.safeBottom || 0)
+    || obstacles.some(r => crosses(r) && r.bottom + 8 > top && r.top - 8 < top + height)) {
+    return findCaptionSpace(viewport, { ...box, width }, obstacles, { left, top });
+  }
   return { left, top, width };
 }
 
@@ -53,7 +55,7 @@ export function voiceCaptionPosition(viewport, box, obstacles) {
   const gap = 8, margin = 12;
   const minLeft = margin + (viewport.safeLeft || 0), maxRight = viewport.width - margin - (viewport.safeRight || 0);
   const maxWidth = Math.min(box.width || 520, maxRight - minLeft);
-  if (maxWidth <= 0) return null;
+  if (maxWidth <= 0) return voiceCaptionDockPosition(viewport, box);
   const minWidth = Math.min(box.minWidth || 280, maxWidth);
   const heights = new Map();
   const heightAt = width => {
@@ -85,5 +87,50 @@ export function voiceCaptionPosition(viewport, box, obstacles) {
     }
     if (candidates.length) return candidates.sort((a, b) => b.width - a.width || b.left - a.left)[0];
   }
-  return null;
+  return findCaptionSpace(viewport, box, obstacles);
+}
+
+// A dedicated lower strip is the last resort; callers reserve its height in the covering surface.
+export function voiceCaptionDockPosition(viewport, box) {
+  const left = 12 + (viewport.safeLeft || 0);
+  const width = Math.max(1, Math.min(760, viewport.width - left - 12 - (viewport.safeRight || 0)));
+  const height = box.heightAtWidth ? box.heightAtWidth(width) : box.height;
+  return { left: (viewport.width + (viewport.safeLeft || 0) - (viewport.safeRight || 0) - width) / 2,
+    top: Math.max(12 + (viewport.safeTop || 0), viewport.height - 12 - (viewport.safeBottom || 0) - height), width, dock: true };
+}
+
+// Search actual free rectangles over the whole viewport, measuring each candidate's wrapped height.
+// Edge candidates suffice: a free rectangle can slide until it meets a viewport or obstacle edge.
+function findCaptionSpace(viewport, box, obstacles, preferred) {
+  const gap = 8, left = 12 + (viewport.safeLeft || 0), top = 12 + (viewport.safeTop || 0);
+  const right = viewport.width - 12 - (viewport.safeRight || 0), bottom = viewport.height - 12 - (viewport.safeBottom || 0);
+  const width = Math.min(box.width || 400, right - left), minWidth = Math.min(240, width);
+  const rects = obstacles.filter(r => r.width > 0 && r.height > 0 && r.right > left && r.left < right && r.bottom > top && r.top < bottom);
+  const heights = new Map();
+  const measure = w => {
+    if (!heights.has(w)) heights.set(w, box.heightAtWidth ? box.heightAtWidth(w) : box.height);
+    return heights.get(w);
+  };
+  const target = preferred || { left: right - width, top: bottom - measure(width) };
+  let best = null, score = Infinity;
+  for (const w of new Set([width, minWidth])) {
+    const h = measure(w);
+    const ys = new Set([top, bottom - h, Math.max(top, Math.min(target.top, bottom - h)), ...rects.flatMap(r => [r.bottom + gap, r.top - gap - h])]);
+    for (const y of ys) {
+      if (y < top || y + h > bottom) continue;
+      const blocks = rects.filter(r => r.bottom + gap > y && r.top - gap < y + h)
+        .map(r => ({ left: Math.max(left, r.left - gap), right: Math.min(right, r.right + gap) })).sort((a, b) => a.left - b.left);
+      let start = left;
+      for (const block of [...blocks, { left: right, right }]) {
+        const available = block.left - start;
+        if (available >= w) {
+          const x = Math.max(start, Math.min(target.left, block.left - w));
+          const distance = Math.hypot(x - target.left, y - target.top) + (width - w) * 2;
+          if (distance < score) { score = distance; best = { left: x, top: y, width: w }; }
+        }
+        start = Math.max(start, block.right);
+      }
+    }
+  }
+  return best || voiceCaptionDockPosition(viewport, box);
 }

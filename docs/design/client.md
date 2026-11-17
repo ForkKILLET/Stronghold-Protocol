@@ -7,6 +7,11 @@ Part of [DESIGN.md](../DESIGN.md) (the index; section numbers are global).
 
 ## 9. Client rendering contract (public/js/render)
 
+干员搜索统一使用 `ui/operatorSearch.js`：调配两视图、DIY 候选、记牌器、房间干员／头像／立绘、
+个人头像和控制台干员检索均支持拼音全拼／首字母与中拼混输，并保留各入口原有资格、筛选及排序。
+展示用字表取固定 Unicode Unihan 多读音，名称别名按 charId 关联已有官方中文名，换语言仍可检索。
+不把社区自动生成词库当作官服读音表，不改变 shared 或玩法内容身份；详细来源、生成与测试见 [干员搜索](../OPERATOR_SEARCH.md)。
+
 本服 Boss 伤害排行沿用服务器前三名与对领袖总生命的占比；紧凑标题栏、01–03 名次、首名金色及底部占比线
 只调整展示，不改排序、伤害口径或归属。玩家名省略时可悬停查看完整文本；隐藏后保留标题与显示按钮。
 浮窗宽度与右侧锚点不变，三行须适配手机横屏的可用高度；尺寸变化也重新测量，以避让主题倒计时及 DP 框。
@@ -26,6 +31,11 @@ Branch preference (2026-10-16): `deploymentZoom` / 设置“部署时镜头缩�
 Normal healing ranges use cyan-blue battlefield highlights; damaging ranges keep orange. Placement previews and
 inspected operators / healing summons resolve the same loadout record (dmgType heal or attackKind heal).
 The solid fill, Pixi stripes and SVG stripes share that choice, preserving highlight groups and orientation.
+Inspected field units and the facing wheel share `RangeStripes` for the 3D board: its SVG sits above the board
+canvas and below the unit canvas, so the boss hit rectangle cannot erase the range texture or paint over units.
+Selection uses native stripes on 2D / DOM boards; switching board modes while details stay open transfers the
+stripe layer without duplicates. The display keeps board-space coordinates and clips bench / temporary rows;
+closing details, deselecting or starting placement removes the inspected stripe layer.
 This does not recolour the card mini-map or infer a healing range from profession, incidental healing, regen, or skill
 text. Special skills that change the displayed ability need separate verified display metadata. Colour families follow
 [PRTS combat mechanics](https://prts.wiki/w/%E4%BD%9C%E6%88%98%E6%9C%BA%E5%88%B6#%E6%94%BB%E5%87%BB%E8%8C%83%E5%9B%B4);
@@ -544,7 +554,7 @@ Target: a **real 3D board layer** rendered with three.js (vendored ESM, no CDN) 
 - Geometry generated from `data/stages.json` like the official builder: LOW tiles = top quads; HIGH tiles = raised blocks with side walls; forbidden/void, fences, gates (red), objective (blue), hand/temp pads, special terrain; UVs mapped onto the official atlas regions (reuse/extend `public/assets/local/map/autochess/tiles.json`); normal + emission + metallic maps; lighting tuned to match official screenshots (key directional light, ambient/hemisphere, soft contact shadows); official background meshes & texture; device meshes (OBJ exported by `tools/local-extract`) with their textures; animated gate/objective effects.
 - One camera model drives both layers: `public/js/render/projection.js` keeps its public API (`worldToScreen`, `screenToWorld`/tile picking, presets, transitions) but derives it from a three.js `PerspectiveCamera` initialised from the official configBlackBoard framing, so Spine units, FX, drag/drop and hit-testing stay aligned with the 3D board.
 - Must degrade gracefully: when local-client art or WebGL2 features are missing, fall back to the current 2D atlas board; keep 60 fps (static geometry merged into few draw calls; textures mipmapped; DPR-aware).
-- Implemented (`public/js/render/board3d/*`, `render/app.js`): three.js is downloaded only when the local-art manifest lists the board atlas; the built 3D area, the drawn 2D rows and the lit rect follow `viewKind(kind, {rect})` (the field the camera actually shows: a 'prep' camera on rows ≤ 6 = `bossPrep`); the background plane is extended with mirrored copies and the clear colour matches the fog (no visible edge at any aspect); battle crates live in their own group (survive scene rebuilds) and follow the board mode (`switchableBox`: 3D mesh ⇄ 2D box on a mode switch or a lost WebGL context); quality 'low' drops shadows; `?board=2d|3d` overrides. The direction wheel's range stripes sit between the board canvas and the unit canvas.
+- Implemented (`public/js/render/board3d/*`, `render/app.js`): three.js is downloaded only when the local-art manifest lists the board atlas; the built 3D area, the drawn 2D rows and the lit rect follow `viewKind(kind, {rect})` (the field the camera actually shows: a 'prep' camera on rows ≤ 6 = `bossPrep`); the background plane is extended with mirrored copies and the clear colour matches the fog (no visible edge at any aspect); battle crates live in their own group (survive scene rebuilds) and follow the board mode (`switchableBox`: 3D mesh ⇄ 2D box on a mode switch or a lost WebGL context); quality 'low' drops shadows; `?board=2d|3d` overrides. The direction wheel and inspected unit share range stripes between the board canvas and the unit canvas.
 - Done: Final Assault / Hidden Core prep takes place on your own half of the boss field (research 09 §1.2): pieces shown at boss-field positions (row − 7; right-hand player mirrored col → 20 − col, RIGHT ↔ LEFT), drop targets and wheel directions mapped back to board coordinates (`prepCamera` → `bossPrep` in public/js/ui/gameLogic.js; covered by the playtest2 browser tests). A scout of such a board (`m.field` prep of a boss round) comes in boss-field coordinates with the player's `side` and is framed the same way, the leader standing at its spawn (0.2.0, community report item 55). Both players of a pair are shown together, as in the battle (0.2.0, community report item 51): the partner's board stands on the other half (`m.private.bossMate` units, already in boss-field coordinates: mirrored on the right half, RIGHT ↔ LEFT; read-only `m:<uid>` views of `render/app.js syncMates`), the whole boss field is lit, a scout carries both halves (`mate`), and the team panel frames the pair's avatars in the official green (`ui/battle bg_team_border` tinted, a plain ring without the local art; `gameLogic teamFrameIds`) from the round's start through the fight.
 
 ---

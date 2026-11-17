@@ -47,6 +47,9 @@ test('console candidates include only own filled DIY slots, both forms with actu
   assert.ok(own.every((r) => r.charId === 'char_112_siege' && r.name.includes('\u63a8\u8fdb\u4e4b\u738b')));
   assert.deepEqual(consoleEntries('chess', 'CHAR_112_SIEGE', { diy: picks }).filter((r) => r.isDiy).map((r) => r.id).sort(), own.map((r) => r.id).sort());
   assert.ok(consoleEntries('chess', '\u63a8\u8fdb\u4e4b\u738b', { diy: picks }).some((r) => r.isDiy));
+  for (const query of ['tuijin zhiwang', 'tjzw']) {
+    assert.deepEqual(consoleEntries('chess', query, { diy: picks }).filter(r => r.isDiy).map(r => r.id).sort(), own.map(r => r.id).sort());
+  }
   assert.equal(consoleEntries('chess', '', { diy: {} }).some((r) => r.isDiy), false);
 });
 
@@ -254,7 +257,7 @@ describe('自选编队 tab (screens/diy.js)', () => {
         filter = 'owned';
         query = 'no matching operator';
         assert.ok(![...walk(view())].some((v) => hasClass(v, 'diy-opt')));
-        query = '推进';
+        query = 'tjzw';
         click('data-char', SIEGE);
         assert.deepEqual(draft, edited);
         click('data-testid', 'diy-confirm');

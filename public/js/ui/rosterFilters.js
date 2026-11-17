@@ -10,7 +10,7 @@ const cx = (...parts) => parts.filter(Boolean).join(' ');
 export function RosterSearch({ query, onQuery, modalFocus = false }) {
   return html`<${TextField} size="sm" icon="search" value=${query} placeholder=${t('搜索干员 / 职业 / 盟约')}
     class="lo-search" ariaLabel=${t('搜索干员 / 职业 / 盟约')} modalFocus=${modalFocus}
-    onInput=${value => onQuery(String(value).slice(0, 24))} />`;
+    onInput=${value => onQuery(String(value).slice(0, 64))} />`;
 }
 
 export function TierFilter({ tier, onTier }) {

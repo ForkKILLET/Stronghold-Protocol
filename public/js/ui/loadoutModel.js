@@ -25,6 +25,7 @@
 import { loadoutOptions, checkLoadout, checkLoadoutOps, resolveLoadout, MODULE_NONE, LOADOUT_LIMITS } from '../../../shared/protocol.js';
 import { isPotential, isCultivate, POTENTIAL_DEFAULT, CULTIVATE_DEFAULT } from '../../../shared/potential.js';
 import { t, N_ } from '../../../shared/i18n.js';
+import { operatorSearch } from './operatorSearch.js';
 
 export { MODULE_NONE };
 
@@ -497,7 +498,7 @@ function opsVisibleChange(ops, charId, potentialCounts) {
  */
 
 export function filterRoster(roster, f = {}, entries = {}, getChess = () => null, getBond = () => null, ops = null, potentialCounts = null) {
-  const q = String(f.query || '').trim().toLowerCase();
+  const matches = operatorSearch(f.query);
   return roster.filter((c) => {
     if (f.tier && c.tier !== f.tier) return false;
     if (f.prof && c.profession !== f.prof) return false;
@@ -506,11 +507,7 @@ export function filterRoster(roster, f = {}, entries = {}, getChess = () => null
       const golden = c.goldenId ? getChess(c.goldenId) : null;
       if (!effectiveChoice(entries, c, golden).changed && !opsVisibleChange(ops, c.charId, potentialCounts)) return false;
     }
-    if (q) {
-      const hay = [c.name, c.appellation, c.subProfessionName, t(PROF_NAME[c.profession]), ...(c.bonds || []).map((b) => getBond(b)?.name)]
-        .filter(Boolean).join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
+    if (!matches([c.name, c.appellation, c.subProfessionName, t(PROF_NAME[c.profession]), ...(c.bonds || []).map((b) => getBond(b)?.name)], c.charId)) return false;
     return true;
   });
 }

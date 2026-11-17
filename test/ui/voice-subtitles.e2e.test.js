@@ -12,11 +12,13 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
     const srv = await startServer({ host: '127.0.0.1', port: 0, workers: 0, quiet: true, clientBuild: false,
       userFile: ':memory:', announcementsFile: null, assetIndex: false });
     const out = new URL('../e2e/out/voice-subtitles/', import.meta.url); mkdirSync(out, { recursive: true });
-    let browser;
+    let browser, page;
     try {
       browser = await puppeteer.launch({ browser: engine, executablePath, headless: true,
+        extraPrefsFirefox: { 'dom.ipc.processCount': 2, 'dom.ipc.processCount.webIsolated': 1, 'dom.ipc.processPrelaunch.enabled': false, 'fission.autostart': false },
         args: engine === 'chrome' ? ['--no-sandbox', '--mute-audio', '--no-proxy-server', '--autoplay-policy=no-user-gesture-required'] : [] });
-      const page = await browser.newPage(), errors = [], captionRequests = [];
+      page = await browser.newPage();
+      const errors = [], captionRequests = [];
       page.on('pageerror', e => errors.push(e.message));
       page.on('request', r => { if (r.url().includes('/data/voice-captions/')) captionRequests.push(r.url()); });
       await page.setViewport({ width: 1366, height: 768 });
@@ -28,6 +30,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
 
       // Exercise actual settings controls and browser-local persistence.
       await page.click('.gm__gear[aria-label="设置"]'); await page.waitForSelector('.settings-modal');
+      await page.click('[data-settings-tab=audio]');
       assert.equal(await page.$eval('[data-testid=voice-subtitle-mode]', e => e.disabled), true);
       await page.evaluate(() => [...document.querySelectorAll('.set-row')].find(e => e.querySelector('.set-row__label')?.textContent.startsWith('显示字幕')).querySelector('[role=switch]').click());
       await page.click('[data-testid=voice-subtitle-mode]'); await page.waitForSelector('.game-select-popover');
@@ -58,7 +61,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       assert.equal(await page.$eval('.voice-subtitles', e => getComputedStyle(e).pointerEvents), 'none');
       const checkClear = async selectors => {
         await page.waitForFunction(selectors => {
-          const e = document.querySelector('.voice-subtitles'); if (!e || getComputedStyle(e).visibility === 'hidden') return true;
+          const e = document.querySelector('.voice-subtitles'); if (!e || getComputedStyle(e).visibility === 'hidden') return false;
           const a = e.getBoundingClientRect();
           return [...document.querySelectorAll(selectors)].every(n => { const b = n.getBoundingClientRect(); return !b.width || !b.height || a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom; });
         }, {}, selectors);
@@ -79,6 +82,19 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       assertPlacement(await readPlacement(), beforeUpgrade, 'untimed prep keeps the timer space and caption position');
       await checkClear('.gtop > *,.gm__bonds .bslot');
       await page.screenshot({ path: new URL(`${engine}-untimed-prep.png`, out).pathname });
+      // A missing anchor during a HUD transition must not blank the caption.
+      await page.evaluate(() => {
+        const anchor = document.querySelector('.gtop__subtitle-anchor'), parent = anchor.parentNode, next = anchor.nextSibling;
+        window.__captionRestoreAnchor = () => parent.insertBefore(anchor, next); anchor.remove();
+      });
+      await page.waitForSelector('.voice-subtitles', { visible: true });
+      await checkClear('.gtop > *,.gm__bonds .bslot,.shopbar,.gm__corner');
+      await page.screenshot({ path: new URL(`${engine}-missing-anchor.png`, out).pathname });
+      await page.evaluate(() => window.__captionRestoreAnchor());
+      await page.waitForFunction(() => {
+        const a = document.querySelector('.voice-subtitles').getBoundingClientRect(), b = document.querySelector('.gtop__subtitle-anchor').getBoundingClientRect();
+        return Math.abs(a.top - b.top) < 1;
+      });
       await page.evaluate(() => { window.__MOCK__.S().pub.deadline = window.__captionOldDeadline; window.__MOCK__.pushPublic(); });
       await page.waitForSelector('.gtop__clock .countdown', { visible: true });
       // Grow the actual shop content from three to five operator slots: the caption stays beside the ready row.
@@ -101,11 +117,21 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
         }); return uid;
       });
       await page.click(`.ff-piece[data-uid="${selectedUid}"]`);
-      await page.waitForSelector('.dpanel[data-side=right]');
-      await page.waitForFunction(() => getComputedStyle(document.querySelector('.voice-subtitles')).visibility === 'hidden');
+      await page.waitForSelector('.dpanel[data-side=right]', { visible: true });
+      await page.waitForFunction(() => {
+        const panel = document.querySelector('.dpanel[data-side=right]');
+        return panel && getComputedStyle(panel).opacity === '1' && panel.getAnimations({ subtree: true }).every(a => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity);
+      });
+      await page.waitForSelector('.voice-subtitles', { visible: true });
+      await checkClear('.dpanel');
+      assert.ok(await page.$('.dpanel[data-side=right]'));
       await page.screenshot({ path: new URL(`${engine}-detail-priority.png`, out).pathname });
       await page.click('.dpanel__close'); await page.waitForSelector('.dpanel', { hidden: true });
       await page.waitForSelector('.voice-subtitles', { visible: true });
+      await page.waitForFunction(expected => {
+        const r = document.querySelector('.voice-subtitles').getBoundingClientRect();
+        return ['left', 'top', 'width'].every(k => Math.abs(r[k] - expected[k]) < 1);
+      }, {}, beforeUpgrade);
       assertPlacement(await readPlacement(), beforeUpgrade, 'closing the detail card restores the current caption in place');
       // A short phrase used to cap the name column at 28% and ellipsize even four Chinese characters.
       await page.evaluate(async () => { const { audio } = await import('/js/audio.js'); audio.previewVoice('char_102_texas', 'cn'); });
@@ -190,12 +216,55 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       await page.waitForFunction(() => document.querySelectorAll('.voice-subtitles__line').length === 1 && document.querySelector('.voice-subtitles__line')?.lang === 'ja');
       await switchLanguage('zh');
 
-      // Modals hide rather than overlap; an ordinary end still removes the subtitle immediately.
+      // Full overlays reserve their own caption lane; natural audio end still clears the playing line.
       await page.click('.gm__gear[aria-label="设置"]'); await page.waitForSelector('.settings-modal');
-      await page.waitForFunction(() => getComputedStyle(document.querySelector('.voice-subtitles')).visibility === 'hidden');
+      await page.waitForSelector('.voice-subtitles.is-docked', { visible: true });
+      await checkClear('.settings-modal');
+      await page.screenshot({ path: new URL(`${engine}-modal-captions.png`, out).pathname });
+      for (const [width, height] of [[960, 540], [844, 390], [667, 375]]) {
+        await page.setViewport({ width, height });
+        await checkClear('.settings-modal');
+        await page.$eval('[data-testid=voice-subtitle-mode]', e => e.scrollIntoView({ block: 'center' }));
+        await page.click('[data-testid=voice-subtitle-mode]');
+        await page.waitForSelector('.game-select-popover');
+        await checkClear('.game-select-popover');
+        await page.keyboard.press('Escape'); await page.waitForSelector('.game-select-popover', { hidden: true });
+        await page.waitForFunction(() => {
+          const a = document.querySelector('.voice-subtitles').getBoundingClientRect();
+          return a.left >= 0 && a.right <= innerWidth && a.top >= 0 && a.bottom <= innerHeight;
+        });
+        await page.screenshot({ path: new URL(`${engine}-modal-captions-${width}.png`, out).pathname });
+      }
+      await page.setViewport({ width: 1366, height: 768 });
       await page.keyboard.press('Escape'); await page.waitForSelector('.settings-modal', { hidden: true });
+      await page.click('.gm__guide'); await page.waitForSelector('.guide');
+      await page.waitForSelector('.voice-subtitles.is-docked', { visible: true });
+      await checkClear('.guide__box,.guide__head,.guide__stage,.guide__foot');
+      await page.screenshot({ path: new URL(`${engine}-guide-captions.png`, out).pathname });
+      await page.click('.guide__close'); await page.waitForSelector('.guide', { hidden: true });
+      await page.evaluate(() => window.__MOCK__.setPhase('SP_DRAFT'));
+      await page.waitForSelector('.spov');
+      await page.evaluate(async () => {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const { audio } = await import('/js/audio.js'); audio.previewVoice('char_263_skadi', 'jp');
+      });
+      for (const [width, height] of [[1366, 768], [844, 390]]) {
+        await page.setViewport({ width, height });
+        await page.waitForSelector('.voice-subtitles.is-docked', { visible: true });
+        await checkClear('.spov__inner,.gm__corner');
+        await page.screenshot({ path: new URL(`${engine}-choice-captions-${width}.png`, out).pathname });
+      }
+      await page.setViewport({ width: 1366, height: 768 });
+      await page.evaluate(() => window.__MOCK__.setPhase('COMBAT'));
+      await page.waitForSelector('.spov', { hidden: true });
+      await page.evaluate(async () => {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const { audio } = await import('/js/audio.js'); audio.previewVoice('char_263_skadi', 'jp');
+      });
+      await page.waitForSelector('.voice-subtitles', { visible: true });
       await page.evaluate(async () => { const { audio } = await import('/js/audio.js'); audio.voiceNode.src.onended(); });
       await page.waitForSelector('.voice-subtitles', { hidden: true });
+      assert.equal(await page.$('.voice-caption-reserved'), null, 'audio end restores all original panel geometry');
 
       const play = async (id, dub) => {
         await page.evaluate(async (id, dub) => { const { audio } = await import('/js/audio.js'); audio.previewVoice(id, dub); }, id, dub);
@@ -226,18 +295,20 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       assert.equal(await page.$('.voice-subtitles.is-held'), null);
       await endVoice(); await page.waitForSelector('.voice-subtitles', { hidden: true });
 
-      // Moving the strip out from under a stationary mouse (e.g. resizing) also releases the old phrase.
+      // Layout changes keep a held phrase readable; only actual pointer movement releases it.
       await play('char_102_texas', 'cn'); await page.waitForSelector('.voice-subtitles', { visible: true }); await hover(); await endVoice();
       await page.setViewport({ width: 1150, height: 768 });
-      await page.waitForSelector('.voice-subtitles', { hidden: true });
+      await page.waitForSelector('.voice-subtitles.is-held', { visible: true });
+      await page.mouse.move(0, 0); await page.waitForSelector('.voice-subtitles', { hidden: true });
       await page.setViewport({ width: 1366, height: 768 }); await page.mouse.move(0, 0);
 
-      // Opening a modal via a keyboard/programmatic action must invalidate an already-finished held line.
+      // Programmatic/keyboard overlays preserve a held phrase in their reserved lower lane.
       await play('char_102_texas', 'cn'); await page.waitForSelector('.voice-subtitles', { visible: true }); await hover(); await endVoice();
       await page.$eval('.gm__gear[aria-label="设置"]', e => e.click()); await page.waitForSelector('.settings-modal');
-      await page.waitForSelector('.voice-subtitles', { hidden: true });
+      await page.waitForSelector('.voice-subtitles.is-held.is-docked', { visible: true });
+      await checkClear('.settings-modal');
       await page.keyboard.press('Escape'); await page.waitForSelector('.settings-modal', { hidden: true });
-      assert.equal(await page.$('.voice-subtitles'), null, 'closing the modal cannot resurrect the held phrase');
+      await page.waitForSelector('.voice-subtitles.is-held', { visible: true });
       await page.mouse.move(0, 0);
 
       // Muting or suspending audio clears a held phrase even when the source has already ended.
@@ -267,6 +338,13 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       await page.waitForSelector('.voice-subtitles', { hidden: true });
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('sp.pref.settings')).voiceSubtitles), false);
       assert.deepEqual(errors, []);
+    } catch (error) {
+      if (page) {
+        await page.screenshot({ path: new URL(`${engine}-layout-failure.png`, out).pathname }).catch(() => {});
+        console.log(JSON.stringify(await page.evaluate(() => ({ caption: document.querySelector('.voice-subtitles')?.outerHTML,
+          rects: [...document.querySelectorAll('.voice-subtitles,.settings-modal,.modal,.guide__box,.guide')].map(e => ({ cls: e.className, rect: e.getBoundingClientRect().toJSON() })) })).catch(() => ({}))));
+      }
+      throw error;
     } finally { await browser?.close(); await srv.close(); }
   });
 

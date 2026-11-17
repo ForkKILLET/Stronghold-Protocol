@@ -8,6 +8,7 @@ import { data } from '../data.js';
 import { CONSOLE_ROUND_LIMIT, CONSOLE_TOTAL_LIMIT } from '../../../shared/constants.js';
 import { t } from '../../../shared/i18n.js';
 import { ownDiyRecord } from './gameLogic/diy.js';
+import { operatorSearch } from './operatorSearch.js';
 
 const idOf = (r, fallback = null) => r?.id || r?.chessId || r?.itemId || fallback;
 
@@ -39,6 +40,7 @@ function dataRecords(name) {
 /** Only the current match's filled DIY slots have an operator to grant. */
 export function consoleEntries(kind, query = '', priv = null) {
   const q = query.trim().toLowerCase();
+  const matches = operatorSearch(query);
   const diyData = { chess: data.get('chess'), backups: data.get('backups') };
   return dataRecords(kind === 'chess' ? 'chess' : kind === 'item' ? 'items' : 'bonds').flatMap((r) => {
     const id = idOf(r);
@@ -50,7 +52,7 @@ export function consoleEntries(kind, query = '', priv = null) {
       record = { ...record, id };
     } else if (r.isDiy || (kind === 'chess' && !r.visible && !r.isGolden)) return [];
     const text = `${id} ${record.name || ''} ${record.charId || ''}`.toLowerCase();
-    return q && !text.includes(q) ? [] : [record];
+    return (kind === 'chess' ? !matches([id, record.name, record.appellation, record.charId], record.charId) : q && !text.includes(q)) ? [] : [record];
   }).sort((a, b) => (Number(a.tier) || 99) - (Number(b.tier) || 99) || String(a.name || idOf(a)).localeCompare(String(b.name || idOf(b))));
 }
 

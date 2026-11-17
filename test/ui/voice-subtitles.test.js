@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { AudioManager, VoiceGate } from '../../public/js/audio.js';
 import { sanitizeSettings } from '../../public/js/ui/gameLogic/settings.js';
-import { voiceCaptionIdentity, selectVoiceCaptions, formatVoiceCaption, voiceCaptionPosition, voiceCaptionHudPosition } from '../../public/js/voiceCaptions.js';
+import { voiceCaptionIdentity, selectVoiceCaptions, formatVoiceCaption, voiceCaptionPosition, voiceCaptionHudPosition, voiceCaptionDockPosition } from '../../public/js/voiceCaptions.js';
 import { extractVoiceCaptions } from '../../tools/build-voice-captions.mjs';
 
 test('subtitle preferences default off/UI and reject invalid persisted values', () => {
@@ -46,11 +46,12 @@ test('official name tokens use the viewer name literally without modifying cache
   }
 });
 
-test('subtitle layout avoids bottom controls and yields when no lower-screen space remains', () => {
+test('subtitle layout relocates above crowded bottom controls without hiding', () => {
   const rect = { left: 0, top: 610, right: 1366, bottom: 768, width: 1366, height: 158 };
   const p = voiceCaptionPosition({ width: 1366, height: 768 }, { height: 60 }, [rect]);
   assert.ok(p.top >= 768 * .55 && p.top + 60 < rect.top);
-  assert.equal(voiceCaptionPosition({ width: 844, height: 390 }, { height: 60 }, [{ ...rect, top: 220, bottom: 390 }]), null);
+  const crowded = voiceCaptionPosition({ width: 844, height: 390 }, { height: 60 }, [{ ...rect, top: 220, bottom: 390 }]);
+  assert.ok(crowded.top + 60 <= 212 && !crowded.dock);
   const safe = voiceCaptionPosition({ width: 844, height: 390, safeBottom: 34, safeLeft: 40, safeRight: 40 }, { width: 240, height: 50 }, []);
   assert.ok(safe.top + 50 <= 390 - 34 - 12 && safe.left >= 40);
 });
@@ -74,7 +75,8 @@ test('subtitle layout measures full-name/text wrapping and leaves room for the a
   assert.ok(widths.includes(p.width));
   assert.equal(p.top, 488);
   assert.ok(p.left >= controls.right + 8);
-  assert.equal(voiceCaptionPosition(viewport, { width: 520, height: 300 }, []), null, 'hide if a full name leaves no lower-screen space');
+  const tall = voiceCaptionPosition(viewport, { width: 520, height: 300 }, []);
+  assert.ok(tall.top >= 12 && tall.top + 300 <= 588, 'use upper space for a tall wrapped caption');
 });
 
 test('in-match subtitles stay left of the ready row when the shop widens', () => {
@@ -86,19 +88,25 @@ test('in-match subtitles stay left of the ready row when the shop widens', () =>
   assert.equal(p.top, rail.top);
   assert.equal(p.left + p.width, rail.left - 12);
   assert.deepEqual(voiceCaptionHudPosition(viewport, box, rail, [{ ...shop, left: 310, width: 1040 }]), p);
-  assert.equal(voiceCaptionHudPosition(viewport, box, rail, [{ left: p.left, top: 150, right: 1366, bottom: 600, width: 500, height: 450 }]), null, 'a statistics panel hides the subtitle rather than moving it to the shop');
+  const moved = voiceCaptionHudPosition(viewport, box, rail, [{ left: p.left, top: 150, right: 1366, bottom: 600, width: 500, height: 450 }]);
+  assert.ok(!moved.dock && (moved.left + moved.width <= p.left - 8 || moved.top + 100 <= 142 || moved.top >= 608));
 });
 
-test('HUD subtitles measure wrapped names and hide rather than move when the bond strip overlaps', () => {
+test('HUD subtitles measure wrapped names and move clear of overlapping bonds', () => {
   const viewport = { width: 844, height: 390, safeTop: 24, safeRight: 40, safeBottom: 20 };
   let measured;
   const p = voiceCaptionHudPosition(viewport, { heightAtWidth: width => { measured = width; return 80; } }, { left: 800, top: 96 }, []);
   assert.equal(p.width, measured);
   assert.equal(p.top, 96);
   assert.ok(p.left + p.width <= 844 - 40 - 12 && p.top + 80 <= 390 - 20 - 12);
-  assert.equal(voiceCaptionHudPosition(viewport, { height: 400 }, { left: 800, top: 96 }, []), null);
+
   const bonds = { left: 400, right: 750, top: 70, bottom: 105, width: 350, height: 35, overhead: true };
-  assert.equal(voiceCaptionHudPosition(viewport, { height: 80 }, { left: 800, top: 96 }, [bonds]), null, 'an overlapping bond strip hides the subtitle without moving it');
+  const moved = voiceCaptionHudPosition(viewport, { height: 80 }, { left: 800, top: 96 }, [bonds]);
+  assert.ok(!moved.dock && moved.top >= 113);
+  const full = { left: 0, right: 844, top: 0, bottom: 390, width: 844, height: 390 };
+  const dock = voiceCaptionHudPosition(viewport, { height: 80 }, { left: 800, top: 96 }, [full]);
+  assert.deepEqual(dock, voiceCaptionDockPosition(viewport, { height: 80 }));
+  assert.ok(dock.dock && dock.top + 80 <= 358);
 });
 
 test('generated tables cover installed Chinese voice files, including self-selected operators', () => {

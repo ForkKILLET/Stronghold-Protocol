@@ -8,11 +8,11 @@ import { cardStore } from './playerCard.js';
 import { data, useData } from '../data.js';
 import { cardAvatarOperatorId } from '../../../shared/playerCard.js';
 import { t } from '../../../shared/i18n.js';
+import { operatorSearch } from './operatorSearch.js';
 
 export function filterCardOperators(list, query = '', star = 0) {
-  const needle = query.trim().toLowerCase();
-  return list.filter((c) => (!star || c.rarity === star) && (!needle || String(c.name || '').toLowerCase().includes(needle)
-    || String(c.appellation || '').toLowerCase().includes(needle)));
+  const matches = operatorSearch(query);
+  return list.filter((c) => (!star || c.rarity === star) && matches([c.name, c.appellation], c.charId));
 }
 
 export function OperatorPicker({ title, micro, current, list, m, faceOf = (c) => chessAvatarUrl(m, c), autoLabel, autoTitle, autoIcon = 'refresh',
