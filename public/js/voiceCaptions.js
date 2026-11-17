@@ -27,6 +27,11 @@ export function selectVoiceCaptions({ mode = 'ui', uiLang, voiceLang, uiText, vo
   return [voice, ui];
 }
 
+// Keep tables reusable across accounts; substitute only the official name token at display time.
+export function formatVoiceCaption(text, nickname) {
+  return text.replaceAll('{@nickname}', () => nickname);
+}
+
 // The ready-row anchor survives combat: captions never follow the shop, effects list or detail card.
 export function voiceCaptionHudPosition(viewport, box, anchor, obstacles) {
   const margin = 12, gap = 12;

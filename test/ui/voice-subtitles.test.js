@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { AudioManager, VoiceGate } from '../../public/js/audio.js';
 import { sanitizeSettings } from '../../public/js/ui/gameLogic/settings.js';
-import { voiceCaptionIdentity, selectVoiceCaptions, voiceCaptionPosition, voiceCaptionHudPosition } from '../../public/js/voiceCaptions.js';
+import { voiceCaptionIdentity, selectVoiceCaptions, formatVoiceCaption, voiceCaptionPosition, voiceCaptionHudPosition } from '../../public/js/voiceCaptions.js';
 import { extractVoiceCaptions } from '../../tools/build-voice-captions.mjs';
 
 test('subtitle preferences default off/UI and reject invalid persisted values', () => {
@@ -30,6 +30,20 @@ test('subtitle modes deduplicate matching languages/text, and never invent missi
   assert.equal(selectVoiceCaptions({ ...input, mode: 'dual', voiceText: input.uiText }).length, 1);
   assert.deepEqual(selectVoiceCaptions({ ...input, mode: 'voice', voiceText: null }), []);
   assert.deepEqual(selectVoiceCaptions({ ...input, mode: 'dual', voiceText: null }), [{ lang: 'zh', text: input.uiText }]);
+});
+
+test('official name tokens use the viewer name literally without modifying cached tables or other tokens', () => {
+  const name = '<雪鸮>$&$`\'$1{@nickname}';
+  assert.equal(formatVoiceCaption('Dr.{@nickname}，{@nickname}。{other}', name), `Dr.${name}，${name}。{other}`);
+  assert.equal(formatVoiceCaption('博士，准备好了吗？', name), '博士，准备好了吗？');
+  for (const lang of ['zh', 'zh-TW', 'en', 'ja', 'ko']) {
+    const table = JSON.parse(readFileSync(new URL(`../../data/voice-captions/${lang}.json`, import.meta.url), 'utf8'));
+    const raw = table['char_271_spikes/cn_011'];
+    assert.ok(raw.includes('{@nickname}'), lang);
+    assert.ok(formatVoiceCaption(raw, name).includes(name), lang);
+    assert.ok(formatVoiceCaption(raw, '另一位博士').includes('另一位博士'), lang);
+    assert.equal(table['char_271_spikes/cn_011'], raw);
+  }
 });
 
 test('subtitle layout avoids bottom controls and yields when no lower-screen space remains', () => {

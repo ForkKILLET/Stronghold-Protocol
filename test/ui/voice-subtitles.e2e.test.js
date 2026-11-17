@@ -269,4 +269,65 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       assert.deepEqual(errors, []);
     } finally { await browser?.close(); await srv.close(); }
   });
+
+  test(`${engine}: subtitle player names follow the viewer in every language mode`, {
+    skip: process.env.SP_E2E !== '1' || !existsSync(executablePath), timeout: 60000,
+  }, async () => {
+    const srv = await startServer({ host: '127.0.0.1', port: 0, workers: 0, quiet: true, clientBuild: false,
+      userFile: ':memory:', announcementsFile: null, assetIndex: false });
+    const out = new URL('../e2e/out/voice-subtitles/', import.meta.url); mkdirSync(out, { recursive: true });
+    let browser;
+    try {
+      browser = await puppeteer.launch({ browser: engine, executablePath, headless: true,
+        extraPrefsFirefox: { 'dom.ipc.processCount': 2, 'dom.ipc.processCount.webIsolated': 1, 'dom.ipc.processPrelaunch.enabled': false, 'fission.autostart': false },
+        args: engine === 'chrome' ? ['--no-sandbox', '--mute-audio', '--no-proxy-server', '--autoplay-policy=no-user-gesture-required'] : [] });
+      const page = await browser.newPage(), errors = [];
+      page.on('pageerror', e => errors.push(e.message));
+      await page.setViewport({ width: 1366, height: 768 });
+      await page.goto(`${srv.url}/dev/game-mock.html?render=fallback&shot=1&phase=PREP`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => !!window.__MOCK__ && window.__SP_VIEW__?.kind === 'fallback');
+      await page.click('.gm__gear[aria-label="设置"]'); await page.waitForSelector('.settings-modal');
+      await page.keyboard.press('Escape'); await page.waitForSelector('.settings-modal', { hidden: true });
+      await page.evaluate(async () => {
+        const { audio } = await import('/js/audio.js');
+        const { store } = await import('/js/store.js');
+        const { updateSettings } = await import('/js/ui/settings.js');
+        audio._unlock(); await audio.ctx.resume();
+        const bank = lang => ({ char_271_spikes: { select: `/assets/audio/voice/${lang}/char_271_spikes/cn_011.mp3` } });
+        audio.getManifest = () => ({ audio: { voice: bank('cn'), voiceJp: bank('jp') } });
+        audio._buffer = async () => audio.ctx.createBuffer(1, audio.ctx.sampleRate * 90, audio.ctx.sampleRate);
+        store.patch('me', { name: 'ForkKILLET' });
+        updateSettings({ voiceSubtitles: true, voiceSubtitleMode: 'dual', voiceLang: 'jp', voice: .8, muted: false });
+        audio.previewVoice('char_271_spikes', 'jp');
+      });
+      await page.waitForFunction(() => document.querySelectorAll('.voice-subtitles__line').length === 2);
+      await page.waitForSelector('.voice-subtitles', { visible: true });
+      const lines = () => page.$$eval('.voice-subtitles__line', els => els.map(e => ({ lang: e.lang, text: e.textContent })));
+      assert.deepEqual((await lines()).map(e => e.lang), ['ja', 'zh']);
+      assert.ok((await lines()).every(e => e.text.includes('ForkKILLET') && !e.text.includes('{@nickname}')));
+      await page.screenshot({ path: new URL(`${engine}-nickname-dual.png`, out).pathname });
+
+      // Kept captions retain raw text, so a name change must also update a hovered old sentence.
+      await page.hover('.voice-subtitles'); await page.waitForSelector('.voice-subtitles.is-held');
+      const special = '<img src=x>$&';
+      await page.evaluate(async name => { const { store } = await import('/js/store.js'); store.patch('me', { name }); }, special);
+      await page.waitForFunction(name => [...document.querySelectorAll('.voice-subtitles__line')].every(e => e.textContent.includes(name)), {}, special);
+      assert.equal(await page.$('.voice-subtitles__text img'), null);
+      await page.evaluate(async () => { const { store } = await import('/js/store.js'); store.patch('me', { name: '' }); });
+      await page.waitForFunction(() => [...document.querySelectorAll('.voice-subtitles__line')].every(e => e.textContent.includes('博士')));
+      await page.mouse.move(0, 0);
+      await page.evaluate(async () => { const { store } = await import('/js/store.js'); store.patch('me', { name: '雪鸮' }); });
+      for (const [mode, lang] of [['voice', 'ja'], ['ui', 'zh']]) {
+        await page.evaluate(async mode => { const { updateSettings } = await import('/js/ui/settings.js'); updateSettings({ voiceSubtitleMode: mode }); }, mode);
+        await page.waitForFunction(lang => document.querySelectorAll('.voice-subtitles__line').length === 1 && document.querySelector('.voice-subtitles__line')?.lang === lang, {}, lang);
+        assert.ok((await lines()).every(e => e.text.includes('雪鸮') && !e.text.includes('{@nickname}')));
+      }
+      await page.setViewport({ width: 960, height: 540 });
+      await page.waitForSelector('.voice-subtitles', { visible: true });
+      await page.screenshot({ path: new URL(`${engine}-nickname-ui-960.png`, out).pathname });
+      await page.evaluate(async () => { const { updateSettings } = await import('/js/ui/settings.js'); updateSettings({ voiceSubtitles: false }); });
+      await page.waitForSelector('.voice-subtitles', { hidden: true });
+      assert.deepEqual(errors, []);
+    } finally { await browser?.close(); await srv.close(); }
+  });
 }

@@ -9,7 +9,7 @@ import { langChain, t } from '../../../shared/i18n.js';
 import { useSettings } from './settings.js';
 import { useLang } from './lang.js';
 import { createVoiceCaptionTables } from '../voiceCaptionTables.js';
-import { captionLocale, voiceCaptionIdentity, selectVoiceCaptions, voiceCaptionPosition, voiceCaptionHudPosition } from '../voiceCaptions.js';
+import { captionLocale, voiceCaptionIdentity, selectVoiceCaptions, formatVoiceCaption, voiceCaptionPosition, voiceCaptionHudPosition } from '../voiceCaptions.js';
 
 const tables = createVoiceCaptionTables({ urlFor: lang => dataUrl(`/data/voice-captions/${lang}.json`, DATA_CDN) });
 const loadTable = lang => tables.load(lang);
@@ -19,6 +19,7 @@ const BLOCKED = '.modal,.guide,.st,.gm.has-sp,.gm.has-spdraft,.game-select-popov
 /** One strip for the actual audio channel; no timers derived from battle speed or simulated events. */
 export function VoiceSubtitleHost({ manager = audio }) {
   const settings = useSettings(), lang = useLang(), route = useStore(selectRoute);
+  const playerName = useStore(s => s.me.name) || t('博士');
   const enabled = settings.voiceSubtitles;
   const uiLocale = langChain(lang).map(captionLocale).find(Boolean) || 'zh';
   const [line, setLine] = useState(null), [caption, setCaption] = useState(null), [position, setPosition] = useState(null);
@@ -130,6 +131,6 @@ export function VoiceSubtitleHost({ manager = audio }) {
     style=${position ? `left:${position.left}px;top:${position.top}px;width:${position.width}px` : 'visibility:hidden'}>
     <header class="voice-subtitles__speaker"><${Icon} name="mic" /><span>${current.name}</span></header>
     <div class="voice-subtitles__text">${current.lines.map((row, i) => html`<p key=${row.lang} lang=${row.lang}
-      class=${`voice-subtitles__line${i ? ' is-translation' : ''}`}>${row.text}</p>`)}</div>
+      class=${`voice-subtitles__line${i ? ' is-translation' : ''}`}>${formatVoiceCaption(row.text, playerName)}</p>`)}</div>
   </section>`;
 }
