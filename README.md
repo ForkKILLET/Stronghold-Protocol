@@ -11,3 +11,5 @@ Code baseline: upstream dev c2b4ca01089dd753d3caeca5b6693ba8074e2505, including 
 These checks exercise the actual renderers in Firefox with local assets. They do not rerun full Unity mesh extraction, full WS matches, local full simulation/golden, or the affected player's hardware. GameScreen fixtures retain the known data-URL CSP diagnostic and missing bond_level_3.png HTTP 404; render-demo captures had no HTTP failures. Intermediate failed checks are retained locally, including a terrain startup access before meshes were built, corrected before submission and covered by a regression test.
 
 Only screenshots and receipts are published here; no game models or textures.
+
+Final terrain GameScreen recheck: native-height MAP04 retains two map effects after 60 seconds, survives battle FX clear, clears on off/2D and restarts on lite/3D. No frame-failed diagnostic remains; only the listed baseline CSP/404 remain. See terrain-lifecycle.json and terrain-m04-60s.png. The startup regression test is included in the 106 passing directed/documentation checks.

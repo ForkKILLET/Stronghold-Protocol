@@ -1,0 +1,45 @@
+{
+  "stage": "MAP04",
+  "displayFixture": "GameScreen game-mock PREP; actual preview/return controls; not live WS",
+  "after60s": {
+    "tier": "full",
+    "available": true,
+    "effects": 2,
+    "pending": 0,
+    "particles": 0,
+    "reused": 0,
+    "systems": 0,
+    "dropped": 0,
+    "draws": 1,
+    "programs": 1,
+    "textures": 2,
+    "texMB": 0
+  },
+  "checks": [
+    "battle-clear-retains-terrain",
+    "off-clears-terrain",
+    "lite-restarts-terrain",
+    "2d-clears-terrain",
+    "3d-restores-terrain"
+  ],
+  "restored": {
+    "tier": "lite",
+    "available": true,
+    "effects": 2,
+    "pending": 0,
+    "particles": 0,
+    "reused": 0,
+    "systems": 0,
+    "dropped": 0,
+    "draws": 1,
+    "programs": 2,
+    "textures": 4,
+    "texMB": 0
+  },
+  "frameFailed": false,
+  "knownBaselineDiagnostics": [
+    "data-URL connect-src CSP",
+    "404 /assets/ui/hudBondItem/bond_level_3.png"
+  ],
+  "oom": false
+}
