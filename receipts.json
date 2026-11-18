@@ -1,11 +1,11 @@
 {
-  "prHead": "41403b29cf92d0b7bc980eb18e4ff2df07452bee",
-  "mainHead": "454de2ca9fba959380fdf45e0dd9110998a9e104",
+  "prHead": "1a52e6a6dda6a2e9208961ca3e0f576cc0812e4b",
+  "mainHead": "3a3bc362c3b597ee6893d4c8178e6bcd9c4376ff",
+  "format": "binParts: number[]; manifest keys derived from index",
   "limits": {
     "partBytes": 15000000,
     "maxBytes": 60000000,
-    "maxParts": 256,
-    "scope": "implementation policy, not a four-part format enum"
+    "maxParts": 256
   },
   "bytes": [
     {
@@ -13,34 +13,13 @@
       "stage": "05",
       "bytes": 19614492,
       "parts": [
-        {
-          "key": "bin",
-          "bytes": 2802071
-        },
-        {
-          "key": "bin1",
-          "bytes": 2802071
-        },
-        {
-          "key": "bin2",
-          "bytes": 2802071
-        },
-        {
-          "key": "bin3",
-          "bytes": 2802071
-        },
-        {
-          "key": "bin4",
-          "bytes": 2802071
-        },
-        {
-          "key": "bin5",
-          "bytes": 2802071
-        },
-        {
-          "key": "bin6",
-          "bytes": 2802066
-        }
+        2802071,
+        2802071,
+        2802071,
+        2802071,
+        2802071,
+        2802071,
+        2802066
       ],
       "sha256": "4775abc003c233b599bdc58f17ac8d7f23f7044e103b661754d446e708d36cac",
       "identical": true
@@ -50,34 +29,13 @@
       "stage": "10",
       "bytes": 31660444,
       "parts": [
-        {
-          "key": "bin",
-          "bytes": 4522921
-        },
-        {
-          "key": "bin1",
-          "bytes": 4522921
-        },
-        {
-          "key": "bin2",
-          "bytes": 4522921
-        },
-        {
-          "key": "bin3",
-          "bytes": 4522921
-        },
-        {
-          "key": "bin4",
-          "bytes": 4522921
-        },
-        {
-          "key": "bin5",
-          "bytes": 4522921
-        },
-        {
-          "key": "bin6",
-          "bytes": 4522918
-        }
+        4522921,
+        4522921,
+        4522921,
+        4522921,
+        4522921,
+        4522921,
+        4522918
       ],
       "sha256": "395f2b6a7f17017e01f637bb5f911f998c48a4a07e05c9998347f18526e0f57f",
       "identical": true
@@ -87,34 +45,13 @@
       "stage": "12",
       "bytes": 32194384,
       "parts": [
-        {
-          "key": "bin",
-          "bytes": 4599198
-        },
-        {
-          "key": "bin1",
-          "bytes": 4599198
-        },
-        {
-          "key": "bin2",
-          "bytes": 4599198
-        },
-        {
-          "key": "bin3",
-          "bytes": 4599198
-        },
-        {
-          "key": "bin4",
-          "bytes": 4599198
-        },
-        {
-          "key": "bin5",
-          "bytes": 4599198
-        },
-        {
-          "key": "bin6",
-          "bytes": 4599196
-        }
+        4599198,
+        4599198,
+        4599198,
+        4599198,
+        4599198,
+        4599198,
+        4599196
       ],
       "sha256": "5597422a367d06884874c0f18c0981fe63d82fc261a96403ff808c766ee45e8f",
       "identical": true
@@ -124,34 +61,13 @@
       "stage": "05",
       "bytes": 11133632,
       "parts": [
-        {
-          "key": "bin",
-          "bytes": 1590519
-        },
-        {
-          "key": "bin1",
-          "bytes": 1590519
-        },
-        {
-          "key": "bin2",
-          "bytes": 1590519
-        },
-        {
-          "key": "bin3",
-          "bytes": 1590519
-        },
-        {
-          "key": "bin4",
-          "bytes": 1590519
-        },
-        {
-          "key": "bin5",
-          "bytes": 1590519
-        },
-        {
-          "key": "bin6",
-          "bytes": 1590518
-        }
+        1590519,
+        1590519,
+        1590519,
+        1590519,
+        1590519,
+        1590519,
+        1590518
       ],
       "sha256": "d6f574cebf7d7785e901716493d8df9de5e261defec1f2d4f387065ce5e6667b",
       "identical": true
@@ -161,34 +77,13 @@
       "stage": "10",
       "bytes": 20129296,
       "parts": [
-        {
-          "key": "bin",
-          "bytes": 2875614
-        },
-        {
-          "key": "bin1",
-          "bytes": 2875614
-        },
-        {
-          "key": "bin2",
-          "bytes": 2875614
-        },
-        {
-          "key": "bin3",
-          "bytes": 2875614
-        },
-        {
-          "key": "bin4",
-          "bytes": 2875614
-        },
-        {
-          "key": "bin5",
-          "bytes": 2875614
-        },
-        {
-          "key": "bin6",
-          "bytes": 2875612
-        }
+        2875614,
+        2875614,
+        2875614,
+        2875614,
+        2875614,
+        2875614,
+        2875612
       ],
       "sha256": "4e9dbc0a10ac45c93e1eef4edbe85f09e03872f46aa57d45461e569b9d5be822",
       "identical": true
@@ -198,34 +93,13 @@
       "stage": "12",
       "bytes": 20173324,
       "parts": [
-        {
-          "key": "bin",
-          "bytes": 2881904
-        },
-        {
-          "key": "bin1",
-          "bytes": 2881904
-        },
-        {
-          "key": "bin2",
-          "bytes": 2881904
-        },
-        {
-          "key": "bin3",
-          "bytes": 2881904
-        },
-        {
-          "key": "bin4",
-          "bytes": 2881904
-        },
-        {
-          "key": "bin5",
-          "bytes": 2881904
-        },
-        {
-          "key": "bin6",
-          "bytes": 2881900
-        }
+        2881904,
+        2881904,
+        2881904,
+        2881904,
+        2881904,
+        2881904,
+        2881900
       ],
       "sha256": "38967d886af1f5e65a84ac86bc3d33c72b2a8caa9fd8615c178013c9ad94423e",
       "identical": true
@@ -241,230 +115,247 @@
     {
       "branch": "main",
       "packs": 4,
-      "maxZipBytes": 15772524,
+      "maxZipBytes": 15772364,
       "filesChecked": 33
     }
   ],
   "checks": {
     "pr": {
-      "targetedPassed": 61,
-      "docsPassed": 32,
-      "skipped": 0,
-      "typecheck": "passed",
-      "modifiedLint": "passed"
+      "targeted": 61,
+      "documentation": 32,
+      "typecheck": true,
+      "modifiedLint": true
     },
     "main": {
-      "targetedPassed": 72,
-      "docsPassed": 32,
-      "skipped": 0,
-      "typecheck": "passed",
-      "modifiedLint": "passed",
-      "productionBuild": "passed with existing warnings"
-    }
+      "targeted": 73,
+      "documentation": 32,
+      "typecheck": true,
+      "modifiedLint": true,
+      "build": true
+    },
+    "skipped": 0,
+    "fullLocalSimulationGolden": "paused"
   },
-  "allocation": "Instrumented test observes one numeric Uint8Array allocation, read/write alternation and no requests after failure. This is not a browser RSS/GC measurement.",
-  "fullLocalSimulationGolden": "paused; new PR head uses upstream Actions",
-  "initialFailure": "Pillow in the existing local venv lacked a runtime libz search path. PR tests were rerun with that path and all 61 passed; no dependency installation was needed.",
-  "screens_pr": [
-    {
-      "stage": "act3autochess_m05",
-      "camera": "prep",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 19614492,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m05-prep.png"
-    },
-    {
-      "stage": "act3autochess_m05",
-      "camera": "unite",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 19614492,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m05-unite.png"
-    },
-    {
-      "stage": "act3autochess_m05",
-      "camera": "boss",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 19614492,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m05-boss.png"
-    },
-    {
-      "stage": "act3autochess_m10",
-      "camera": "prep",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 31660444,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m10-prep.png"
-    },
-    {
-      "stage": "act3autochess_m10",
-      "camera": "unite",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 31660444,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m10-unite.png"
-    },
-    {
-      "stage": "act3autochess_m10",
-      "camera": "boss",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 31660444,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m10-boss.png"
-    },
-    {
-      "stage": "act3autochess_m12",
-      "camera": "prep",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 32194384,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m12-prep.png"
-    },
-    {
-      "stage": "act3autochess_m12",
-      "camera": "unite",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 32194384,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m12-unite.png"
-    },
-    {
-      "stage": "act3autochess_m12",
-      "camera": "boss",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 32194384,
-      "errors": [
-        "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
-      ],
-      "failed": [],
-      "file": "m12-boss.png"
-    }
-  ],
-  "screens_main": [
-    {
-      "stage": "act3autochess_m05",
-      "camera": "prep",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 11133632,
-      "errors": [],
-      "failed": [],
-      "file": "m05-prep.png"
-    },
-    {
-      "stage": "act3autochess_m05",
-      "camera": "unite",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 11133632,
-      "errors": [],
-      "failed": [],
-      "file": "m05-unite.png"
-    },
-    {
-      "stage": "act3autochess_m05",
-      "camera": "boss",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 11133632,
-      "errors": [],
-      "failed": [],
-      "file": "m05-boss.png"
-    },
-    {
-      "stage": "act3autochess_m10",
-      "camera": "prep",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 20129296,
-      "errors": [],
-      "failed": [],
-      "file": "m10-prep.png"
-    },
-    {
-      "stage": "act3autochess_m10",
-      "camera": "unite",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 20129296,
-      "errors": [],
-      "failed": [],
-      "file": "m10-unite.png"
-    },
-    {
-      "stage": "act3autochess_m10",
-      "camera": "boss",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 20129296,
-      "errors": [],
-      "failed": [],
-      "file": "m10-boss.png"
-    },
-    {
-      "stage": "act3autochess_m12",
-      "camera": "prep",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 20173324,
-      "errors": [],
-      "failed": [],
-      "file": "m12-prep.png"
-    },
-    {
-      "stage": "act3autochess_m12",
-      "camera": "unite",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 20173324,
-      "errors": [],
-      "failed": [],
-      "file": "m12-unite.png"
-    },
-    {
-      "stage": "act3autochess_m12",
-      "camera": "boss",
-      "transportParts": 7,
-      "official": true,
-      "binBytes": 20173324,
-      "errors": [],
-      "failed": [],
-      "file": "m12-boss.png"
-    }
-  ]
+  "screenshots": {
+    "pr": [
+      {
+        "stage": "act3autochess_m05",
+        "camera": "prep",
+        "file": "m05-prep.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 19614492,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m05",
+        "camera": "unite",
+        "file": "m05-unite.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 19614492,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m05",
+        "camera": "boss",
+        "file": "m05-boss.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 19614492,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m10",
+        "camera": "prep",
+        "file": "m10-prep.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 31660444,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m10",
+        "camera": "unite",
+        "file": "m10-unite.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 31660444,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m10",
+        "camera": "boss",
+        "file": "m10-boss.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 31660444,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m12",
+        "camera": "prep",
+        "file": "m12-prep.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 32194384,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m12",
+        "camera": "unite",
+        "file": "m12-unite.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 32194384,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m12",
+        "camera": "boss",
+        "file": "m12-boss.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 32194384,
+        "errors": [
+          "Content-Security-Policy: The page\u2019s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU\u2026 because it violates the following directive: \u201cconnect-src 'self'\u201d"
+        ],
+        "failed": []
+      }
+    ],
+    "main": [
+      {
+        "stage": "act3autochess_m05",
+        "camera": "prep",
+        "file": "m05-prep.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 11133632,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m05",
+        "camera": "unite",
+        "file": "m05-unite.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 11133632,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m05",
+        "camera": "boss",
+        "file": "m05-boss.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 11133632,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m10",
+        "camera": "prep",
+        "file": "m10-prep.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 20129296,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m10",
+        "camera": "unite",
+        "file": "m10-unite.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 20129296,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m10",
+        "camera": "boss",
+        "file": "m10-boss.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 20129296,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m12",
+        "camera": "prep",
+        "file": "m12-prep.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 20173324,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m12",
+        "camera": "unite",
+        "file": "m12-unite.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 20173324,
+        "errors": [],
+        "failed": []
+      },
+      {
+        "stage": "act3autochess_m12",
+        "camera": "boss",
+        "file": "m12-boss.png",
+        "transportParts": 7,
+        "numericParts": true,
+        "official": true,
+        "binBytes": 20173324,
+        "errors": [],
+        "failed": []
+      }
+    ]
+  }
 }
