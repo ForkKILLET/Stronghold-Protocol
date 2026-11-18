@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { SCENE_BIN_PART_BYTES, SCENE_TRANSPORT_LIMITS, sceneBinParts, readSceneBuffer } from '../../public/js/render/board3d/sceneTransport.js';
 
-const documentOf = sizes => ({ binBytes:sizes.reduce((a,b)=>a+b,0), binParts:sizes.map((bytes,i)=>({key:i?`bin${i}`:'bin',bytes})) });
+const documentOf = sizes => ({ binBytes:sizes.reduce((a,b)=>a+b,0), binParts:sizes });
 
 test('variable part counts use one destination and write each part before requesting the next', async () => {
   const doc=documentOf(Array(12).fill(2)), events=[], allocations=[];
@@ -30,7 +30,10 @@ test('variable part counts use one destination and write each part before reques
 
 test('validate the complete declaration and policy before allocating or reading', async () => {
   const doc=documentOf([2,3]), bad=[
-    null, {}, {...doc,binParts:[]}, {...doc,binParts:[{key:'bin0',bytes:5}]},
+    null, {}, {...doc,binParts:[]}, {...doc,binParts:{bin:2,bin1:3}},
+    {...doc,binParts:[2,{key:'bin1',bytes:3}]}, {...doc,binParts:[{key:'bin',bytes:2},3]},
+    {...doc,binParts:['2',3]}, {...doc,binParts:[null,5]}, {...doc,binParts:[true,4]},
+    {...doc,binParts:[[2],3]}, {...doc,binParts:[2,undefined]}, {...doc,binParts:[{key:'bin0',bytes:5}]},
     {...doc,binParts:[{key:'bin',bytes:2},{key:'bin2',bytes:3}]},
     {...doc,binParts:[{key:'bin',bytes:2},{key:'bin',bytes:3}]},
     {...doc,binParts:[{key:'bin',bytes:2},{key:'../elsewhere',bytes:3}]},
@@ -55,6 +58,14 @@ test('validate the complete declaration and policy before allocating or reading'
   assert.ok(sceneBinParts(documentOf([SCENE_BIN_PART_BYTES,SCENE_BIN_PART_BYTES,SCENE_BIN_PART_BYTES,SCENE_BIN_PART_BYTES])));
   assert.ok(sceneBinParts(documentOf(Array(SCENE_TRANSPORT_LIMITS.maxParts).fill(1))));
   assert.ok(sceneBinParts(documentOf([1])),'one declared part is also valid');
+});
+
+test('legacy record arrays normalize to sizes and use the same sequential reader', async () => {
+  const legacy = { binBytes:5, binParts:[{key:'bin',bytes:2},{key:'bin1',bytes:3}] };
+  const sizes = documentOf([2,3]);
+  assert.deepEqual(sceneBinParts(legacy), sizes.binParts);
+  const read = key => new Uint8Array(key === 'bin' ? [1,2] : [3,4,5]).buffer;
+  assert.deepEqual(await readSceneBuffer(legacy, read), await readSceneBuffer(sizes, read));
 });
 
 test('a failed or wrongly sized part stops immediately and discards the partial result', async () => {

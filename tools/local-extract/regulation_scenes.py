@@ -365,7 +365,7 @@ def export_regulation(stage, ab_root, out_root, manifest, log, material_info, ca
         combined.update(lightmaps=pages, binBytes=len(blob))
         bin_parts = write_scene_bins(folder, blob)
         if len(bin_parts) > 1:
-            combined['binParts'] = [{k: part[k] for k in ('key', 'bytes')} for part in bin_parts]
+            combined['binParts'] = [part['bytes'] for part in bin_parts]
         (folder / 'scene.json').write_text(json.dumps(combined, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
         manifest.setdefault(TEX_SUB, {}).update(local.get(TEX_SUB, {}))
         manifest[group] = {**entries, 'scene': {'path': f'/assets/local/{group}/scene.json', 'kind': 'Scene',

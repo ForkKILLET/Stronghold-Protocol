@@ -1306,9 +1306,11 @@ Docker 复用旧素材镜像时，在复制素材后、生成哈希前运行 `np
 
 ### Variable-length scene-binary transport
 
-Large scenes can declare an ordered, nonempty `scene.json.binParts` list of `{key, bytes}` records. Keys are
-`bin`, `bin1`, `bin2`, ... in numeric order and resolve through the asset manifest; `binBytes` is the complete
-original mesh length. The format has variable part counts. Each part is at most 15,000,000 bytes to fit deployments
+Large scenes can declare an ordered, nonempty `scene.json.binParts` array of byte lengths, for example
+`[15000000, 15000000, 2194384]`. The loader derives manifest keys `bin`, `bin1`, `bin2`, ... from array indices;
+`binBytes` is the complete original mesh length. Existing `{key, bytes}` record arrays remain readable with strict
+canonical-key validation; mixed numeric/record arrays are rejected. The format has variable part counts.
+Each part is at most 15,000,000 bytes to fit deployments
 with a 16,000,000-byte resource-pack cap, including ZIP framing and its manifest.
 
 Loader/exporter policy is separate from the format: `sceneTransport.js` and `scene_transport.py` currently allow

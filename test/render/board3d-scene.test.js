@@ -414,11 +414,11 @@ describe('scene chunks (load.js)', () => {
       resetBoardPack();
       const wholeFetch = globalThis.fetch;
       const cuts = [0, 4, 17, 39, 60, 85, 112, bin.byteLength];
-      const parts = cuts.slice(1).map((end,i) => ({ key:i ? `bin${i}` : 'bin', bytes:end-cuts[i] }));
+      const parts = cuts.slice(1).map((end,i) => end-cuts[i]);
       json = { ...json, binParts:parts };
-      const binaries = new Map(parts.map((part,i) => {
+      const binaries = new Map(parts.map((_,i) => {
         const path = i ? `/s/scene${i}.bin` : '/s/scene.bin';
-        urls[`${group}|${part.key}`] = path;
+        urls[`${group}|${i ? `bin${i}` : 'bin'}`] = path;
         return [path,bin.slice(cuts[i],cuts[i+1])];
       }));
       globalThis.fetch = async u => binaries.has(u) ? new Response(binaries.get(u)) : wholeFetch(u);
@@ -1078,10 +1078,10 @@ describe('BoardScene with an official scene (stub renderer)', () => {
 describe('extracted scenes (when scene bundles were extracted here)', { skip: !Object.keys(manifest?.groups || {}).some((g) => g.startsWith('scene/act')) && 'no scene in data/local-assets.json' }, () => {
   const groups = manifest?.groups || {};
   const file = (p) => path.join(ROOT, 'public', p.replace(/^\//, ''));
-  const binary = (g, doc) => Buffer.concat((doc.binParts || [{ key: 'bin' }]).map(part => {
-    const bin = readFileSync(file(groups[g][part.key].path));
+  const binary = (g, doc) => Buffer.concat((doc.binParts || [doc.binBytes]).map((part,i) => {
+    const bin = readFileSync(file(groups[g][i ? `bin${i}` : 'bin'].path));
     if (doc.binParts) {
-      assert.equal(bin.length, part.bytes);
+      assert.equal(bin.length, typeof part === 'number' ? part : part.bytes);
       assert.ok(bin.length <= 15_000_000, 'each transport file fits an existing 16 MB ZIP');
     }
     return bin;

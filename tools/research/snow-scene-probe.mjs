@@ -31,7 +31,7 @@ const sceneBytes = await fs.readFile(path.join(root, 'public', group.scene.path)
 const doc = JSON.parse(sceneBytes);
 if (doc.stage !== stageId) throw new Error('Mismatched scene');
 const binaryPaths = [];
-for (const part of doc.binParts || [{ key: 'bin' }]) binaryPaths.push(await add(group[part.key]));
+for (let i = 0; i < (doc.binParts?.length || 1); i++) binaryPaths.push(await add(group[i ? `bin${i}` : 'bin']));
 const images = { tex: {}, data: {}, lm: [] };
 for (const info of Object.values(doc.materials)) {
   for (const key of ['map', 'emissionMap', 'normalMap', 'glossMap']) {
