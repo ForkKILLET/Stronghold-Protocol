@@ -1,0 +1,71 @@
+{
+  "baseline": "c2b4ca01089dd753d3caeca5b6693ba8074e2505",
+  "candidate": "b93a7cd3237f26f74a7bba94aa0b3e0d86c5a591",
+  "chrome": {
+    "browser": "chrome",
+    "checks": [
+      "cross-category search/control/clear",
+      "keyboard tabs and shortcut capture",
+      "diagnostic state retained",
+      "in-flight theme import retained and searchable",
+      "localized live index",
+      "four sizes with extra-large English text",
+      "reopen reset and preference persistence"
+    ],
+    "errors": [],
+    "failed": []
+  },
+  "firefox": {
+    "browser": "firefox",
+    "checks": [
+      "cross-category search/control/clear",
+      "keyboard tabs and shortcut capture",
+      "diagnostic state retained",
+      "in-flight theme import retained and searchable",
+      "localized live index",
+      "four sizes with extra-large English text",
+      "reopen reset and preference persistence"
+    ],
+    "errors": [],
+    "failed": []
+  },
+  "cpu": {
+    "passed": 101,
+    "skipped": 1,
+    "skipReason": "optional installed official theme.json is absent"
+  },
+  "typecheck": "passed",
+  "modifiedFileLint": "passed",
+  "i18n": "all four packs 100%, 0 missing/errors",
+  "importCheck": "three unchanged node:fs/path/url violations in server/sim/nodeData.js",
+  "legacyMockComparison": [
+    {
+      "name": "base",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed": [
+        "404 /assets/ui/hudBondItem/bond_level_3.png"
+      ]
+    },
+    {
+      "name": "work",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "failed": [
+        "404 /assets/ui/hudBondItem/bond_level_3.png"
+      ]
+    }
+  ],
+  "legacyBrowserRuns": {
+    "modal": "5 completed checks passed",
+    "settingsEntry": "1 passed",
+    "storage": "3 passed",
+    "hotkeys": "4 failed at the final no-console-errors assertion; baseline and candidate have the same missing bond_level_3.png",
+    "screenFit": "broader run interrupted during a 3D canvas prerequisite; partial results retained locally",
+    "themes": "initial game-mock navigation exceeded 60s before opening settings; this suite did not complete"
+  },
+  "fullLocalCiGolden": "paused; upstream Actions to run",
+  "oom": false
+}
