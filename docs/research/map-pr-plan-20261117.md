@@ -1,4 +1,23 @@
-# 地图系列 PR 计划（2026-11-17）
+# 地图系列 PR 状态与计划
+
+## 2026-11-19：沿 #977 场景基础提交后续修复
+
+用户确认采用 #977 作为场景基础，旧 M2 整套导出／布局替换稿撤下，不另发竞争实现。已复核最新主线 `dev c2b4ca01089dd753d3caeca5b6693ba8074e2505`：#977 虽仍为 OPEN，其实现已由 `cf5b8d742` 集成，新版 arena 也包含装置记录。四份 PR 各自基于该 dev，仅一项提交，不夹带本服 main；本轮没有合并主线或部署。
+
+| PR | 内容 | 当前验证与边界 |
+| --- | --- | --- |
+| [#978](https://github.com/sganggs/Stronghold-Protocol/pull/978) | Boss／隐秘核心准备页进入敌人预览保留来源 sub_03 | GameScreen 真实预览／返回控件、两尺寸及三种地图状态；主线完整 golden、Linux／Windows 各四片及 tooling 全绿。不是完整 WS 对局。 |
+| [#979](https://github.com/sganggs/Stronghold-Protocol/pull/979)（M1） | 两套导出器共用有界 scene 二进制分段，客户端校验后重组 | 56 项定向／文档与类型／lint 通过；MAP05／10／12 原始二进制分别 2／3／3 段，重组 SHA-256 一致。Firefox 九场景；本服生产分包器 9 包最大 15,010,851 字节、14 项完整读回。主线 ZIP entry 上限为 256 MiB，本项为本服 16 MB 分包兼容，不称主线超限。 |
+| [#980](https://github.com/sganggs/Stronghold-Protocol/pull/980) | 不透明 albedo 零 alpha 有效 RGB 兼容导出 | 103 项定向／文档与类型／lint 通过；MAP09／11 RGB 精确相同、原共享 RGBA 保留；Firefox 六场景。提取版本 6，仅格式 freshness；不是旧故障的 GPU／解码根因证明，未新增玩家设备复验。 |
+| [#981](https://github.com/sganggs/Stronghold-Protocol/pull/981)（M3） | 地图独立 OfficialFx 生命周期，源石／沼泽／隐匿原版特效及格面深度 | 106 项定向／文档与类型／lint 通过；Firefox 九场景及 MAP04 GameScreen 持续 60 秒、clear、off／lite、2D／3D。首帧未建立 meshes 的问题已修正并补回归；最终无新增 frame failed。MapSettings.highlandHeight 元数据来自原版，九块实际 prefab 均 0.4；旧包回退 board 近似，不冒充完整装饰深度。 |
+
+后三份新 PR 的完整主线 CI 尚未显示启动（标签检查完成），不记作通过。完整本机模拟／golden 继续暂停；不复制本服旧 golden。源代码无游戏二进制；[固定证据分支](https://github.com/ForkKILLET/Stronghold-Protocol/tree/3c473e1bff33cdae540523cb9ed82edd6873b225) 仅截图、字段与读回收据。模型截图基于已提取网格和生产 helper 生成的新元数据／分段／RGB 副本，不冒称重跑完整 Unity 导出。Firefox GameScreen 保留基线 data-URL CSP 诊断及 bond_level_3.png 404；render-demo 无 HTTP 失败。
+
+M4（沙地顶点混色 0.625 与每图 RGB 增益）已在 [#977 评论](https://github.com/sganggs/Stronghold-Protocol/pull/977#issuecomment-6989549493) 中先讨论接受范围，未发拟合代码 PR；这些参数为经验拟合，不能称作官服运行时值。MAP10 炮已存在 arena 装置记录，但固定展示场景仍未见其图形，留作装置视图／模型加载的后续调查，不能再归因为缺少 arena 数据。
+
+本轮隔离 worktree、原始失败／诊断和所有图片保留于 `.state/map-followups-20261119`，此前十图对比索引保留于 `.state/pr977-review-20261119/screenshots/index.html`。初始调试接口读取、Pillow 环境、freshness 断言、pack 夹具 version 字段及 Firefox 旧 LD_LIBRARY_PATH 错误均留收据；对应最终定向与浏览器复验见各 PR，不以中间失败冒称通过。
+
+## 2026-11-17 原始计划（历史归档，以下 M2 与依赖顺序已被上节替代）
 
 基线为主线 `dev 55f528e9f`，来源为本服 `fd28fa090`／`f19ead595` 及其后续修正。本轮只制定计划，不创建地图 PR 或上传地图二进制。
 
