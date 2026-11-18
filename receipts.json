@@ -1,0 +1,131 @@
+{
+  "transport": [
+    {
+      "stage": "05",
+      "bytes": 19614492,
+      "parts": [
+        {
+          "key": "bin",
+          "bytes": 15000000
+        },
+        {
+          "key": "bin1",
+          "bytes": 4614492
+        }
+      ],
+      "sha256": "4775abc003c233b599bdc58f17ac8d7f23f7044e103b661754d446e708d36cac",
+      "roundTripIdentical": true
+    },
+    {
+      "stage": "10",
+      "bytes": 31660444,
+      "parts": [
+        {
+          "key": "bin",
+          "bytes": 15000000
+        },
+        {
+          "key": "bin1",
+          "bytes": 15000000
+        },
+        {
+          "key": "bin2",
+          "bytes": 1660444
+        }
+      ],
+      "sha256": "395f2b6a7f17017e01f637bb5f911f998c48a4a07e05c9998347f18526e0f57f",
+      "roundTripIdentical": true
+    },
+    {
+      "stage": "12",
+      "bytes": 32194384,
+      "parts": [
+        {
+          "key": "bin",
+          "bytes": 15000000
+        },
+        {
+          "key": "bin1",
+          "bytes": 15000000
+        },
+        {
+          "key": "bin2",
+          "bytes": 2194384
+        }
+      ],
+      "sha256": "5597422a367d06884874c0f18c0981fe63d82fc261a96403ff808c766ee45e8f",
+      "roundTripIdentical": true
+    }
+  ],
+  "snow": [
+    {
+      "stage": "09",
+      "changed": [
+        {
+          "material": "MT_icewild",
+          "from": "TX_icewild_A",
+          "to": "TX_icewild_A_opaque_rgb",
+          "rgbIdentical": true
+        },
+        {
+          "material": "MT_icewild_reflection",
+          "from": "TX_icewild_A",
+          "to": "TX_icewild_A_opaque_rgb",
+          "rgbIdentical": true
+        }
+      ]
+    },
+    {
+      "stage": "11",
+      "changed": [
+        {
+          "material": "MT_icewild",
+          "from": "TX_icewild_A",
+          "to": "TX_icewild_A_opaque_rgb",
+          "rgbIdentical": true
+        },
+        {
+          "material": "MT_icewild_reflection",
+          "from": "TX_icewild_A",
+          "to": "TX_icewild_A_opaque_rgb",
+          "rgbIdentical": true
+        }
+      ]
+    }
+  ],
+  "packReadback": {
+    "packs": 9,
+    "maxZipBytes": 15010851,
+    "filesChecked": 14,
+    "note": "Fork 16 MB resource-pack compatibility; not the upstream archive entry cap"
+  },
+  "terrainHeights": [
+    {
+      "stage": "act3autochess_m04",
+      "tileDepthHeights": {
+        "sub_01": 0.4,
+        "sub_02": 0.4,
+        "sub_03": 0.4
+      },
+      "source": "prefab MapSettings.highlandHeight"
+    },
+    {
+      "stage": "act3autochess_m06",
+      "tileDepthHeights": {
+        "sub_01": 0.4,
+        "sub_02": 0.4,
+        "sub_03": 0.4
+      },
+      "source": "prefab MapSettings.highlandHeight"
+    },
+    {
+      "stage": "act3autochess_m09",
+      "tileDepthHeights": {
+        "sub_01": 0.4,
+        "sub_02": 0.4,
+        "sub_03": 0.4
+      },
+      "source": "prefab MapSettings.highlandHeight"
+    }
+  ]
+}
