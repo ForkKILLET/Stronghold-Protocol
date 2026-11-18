@@ -1304,12 +1304,27 @@ Docker 复用旧素材镜像时，在复制素材后、生成哈希前运行 `np
 
 `AudioManager.stopFieldSounds()` 在换场／退出时取消待解码和已播放的战斗音效、干员语音及落地音，旧请求不能补播插件回退音效，重复结束只释放一次限流额度。保留现有 SfxLimiter，不引入主线新版音效池；UI 点击、BGM 和盟约提示仍有各自生命周期。`setFieldUnits()` 另外沿用原盟约提示清理。字幕播放事件及时置空，本机 `fieldRevision` 让悬停保留句随战场结束清除，不改变普通语音换句时的悬停行为。
 
-### Regulation scene binary transport
+### Variable-length scene-binary transport
 
-Large composite scene vertex buffers use optional `scene.json.binParts` records in original byte order.
-Each entry has a fixed manifest key (`bin`, `bin1`, …) and byte count; each file is at most 15,000,000 bytes
-so its stored ZIP remains below the existing 16,000,000-byte transfer cap. At most four parts are admitted.
-The loader validates every key/size and the aggregate `binBytes`, concatenates the bytes, then uses the
-unchanged scene chunk layout. Missing or truncated parts retain the procedural-board fallback.
-Single-file legacy scenes are unchanged. No mesh reduction or ZIP/cache limit increase is involved.
+Large scenes can declare an ordered, nonempty `scene.json.binParts` list of `{key, bytes}` records. Keys are
+`bin`, `bin1`, `bin2`, ... in numeric order and resolve through the asset manifest; `binBytes` is the complete
+original mesh length. The format has variable part counts. Each part is at most 15,000,000 bytes to fit deployments
+with a 16,000,000-byte resource-pack cap, including ZIP framing and its manifest.
+
+Loader/exporter policy is separate from the format: `sceneTransport.js` and `scene_transport.py` currently allow
+60,000,000 total bytes and 256 parts. The total preserves the previous four-by-15-MB budget. The part-count budget
+bounds request/metadata work while permitting smaller pieces; neither value is an official game or browser limit.
+The Python writer accepts `part_bytes`, `max_bytes` and `max_parts` keyword budgets. Default exports use 15 MB pieces;
+small scenes retain `scene.bin` alone, and existing single-file resources keep their original loading path.
+
+The loader validates the complete declaration before allocating or requesting binary parts. It allocates the full
+destination once, awaits each part, checks its exact size, writes it at the next offset and releases the temporary
+reference before requesting the next. Missing, truncated, oversized or failed parts stop loading; incomplete bytes
+never reach the mesh parser. Allocation failure keeps the procedural-board fallback. Chunk offsets and the scene
+mesh version continue to address the completed byte-identical buffer.
+
+The loader retains the destination plus the current part, rather than all part buffers plus a second full copy.
+Network/cache storage and garbage-collection timing can add memory beyond these live references. Geometry is still
+parsed after the complete binary is loaded; this transport change does not introduce progressive scene rendering.
+
 See [transport receipts](research/scene-transport-20261112.md).
