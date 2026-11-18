@@ -1,6 +1,6 @@
 {
   "baseline": "c2b4ca01089dd753d3caeca5b6693ba8074e2505",
-  "candidate": "b93a7cd3237f26f74a7bba94aa0b3e0d86c5a591",
+  "candidate": "1c3c2846e74f4c33f9550a33eb5e67c9ee46a1e2",
   "chrome": {
     "browser": "chrome",
     "checks": [
@@ -30,9 +30,9 @@
     "failed": []
   },
   "cpu": {
-    "passed": 101,
-    "skipped": 1,
-    "skipReason": "optional installed official theme.json is absent"
+    "passed": 50,
+    "skipped": 0,
+    "scope": "settings search, screen fit, themes and documentation after caption polish"
   },
   "typecheck": "passed",
   "modifiedFileLint": "passed",
@@ -67,5 +67,11 @@
     "themes": "initial game-mock navigation exceeded 60s before opening settings; this suite did not complete"
   },
   "fullLocalCiGolden": "paused; upstream Actions to run",
-  "oom": false
+  "oom": false,
+  "initialCpu": {
+    "passed": 101,
+    "skipped": 1,
+    "skipReason": "optional installed official theme.json is absent"
+  },
+  "polish": "All six categories use matching regular label weights and font sizes; settings do not contain result-screen caption decorations."
 }
