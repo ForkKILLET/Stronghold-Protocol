@@ -72,12 +72,17 @@ test('desktop Firefox: content actions retain borders and device-record clearing
     await shot('settings-audio');
     await page.click('[data-settings-tab="appearance"]');
     assert.equal(await page.$eval('.set-personalization', e => getComputedStyle(e).borderTopWidth), '0px');
-    const dimensions = await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize})));
+    const labels = await page.$$eval('.settings-content .set-row__label', es => es.map(e => ({text:e.textContent,weight:getComputedStyle(e).fontWeight,size:getComputedStyle(e).fontSize})));
+    for (const label of labels) {
+      assert.equal(label.weight,'400',`regular settings label: ${label.text}`);
+      assert.equal(label.size,labels[0].size,`consistent settings label size: ${label.text}`);
+    }
+    const dimensions = await page.$$eval('.settings-page-action', es => es.filter(e => e.getClientRects().length).map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize})));
     await shot('settings-appearance');
     await page.click('[data-settings-tab="controls"]');
-    dimensions.push(...await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
+    dimensions.push(...await page.$$eval('.settings-page-action', es => es.filter(e => e.getClientRects().length).map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
     await page.click('[data-settings-tab="resources"]');
-    dimensions.push(...await page.$$eval('.settings-page-action', es => es.map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
+    dimensions.push(...await page.$$eval('.settings-page-action', es => es.filter(e => e.getClientRects().length).map(e => ({h:e.getBoundingClientRect().height,w:e.getBoundingClientRect().width,font:getComputedStyle(e).fontSize}))));
     assert.equal(dimensions.length, 4);
     for (const d of dimensions) {
       assert.equal(d.h, 36, 'page launchers use the standard small button height');
@@ -97,7 +102,7 @@ test('desktop Firefox: content actions retain borders and device-record clearing
       assert.ok(nav.every(n => n.lines===1 && n.rightPadding>=14 && n.overflow<=1), JSON.stringify(nav));
       await page.click('[data-settings-tab="battle"]');
       await page.$eval('.set-seg--fps', e => e.scrollIntoView({block:'end'}));
-      const controls = await page.$$eval('.settings-content .set-toggle,.settings-content .set-seg', es => es.map(e => e.getBoundingClientRect().left));
+      const controls = await page.$$eval('.settings-content .set-toggle,.settings-content .set-seg', es => es.filter(e => e.getClientRects().length).map(e => e.getBoundingClientRect().left));
       assert.ok(controls.every(x => Math.abs(x-controls[0])<1), 'frame-rate, quality and switches have the same control column');
       await shot('settings-battle-'+textSize);
     }
@@ -137,8 +142,10 @@ test('desktop Firefox: content actions retain borders and device-record clearing
     await page.evaluate(async () => (await import('/js/screens/loadout.js')).openLoadout('lobby'));
     await page.waitForSelector('[data-loadout-view="list"]');
     await page.click('[data-loadout-view="list"]');
-    await framed('[data-testid="loadout-import"]');
-    await framed('[data-testid="loadout-export"]');
+    await framed('[data-testid="loadout-more"]');
+    await page.click('[data-testid="loadout-more"]');
+    await page.waitForSelector('[data-testid="loadout-import"]',{visible:true});
+    await page.waitForSelector('[data-testid="loadout-export"]',{visible:true});
     await shot('loadout');
     assert.deepEqual(errors, []);
   } finally {

@@ -572,6 +572,13 @@ sliding, so a block — which freezes velocity — still turns it with the front
 
 ### Local preferences and recovery (§28.14, §28.18–20)
 
+Settings labels and section captions share regular-weight typography, including the lobby personalization heading.
+Settings search matches localized names, descriptions and micro labels across all six categories, with literal
+case-insensitive, full-width-normalized terms. Results reuse the original controls; category changes and search
+retain diagnostic reports and pending imports. Clearing search restores the chosen category; reopening starts at
+Interface with an empty query. The fork retains its subtitle, frame-rate, resource, personalization and separate
+shortcut-dialog controls.
+
 Settings persist `textSize` (sm/md/lg/xl; default sm), `voiceLang` (cn/jp/en/kr; default cn), `voiceNative` (the
 本土语言 switch; default false), `voiceOverrides` (charId → cn/jp/en/kr/native; default empty), `prepDeployFold`
 (部署时收起商店; default true — only an explicit false turns the 0.3.0 deploy fold off) and `ammoEnergyCount`

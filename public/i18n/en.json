@@ -3569,5 +3569,11 @@
   "投票通过：所有在线且未淘汰的玩家同意后暂停。": "Unanimous vote: pause after all connected, active players agree.",
   "一票否决：一人发起即可暂停，任一队友可拒绝并恢复。": "Pause unless vetoed: one player can pause; any teammate can reject it and resume.",
   "公共匹配使用投票通过暂停模式。": "Public matchmaking uses unanimous-vote pausing.",
-  "拒绝暂停": "Reject pause"
+  "拒绝暂停": "Reject pause",
+  "搜索设置": "Search settings",
+  "搜索设置名称或说明": "Search setting names or descriptions",
+  "清空搜索": "Clear search",
+  "搜索结果": "Search results",
+  "找到 {n} 项设置": "Settings found: {n}",
+  "没有找到匹配的设置，请尝试其它关键词。": "No matching settings. Try another keyword."
 }

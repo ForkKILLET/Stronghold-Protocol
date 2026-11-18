@@ -699,7 +699,7 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
 }
 
 /* Settings owns a stable two-column shell; only the chosen category scrolls. */
-.utility-modal.settings-modal { height:min(calc(8.8 * var(--ui-unit,1rem)),calc(100dvh - 48px)); }
+.utility-modal.settings-modal { height:min(max(calc(8.8 * var(--ui-unit,1rem)),560px),calc(100dvh - 48px)); }
 .utility-modal.settings-modal > .modal__body { display:flex; overflow:hidden; }
 .settings-layout { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:calc(.24 * var(--ui-unit,1rem)); flex:1; min-width:0; min-height:0; }
 .settings-nav { display:flex; flex-direction:column; align-items:stretch; gap:8px; min-height:0; overflow:auto; padding:2px; border-right:1px solid var(--line); padding-right:calc(.16 * var(--ui-unit,1rem)); }
@@ -710,7 +710,7 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
 .settings-nav__item:hover { background:var(--mint-a10); color:var(--text-hi); }
 .settings-nav__item.is-on { border-color:var(--mint-700); background:var(--mint-a10); color:var(--mint-400); }
 .settings-nav__item:focus-visible { outline:1px solid var(--mint-400); outline-offset:0; }
-.settings-content.set-list { min-height:0; min-width:0; overflow:auto; padding:4px 8px 12px 2px; align-self:stretch; justify-content:flex-start; }
+.settings-content { min-height:0; min-width:0; overflow:auto; padding:4px 8px 12px 2px; align-self:stretch; justify-content:flex-start; }
 .settings-content > * { flex-shrink:0; }
 .settings-content:focus-visible { outline:1px solid var(--mint-700); outline-offset:-1px; }
 .settings-modal .set-keys__head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px 20px; }
@@ -727,6 +727,34 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
  .settings-modal .set-row { grid-template-columns:minmax(0,1fr); }
  .settings-modal .set-row > :not(.set-row__label) { grid-column:auto; justify-self:start; }
  .settings-modal .set-fit__row { grid-template-columns:minmax(0,1fr) auto minmax(30px,1fr) auto auto; }
+}
+
+.settings-browser { display: flex; flex-direction: column; gap: 14px; flex: 1; min-width: 0; min-height: 0; }
+.settings-search { display: flex; align-items: stretch; gap: 8px; flex: none; }
+.settings-search__field { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line-2); background: var(--bg-0); }
+.settings-search__field:focus-within { border-color: var(--mint-500); }
+.settings-search__field .icon, .settings-search__clear .icon { width: 18px; height: 18px; flex: none; }
+.settings-search__field input { min-width: 0; width: 100%; padding: 0; color: var(--text-hi); background: transparent; border: 0; outline: 0; font: inherit; font-size: max(14px, calc(.17 * var(--utility-text,var(--t)))); }
+.settings-search__field input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.settings-search__clear { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line-2); background: transparent; color: var(--text-lo); font: inherit; font-size: max(12px, calc(.15 * var(--utility-text,var(--t)))); }
+.settings-search__clear:hover { border-color: var(--mint-500); color: var(--text-hi); }
+.settings-content .settings-category, .settings-content .settings-entry { padding-top: 0; }
+.settings-content .settings-category[hidden], .settings-content .settings-entry[hidden], .settings-entry:empty { display: none; }
+.settings-category { margin-bottom: 20px; }
+.settings-category__title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; color: var(--mint-400); font-size: max(14px, calc(.18 * var(--utility-text,var(--t)))); border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.settings-search__status { font-size: max(12px, calc(.14 * var(--utility-text,var(--t)))); color: var(--text-lo); margin-bottom: 14px; }
+.settings-search__status:empty { display: none; }
+@media (max-width:1100px), (max-height:600px) {
+ .settings-browser { gap:10px; }
+ .settings-nav__item > span:last-child { flex:1; max-width:120px; white-space:normal; overflow-wrap:anywhere; }
+}
+@media (max-width:600px) {
+ .settings-layout { grid-template-columns:88px minmax(0,1fr); gap:8px; }
+ .settings-nav { padding-right:4px; }
+ .settings-nav__item { font-size:13px; padding:6px; }
+ .settings-nav__index, .settings-search__clear span { display:none; }
+ .settings-search__field { padding:8px; }
+ .settings-search__field input { font-size:14px; }
 }
 
 /* Resource manager: status/ZIP above a 2x2 scope grid, with independent resource lists. */
