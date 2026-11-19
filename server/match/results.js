@@ -155,6 +155,7 @@ export function buildResult(m, outcome) {
     ...(m.version ? { version: m.version } : {}),
     bossId: m.bossId,
     hiddenBossId: m.hiddenBossId,
+    ...(m.leaderHistory?.length ? { leaderHistory: structuredClone(m.leaderHistory) } : {}),
     seed: m.seed,
     durationMs: Math.max(0, m.sched.now() - m.startedAt),
     players: rows,

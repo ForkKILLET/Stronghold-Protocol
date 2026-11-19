@@ -18,7 +18,7 @@ export function useCornerPanel(panelRef, closeRef, onClose, historical = false, 
     const panel = panelRef.current;
     const corner = panel?.parentElement;
     const viewport = window.visualViewport;
-    const archiveHeader = historical ? panel?.closest('.st--replay')?.querySelector('.app-header') : null;
+    const archiveHeader = historical ? panel?.closest('.st--replay, .result-page')?.querySelector('.app-header') : null;
     const measure = () => {
       if (!panel || !corner) return;
       const rect = corner.getBoundingClientRect();

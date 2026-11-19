@@ -56,11 +56,12 @@ import { selfRowOf, roundsOf, countsTowardStats, aggregateStats, strategyBadgeId
 export { selfRowOf, roundsOf, countsTowardStats, aggregateStats, strategyBadgeIds, trophyMedalOf, bondMemberChess, isModdedRecord };
 
 import { PHASE } from '../../../shared/constants.js';
+import { leaderHistoryRows } from '../../../shared/leaderOps.js';
 import { sanitizeName } from './playerName.js';
 import { DEFAULT_VERSION, versionById } from '../../../shared/versions.js';
 
 /** Current record-envelope version (bump + add a MIGRATIONS step when the record shape changes). */
-export const STATS_VERSION = 3;
+export const STATS_VERSION = 4;
 /** localStorage key under the app's `sp.pref.` prefix (store.js loadPref). */
 export const STATS_PREF_KEY = 'stats';
 /** Oldest records are dropped beyond this many matches. */
@@ -297,6 +298,7 @@ export function normalizeRecord(raw) {
     stageId: str(r.stageId),
     bossId: str(r.bossId),
     hiddenBossId: str(r.hiddenBossId),
+    ...(r.leaderHistory ? { leaderHistory: leaderHistoryRows(r.leaderHistory) } : {}),
     seed: num(r.seed),
     durationMs: num(r.durationMs),
     teamLp: num(r.teamLp),
@@ -335,6 +337,8 @@ export const MIGRATIONS = {
   // 2 → 3 (0.3.2, DESIGN §35.23): records name another official version (`version`); one without played 第二期下半 —
   // nothing to rewrite, the version keeps an older build from stripping the field
   2: (stats) => ({ v: 3, records: Array.isArray(stats.records) ? stats.records : [] }),
+  // 3 → 4: retain optional finalized Boss charts; existing records have no chart to reconstruct.
+  3: (stats) => ({ v: 4, records: Array.isArray(stats.records) ? stats.records : [] }),
 };
 
 /** Newest first (the stored order): by time, then id. */
@@ -557,6 +561,7 @@ export function buildRecord(res, ctx = {}) {
     stageId: str(r.stageId),
     bossId: str(r.bossId),
     hiddenBossId: str(r.hiddenBossId),
+    leaderHistory: r.leaderHistory,
     seed: num(r.seed),
     durationMs: num(r.durationMs),
     teamLp: num(r.teamLp),
@@ -703,6 +708,7 @@ export function recordToResult(rec) {
     difficulty: r.difficulty,
     bossId: r.bossId,
     hiddenBossId: r.hiddenBossId,
+    ...(r.leaderHistory ? { leaderHistory: r.leaderHistory } : {}),
     seed: r.seed,
     durationMs: r.durationMs,
     teamLp: r.teamLp,

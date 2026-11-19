@@ -98,3 +98,22 @@ test('an otherwise clear countdown does not let the chart cover the DP box', () 
     hud: { left: 0, right: 667, top: 0, bottom: 375 }, dp: { left: 600, right: 667, top: 160, bottom: 220 } }),
   { top: 80, right: 73 });
 });
+
+test('archived charts keep both fight denominators and optional player totals, with bounded imported fields',async()=>{
+  const {leaderHistoryRows}=await import('../../shared/leaderOps.js');
+  const history=leaderHistoryRows([
+    {kind:'hidden',bossId:'boss_9',maxHp:200,rows:ROWS,playerRows:[{pid:'p2',dmg:60}],players:PLAYERS},
+    {kind:'boss',bossId:'boss_1',maxHp:100,rows:ROWS,players:PLAYERS},
+    {kind:'boss',bossId:'fake',maxHp:999,rows:[]},
+  ]);
+  assert.deepEqual(history.map(r=>r.kind),['boss','hidden']);
+  assert.equal(history[0].playerRows,undefined);
+  assert.equal(leaderSharePct(history[0].rows[0].dmg,history[0].maxHp),22);
+  assert.equal(leaderSharePct(history[1].playerRows[0].dmg,history[1].maxHp),30);
+  assert.deepEqual(leaderHistoryRows(null),[]);
+  assert.deepEqual(leaderHistoryRows([{kind:'boss',maxHp:Infinity}]),[]);
+  const shown=LeaderRank({...history[1],historical:true,header:'hidden',mode:'players'});
+  assert.ok(![...walk(shown)].some(v=>v.type==='input'),'settlement has no automatic-open setting');
+  assert.ok(textOf(shown).includes('30%'));
+  assert.ok(textOf(LeaderRank({historical:true,rows:[],maxHp:100})).includes('暂无领袖伤害数据'));
+});

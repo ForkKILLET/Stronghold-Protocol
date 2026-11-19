@@ -2,6 +2,7 @@
 
 import { int, isObj, sortedPlayers } from './shared.js';
 import { t } from '../../../../shared/i18n.js';
+import { leaderHistoryRows } from '../../../../shared/leaderOps.js';
 
 
 // ---- result -----------------------------------------------------------------------------------------------------------
@@ -47,6 +48,7 @@ export function normalizeResult(res, pub) {
     roundsPassed: Number.isFinite(r.roundsPassed) ? r.roundsPassed : Math.max(0, ...players.map((p) => p.roundsPassed), 0),
     lastRound: Number.isFinite(r.lastRound) ? r.lastRound : (Number.isFinite(pub?.lastRound) ? pub.lastRound : 14),
     hiddenCleared: !!r.hiddenCleared,
+    leaderHistory: leaderHistoryRows(r.leaderHistory),
     // the Hidden Core (R15) was fought: only then does the result show its boss medal (m.result.hiddenReached;
     // older payloads without it: a clear implies it was reached)
     hiddenReached: typeof r.hiddenReached === 'boolean' ? (r.hiddenReached || !!r.hiddenCleared) : !!r.hiddenCleared,

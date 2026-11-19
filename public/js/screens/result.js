@@ -17,7 +17,7 @@ import { PageHeader } from '../ui/pageHeader.js';
 //                 stats: { dmgDealt, kills, leaks, gold /* funds SPENT */, refreshes, merges, bossDamage?, itemsEquipped?,
 //                          activatedLayers?, lpLost?, perfectRounds? } }] }
 
-import { useEffect, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Icon, MicroLabel, DifficultyTag, Button } from '../ui/components.js';
 import { useGameData, Img, UnitThumb, BandIcon, BondGlyph, LpTower, Sprite } from '../ui/gameComponents.js';
 import { ResultAvatar } from '../ui/resultAvatar.js';
@@ -26,12 +26,26 @@ import { data } from '../data.js';
 import { enemyIconUrl, titleIconUrl, uiUrl } from '../ui/assetUrls.js';
 import { audio } from '../audio.js';
 import { CombatMetricsPanel } from '../ui/combatMetrics.js';
+import { LeaderRank } from '../ui/leaderRank.js';
+import { useCornerPanel } from '../ui/cornerPanel.js';
 import { sentText } from '../ui/lang.js';
 import { UnofficialMark, VersionTag } from '../ui/pluginTag.js';
 import { TestMark } from '../ui/testConsole.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
+
+function ResultLeaderRank({ entry, history, players, mode, onMode, onKind, onClose }) {
+  const gd = useGameData(), panelRef = useRef(null), closeRef = useRef(null);
+  useCornerPanel(panelRef, closeRef, onClose, true, 320);
+  return html`<${LeaderRank} historical=${true} panelRef=${panelRef} closeRef=${closeRef}
+    rows=${entry.rows} playerRows=${entry.playerRows} players=${entry.players.length ? entry.players : players}
+    maxHp=${entry.maxHp} mode=${mode} onMode=${onMode} onClose=${onClose}
+    header=${html`<div class="ldmg__rounds" role="group" aria-label=${t('领袖战斗')}>
+      ${history.map(x => html`<button type="button" aria-pressed=${entry.kind === x.kind}
+        onClick=${()=>onKind(x.kind)}>${x.kind === 'hidden' ? t('隐秘核心') : t('最终攻势')}</button>`)}
+      </div><span class="ldmg__boss" title=${gd.boss(entry.bossId)?.name || ''}>${gd.boss(entry.bossId)?.name || ''}</span>`} />`;
+}
 
 // The first seven present are shown (+ remaining LP = a 4×2 grid); the title (评语) stats come first.
 // `gold` is the funds a player SPENT (server/match/player/economy.js spend(); the 挥金如土 title stat).
@@ -134,7 +148,11 @@ export function ResultScreen() {
 export function ResultView({ res, pub = null, myId = null, quiet = false, content = null, actions = null, metricsRunner, metricsLoading = false, onMetricsOpen, slot = true, version = null }) {
   const gd = useGameData();
   const [metricsOpen, setMetricsOpen] = useState(false);
+  const [leaderOpen, setLeaderOpen] = useState(false);
+  const [leaderKind, setLeaderKind] = useState('boss');
+  const [leaderMode, setLeaderMode] = useState('operators');
   const r = normalizeResult(res, pub);
+  const leader = r.leaderHistory.find(x => x.kind === leaderKind) || r.leaderHistory[0];
   const titles = Array.isArray(gd.config?.titles) ? gd.config.titles : [];
   const best = {};
   for (const [k] of STAT_ROWS) {
@@ -177,10 +195,15 @@ export function ResultView({ res, pub = null, myId = null, quiet = false, conten
         </div>
         ${mins ? html`<p class="result__time t-lo">${tParts('本局耗时 {n} 分钟', { n: html`<b class="num">${mins}</b>`, mins })}</p>` : null}
         </div>
-        ${r.players.some(p=>p.playerId===myId&&!p.isBot)||actions?html`<div class="result__actions result__metrics">
+        ${r.players.some(p=>p.playerId===myId&&!p.isBot)||leader||actions?html`<div class="result__actions result__metrics">
           ${r.players.some(p=>p.playerId===myId&&!p.isBot)?html`
             ${metricsOpen?html`<${CombatMetricsPanel} myId=${myId} runner=${metricsRunner} historical=${quiet} loading=${metricsLoading} initialScope="round" onClose=${()=>setMetricsOpen(false)} />`:null}
-            <${Button} square=${true} variant="secondary" class="gm__metrics" icon="signal" title=${t('作战统计')} aria-label=${t('作战统计')} aria-expanded=${metricsOpen} aria-controls="combat-metrics-panel" onClick=${()=>{if(!metricsOpen)onMetricsOpen?.();setMetricsOpen(!metricsOpen);}} />`:null}
+            <${Button} square=${true} variant="secondary" class="gm__metrics" icon="signal" title=${t('作战统计')} aria-label=${t('作战统计')} aria-expanded=${metricsOpen} aria-controls="combat-metrics-panel" onClick=${()=>{if(!metricsOpen)onMetricsOpen?.();setLeaderOpen(false);setMetricsOpen(!metricsOpen);}} />`:null}
+          ${leader ? html`<${Button} square=${true} variant="secondary" class="gm__metrics result__leader-toggle" icon="sword"
+            title=${t('领袖伤害排行')} aria-label=${t('领袖伤害排行')} aria-expanded=${leaderOpen} aria-controls="leader-rank-panel"
+            onClick=${()=>{setMetricsOpen(false);setLeaderOpen(!leaderOpen);}} />` : null}
+          ${leaderOpen && leader ? html`<${ResultLeaderRank} entry=${leader} history=${r.leaderHistory} players=${r.players}
+            mode=${leaderMode} onMode=${setLeaderMode} onKind=${setLeaderKind} onClose=${()=>setLeaderOpen(false)} />` : null}
           ${actions}
         </div>`:null}
       </section>

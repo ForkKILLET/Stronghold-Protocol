@@ -386,3 +386,34 @@
 }
 /* a match with gameplay plugins (DESIGN §32.6): the unofficial mark under the headline */
 .result__modmark { align-self: flex-start; margin-top: calc(.06 * var(--ui-unit, 1rem)); }
+
+/* Archived Boss charts share the result tools' anchor and viewport placement. */
+.result__actions > .ldmg--result {
+  --ldmg-step:44px;
+  left:0; right:auto; top:auto; bottom:calc(100% + 8px); z-index:55;
+  width:min(420px,calc(100vw - var(--sa-l,0px) - var(--sa-r,0px) - 32px));
+  max-height:var(--combat-available-height,calc(100dvh - 120px));
+  padding:10px 12px; gap:8px; overflow:hidden;
+  background:rgba(8,15,13,.98); border:1px solid var(--line-2); border-top-color:var(--mint-500);
+}
+.ldmg--result[data-viewport-docked="true"] {
+  position:fixed; top:var(--combat-viewport-top); bottom:auto;
+  left:calc(var(--sa-l,0px) + 16px); max-height:var(--combat-viewport-height);
+}
+.ldmg--result .ldmg__head { flex-direction:column; align-items:stretch; height:auto; gap:6px; }
+.ldmg.ldmg--result .ldmg__title { visibility:visible; font-size:max(14px,calc(.14 * var(--t))); }
+.ldmg--result .ldmg__controls { position:static; visibility:visible; opacity:1; min-height:36px; gap:8px; }
+.ldmg--result .ldmg__controls button { font-size:max(14px,calc(.14 * var(--t))); min-height:36px; }
+.ldmg--result .ldmg__close { min-width:36px; }
+.ldmg__rounds { display:flex; flex:none; gap:6px; }
+.ldmg__rounds button { flex:1; padding:6px 10px; min-height:36px; font-size:max(14px,calc(.14 * var(--t))); border:1px solid var(--line-2); color:var(--text-md); background:var(--bg-1); }
+.ldmg__rounds button[aria-pressed="true"] { color:var(--mint-400); border-color:var(--mint-700); background:var(--mint-900); }
+.ldmg__rounds button:focus-visible { outline:2px solid var(--mint-400); outline-offset:-2px; }
+.ldmg__boss { flex:none; font-size:max(13px,calc(.13 * var(--t))); color:var(--text-lo); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ldmg--result .ldmg__name { font-size:max(14px,calc(.14 * var(--t))); }
+.ldmg--result .ldmg__share { font-size:max(16px,calc(.16 * var(--t))); }
+.ldmg.ldmg--result .ldmg__hint { display:block; position:static; flex:none; width:auto; border:0; background:none; padding:0; font-size:max(11px,calc(.11 * var(--t))); }
+@media (pointer:coarse) {
+  .ldmg--result .ldmg__controls button, .ldmg__rounds button { min-height:44px; }
+  .ldmg--result .ldmg__close { min-width:44px; }
+}

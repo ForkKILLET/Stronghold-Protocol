@@ -274,6 +274,18 @@ export class MatchBoss {
     return leaderPlayerRows(this.bossPool, pid => this.players.get(pid)?.seat ?? 1e9);
   }
 
+  /** Preserve the credited chart before the next pool replaces it. No cumulative match-stat reconstruction. */
+  _archiveLeaderRank() {
+    if (!this.bossPool || ![PHASE.FINAL_ASSAULT, PHASE.HIDDEN_CORE].includes(this.phase)) return;
+    const kind = this.phase === PHASE.HIDDEN_CORE ? 'hidden' : 'boss';
+    const entry = {
+      kind, bossId: kind === 'hidden' ? this.hiddenBossId : this.bossId, maxHp: this.bossPool.maxHp,
+      rows: this._leaderTopView(), playerRows: this._leaderPlayersView(),
+      players: this.order.map(p => ({ playerId: p.playerId, name: p.name, avatarId: p.avatarId })),
+    };
+    this.leaderHistory = [...this.leaderHistory.filter(r => r.kind !== kind), entry];
+  }
+
   /** A boss field's LP cost (leaks × lpr + leader LP effects): `cumulative` totals from its client, deltas from the server run. */
   _creditLp(f, amount, cumulative = false) {
     let n = Number(amount);
@@ -600,6 +612,7 @@ export class MatchBoss {
         if (pp && ps) this.dispatch(ps, 'onBattleResult', { result: pp, lpLoss: 0, perfect: !!pp.perfect, boss: true });
       }
     }
+    this._archiveLeaderRank();
     this._syncTeamLp();
     this.deadline = 0;
     this.overtimeAt = 0;

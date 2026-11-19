@@ -46,3 +46,24 @@ export function leaderOpsFromBattle(battle) {
   const hits = typeof raw === 'function' ? raw.call(battle) : (Array.isArray(raw) ? raw : null);
   return leaderOpsRows(hits);
 }
+
+/** Bounded, optional settlement charts. Older records have no charts; do not guess them from total damage. */
+export function leaderHistoryRows(value) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  for (const kind of ['boss', 'hidden']) {
+    const r = value.find(r => r?.kind === kind);
+    if (!r || !Number.isFinite(r.maxHp) || r.maxHp <= 0) continue;
+    const players = (Array.isArray(r.players) ? r.players : []).slice(0, 4)
+      .filter(p => p && okId(p.playerId)).map(p => ({ playerId: p.playerId,
+        name: typeof p.name === 'string' ? p.name.slice(0, 64) : p.playerId,
+        ...(okId(p.avatarId) ? { avatarId: p.avatarId } : {}) }));
+    const rows = (leaderOpsRows(Array.isArray(r.rows) ? r.rows.slice(0, 3) : null) || []);
+    const entry = { kind, bossId: okId(r.bossId) ? r.bossId : null, maxHp: r.maxHp, rows, players };
+    const playerRows = Array.isArray(r.playerRows) ? r.playerRows.slice(0, 4)
+      .filter(p => p && okId(p.pid) && Number.isFinite(p.dmg) && p.dmg >= 0)
+      .map(p => ({ pid: p.pid, dmg: p.dmg, ...(leaderOpsRows([p])?.[0] || {}) })) : null;
+    out.push({ ...entry, ...(playerRows ? { playerRows } : {}) });
+  }
+  return out;
+}

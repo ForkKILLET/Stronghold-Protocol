@@ -573,6 +573,7 @@ export class Match {
     this._uniteBounds = null;
     this.teamLp = null;
     this.bossPool = null;
+    this.leaderHistory = []; // finalized Boss charts, one entry for each of the two leader rounds
     this.hiddenLayerSum = 0;
     this.hiddenReached = false;
     this.outcome = null;

@@ -115,13 +115,14 @@ export function useLeaderRankSpot(active) {
 
 /** A quiet chart in the existing HUD slot. Controls reveal on hover, keyboard focus or touch. */
 export function LeaderRank({ rows, playerRows, players, maxHp, mode = 'operators', onMode, auto = true, onAuto,
-  onClose, boss = true, spot = null }) {
+  onClose, boss = true, spot = null, historical = false, header = null, panelRef = null, closeRef = null }) {
   const list = boss ? leaderChartRows(rows, playerRows, mode) : [];
   const names = new Map((players || []).map(p => [p.playerId, p]));
   const maximum = Math.max(1, ...list.map(r => r.dmg));
-  return html`<aside id="leader-rank-panel" class=${spot ? 'ldmg is-moved' : 'ldmg'} aria-label=${t('领袖伤害排行')}
+  return html`<aside ref=${panelRef} id="leader-rank-panel" class=${`ldmg${spot ? ' is-moved' : ''}${historical ? ' ldmg--result' : ''}`} aria-label=${t('领袖伤害排行')}
       tabindex="0" onPointerDown=${e => { if (e.pointerType === 'touch') e.currentTarget.focus({ preventScroll: true }); }} style=${spot ? `top:${spot.top}px;right:${spot.right}px` : null}
       onKeyDown=${e => { if (e.key === 'Escape') { onClose?.(); e.stopPropagation(); } }}>
+    ${header}
     <div class="ldmg__head">
       <strong class="ldmg__title">${t('领袖伤害排行')}<small>${mode === 'players' ? t('玩家') : t('干员')}</small></strong>
       <div class="ldmg__controls">
@@ -129,9 +130,9 @@ export function LeaderRank({ rows, playerRows, players, maxHp, mode = 'operators
           ${[['operators', t('干员')], ['players', t('玩家')]].map(([id, label]) => html`<button type="button"
             aria-pressed=${mode === id} onClick=${() => onMode?.(id)}>${label}</button>`)}
         </div>
-        <label class="ldmg__auto" title=${t('领袖回合自动打开')}><input type="checkbox" checked=${auto}
-          onChange=${e => onAuto?.(e.currentTarget.checked)} />${t('自动')}</label>
-        <button type="button" class="ldmg__close" aria-label=${t('关闭领袖伤害排行')} onClick=${onClose}><${Icon} name="close" /></button>
+        ${!historical ? html`<label class="ldmg__auto" title=${t('领袖回合自动打开')}><input type="checkbox" checked=${auto}
+          onChange=${e => onAuto?.(e.currentTarget.checked)} />${t('自动')}</label>` : null}
+        <button ref=${closeRef} type="button" class="ldmg__close" aria-label=${t('关闭领袖伤害排行')} onClick=${onClose}><${Icon} name="close" /></button>
       </div>
     </div>
     <div class="ldmg__viewport" tabindex="0">
@@ -150,7 +151,8 @@ export function LeaderRank({ rows, playerRows, players, maxHp, mode = 'operators
       })}
       </ol>
       ${!list.length ? html`<p class="ldmg__empty">${!boss ? t('领袖回合开始后显示')
-        : mode === 'players' && !Array.isArray(playerRows) ? t('当前记录未提供玩家总伤害') : t('等待领袖伤害数据')}</p>` : null}
+        : mode === 'players' && !Array.isArray(playerRows) ? t('当前记录未提供玩家总伤害')
+        : historical ? t('暂无领袖伤害数据') : t('等待领袖伤害数据')}</p>` : null}
     </div>
     <span class="ldmg__hint">${t('百分比按领袖总生命值计算；条长相对榜首')}</span>
   </aside>`;

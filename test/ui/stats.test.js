@@ -870,12 +870,12 @@ describe('local stats: official versions (DESIGN §35.23, format v3)', () => {
   });
 
   test('v2 → v3: nothing rewritten (a record without a version played 第二期下半); a quit record names the room\'s version', () => {
-    assert.equal(STATS_VERSION, 3);
+    assert.equal(STATS_VERSION, 4);
     assert.equal(typeof MIGRATIONS[2], 'function');
     const v2 = { v: 2, records: [buildRecord(baseResult(), { myId: 'p1', now: 5 })] };
     const { stats, changed } = migrateStats(v2);
     assert.equal(changed, true);
-    assert.equal(stats.v, 3);
+    assert.equal(stats.v, STATS_VERSION);
     assert.equal('version' in stats.records[0], false);
     const live = createLiveMatch();
     const state = { me: { playerId: 'p1' }, room: { code: 'A', mode: 'solo', version: 'act1autochess@V1_1' },
@@ -901,4 +901,19 @@ describe('local stats: official versions (DESIGN §35.23, format v3)', () => {
     assert.equal(levelProgress(recs, { counted: false, at, season: 'act1autochess' }).before, 200, '第一期\'s levels');
     assert.equal(levelProgress(recs, { counted: false, at, season: 'act2autochess' }).before, 200);
   });
+});
+
+test('v4 stores each finalized Boss chart through export/import, replay and account history, while compaction drops it',async()=>{
+  const {accountRecord}=await import('../../shared/userStats.js');
+  const leaderHistory=[{kind:'boss',bossId:'boss_1',maxHp:100,rows:[{pid:'p1',uid:1,chess:'op_a',tier:5,dmg:22}],
+    playerRows:[{pid:'p1',dmg:60}],players:[{playerId:'p1',name:'罗宾'},{playerId:'p2',name:'队友B'}]},
+    {kind:'hidden',bossId:'boss_9',maxHp:200,rows:[],playerRows:[],players:[]}];
+  const rec=buildRecord(baseResult({leaderHistory}),{myId:'p1',now:1});
+  const imported=importStats(exportStats({v:STATS_VERSION,records:[rec]}),emptyStats()).stats.records[0];
+  assert.deepEqual(recordToResult(imported).leaderHistory,leaderHistory);
+  assert.deepEqual(normalizeResult(recordToResult(imported)).leaderHistory,leaderHistory);
+  assert.equal(compactRecord(rec).leaderHistory,undefined);
+  const remote=accountRecord({id:'game',playerId:'p1',payload:{playerId:'p1',frame:{leaderHistory}},rounds:15});
+  assert.deepEqual(recordToResult(remote).leaderHistory,leaderHistory);
+  assert.deepEqual(migrateStats({v:3,records:[buildRecord(baseResult(),{myId:'p1'})]}).stats.records[0].leaderHistory,undefined);
 });
