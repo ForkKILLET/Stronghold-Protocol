@@ -699,7 +699,7 @@ html:not(.sp-in-match) .toast__count { font-size:max(11px,calc(.14 * var(--t)));
 }
 
 /* Settings owns a stable two-column shell; only the chosen category scrolls. */
-.utility-modal.settings-modal { height:min(max(calc(8.8 * var(--ui-unit,1rem)),560px),calc(100dvh - 48px)); }
+.utility-modal.settings-modal { height:min(max(calc(8.8 * var(--ui-unit,1rem)),calc(560px * var(--sp-ui,1)),32px),calc(100dvh - 48px)); }
 .utility-modal.settings-modal > .modal__body { display:flex; overflow:hidden; }
 .settings-layout { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:calc(.24 * var(--ui-unit,1rem)); flex:1; min-width:0; min-height:0; }
 .settings-nav { display:flex; flex-direction:column; align-items:stretch; gap:8px; min-height:0; overflow:auto; padding:2px; border-right:1px solid var(--line); padding-right:calc(.16 * var(--ui-unit,1rem)); }
