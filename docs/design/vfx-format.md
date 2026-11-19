@@ -1892,3 +1892,20 @@ Sources: local official v3 index/prefabs; `pkgrps/btl_pfb_tokens_0.ab` mode `_re
 `SwitchToMelee/Range`; `skill_table.json` (`skchr_wildmn_2`, `skchr_yu_3`, `skchr_mlyss_3`); official client
 `CastEffectOptions.CreateEffect`, `ParticleEffect.FaceTo`, `YuS3EffectBehaviour.OnPlay` and
 `YuS3EffectWithEdgeBehaviour` (addresses and replay evidence in history §34.31). No sim rules change.
+
+### MAP10 cannon effects (2026-11-19)
+
+`cannonfx.js` owns the fixed `trap_196_cnnon` device's native idle, birth, cast, flight, impact and death effects.
+The frame is a static mesh; its separate `trap_cnnon_attack_start` Animator carries the 0.233333-second clip.
+The independent `trap_cnnon_lockon` loop belongs to the stage-defined landing tile. `CannonFx` owns its handle
+separately from the frame's idle effect, using the landing surface height and clearing both on phase/removal/off.
+The extractor reads the Graphic's explicit mount references, including a Special0 bound to an arbitrarily named mesh.
+Preparation reads visible board devices; battle reads actual views and the existing shot/impact events. The native
+ParacurveMovement shapes the cosmetic flight, keeping the sim's duration; only an impact event creates the explosion.
+Already-fired projectiles outlive the device. Battle-clock pause, tier changes, 2D and phase/reset cleanup use OfficialFx.
+The generic talent emitters do not also own this device's effects; preloading materializes its input iterator once.
+
+[ASSUMED] The cast's saved edit-time offset is registered by aligning its first ball pose to FixedMuzzle and turning
+its original +Z movement toward the landing point, keeping raw curves unchanged. Exact native registration and
+cast/flight timing need official recorded comparison. Sources, extraction and validation are in
+[the cannon research](../research/salt-cannon-20261119.md).

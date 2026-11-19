@@ -426,6 +426,7 @@ export async function createFieldView(host, options = {}) {
   layers.vfxOver.addChild(terrainOfx.over);
   const wiring = new FxWiring(ofx, {
     speed: projSpeed,
+    stage: () => stageRec,
     // the index unit of a battle unit: the drawn operator (a stand-in's, a 自选 pick's), the chess' operator, the enemy / token
     unitKey: (info) => {
       if (!info) return null;
@@ -1799,7 +1800,7 @@ export async function createFieldView(host, options = {}) {
         const used = consumedIds.delete(e[1]);
         if (v && v.alive) {
           v.die(e[2] === FORCED_EXIT);
-          if (showsDeathFx(v.info, used, e[2])) { if (!wiring.death(v)) fx.death(v); } else wiring.release(v);
+          if ((!used && e[2]!==FORCED_EXIT && v.info?.defId==='trap_196_cnnon') || showsDeathFx(v.info, used, e[2])) { if (!wiring.death(v)) fx.death(v); } else wiring.release(v);
         }
         break;
       }
@@ -2111,6 +2112,8 @@ export async function createFieldView(host, options = {}) {
         }
         if (beamQ.length) pumpBeams(dt);
       } else if (mode === 'prep') {
+        wiring.cannons.prep(board3d);
+        if (ofx.active) { ofx.setGround(heightAt,`${board3d?.stageKey}|${board3d?.areaKey}`); ofx.update(dt); }
         for (const [key, pd] of pending) {
           if (now - pd.t > DROP_PENDING_MS) {
             pending.delete(key);

@@ -474,3 +474,10 @@ per battle. Refreshing an existing fear, freezing an enemy, or fearing an enemy 
 Temporary Ursus layers from eligible kills and opening garrisons contribute to live ATK/HP, damage-to-bleed conversion and six-member block damage. Normal fields record those layers separately for end-of-battle garrison conversion; they never enter the permanent `layerGain` hook or change permanent counts directly. Combat-local kill gains in fields with layer collection disabled remain out of the result wire. The existing disabled-gain behavior of direct opening-garrison grants is unchanged. Talulah's additional kill grant uses the existing on-field garrison helper.
 
 Regulation Yan draws five element slots with equal probability; E_NUM=6 is a sentinel, not a sixth element. The engine still approximates Anger with necrosis [ASSUMED], as before. The garrison stack-cap filter accepts any listed bond, including effective Harmony membership. 后兽 Punishment uses the official template's 1.5-tile splash around its lock, with one hit on the locked unit; this does not change its body collision or implement the separate summoned-trap effect. Sources and validation limits: [integration record](../MERGE_DEV_2026-11-15.md#2026-11-16开放-pr-筛选与集成).
+
+### MAP10 盐坨子炮（2026-11-19）
+
+盐坨子炮为敌方默认实体、固定场地装置。`content/saltCannon.js` 接管 SP、炮击、载客／卸客与残血销毁；
+乘客保留同一实例，在落点重接官方 extraRoute。装置位于 road rect 外的隔断格，生命周期跳过移动、清场存活与漏怪计数。
+Three 复用 native 网格，并在地块表面高度绘制；准备静态模型与战斗动态模型交接，销毁释放独占资源。
+依据、参数及待校准的视觉时序见 [研究记录](../research/salt-cannon-20261119.md)。

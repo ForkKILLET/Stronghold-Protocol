@@ -2265,6 +2265,7 @@ const DEVICE_ROLES = {
   trap_098_mire: 'mireController', trap_042_tidectrl: 'tideController', trap_1104_aclasert: 'turret',
   trap_1112_acblzd: 'coldWind', trap_036_storm: 'sandstorm', trap_040_canoe: 'waterPlatform',
   trap_1107_acblock: 'sealedFloor', trap_218_fttree: 'bush', trap_039_dstnta: 'bossSpawn',
+  trap_196_cnnon: 'saltCannon',
 };
 /** Roles that block ground movement while active ([ASSUMED] for platform/mound). */
 const BLOCKING_ROLES = new Set(['crate', 'platform', 'mound']);
@@ -2300,7 +2301,7 @@ function rotateGrid(grid, dir) {
 }
 
 /** Device (predefined token/trap) record with stats and skill blackboard at its instance level. */
-function deviceRecord(ctx, t) {
+function deviceRecord(ctx, t, runes) {
   const key = t.inst?.characterKey;
   const ch = ctx.charTable[key];
   const rec = { key, name: ch?.name || key, alias: t.alias || null, pos: pos(t.position), dir: t.direction, hidden: !!t.hidden, role: DEVICE_ROLES[key] || null };
@@ -2321,6 +2322,22 @@ function deviceRecord(ctx, t) {
   const sk = ch.skills?.[t.skillIndex ?? 0];
   const skill = sk?.skillId ? buildSkill(ctx, sk.skillId, t.mainSkillLvl || 1, null, `device ${key}`) : null;
   rec.skill = skill ? { skillId: skill.skillId, name: skill.name, level: skill.level, desc: skill.desc, descRaw: skill.descRaw, bb: skill.bb, bbStr: skill.bbStr } : null;
+  if (rec.role === 'saltCannon') {
+    const sp = ctx.skillTable[sk?.skillId]?.levels?.[Math.max(0, (t.mainSkillLvl || 1) - 1)]?.spData;
+    rec.cannon = { level, distance: 4 + (level - 1) % 3, initSp: sp?.initSp ?? 0, spCost: sp?.spCost ?? 6,
+      spRecovery: attrs.spRecoveryPerSec ?? 1, branchId: (t.overrideSkillBlackboard || []).find(b => b.key === 'talent@branch_id')?.valueStr ?? null,
+      route: t.cannonRoute ? resolveRoute(t.cannonRoute) : null };
+    // The main level owns the rules; sub levels supply placement and routes. Read the prefab-key selectors:
+    // the parallel alias selectors describe the same adjustment and must not apply a second time.
+    for (const rune of runes || []) {
+      const { bb, bbStr } = flattenBB(rune.blackboard);
+      if (!(bbStr.char || '').split('|').includes(key)) continue;
+      if (rune.key === 'char_attribute_add') {
+        rec.stats.maxHp += bb.MAX_HP ?? 0;
+        rec.stats.atk += bb.ATK ?? 0;
+      } else if (rune.key === 'char_skill_cd_mul') rec.cannon.spCost *= bb.scale;
+    }
+  }
   const dp = textPair(ch.description);
   rec.desc = dp.desc;
   return rec;
@@ -2403,7 +2420,7 @@ function buildStages(ctx, modesById) {
       return { rows, tiles: glyphTiles };
     };
     const { rows, tiles: glyphTiles } = encode(lv.mapData);
-    const devices = (lv.predefines?.tokenInsts || []).map((t) => deviceRecord(ctx, t));
+    const devices = (lv.predefines?.tokenInsts || []).map((t) => deviceRecord(ctx, t, lv.runes));
     for (const d of devices) d.active = deviceActiveAtStart(stageId, d);
     const mapChars = (lv.predefines?.characterInsts || []).map((c) => ({
       key: c.inst?.characterKey, alias: c.alias || null, pos: pos(c.position), dir: c.direction, hidden: !!c.hidden,

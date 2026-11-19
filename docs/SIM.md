@@ -440,6 +440,10 @@ the projectile, cannot be targeted or damaged, and self-destructs on impact. A p
 the already launched projectile continues flying. 逻各斯 S3 slows it as an enemy bullet and can clear it; if its locked
 target leaves, it bursts at the last known position without damage [ASSUMED].
 
+MAP10 盐坨子炮由 `content/saltCannon.js` 创建为敌方默认实体（`kind:device`）。它可停在战场 road rect 外的固定隔断格，
+参与索敌与伤害，但不移动、不阻挡、不计波次与超时漏怪，也不妨碍清场。载客保留原敌人；炮弹落地时改接其专属路线。
+[来源与参数](research/salt-cannon-20261119.md)说明原版数据和待校准的弹道时序。
+
 Crates (stage devices with
 role `crate`, 100 HP) are ground obstacles; an enemy forced through one is blocked by it and destroys it. A device is
 present when data/stages.json says `active: true` (this wins over the level file's `hidden`: act1 m02's crates);

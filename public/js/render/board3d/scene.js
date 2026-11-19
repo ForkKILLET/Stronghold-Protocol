@@ -331,6 +331,10 @@ export class BoardScene {
 
   /** DeviceView's dimensions follow the active model; 2D and missing-art boxes keep their old spec. */
   deviceSpec(spec) {
+    if (spec?.saltCannon) {
+      const model = this.cannonModel();
+      return model ? { ...spec, size: model.size, height: model.height } : spec;
+    }
     if (spec?.top !== 'crateTop' || !this.clientCrateGeometry()) return spec;
     if (!this._crateSpec) {
       const { min, max } = this.pack.meshes.crate.bounds;
@@ -376,7 +380,7 @@ export class BoardScene {
     let board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry(),
       heightClasses: official?.doc?.tileHeightClasses || null });
     const M = this.meshes = {};
-    this.official = official && this._buildScene(official) ? official : null;
+    this.official = official && this._buildScene(official, board) ? official : null;
     if (!this.official && official?.doc?.tileHeightClasses) {
       board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry() });
     }
@@ -446,14 +450,27 @@ export class BoardScene {
    * page (`mergeSceneChunks`). A switched-off HIDDEN part, and a group the client saved disabled
    * (`inactive`), are left out before the merge.
    */
-  _buildScene(pack) {
+  _buildScene(pack, board) {
     const T = this.THREE;
     const res = this._sceneResources(pack);
     const infos = pack.doc?.materials || {};
     this.sceneWater = [];
     const buckets = new Map();
-    for (const c of pack.chunks || []) {
+    for (let c of pack.chunks || []) {
+      if (this.battleRect && c.material === 'MT_trap_196_cnnon') continue; // runtime devices own life/visibility
       if (c.group && !sceneGroupVisible(pack.groups?.[c.group], this.area, c.group)) continue;
+      if (c.material === 'MT_trap_196_cnnon' && board && pack.doc.staticDevices?.positions?.length) {
+        // Extracted prefab vertices start at local ground zero; the game places each trap on its tile surface.
+        const position = c.position.slice(), origins = pack.doc.staticDevices.positions;
+        for (let i = 0; i < position.length; i += 3) {
+          const [r, col] = origins.reduce((a, p) => {
+            const dist = q => (position[i] - q[1]) ** 2 + (position[i + 1] - q[0]) ** 2;
+            return dist(p) < dist(a) ? p : a;
+          });
+          position[i + 2] += board.grid[r]?.[col]?.h || 0;
+        }
+        c = { ...c, position };
+      }
       const info = infos[c.material] || null;
       const mk = sceneMaterialKey(c, info);
       let bucket = buckets.get(mk);
@@ -520,6 +537,9 @@ export class BoardScene {
       else if (d.kind === 'blower' || d.kind === 'turret') crates.push(placeMesh(boxWithTop(this.pack?.uv, d.kind), { x: d.c, y: d.r, z: d.z0 }));
       else if (d.kind === 'mound') crates.push(placeMesh(this.boxGeometry(), { x: d.c, y: d.r, z: d.z0, s: 0.95, sz: 0.55 }));
       else if (d.kind === 'bush') crates.push(placeMesh(bushData(), { x: d.c, y: d.r, z: d.z0 }));
+      else if (d.kind === 'saltCannon' && !this.cannonModel() && !this.battleRect) {
+        crates.push(placeMesh(this.boxGeometry(), { x: d.c, y: d.r, z: d.z0, s: 0.98, sz: 0.74 }));
+      }
     }
     if (blowers.length) this.meshes.blowers = this._mesh(mergeInto(blowers), this.mat.wind, { receive: false });
     if (crates.length) this.meshes.props = this._mesh(mergeInto(crates), this.mat.board);
@@ -541,6 +561,11 @@ export class BoardScene {
     const next = rect ? { r0: rect.r0, r1: rect.r1, c0: rect.c0, c1: rect.c1 } : null;
     if (JSON.stringify(next) === JSON.stringify(this.battleRect)) return;
     this.battleRect = next;
+    if (this.stage?.devices?.some(d => d.key === 'trap_196_cnnon')) {
+      this.stageKey = null;
+      this.setStage(this.stage);
+      return;
+    }
     if (this.board) this._rebuildCrates();
   }
 
@@ -685,8 +710,60 @@ export class BoardScene {
 
   // ---- dynamic devices (battle) ------------------------------------------------------------------------------
 
+  /** The installed composite pack contains one native cannon in its normal chunk. Reuse it as an independent prop. */
+  cannonModel() {
+    const pack = this.stage && this.scenePacks.get(this.stage.id);
+    const source = pack?.doc?.staticDevices;
+    if (source?.prefab !== 'trap_196_cnnon') return null;
+    if (this._cannonModel?.pack === pack) return this._cannonModel;
+    const c = pack.chunks.find(c => c.material === 'MT_trap_196_cnnon' && c.group === 'regulation:normal');
+    const origin = source.positions?.find(p => p[0] >= 9 && p[1] <= 10);
+    if (!c || !origin) return null;
+    const position = c.position.slice();
+    let lo = Infinity, hi = -Infinity, height = 0;
+    for (let i = 0; i < position.length; i += 3) {
+      position[i] -= origin[1]; position[i + 1] -= origin[0];
+      lo = Math.min(lo, position[i]); hi = Math.max(hi, position[i]); height = Math.max(height, position[i + 2]);
+    }
+    return this._cannonModel = { pack, chunk: { ...c, position }, size: hi - lo, height };
+  }
+
+  createCannon() {
+    const model = this.cannonModel();
+    if (!model) return null;
+    const T = this.THREE, c = model.chunk, res = this._sceneResources(model.pack);
+    const info = model.pack.doc.materials[c.material], geom = new T.BufferGeometry();
+    geom.setAttribute('position', new T.BufferAttribute(c.position, 3));
+    geom.setAttribute('normal', new T.BufferAttribute(c.normal, 4, true));
+    geom.setAttribute('uv', new T.BufferAttribute(c.uv, 2));
+    geom.setIndex(new T.BufferAttribute(c.index, 1));
+    const mat = trapMaterial(T, res.tex[info.map], this.focus, info, model.pack.doc.light?.dir);
+    const mesh = new T.Mesh(geom, mat);
+    this.dynamic.add(mesh);
+    let dead = false;
+    const h = { mesh: null, native: true, cannonModel: model, board: this, get destroyed() { return dead; },
+      update(cam, b) {
+        if (!b || dead) return;
+        mesh.visible = (b.alpha ?? 1) > .01;
+        mesh.position.set(b.x, b.y, b.z ?? 0); // prefab vertices are relative to the tile's surface
+        mesh.scale.set(1, 1, Math.max(.001, (b.height ?? model.height) / model.height));
+        mat.uniforms.uOpacity.value = b.alpha ?? 1;
+      },
+      destroy: () => {
+        if (dead) return;
+        dead = true; this.dynamic.remove(mesh); geom.dispose(); mat.dispose(); this.devices.delete(h);
+      },
+    };
+    this.devices.add(h);
+    return h;
+  }
+
   /** A crate / device box driven by render/units.js DeviceView (see header). */
   createDevice(spec = { top: 'crateTop' }) {
+    if (spec.saltCannon) {
+      const cannon = this.createCannon();
+      if (cannon) return cannon;
+    }
     const T = this.THREE;
     const self = this;
     const clientCrate = spec.top === 'crateTop' && this.clientCrateGeometry();

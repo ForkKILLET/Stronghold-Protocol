@@ -45,6 +45,7 @@ import { sortEnemyTargets } from '../targeting.js';
 import { DIR_VEC, normDir, oppositeDir } from '../dir.js';
 import { hypot } from '../detmath.js';
 import { matchBands, bandRecord, buffsOf } from './support/index.js';
+import { installSaltCannons } from './saltCannon.js';
 
 const num = (v, d = 0) => (typeof v === 'number' && Number.isFinite(v) ? v : (typeof v === 'string' && v.trim() !== '' && Number.isFinite(+v) ? +v : d));
 /** ASPD blackboard values: a fraction (|v| < 1, e.g. −0.6 / −0.05) is ×100 ASPD, otherwise flat (+20). */
@@ -554,6 +555,7 @@ export function install(battle) {
     }
   }
   STATE.set(battle, st);
+  installSaltCannons(battle, d => isActive(battle, st, d));
   const devices = battle.stage?.devices || [];
   buildTerrain(battle, st); // grid, stage `special` and overrides are known at construction
   ensureTick(battle, st);

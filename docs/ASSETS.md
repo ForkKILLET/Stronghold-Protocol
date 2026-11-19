@@ -725,6 +725,11 @@ It can retain legacy projectile records beside current records (`rolesVersion: 1
 role metadata); the runtime continues to read legacy behaviours. When working in a shared asset tree, stage the FX
 output with copies of the existing `fx/index.json`, `fx/textures.json` and `data/local-fx.json`, then publish absent
 files and the merged indexes. The full package and asset pack read the resulting three manifests normally.
+MAP10's `trap_196_cnnon` and eleven `trap_cnnon_*` prefabs are included in the sample/used selection (including the
+independent landing marker `trap_cnnon_lockon`, confirmed by the supplied official clip). Explicit cannon
+keys also crawl its bound mount points and four projectile records, preserving the prior index on a keys-only run.
+The frame mesh is static; the separate attack FX carries its animation clip. Runtime registration and remaining
+recording calibration are documented in [the cannon research](research/salt-cannon-20261119.md).
 The Windows install root is accepted directly: `bundles.py` overlays downloaded hot-update bundles on packaged
 StreamingAssets by the current client manifest. `--only versions` also fills missing audio clips from the same
 version-aware sound plan, without replacing existing audio. Unavailable optional bundles are reported explicitly.
