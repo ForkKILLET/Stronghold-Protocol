@@ -152,10 +152,10 @@ field that includes that player's board, and a 联防 helper's half. A leaker's 
 untouched chest there is not at risk. Treasure marks (`enemy_9038_achest`) persist until a validated battle receipt
 says an enemy touched them. While one stands, its board tile refuses operators and the prep view shows the chest.
 
-For 妮芙's `MAP_TILE` / `PASSABLE` rows 107–110, the shared `passable === 'ALL'` check still applies, with `tile_start`
-and `tile_end` excluded as command targets even though those LOW gate tiles are passable in v3_1. Ordinary LOW
-`tile_floor` road tiles remain selectable. HIGH tiles and `tile_fence_bound` remain excluded by their existing
-`passable` values (`FLY_ONLY` or `NONE`); this fix adds no terrain exclusion to other target filters.
+Nymph's `MAP_TILE` / `PASSABLE` targets exclude `tile_start` and `tile_end`: passability alone does not make a red
+or blue gate a legal command target. The private target list and use-time validation share `commandTargets`;
+a forged gate target is refused before spending funds or a use, and creates no mark. Ordinary ground remains
+eligible. Source: [official play recording in the PR #940 follow-up](https://github.com/sganggs/Stronghold-Protocol/pull/940#issuecomment-6881784894), 2026-11-15.
 
 ITEMS integration: import `openSkillChangeDraft(player, choiceId, ctx?)` from `server/match/bandCommands.js`, or call
 `ctx.openSkillChangeDraft(choiceId)` in a meta handler. `skill_change_1` queues three cards; `skill_change_2` queues two.
@@ -320,8 +320,11 @@ The [official 初雪 counterexample](research/regulation-core-ban-video-20261114
 
 ### 1.4 Watching fields
 Client-side combat (the default, DESIGN §14 Spectating; `Match._watchClient`): `g.watch` answers with the field's
-`b.start` (a display replica fast-forwarded to the field clock); an alive player may watch another normal field while its own battle continues. During 联防, completed normal fields
-remain viewable. Final Assault and Hidden Core also allow viewing the other pair (owner-confirmed official QoL, 2026-11-12); eliminated players watch anything. Whatever is watched, the viewer's bond strip shows the bonds of the
+`b.start` (a display replica fast-forwarded to the field clock). Living players may view an existing teammate's normal field while their own battle continues, or the other pair's boss / hidden field. Viewing never transfers authority; eliminated players retain their existing spectating permissions.
+While the own battle still runs, the client allows this only with the setting 「作战中查看队友」 (`watchDuringBattle`, off by
+default: watching runs a second simulation in the page; DESIGN §37.268); the server does not check the setting. Everyone
+outside a field (spectator seats, eliminated players, living watchers) gets its spec without the players' funds
+(`_spectatorSpec`); the 规程 `bench` stays, the battle summons from it. Whatever is watched, the viewer's bond strip shows the bonds of the
 player on screen from that player's `m.public players[].bonds` (§5) plus the replica's live layers (DESIGN §20.15) — no
 extra message. On a shared field (联防 / a pair's boss field) the client remembers the teammate picked with 前往查看
 (the `g.watch` request still names the field) and frames that player's half; a viewer who does not fight on the field
@@ -331,7 +334,7 @@ screen (the runner's `ownerOps`, its field meta predating their deploy). A clien
 player) sends no `g.watch` (it would be refused with `BAD_TARGET 'no such field'`). A reload / reconnect while watching a
 teammate's battle after the own one gets the watched field again (`_resendBattle`, `b.start watch: true`); the fresh
 screen adopts it as the watched field once per battle (`battle/observe.js resumedWatch`: a living player's teammate
-normal battle in COMBAT, first seen while watching nothing), so the observing pill, 返回战场 and the own row work again.
+normal / boss / hidden battle in the matching phase, first seen while watching nothing), so the observing pill, 返回战场 and the own row work again.
 Before a co-op match, a seated human can switch to a free spectator seat without leaving the room (#76). Another connected human must remain seated; a disconnected seat does not count, and the switch is refused (`NOT_READY`, detail `at least one player must remain seated`) rather than handing the host to that seat. Bots do not keep a room alive. A host hands over by the existing connected-human-first rule when someone online remains. The spectator record keeps that seat's `content` and `contentGen`, so a loadout sent while watching a room that needs its content stays stamped with the room's cs. Returning to a free player seat retains session preferences but requires readiness and any content consent again (the new seat's content report starts over); an active version vote is cancelled by either change of player membership. Running matches do not allow this role change. A full spectator strip answers `ROOM_FULL` with detail `no free spectator seat`; a solo room stays `ROOM_FULL` with detail `solo room`.
 
 Spectator seats (a remake feature, community report #26; server/lobby.js): `opts.spectators` / `addSpectator(id)` register
@@ -345,8 +348,7 @@ The rest of this section is the legacy server-run mode
 `g.watch { fieldId }`: any live field during COMBAT / 联防; while no battle field is up (PREP, drafts, SETTLE)
 `'n:<pid>'` keeps the viewer scouting that board and pushes `prepFieldMeta` again when it changes (GitHub #87) — during a battle phase an `'n:<pid>'` id must name a live field
 (`BAD_TARGET 'no such field'` otherwise, and the viewer keeps its stream). In the
-最终攻势 / 隐秘核心 any existing boss field may be watched, including the other group. Returning home restores the
-own field. The former other-group refusal was based on the older official rule; it no longer applies.
+最终攻势 / 隐秘核心 living players can view either existing boss group and return to their own field; eliminated / departed players retain their existing spectating permissions.
 
 ### 1.5 AI player (bot.js)
 
@@ -813,7 +815,8 @@ Any `choice:` handler whose EffectRef reuses its own key must guard like this (o
 
 ## 3. Rules implemented (summary; details in each module header)
 
-* **Economy**: income `config.economy.income[r]` (= min(3+r, 12)); bounty coins / pending funds credited at the next
+* **Economy**: income `config.economy.income[r]` (= min(3+r, 12); 规程 min(3+r, 11) and its 极速模拟 min(5+r, 11), from
+  official recordings — a mode's `economy` merges over the season's); bounty coins / pending funds credited at the next
   round start; leftover funds lost at prep end except `leftoverFundsKeptByBands`. Chess price by tier (2/3/3/3/4/4),
   items by `price`, refresh 1 (free refreshes first), sell +1 (elite too; items cannot be sold, only destroyed).
 * **Shop**: `shopSlots[level]` chess slots + item slot(s), copy-weighted rolls over remaining pool copies of unbanned,
@@ -900,8 +903,14 @@ Any `choice:` handler whose EffectRef reuses its own key must guard like this (o
   one stack of deploy-limit copies (凯瑟琳 2 of her 3 devices); each copy is placed and turned like any piece (no deploy
   slot — the PRTS token pages give 部署占用数 0), only while its owner is on the board. Withdrawing / selling / merging the
   owner removes its summons; moving it to another tile (a move, a swap, or a summon dragged onto it — that summon stays
-  where it was dropped) sends its placed summons back onto their stack ("移动干员时，其所属召唤物全部退场并重置至手牌区";
-  `PlayerState._liftTokensOf`). A stack that overflowed into temp and was removed at a prep deadline comes back at the
+  where it was dropped) keeps each placed summon whose tile is still legal for the owner's final position and sends only
+  the others back onto their stack (PR #969's official recording of the new client, accepted for all five versions by the
+  maintainer on 2026-11-18; the PRTS help line "移动干员时，其所属召唤物全部退场并重置至手牌区" describes the older client;
+  `PlayerState._liftOutOfRange` after the move). A summon left on a tile it cannot stand on is returned the same way
+  (GitHub #984: 幻影 `position: MELEE` swapped onto the ranged tile its owner left). `_legal` is `canPlace` plus the range
+  rules, so a ranged-only tile, water and a blocked tile are covered. The swap stays allowed; the client does not predict
+  the return. An in-place re-orientation does not re-check tile class (`_roomForOutOfRange`): facing does not move the
+  summon. A stack that overflowed into temp and was removed at a prep deadline comes back at the
   next round start (§手牌区 "干员所属召唤物会于下一回合返还": `PlayerState.startRound` tops every board owner's summons up
   to the deploy limit, `grantTokensFor`). A summon whose text reads "只能部署在召唤者攻击范围内" (tokens.json `ownerRange`:
   the tacticians' 援军, 伺夜 狼群 / 缪尔赛思 流形 — choosing the tactical point; player report #9 after 0.1.0) only goes on
@@ -913,7 +922,9 @@ Any `choice:` handler whose EffectRef reuses its own key must guard like this (o
   place (or promoted) a summon its new range leaves out goes back onto its stack with a toast (`_liftOutOfRange` in
   `recompute`) — one still inside stays [ASSUMED]. A re-orientation that would leave such a summon with no stack and no
   free hand / temp slot is refused (HAND_FULL, like withdrawing a summon into a full hand); in the other cases (a
-  promotion, an owner moved while hand and temp are full) the summon leaves the board and its stack waits in the expandable temp queue (`_returnToken`), so no out-of-range placement reaches the battle. The client lights and accepts
+  promotion, an owner moved while hand and temp are full) the summon leaves the board and its stack waits in the
+  expandable temp queue (`_returnToken`), so no illegal placement (out of range, or a tile the summon cannot stand on)
+  reaches the battle. The client lights and accepts
   the same tiles (`ui/gameLogic.js summonRange`), the bot plans inside them. Battle side: SIM.md §1.1 token pieces.
 * **Bonds**: bondsMeta.js (BOARD distinct, BOARD_AND_DECK, 绝技 elites, 调和 +1 — the state and the views mark it
   `harmony: 1`, DESIGN §21.26 —, 独行 downward, 助力 upper tiers, 变形同构体 grants). Σ activated layers for the hidden
@@ -959,7 +970,7 @@ Any `choice:` handler whose EffectRef reuses its own key must guard like this (o
 * **SETTLE**: LP −min(counted leaks, 10) (after 联防: survivors attributed to their source, same cap); IN_BATTLE layer
   gains applied, each bond up to `BOND_LAYER_CAP` (999, `layerGainRoom`, as `PlayerState.addLayers`); kill-bounty coins (paid by the Battle to the killer — a 联防 helper included; a death no operator caused pays the card's owner, in 联防 the helper whose half it fell on: `Battle._bountyPayee`) and perfect-bounty coins
   (own phase perfect) go to pending funds; bounty rounds decrement; LP ≤ 0 ⇒ eliminated (all copies back to the pool).
-* **Final Assault / Hidden Core**: finalAssault.js header. Boards are passed in board coordinates; the sim maps board
+* **Final Assault / Hidden Core**: finalAssault.js header. Permanent IN_BATTLE layer gains follow `config.finalAssault.layerGainsEnabled` (规程 true, 盟约 false) and are kept in `_finishFinal` the same way SETTLE keeps a normal battle's gains. 联防 stays off. Hidden-core eligibility still uses the layer sum frozen at the end of the boss round's prep. Boards are passed in board coordinates; the sim maps board
   rows 9–12 onto boss rows 2–5 (`BOSS_ROW_OFFSET` −7, matching every stage's boss rows) and mirrors the right side.
   Pairing uses a separate seeded shuffle before Final Assault prep (salt `boss-pairs`) and a new one before Hidden Core
   prep (salt `boss-pairs:15`, `finalAssault.js bossPairSalt`: pairs and sides drawn anew, GitHub #845, DESIGN §35.27);
@@ -1423,3 +1434,11 @@ it returns false for another location or a failed stow (reattaching on failure),
 The Stainless `SERVER_UPGRADE_SELF_EQUIP` handler walks a snapshot of carried items, upgrades valid normal items,
 returns each one and restores its old id if the return fails. UID, metadata and stock provenance remain attached to
 the original item. See [the match rule and footage](design/match.md#stainless-upgraded-equipment-return).
+
+
+临时盟约层数结算（维护者 2026-11-18 确认）：休整期结束到下一次进入休整期共用一个临时池。
+写入战后余额时仅保留已知盟约的有限正数，向下取整并封顶 10000；空结果清除旧余额。
+装备、盟约与驻守的普通／Boss 战斗通过 `tempLayerGains` 保存余额；本人战斗结束及 SETTLE 都不转换。
+联防输入 `tempLayers` 继承本人余额并冻结，不再叠加，也不重新记为收益；Boss 本身没有联防。
+下一次进入休整期时由 `onPrepStart` 转换器读取、消耗，然后清除余额，多功能补剂同样适用。
+完整 API 和来源见 [临时层数约定](design/engine.md#temporary-bond-layers)。

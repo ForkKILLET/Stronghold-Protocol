@@ -37,10 +37,11 @@ export function nameOf(pub, playerId) {
  * @param {any} p m.public player row
  * @param {any} pub
  * @param {string} myId
- * @param {{ observing?: boolean, ownDone?: boolean }} [o] ownDone: the local simulation of the own battle already ended
- *   (its result is on the way to the server)
+ * @param {{ observing?: boolean, ownDone?: boolean, liveWatch?: boolean }} [o] ownDone: the local simulation of the own
+ *   battle already ended; liveWatch: 设置「作战中查看队友」 (PR #971, default off) — while the own battle runs, another
+ *   field (a teammate's normal battle, the other boss group) opens only with it on: watching runs a second simulation.
  */
-export function observeTarget(p, pub, myId, { observing = false, ownDone = false } = {}) {
+export function observeTarget(p, pub, myId, { observing = false, ownDone = false, liveWatch = true } = {}) {
   if (!isObj(p)) return { reason: t('无效的目标') };
   if (p.playerId === myId) return observing ? { back: true } : { reason: null };
   if (p.alive === false || p.status === 'left') return { reason: t('该队友已被淘汰，无法查看') };
@@ -53,6 +54,7 @@ export function observeTarget(p, pub, myId, { observing = false, ownDone = false
   const own = fieldOf(pub, myId);
   if (!meAlive || !own) return { fieldId: target.fieldId };
   if (own.fieldId === target.fieldId) return { reason: t('队友与你在同一战场，使用 ‹ › 切换视角') };
+  if (!liveWatch && own.live !== false && !ownDone) return { reason: t('作战结束后可前往查看；作战中查看需在设置中打开「作战中查看队友」') };
   return { fieldId: target.fieldId };
 }
 

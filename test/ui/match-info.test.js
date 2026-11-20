@@ -482,7 +482,6 @@ test('a greyed regulation core card explains all-core exclusion; an unpicked gro
   assert.equal(regulationCoreAbsent(funny, 'arcaneShip'), false, 'an add-on keeps the covenant rule');
   const modeOff = card(funny, 'egirShip', { count: 0, layers: 0, tier: 0, active: false });
   assert.match(modeOff, /阿戈尔：该核心盟约的干员无法出现，同属其他亮着的核心盟约的除外/);
-  assert.match(modeOff, /当前效果/, 'the covenant off branch, which hides the effect, is not used');
   assert.doesNotMatch(modeOff, /本模式下该盟约不会激活/);
   assert.doesNotMatch(modeOff, /仍可能因所属的其他盟约出现/);
   const addon = card(funny, 'arcaneShip');
@@ -499,7 +498,6 @@ test('a greyed regulation core card explains all-core exclusion; an unpicked gro
   assert.equal(regulationCoreAbsent(after, 'yanShip'), false);
   const drawn = card(after, 'sargonShip', { count: 0, layers: 0, tier: 0, active: false });
   assert.match(drawn, /萨尔贡：该核心盟约的干员无法出现，同属其他亮着的核心盟约的除外/);
-  assert.match(drawn, /当前效果/);
   assert.doesNotMatch(drawn, /仍可能因所属的其他盟约出现/);
   assert.doesNotMatch(card(after, 'yanShip', { count: 1, layers: 2, tier: 1, active: true }), /该干员才无法出现/);
 

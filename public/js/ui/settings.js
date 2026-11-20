@@ -432,6 +432,10 @@ export function SettingsModal({ open, onClose }) {
       <${Toggle} label=${t('盟约效果剩余时间')} micro="BOND TIMERS" value=${s.bondTimers} onChange=${(v) => updateSettings({ bondTimers: v })} />
       <p class="set-hint">${t('在选中单位的详情中显示叙拉古、萨尔贡效果的剩余时间；萨尔贡显示层数与下一层到期时间。官方界面没有这些数字。')}</p>
     ` },
+    { id: 'watchDuringBattle', category: 'battle', render: () => html`
+      <${Toggle} label=${t('作战中查看队友')} micro="WATCH IN BATTLE" value=${s.watchDuringBattle} onChange=${(v) => updateSettings({ watchDuringBattle: v })} />
+      <p class="set-hint">${t('打开后，自己的作战还没结束时也能点队友前往查看，最终攻势和隐秘核心里也能看另一组。查看时本机要多演算一场战斗，较慢的设备可能卡顿。')}</p>
+    ` },
     { id: 'quality', category: 'battle', render: () => html`
       <div class="set-row">
         <span class="set-row__label">${t('画面质量')}<${MicroLabel}>QUALITY<//></span>
@@ -518,7 +522,7 @@ export function SettingsModal({ open, onClose }) {
       <${DiagSection} />
     ` },
   ];
-  return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="10.4rem" utility=${true} class="settings-modal"
+  return html`<${Modal} open=${open} onClose=${onClose} title=${t('设置')} micro="SETTINGS" width="min(max(10.4rem, 32px, calc(760px * var(--sp-ui, 1))), calc(100vw - 32px))" utility=${true} class="settings-modal"
     actions=${html`<${Button} variant="primary" icon="check" onClick=${onClose}>${t('完成')}<//>`}>
     <${SettingsBrowser} categories=${SETTINGS_CATEGORIES} entries=${entries} />
     <${ShortcutModal} open=${shortcutOpen} onClose=${() => setShortcutOpen(false)} />

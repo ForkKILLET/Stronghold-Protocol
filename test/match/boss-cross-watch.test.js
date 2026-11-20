@@ -24,6 +24,12 @@ test('client-run boss and hidden fights support cross-group viewing, reconnect a
       assert.equal(start.fieldId, other.fieldId);
       assert.equal(start.watch, true);
       assert.equal(start.authoritative, false);
+      // a living watcher from the other group gets the spec without the players' funds (Match._spectatorSpec, PR #971 at merge)
+      assert.ok(other.spec.players.some((p) => p.contentInfo && Object.hasOwn(p.contentInfo, 'funds')), 'the field spec carries funds');
+      assert.ok(start.spec.players.every((p) => !p.contentInfo || !Object.hasOwn(p.contentInfo, 'funds')), 'no funds for the watcher');
+      assert.deepEqual(start.spec.players.map((p) => p.units?.length ?? 0), other.spec.players.map((p) => p.units?.length ?? 0));
+      const ownStart = h.sent.filter(([pid, x]) => pid === viewer && x.t === 'b.start' && x.fieldId === own.fieldId).at(-1)?.[1];
+      assert.ok(ownStart && ownStart.spec.players.some((p) => p.contentInfo && Object.hasOwn(p.contentInfo, 'funds')), 'its own field keeps them');
       m.onReconnect(viewer);
       assert.equal(h.lastTo(viewer, 'b.start').fieldId, other.fieldId);
       assert.deepEqual(m.handle(viewer, { t: 'g.watch', fieldId: own.fieldId }), { ok: true });

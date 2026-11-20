@@ -216,6 +216,72 @@ export function BannedOperators({ model }) {
 }
 
 /**
+ * One operator of the 规程 本局禁用干员 list as the official briefing draws it (recording BV1hmWL6fEmQ 0:13): the grey
+ * portrait with the red 禁用 corner on its top-right third (ui/outer img_chess_banned: a dark red fold with a struck-out
+ * figure) and the tier mark on its bottom-left; without the local art a CSS fold with a ✕.
+ * @param {{ id: string }} props
+ */
+export function BannedThumb({ id }) {
+  const url = localAsset('ui/outer', 'img_chess_banned');
+  const badge = url
+    ? html`<span class="uthumb__ban" style=${`--ban:url("${url}")`} aria-hidden="true"></span>`
+    : html`<span class="uthumb__ban is-plain" aria-hidden="true">✕</span>`;
+  return html`<${UnitThumb} kind="chess" ownerId=${null} id=${id} size="sm" dim=${true} class="uthumb--banned" badge=${badge} />`;
+}
+
+/**
+ * 规程 本局禁用干员: each bond that lost members, then those operators (tier order of `model.banned`).
+ * [ASSUMED] an operator of two such bonds is listed under each. Ids in no bond's visibleMembers stay, with no invented header.
+ * Each operator is a BannedThumb and a bond of the drawn set keeps the official 阵容不完整 corner here as in its row
+ * (recording BV1hmWL6fEmQ 0:13; until round 83 small dim avatars with no mark under a ✕ disc — GitHub report
+ * 「没有显示ban了哪些」). The flat BannedOperators grid is unchanged (the draft dialog and every other version).
+ * @param {{ model: MatchInfoModel, onBond?: (id:string)=>void }} props
+ */
+export function BannedByBond({ model, onBond }) {
+  const banned = model?.banned || [];
+  const order = new Map(banned.map((id, i) => [id, i]));
+  const claimed = new Set();
+  const groups = [];
+  for (const bond of [...(model?.core || []), ...(model?.addon || [])]) {
+    const members = (Array.isArray(bond.visibleMembers) ? bond.visibleMembers : [])
+      .filter((id) => order.has(id))
+      .sort((a, b) => order.get(a) - order.get(b));
+    if (!members.length) continue;
+    for (const id of members) claimed.add(id);
+    groups.push({ bond, members });
+  }
+  const rest = banned.filter((id) => !claimed.has(id));
+  const m = data.get('assets');
+  return html`<div class="brief-banned reg-banned">
+    <${RegulationHead} title=${t('本局禁用干员')} />
+    ${banned.length ? html`<div class="reg-banned__groups">
+      ${groups.map(({ bond, members }) => {
+        const state = model.stateOf(bond.bondId);
+        const off = !!state;
+        const bannedN = model.perBond.get(bond.bondId) || 0;
+        return html`<div class="reg-banned__group" key=${bond.bondId} data-bond=${bond.bondId}>
+          <${Tooltip} text=${briefingBondTip(bond.name, state, bannedN, model.regulation && bond.isCore)}>
+            <div class="reg-banned__disc">
+              <${BondDisc} name=${bond.name} icon=${bondIconUrl(m, bond.bondId)} active=${!off} disabled=${off}
+                tier=${off ? 0 : (bond.thresholds?.length || 1)} maxTier=${Math.max(1, bond.thresholds?.length || 1)}
+                size="md" onClick=${onBond ? () => onBond(bond.bondId) : undefined}
+                cross=${state === 'off'} tag=${state === 'drawn' ? html`<${BondLackTag} />` : null} />
+            </div>
+          <//>
+          <div class="reg-banned__ops">
+            ${members.map((id) => html`<${BannedThumb} key=${bond.bondId + ':' + id} id=${id} />`)}
+          </div>
+        </div>`;
+      })}
+      ${rest.length ? html`<div class="reg-banned__rest" data-testid="banned-rest">
+        ${rest.map((id) => html`<${BannedThumb} key=${id} id=${id} />`)}
+      </div>` : null}
+    </div>` : html`<p class="t-dim">${t('本局没有禁用干员')}</p>`}
+    <${DiyBannedLine} model=${model} />
+  </div>`;
+}
+
+/**
  * The briefing's bonds and banned operators: 核心盟约, 附加盟约, the legend, 本局禁用干员.
  * @param {{ model: MatchInfoModel, onBond?: (id:string)=>void }} props
  */

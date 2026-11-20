@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { normalizeMirror, sourceOfProfile, SOURCES } from '../tools/versions/sources.mjs';
-import { composeRegulationStage, placeRegulationTemplate, TEMPLATE_OFFSETS } from '../tools/versions/layouts.mjs';
+import { composeRegulationStage, placeRegulationTemplate, regulationArena, TEMPLATE_OFFSETS } from '../tools/versions/layouts.mjs';
 import { loadProfile, pinnedShaOf } from '../tools/versions/profiles.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');

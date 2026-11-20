@@ -1,6 +1,7 @@
 // 规程·序列Ⅰ (act3autochess@V3_1) garrison types and in-battle events.
 // Prep uses the match's own data. Battle garrison records come from the process gameData() singleton, so this file
 // loads the regulation tables and restores them afterwards. Behaviour is keyed by effect / blackboard key.
+import { installItem } from '../../server/sim/content/items/battle.js';
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeMatch, give } from '../match/harness.js';
@@ -56,6 +57,7 @@ function rec(id, garrisonIds, o = {}) {
   return {
     ...chessRec({
       id, charId: o.charId || id, bonds: o.bonds || [], rangeGrid: o.rangeGrid, position: o.position, profession: o.profession,
+      subProfessionId: o.subProfessionId,
     }),
     garrisonIds,
   };
@@ -320,7 +322,7 @@ test('carrySellPrice: the highest copy with its bonus / fixed mark; nothing at o
   assert.deepEqual(d.meta, {});
 });
 
-test('SERVER_GAIN_RANDOM_EQUIP: one item from the board at prep start; the hand does not; the elite text is 两件 twice', () => {
+test('SERVER_GAIN_RANDOM_EQUIP: one item per row from the board at prep start; the hand does not; the elite gets two', () => {
   const board = setup();
   give(board.m, board.ps, 'chess_char_6_07_a', 'board', [10, 4]);
   board.prepStart();
@@ -332,7 +334,7 @@ test('SERVER_GAIN_RANDOM_EQUIP: one item from the board at prep start; the hand 
   const elite = setup();
   give(elite.m, elite.ps, 'chess_char_6_07_b', 'board', [10, 4]);
   elite.prepStart();
-  assert.equal(handItems(elite.ps).length, 4, '158_b and 159_b each say 两件');
+  assert.equal(handItems(elite.ps).length, 2, '158_b and 159_b are the two halves of one 「获得两件」 (one item each)');
 });
 
 test('SERVER_GAIN_SPECIAL_REFRESH_BOND_CHAR: one charge, count is how many slots; a queued test shop does not spend it', () => {
@@ -455,12 +457,14 @@ test('SERVER_ADD_ACTIVATED_BOND_BY_ALIVE_CHAR: living chess, the per-trigger cap
   assert.equal(hand.L('iberiaShip'), 0);
 });
 
-test('SERVER_CONVERT_TEMP_BOND: converters share one pool, a replay consumes it, settle drops it', () => {
+test('SERVER_CONVERT_TEMP_BOND: share one pool and convert only on entering prep', () => {
   const one = setup();
   const piece = give(one.m, one.ps, 'chess_char_1_01_a', 'board', [10, 4]);
   one.activate('ursusShip');
   one.ps.tempLayers = { ursusShip: 1 };
   one.m.dispatcher.triggerGarrisons(one.ps, piece, 'SERVER_BATTLE_FIN');
+  assert.equal(one.L('ursusShip'), 0, 'battle-end dispatch cannot convert before prep');
+  one.prepStart();
   assert.equal(one.L('ursusShip'), 1, 'a pool of 1 cannot pay the whole count of 2');
   assert.equal(one.ps.tempLayers.ursusShip, undefined);
 
@@ -475,10 +479,13 @@ test('SERVER_CONVERT_TEMP_BOND: converters share one pool, a replay consumes it,
   both.activate('ursusShip');
   both.m.lastResults.set(both.ps.playerId, {
     leaked: [], perfect: true, coins: 0, layerGains: {}, killed: 0, damageDealt: 0,
-    tempLayerGains: { ursusShip: 10 }, unitsEnd: [],
+    tempLayerGains: { ursusShip: 10.8, unknownBond: 3, yanShip: Infinity }, unitsEnd: [],
   });
   both.m.settle(null, null);
-  assert.equal(both.ps.tempLayers, undefined, 'settle deletes the bag after the dispatch');
+  assert.deepEqual(both.ps.tempLayers, { ursusShip: 10 }, 'SETTLE preserves the pool');
+  assert.equal(both.L('ursusShip'), 0, 'no conversion before the next prep');
+  both.m.enterPrep();
+  assert.equal(both.ps.tempLayers, undefined, 'entering prep discards the unconverted remainder');
   assert.equal(both.L('ursusShip'), 4, '184 takes 2 and 21 takes one per on-board 乌萨斯 member');
 });
 
@@ -526,6 +533,17 @@ test('SERVER_ADD_BOND_BOARD_EQUIP_CHAR: an equipped operator adds count to each 
   bare.activate('victoriaShip', 'steadShip');
   bare.prepEnd();
   assert.equal(bare.L('victoriaShip'), 0);
+});
+
+test('garrison_61 pool holds the four operators the text names, including 安哲拉', () => {
+  const s = setup();
+  const pool = s.m.gd.choices.pools.pool_chess_glady;
+  const names = pool.items.map((id) => s.m.gd.chess(id).name);
+  assert.deepEqual(names, ['斯卡蒂', '幽灵鲨', '深巡', '安哲拉']);
+  for (const id of ['garrison_61_a', 'garrison_61_b']) {
+    const desc = s.m.gd.garrison(id).desc;
+    for (const n of names) assert.ok(desc.includes(n), `${id} ${desc}`);
+  }
 });
 
 test('known-type max: round chess gains and coin cost clamp only when the blackboard has max', () => {
@@ -625,7 +643,7 @@ test('minus respawn cuts an operator who is already down; garrison_170 only queu
   assert.deepEqual(bench.b._benchCuts[77], [{ ratio: true, value: 0.7 }]);
 });
 
-test('switch summon: the rightmost matching bench chess, not the death tile; its own garrison installs', () => {
+test('switch summon: the carrier leaves and the rightmost matching bench chess takes its tile; its garrison installs', () => {
   const h = battle(
     [{ id: 'op', g: ['garrison_223_a', 'garrison_224_a'], row: 10, col: 4, bonds: ['kazimierzShip'] }],
     { kazimierzShip: B(0) },
@@ -640,11 +658,14 @@ test('switch summon: the rightmost matching bench chess, not the death tile; its
     { uid: 55, kind: 'chess', chessId: 'right', idx: 5, bonds: ['kazimierzShip'] },
     { uid: 99, kind: 'chess', chessId: 'decoy', idx: 9, bonds: ['yanShip'] },
   ];
-  const death = [h.unit('op').tileR, h.unit('op').tileC];
-  h.b.kill(h.unit('op'));
+  const op = h.unit('op');
+  const death = [op.tileR, op.tileC];
+  h.b.kill(op);
   const summoned = h.b.allyUnits.find((u) => u.uid === 55);
   assert.ok(summoned && summoned.alive && summoned.deployed);
-  assert.ok(summoned.tileR !== death[0] || summoned.tileC !== death[1]);
+  assert.deepEqual([summoned.tileR, summoned.tileC], death, '_putType ORIGINAL: the carrier\'s tile');
+  assert.equal(op.removed, true, 'switched out: the carrier left the battle');
+  assert.equal(h.b.isDown(op), false, 'it does not redeploy');
   const enemy = h.spawn('e_dummy', { pos: [11, 8] });
   h.b.dealDamage(summoned, enemy, { amount: 10, type: 'true' });
   assert.ok(enemy.findBuff('cold'), 'the summoned garrison was installed late');
@@ -672,19 +693,13 @@ test('switchhand: both bonds are required, and the carrier plus the summon each 
   assert.equal(lg(h, 'raidShip'), 12);
 });
 
-test('battlestart temporary layers are omitted when gains are disabled', () => {
-  const h = battle(
-    [{ id: 'op', g: ['garrison_13_a'], row: 10, col: 4, bonds: ['ursusShip'] }],
-    { ursusShip: B(0) },
-  );
-  assert.equal(h.b._perPlayer.p1.tempLayerGains.ursusShip, 4);
-  assert.equal(lg(h, 'ursusShip'), 0);
+test('boss retains battle-start temporary receipts; unite cannot gain new layers', () => {
   const off = battle(
     [{ id: 'op', g: ['garrison_13_a'], row: 10, col: 4, bonds: ['ursusShip'] }],
     { ursusShip: B(0) },
-    { flags: { layerGainsEnabled: false } },
+    { kind: 'boss', flags: { layerGainsEnabled: false } },
   );
-  assert.equal(off.b._perPlayer.p1.tempLayerGains, undefined);
+  assert.equal(off.b._perPlayer.p1.tempLayerGains.ursusShip, 4);
   const unite = battle(
     [{ id: 'op', g: ['garrison_13_a'], row: 10, col: 4, bonds: ['ursusShip'] }],
     { ursusShip: B(0) },
@@ -778,7 +793,7 @@ test('attackslow and attr-by-bond follow the layer band inside the cross', () =>
   near(more.unit('op') && enemy2.findBuff('gar:garrison_59_a:slow').mods.moveMul, 0.98);
 
   const aura = battle([
-    { id: 'op', g: ['garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] },
+    { id: 'op', g: ['garrison_60_a', 'garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] },
     { id: 'side', row: 11, col: 4, bonds: ['egirShip'] },
     { id: 'far', row: 12, col: 8 },
   ], { egirShip: B(20) });
@@ -788,6 +803,203 @@ test('attackslow and attr-by-bond follow the layer band inside the cross', () =>
   assert.equal(side.mods.aspd, 1);
   assert.ok(self.timeLeft > 29);
   assert.equal(aura.unit('far').findBuff('gar:garrison_142_a:aura'), null);
+});
+
+test('H5 attr-by-bond: the child without its onstart parent does not fire', () => {
+  const h = battle(
+    [{ id: 'op', g: ['garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] }],
+    { egirShip: B(20) },
+  );
+  assert.equal(h.unit('op').findBuff('gar:garrison_142_a:aura'), null);
+});
+
+test('H5 attr-by-bond: a later-column neighbor misses the opening snapshot', () => {
+  const h = battle([
+    { id: 'op', g: ['garrison_60_a', 'garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] },
+    { id: 'above', row: 11, col: 4 },
+    { id: 'right', row: 10, col: 5 },
+    { id: 'below', row: 9, col: 4 },
+  ], { egirShip: B(20) });
+  assert.equal(h.unit('op').findBuff('gar:garrison_142_a:aura').mods.aspd, 1);
+  assert.equal(h.unit('above').findBuff('gar:garrison_142_a:aura').mods.aspd, 1, 'higher row deploys first');
+  assert.equal(h.unit('right').findBuff('gar:garrison_142_a:aura'), null, 'later column is not born yet');
+  assert.equal(h.unit('below').findBuff('gar:garrison_142_a:aura'), null, 'lower row in the same column deploys later');
+});
+
+test('H5 attr-by-bond: layer changes do not refresh, and the buff ends at attr_duration', () => {
+  const h = battle([
+    { id: 'op', g: ['garrison_60_a', 'garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] },
+    { id: 'side', row: 11, col: 4 },
+    { id: 'far', row: 12, col: 8 },
+  ], { egirShip: B(20) });
+  assert.equal(h.unit('op').findBuff('gar:garrison_142_a:aura').mods.aspd, 1);
+  h.b.addTempLayers('p1', 'egirShip', 20);
+  h.step(1);
+  assert.equal(h.unit('op').findBuff('gar:garrison_142_a:aura').mods.aspd, 1, '40 layers do not rewrite the snapshot');
+  assert.equal(h.unit('side').findBuff('gar:garrison_142_a:aura').mods.aspd, 1);
+  assert.equal(h.unit('far').findBuff('gar:garrison_142_a:aura'), null);
+  h.run(31);
+  assert.equal(h.unit('op').findBuff('gar:garrison_142_a:aura'), null);
+  assert.equal(h.unit('side').findBuff('gar:garrison_142_a:aura'), null);
+  h.b.addTempLayers('p1', 'egirShip', 20);
+  h.step(1);
+  assert.equal(h.unit('op').findBuff('gar:garrison_142_a:aura'), null, 'expiry is not a new deployment');
+});
+
+test('H5 attr-by-bond: a redeploy writes a new 30s snapshot', () => {
+  const h = battle([
+    { id: 'op', g: ['garrison_60_a', 'garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] },
+    { id: 'side', row: 11, col: 4 },
+  ], { egirShip: B(20) });
+  h.run(10);
+  assert.ok(h.unit('side').findBuff('gar:garrison_142_a:aura').timeLeft < 21);
+  h.b.addTempLayers('p1', 'egirShip', 20);
+  h.b.kill(h.unit('op'));
+  assert.equal(h.b.redeploy(h.unit('op'), { free: true }), true);
+  const self = h.unit('op').findBuff('gar:garrison_142_a:aura');
+  const side = h.unit('side').findBuff('gar:garrison_142_a:aura');
+  assert.equal(self.mods.aspd, 2);
+  assert.equal(side.mods.aspd, 2);
+  assert.ok(self.timeLeft > 29);
+  assert.ok(side.timeLeft > 29);
+});
+
+test('H5 attr-by-bond: moving snapshots the new cross and leaves the old buff', () => {
+  const h = battle([
+    { id: 'op', g: ['garrison_60_a', 'garrison_142_a'], row: 10, col: 4, bonds: ['egirShip'] },
+    { id: 'side', row: 11, col: 4 },
+    { id: 'far', row: 12, col: 8 },
+  ], { egirShip: B(20) });
+  h.run(5);
+  const sideLeft = h.unit('side').findBuff('gar:garrison_142_a:aura').timeLeft;
+  assert.equal(h.b.moveRedeploy(h.unit('op'), 12, 7), true);
+  const far = h.unit('far').findBuff('gar:garrison_142_a:aura');
+  assert.equal(far.mods.aspd, 1);
+  assert.ok(far.timeLeft > 29);
+  const side = h.unit('side').findBuff('gar:garrison_142_a:aura');
+  assert.equal(side.mods.aspd, 1);
+  assert.ok(side.timeLeft <= sideLeft, 'a unit that left the cross keeps the remainder');
+});
+
+test('H5 attr-by-bond: garrison_144 snapshots attack on the cross', () => {
+  const h = battle([
+    { id: 'op', g: ['garrison_63_a', 'garrison_144_a'], row: 10, col: 4, bonds: ['egirShip'] },
+    { id: 'side', row: 11, col: 4 },
+    { id: 'far', row: 12, col: 8 },
+  ], { egirShip: B(20) });
+  const self = h.unit('op').findBuff('gar:garrison_144_a:aura');
+  assert.equal(self.mods.atkPct, 0.01);
+  assert.equal(self.mods.aspd, undefined);
+  assert.ok(self.timeLeft > 29);
+  assert.equal(h.unit('side').findBuff('gar:garrison_144_a:aura').mods.atkPct, 0.01);
+  assert.equal(h.unit('far').findBuff('gar:garrison_144_a:aura'), null);
+});
+
+test('switch summon: a moved carrier is switched on the tile it fell on; its body at home goes too', () => {
+  const h = battle(
+    [
+      { id: 'op', uid: 1, g: ['garrison_223_a', 'garrison_224_a'], row: 10, col: 4, bonds: ['kazimierzShip'] },
+      // A board uid makes (10, 6) another piece's 初始位置, so the body returns home and the fall tile is free.
+      { id: 'mark', uid: 2, row: 10, col: 6 },
+    ],
+    { kazimierzShip: B(0) },
+    { chess: { right: rec('right', [], { bonds: ['kazimierzShip'] }) } },
+  );
+  h.b.getPlayer('p1').input.bench = [
+    { uid: 55, kind: 'chess', chessId: 'right', idx: 5, bonds: ['kazimierzShip'] },
+  ];
+  assert.equal(h.b.relocate(h.unit('mark'), 11, 6), true);
+  assert.equal(h.b.relocate(h.unit('op'), 10, 6), true);
+  h.b.kill(h.unit('op'));
+  const summoned = h.b.allyUnits.find((u) => u.uid === 55);
+  assert.ok(summoned && summoned.alive && summoned.deployed);
+  assert.equal(summoned.tileR, 10);
+  assert.equal(summoned.tileC, 6);
+  assert.equal(h.unit('op').removed, true, 'switched out');
+  assert.equal(h.b.isDown(h.unit('op')), false, 'it does not redeploy');
+  assert.equal(h.b.downOn(10, 4), null, 'no body left on its home tile');
+});
+
+test('switch summon: a bench chess that cannot stand on the carrier\'s tile is skipped; none fits → the carrier stays down', () => {
+  const probe = battle([{ id: 'x', row: 10, col: 4 }]);
+  const ps = probe.b.getPlayer('p1');
+  let high = null;
+  for (let r = 0; r < 30 && !high; r++) {
+    for (let c = 0; c < 60 && !high; c++) {
+      if (!probe.b.grid.inRect(r, c) || !probe.b.onOwnBoard(ps, r, c)) continue;
+      if (probe.b.grid.canStand(r, c, { ranged: true }) && !probe.b.grid.canStand(r, c)) high = [r, c];
+    }
+  }
+  assert.ok(high, 'the test board has a tile only a ranged chess can stand on');
+  const mk = (bench) => {
+    const h = battle(
+      [{ id: 'op', g: ['garrison_223_a', 'garrison_224_a'], row: high[0], col: high[1], bonds: ['kazimierzShip'],
+        position: 'RANGED', profession: 'SNIPER' }],
+      { kazimierzShip: B(0) },
+      { chess: {
+        melee: rec('melee', [], { bonds: ['kazimierzShip'] }),
+        far: rec('far', [], { bonds: ['kazimierzShip'], position: 'RANGED', profession: 'SNIPER' }),
+      } },
+    );
+    h.b.getPlayer('p1').input.bench = bench;
+    return h;
+  };
+  const h = mk([
+    { uid: 31, kind: 'chess', chessId: 'far', idx: 1, bonds: ['kazimierzShip'] },
+    { uid: 32, kind: 'chess', chessId: 'melee', idx: 6, bonds: ['kazimierzShip'] },
+  ]);
+  assert.ok(h.unit('op').deployed, 'the ranged carrier stands on the ranged tile');
+  h.b.kill(h.unit('op'));
+  assert.equal(h.b.allyUnits.some((u) => u.uid === 32), false, '_checkOriginBuildable: the melee chess is skipped');
+  const far = h.b.allyUnits.find((u) => u.uid === 31);
+  assert.ok(far && far.deployed);
+  assert.deepEqual([far.tileR, far.tileC], high);
+
+  const none = mk([{ uid: 32, kind: 'chess', chessId: 'melee', idx: 6, bonds: ['kazimierzShip'] }]);
+  const op = none.unit('op');
+  none.b.kill(op);
+  assert.equal(none.b.allyUnits.some((u) => u.uid === 32), false);
+  assert.equal(op.removed, false);
+  assert.equal(none.b.isDown(op), true, 'no switch: the carrier stays down and redeploys');
+});
+
+test('H5 bondstackmax: a carrier installed after start does not raise caps', () => {
+  const h = battle([
+    { id: 'share', g: ['garrison_01_a'], row: 10, col: 6, bonds: ['lethaniaShip'] },
+    { id: 'front', g: ['garrison_08_a'], row: 10, col: 5, bonds: ['kjeragShip'] },
+  ], { lethaniaShip: B(0), kazimierzShip: B(0), kjeragShip: B(0) }, {
+    chess: {
+      lateParent: rec('lateParent', ['garrison_152_a', 'garrison_156_a'], { bonds: ['lethaniaShip', 'kazimierzShip'] }),
+      lateChild: rec('lateChild', ['garrison_227_a']),
+    },
+  });
+  const capOf = (id, gid) => h.b._garInstances.find((it) => it.unit === h.unit(id) && it.gid === gid).cap;
+  assert.equal(capOf('share', 'garrison_01_a'), 1);
+  assert.equal(capOf('front', 'garrison_08_a'), 8);
+  const parent = h.b.spawnOperator('p1', 'lateParent', 11, 4, { uid: 80 });
+  assert.ok(parent && parent.deployed);
+  h.b._installGarrisonLate(parent);
+  assert.equal(capOf('share', 'garrison_01_a'), 1, 'battlestart does not re-fire after the mode change');
+  const child = h.b.spawnOperator('p1', 'lateChild', 10, 4, { uid: 82 });
+  assert.ok(child && child.deployed);
+  h.b._installGarrisonLate(child);
+  assert.equal(capOf('front', 'garrison_08_a'), 8, 'a late bondstackmax child does not apply');
+});
+
+test('H5 bondstackmax: an operator who appears after start keeps the base cap', () => {
+  const h = battle([
+    { id: 'op', g: ['garrison_152_a', 'garrison_156_a'], row: 10, col: 4, bonds: ['lethaniaShip', 'kazimierzShip'] },
+    { id: 'share', g: ['garrison_01_a'], row: 10, col: 6, bonds: ['lethaniaShip'] },
+  ], { lethaniaShip: B(0), kazimierzShip: B(0) }, {
+    chess: { late: rec('late', ['garrison_01_a'], { bonds: ['lethaniaShip'] }) },
+  });
+  const late = h.b.spawnOperator('p1', 'late', 11, 6, { uid: 81 });
+  assert.ok(late && late.deployed);
+  h.b._installGarrisonLate(late);
+  const it = h.b._garInstances.find((x) => x.unit === late && x.gid === 'garrison_01_a');
+  assert.equal(it.cap, 1);
+  const share = h.b._garInstances.find((x) => x.unit === h.unit('share') && x.gid === 'garrison_01_a');
+  assert.equal(share.cap, 8);
 });
 
 test('erosion recovery rate is the layer band, and a tick shortens the lock', () => {
@@ -809,18 +1021,54 @@ test('erosion recovery rate is the layer band, and a tick shortens the lock', ()
   near(quiet.b._garInstances.find((x) => x.gid === 'garrison_65_a')._epRate, 0);
 });
 
-test('ex_bond_cnt adds extra on garrison and item gains only, from an on-field carrier', () => {
+test('ex_bond_cnt adds extra on garrison and item gains only, from the carrier who holds it', () => {
   const gain = (reason, source) => {
     const h = battle(
-      [{ id: 'op', g: ['garrison_235_a'], row: 10, col: 4 }],
+      [
+        { id: 'op', g: ['garrison_235_a'], row: 10, col: 4 },
+        { id: 'other', row: 10, col: 5 },
+      ],
       { emptyShip: B(0) },
     );
-    return h.b.addLayers('p1', 'emptyShip', 1, reason, { source: source === 'op' ? h.unit('op') : source });
+    const src = source === 'op' ? h.unit('op') : source === 'other' ? h.unit('other') : source;
+    return h.b.addLayers('p1', 'emptyShip', 1, reason, { source: src });
   };
   assert.equal(gain('garrison', 'op'), 2);
   assert.equal(gain('item', 'op'), 2);
   assert.equal(gain('bond', 'op'), 1);
   assert.equal(gain('garrison', { ownerId: 'nope' }), 1);
+  assert.equal(gain('garrison', 'other'), 1, 'another ally is not the buff owner');
+  assert.equal(gain('garrison', null), 1, 'a gain with no source is not the buff owner');
+
+  const both = battle([
+    { id: 'op', g: ['garrison_235_a'], row: 10, col: 4 },
+    { id: 'other', g: ['garrison_235_b'], row: 10, col: 5 },
+  ], { emptyShip: B(0) });
+  assert.equal(both.b.addLayers('p1', 'emptyShip', 1, 'garrison', { source: both.unit('op') }), 2);
+  assert.equal(both.b.addLayers('p1', 'emptyShip', 1, 'garrison', { source: both.unit('other') }), 3);
+});
+
+test('garrison_124 grants 不屈 on a 傀儡 swap; a charger selfdead does not', () => {
+  const h = battle(
+    [{ id: 'op', g: ['garrison_124_a'], row: 10, col: 4, bonds: ['indomShip'], profession: 'SPECIAL', subProfessionId: 'dollkeeper' }],
+    { indomShip: B(0) },
+  );
+  const u = h.unit('op');
+  h.b.dealDamage(null, u, { amount: 1e9, type: 'true' });
+  assert.ok(u.alive && u.deployed && u.trait.doll, 'a lethal hit on the body switches to the substitute');
+  assert.equal(lg(h, 'indomShip'), 0, 'the swap is noticed on the next tick, not inside the hit');
+  h.step(1);
+  assert.equal(lg(h, 'indomShip'), 2);
+
+  const charger = battle(
+    [{ id: 'op', g: ['garrison_223_a'], row: 10, col: 4, bonds: ['kazimierzShip'], profession: 'PIONEER', subProfessionId: 'charger' }],
+    { kazimierzShip: B(0) },
+  );
+  const c = charger.unit('op');
+  c.trait.doll = true;
+  charger.step(1);
+  assert.equal(lg(charger, 'kazimierzShip'), 0, '历阵锐枪芬 has no 替身 or 傀儡 text');
+  assert.equal(charger.b.allyUnits.filter((x) => x !== c && x.deployed).length, 0);
 });
 
 test('first damaging hit applies cold once per enemy', () => {
@@ -891,7 +1139,7 @@ test('onstart in the attack range counts the carrier and a front ally, not a far
   assert.equal(lg(h, 'egirShip') - lg(bare, 'egirShip'), 4);
 });
 
-test('sleepstun: bond_self pays the carrier; bond_allinrange pays the operator behind', () => {
+test('sleepstun: bond_self pays the carrier; bond_allinrange pays the operator behind (elite pair: not the carrier twice)', () => {
   const self = battle([
     { id: 'op', g: ['garrison_49_a'], row: 10, col: 4, bonds: ['sargonShip', 'skillfulShip'] },
     { id: 'behind', row: 10, col: 3, bonds: ['yanShip'] },
@@ -908,6 +1156,15 @@ test('sleepstun: bond_self pays the carrier; bond_allinrange pays the operator b
   behind.b.applyStatus(behind.spawn('e_dummy', { pos: [11, 4] }), 'stun', { duration: 3, source: behind.unit('op') });
   assert.equal(lg(behind, 'sargonShip'), 0, 'garrison_237_a does not say 自身');
   assert.equal(lg(behind, 'yanShip'), 1);
+
+  // the elite pair: 49_b pays the carrier, 237_b (its text says 自身及身后 too) only the one behind — not the carrier again
+  const elite = battle([
+    { id: 'op', g: ['garrison_49_b', 'garrison_237_b'], row: 10, col: 4, bonds: ['sargonShip'] },
+    { id: 'back', row: 10, col: 3, bonds: ['yanShip'] },
+  ], { sargonShip: B(0), yanShip: B(0) });
+  elite.b.applyStatus(elite.spawn('e_dummy', { pos: [11, 4] }), 'stun', { duration: 3, source: elite.unit('op') });
+  assert.equal(lg(elite, 'sargonShip'), 2, 'the carrier +2 once (49_b), not +4');
+  assert.equal(lg(elite, 'yanShip'), 2, 'the one behind +2 (237_b)');
 });
 
 test('tempLayerGains is optional on the result wire and rejected when it is not a real bond', () => {
@@ -941,8 +1198,19 @@ test('tempLayerGains is optional on the result wire and rejected when it is not 
   const huge = structuredClone(withTemp);
   huge.perPlayer.p.tempLayerGains = { ursusShip: 10001 };
   assert.equal(validateClientResult(spec, huge, { gd }).reason, 'temp layers');
+  // round 83: at most 8 per counted knock-out + 200 (killed 2 → 216), not the ledger's 10000 (a later 联防 fights with it)
+  const edge = structuredClone(withTemp);
+  edge.perPlayer.p.tempLayerGains = { ursusShip: 216 };
+  assert.equal(validateClientResult(spec, edge, { gd }).ok, true);
+  edge.perPlayer.p.tempLayerGains = { ursusShip: 217 };
+  assert.equal(validateClientResult(spec, edge, { gd }).reason, 'temp layers');
   const unite = buildBattleSpec({ ...spec, kind: 'unite', flags: { layerGainsEnabled: false } });
   assert.equal(validateClientResult(unite, withTemp, { gd }).reason, 'layers disabled');
+  const onlyTemp = structuredClone(withTemp);
+  onlyTemp.perPlayer.p.layerGains = {};
+  assert.equal(validateClientResult(unite, onlyTemp, { gd }).reason, 'layers disabled', 'no new temporary receipts in unite');
+  const boss = buildBattleSpec({ ...spec, kind: 'boss', flags: { layerGainsEnabled: false } });
+  assert.equal(validateClientResult(boss, onlyTemp, { gd }).ok, true, 'boss can report temporary layers for next-prep conversion');
 
   const compact = compactResult({ reason: 'timeout', time: 1, perPlayer: { p: { tempLayerGains: { ursusShip: 3.2 } } } });
   assert.equal(compact.perPlayer.p.tempLayerGains.ursusShip, 3);
@@ -961,6 +1229,33 @@ test('tempLayerGains is optional on the result wire and rejected when it is not 
   assert.equal(isBattleResult(filled), false);
 });
 
+
+
+
+
+test('temporary layer events report actual capped gains without entering permanent-layer hooks', () => {
+  const h = battle([{ id: 'op', row: 10, col: 4, bonds: ['ursusShip'] }], { ursusShip: B(0) });
+  const events = [], permanent = [];
+  h.b.on('tempLayerGain', c => events.push({ ...c }));
+  h.b.on('layerGain', c => permanent.push(c));
+  assert.equal(h.b.addTempLayers('p1', 'ursusShip', 9999), 9999);
+  assert.equal(h.b.addTempLayers('p1', 'ursusShip', 50), 1);
+  for (const n of [1, 0, -1, NaN, Infinity]) assert.equal(h.b.addTempLayers('p1', 'ursusShip', n), 0);
+  assert.equal(h.b.addTempLayers('absent', 'ursusShip', 2), 0);
+  assert.equal(h.b.addTempLayers('p1', '', 2), 0);
+  assert.equal(h.b.tempLayers('p1', 'ursusShip'), 10000);
+  assert.equal(h.b.tempLayers('absent', 'ursusShip'), 0);
+  assert.deepEqual(events, [
+    { playerId: 'p1', bondId: 'ursusShip', n: 9999, total: 9999 },
+    { playerId: 'p1', bondId: 'ursusShip', n: 1, total: 10000 },
+  ]);
+  assert.deepEqual(permanent, []);
+  assert.equal(h.b.getPlayer('p1').bonds.ursusShip.layers, 0);
+  assert.deepEqual(h.b.errors, []);
+});
+
+// Regression coverage from bmryggdrasil's PR #962.
+
 test('garrison_13 (battlestart) and garrison_23 (ursus temp extra) boost live 乌萨斯 stats', () => {
   const hStart = battle(
     [{ id: 'op', g: ['garrison_13_a'], row: 10, col: 4, bonds: ['ursusShip'] }],
@@ -968,6 +1263,8 @@ test('garrison_13 (battlestart) and garrison_23 (ursus temp extra) boost live �
   );
   const us = hStart.unit('op');
   assert.equal(hStart.b.tempLayers('p1', 'ursusShip'), 4);
+  assert.equal(hStart.b.result().perPlayer.p1.tempLayerGains.ursusShip, 4);
+  assert.equal(lg(hStart, 'ursusShip'), 0);
   near(us.s.atk, us.base.atk * (1 + 0.35 + 0.0075 * 4), 'garrison_13_a boosts live atk');
   near(us.s.maxHp, us.base.maxHp * (1 + 0.1 + 0.003 * 4), 'garrison_13_a boosts live maxHp');
 
@@ -992,7 +1289,7 @@ test('garrison_13 (battlestart) and garrison_23 (ursus temp extra) boost live �
   near(uh.s.atk, uh.base.atk * (1 + 0.35 + 0.0075 * 8));
 });
 
-test('乌萨斯 kill temp layers flow into result.tempLayerGains and convert to permanent layers at settle', (t) => {
+test('乌萨斯 kill temp layers flow into result.tempLayerGains and convert to permanent layers at next prep', (t) => {
   const s = setup(71);
   t.after(() => { assert.equal(s.m.errorCount, 0); s.m.dispose(); });
   give(s.m, s.ps, 'chess_char_1_01_a', 'board', [10, 4]);
@@ -1012,26 +1309,84 @@ test('乌萨斯 kill temp layers flow into result.tempLayerGains and convert to 
 
   s.ps.tempLayers = { ...r.tempLayerGains };
   s.fin({ ...r, unitsEnd: living(2).unitsEnd });
+  assert.equal(s.L('ursusShip'), 0, 'own battle end must not convert yet');
+  s.m.enterPrep();
   assert.equal(s.L('ursusShip'), 4, 'garrison_184_a (2) + garrison_21_a (2 on-board 乌萨斯) convert all 4 kill temp layers');
 });
 
-test('temporary layer events report actual capped gains without entering permanent-layer hooks', () => {
-  const h = battle([{ id: 'op', row: 10, col: 4, bonds: ['ursusShip'] }], { ursusShip: B(0) });
-  const events = [], permanent = [];
-  h.b.on('tempLayerGain', c => events.push({ ...c }));
-  h.b.on('layerGain', c => permanent.push(c));
-  assert.equal(h.b.addTempLayers('p1', 'ursusShip', 9999), 9999);
-  assert.equal(h.b.addTempLayers('p1', 'ursusShip', 50), 1);
-  for (const n of [1, 0, -1, NaN, Infinity]) assert.equal(h.b.addTempLayers('p1', 'ursusShip', n), 0);
-  assert.equal(h.b.addTempLayers('absent', 'ursusShip', 2), 0);
-  assert.equal(h.b.addTempLayers('p1', '', 2), 0);
-  assert.equal(h.b.tempLayers('p1', 'ursusShip'), 10000);
-  assert.equal(h.b.tempLayers('absent', 'ursusShip'), 0);
-  assert.deepEqual(events, [
-    { playerId: 'p1', bondId: 'ursusShip', n: 9999 },
-    { playerId: 'p1', bondId: 'ursusShip', n: 1 },
-  ]);
-  assert.deepEqual(permanent, []);
+test('多功能补剂 temporary receipts use the same settlement converters as bond and garrison gains', t => {
+  const s = setup(71);
+  t.after(() => { assert.equal(s.m.errorCount, 0); s.m.dispose(); });
+  give(s.m, s.ps, 'chess_char_1_01_a', 'board', [10, 4]);
+  give(s.m, s.ps, 'chess_char_3_03_a', 'board', [10, 5]);
+  s.activate('ursusShip');
+  const h = battle([{ id: 'carrier', row: 10, col: 4, bonds: ['ursusShip'] }], { ursusShip: B(0) });
+  const u = h.unit('carrier');
+  installItem(h.b, u, 'chess_item_3_13_e_a');
+  const foe = h.spawn('e_dummy', { pos: [11, 8] });
+  for (let i = 0; i < 4; i++) h.b.dealDamage(u, foe, { amount: 1, type: 'true' });
+  const r = h.b.result().perPlayer.p1;
+  assert.equal(r.tempLayerGains.ursusShip, 4);
   assert.equal(h.b.getPlayer('p1').bonds.ursusShip.layers, 0);
-  assert.deepEqual(h.b.errors, []);
+  s.ps.tempLayers = { ...r.tempLayerGains };
+  s.fin({ ...r, unitsEnd: living(2).unitsEnd });
+  assert.equal(s.L('ursusShip'), 0, 'own battle end must not convert yet');
+  s.m.enterPrep();
+  assert.equal(s.L('ursusShip'), 4, 'both existing converters consume the shared equipment pool');
+});
+
+test('own combat end and SETTLE retain temporary layers in public/private views; next prep converts once', t => {
+  const s = setup(71);
+  t.after(() => s.m.dispose());
+  give(s.m, s.ps, 'chess_char_1_01_a', 'board', [10, 4]);
+  give(s.m, s.ps, 'chess_char_3_03_a', 'board', [10, 5]);
+  s.activate('ursusShip');
+  const pid = s.ps.playerId;
+  const result = { leaked: [], perfect: true, coins: 0, layerGains: {}, killed: 0, damageDealt: 0,
+    tempLayerGains: { ursusShip: 10.8, unknownBond: 3, yanShip: Infinity }, unitsEnd: [] };
+  s.m.phase = 'COMBAT';
+  s.m.fields = [{ fieldId: `n:${pid}`, players: [pid], kind: 'normal', live: true }];
+  s.m._finishCombat(() => ({ perPlayer: { [pid]: result }, errors: 0 }));
+  assert.deepEqual(s.ps.tempLayers, { ursusShip: 10 });
+  assert.equal(s.L('ursusShip'), 0);
+  assert.equal(s.ps.privateView().bonds.find(b => b.bondId === 'ursusShip').tempLayers, 10);
+  assert.equal(s.m.publicView().players.find(p => p.playerId === pid).bonds.find(b => b.bondId === 'ursusShip').tempLayers, 10);
+  s.m.settle(null, null);
+  assert.equal(s.L('ursusShip'), 0, 'SETTLE is not entering prep');
+  assert.deepEqual(s.ps.tempLayers, { ursusShip: 10 });
+  s.m.enterPrep();
+  assert.equal(s.L('ursusShip'), 4);
+  assert.equal(s.ps.tempLayers, undefined);
+  assert.equal(s.ps.privateView().bonds.find(b => b.bondId === 'ursusShip').tempLayers, undefined);
+  s.m.enterPrep();
+  assert.equal(s.L('ursusShip'), 4, 're-entering prep cannot convert a stale pool again');
+});
+
+test('SETTLE clears a stale temporary balance when the reported pool is empty', t => {
+  const s = setup(71);
+  t.after(() => s.m.dispose());
+  s.ps.tempLayers = { ursusShip: 4 };
+  s.m.settle(null, null);
+  assert.equal(s.ps.tempLayers, undefined);
+});
+
+test('attrByBond and block_eprecoverspeed_inrange refresh when temporary layers change', () => {
+  const attr = battle(
+    [{ id: 'op', g: ['garrison_24_a'], row: 10, col: 4, bonds: ['ursusShip'] }],
+    { ursusShip: B(0) },
+  );
+  near(attr.unit('op').s.aspd, 100);
+  attr.b.addTempLayers('p1', 'ursusShip', 4);
+  attr.step(1);
+  near(attr.unit('op').s.aspd, 102, 'garrison_24_a refreshes on temp layer gain');
+
+  const ep = battle(
+    [{ id: 'op', g: ['garrison_65_a'], row: 10, col: 4, bonds: ['egirShip'] }],
+    { egirShip: B(0) },
+  );
+  const it = ep.b._garInstances.find((x) => x.gid === 'garrison_65_a');
+  near(it._epRate, 0);
+  ep.b.addTempLayers('p1', 'egirShip', 20);
+  ep.step(1);
+  near(it._epRate, 0.01);
 });

@@ -250,7 +250,8 @@ export function commandDraftView(ps) {
   }) };
 }
 
-/** Existing prep keys follow the live row too, so Warfarin's upgrades and command swaps replace old hooks. */
+
+/** Existing prep keys follow the live row, so Warfarin's upgrades and command swaps replace old hooks. */
 export function commandMetaHandler(ps) {
   const s = commandSkill(ps);
   if (!s) return null;

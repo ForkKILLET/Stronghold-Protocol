@@ -360,7 +360,8 @@ for (const elite of [false, true]) test(`runner: watched ${elite ? 'elite' : 'no
   resumed.net.emit('b.start', JSON.parse(JSON.stringify(h.lastTo('s_spec', 'b.start'))));
   await resumed.settle();
   assertHuang(ownerBoard(resumed.store.get().match.field, 'p_1', resumed.runner.ownerOps('p_1')));
-  r.net.emit('b.start', h.lastTo('p_0', 'b.start'));
+  const ownStart = JSON.parse(JSON.stringify(h.lastTo('p_0', 'b.start')));
+  r.net.emit('b.start', ownStart);
   await r.settle();
   assert.deepEqual(r.runner.ownerOps('p_1'), [], 'switching fields drops the other field\'s members');
   r.net.emit('b.start', start);

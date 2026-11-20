@@ -10,10 +10,10 @@ import { PHASE, GEO } from '../../../shared/constants.js';
 import { createRng, deriveSeed } from '../../sim/rng.js';
 import { creditedKillsOf } from '../../sim/spec.js';
 import { buildBossWave, bountySpawns } from '../waves.js';
-import { pairPlayers, bossPairSalt, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS } from '../finalAssault.js';
+import { pairPlayers, bossPairSalt, bossPoolHp, SharedBossPool, CreditPool, hiddenEligible, BOSS_HIT_STEPS, bossLayerGainsEnabled } from '../finalAssault.js';
 import { cleanLeaderOps, syncFieldLeaderOps, leaderTopRows, leaderPlayerRows } from '../leaderRank.js';
 import { FieldRunner, HeadlessPacer, syntheticResult, BOSS_SILENCE_MS, CATCHUP_TICKS_PER_INTERVAL } from '../fields.js';
-import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS } from './common.js';
+import { FLOW_TICKER_PRIORITY, BOSS_CLOCK_MS, DELAYS, applyTempLayers, commitBattleLayerGains } from './common.js';
 
 /** b.pool broadcasts at most this often (ms). */
 const POOL_MIN_GAP_MS = 250;
@@ -107,7 +107,7 @@ export class MatchBoss {
         routes: wave.routes,
         sharedBoss: this.bossPool,
         // the round's enemy effects for the leaders' mid-fight summons (server/sim/content/bosses.js summonMods)
-        flags: { layerGainsEnabled: false, ...this.gd.dp, enemyScale: this.gd.enemyScale(this.round) },
+        flags: { layerGainsEnabled: bossLayerGainsEnabled(this.gd), ...this.gd.dp, enemyScale: this.gd.enemyScale(this.round) },
         fieldId,
         enemyOverrides: wave.overrides,
         waveId: wave.templateId,
@@ -594,6 +594,7 @@ export class MatchBoss {
         const pp = res.perPlayer && res.perPlayer[pid];
         const ps = this.players.get(pid);
         if (pp) this.lastResults.set(pid, pp);
+        if (ps) applyTempLayers(this.gd, ps, pp);
         if (pp && ps) {
           ps.stats.dmgDealt += Number(pp.damageDealt) || 0;
           ps.stats.kills += Number(pp.killed) || 0;
@@ -609,7 +610,13 @@ export class MatchBoss {
             && this._bossLeaksAgree(f, res, pid);
           this._settleBossBounties(ps, pp, perfect);
         }
-        if (pp && ps) this.dispatch(ps, 'onBattleResult', { result: pp, lpLoss: 0, perfect: !!pp.perfect, boss: true });
+        if (pp && ps) {
+          // Same keeper as SETTLE. The battle (or a validated client report) already applied the flag: 盟约 reports
+          // an empty map, 规程 reports what the fight added. Temporary layers stay on their own ledger above.
+          commitBattleLayerGains(this.gd, ps, pp.layerGains, (p, ev, ctx) => this.dispatch(p, ev, ctx));
+          this.dispatch(ps, 'onBattleResult', { result: pp, lpLoss: 0, perfect: !!pp.perfect, boss: true });
+          ps.recompute();
+        }
       }
     }
     this._archiveLeaderRank();

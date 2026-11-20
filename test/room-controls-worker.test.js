@@ -11,7 +11,7 @@ test('production room Worker receives custom rules and owns unanimous pause with
  async function player(name){const c=await TestClient.connect(srv.url.replace('http:','ws:')+'/ws');clients.push(c);const w=await c.hello(name);c.id=w.playerId;return c}
  async function ok(c,msg){const r=await c.request(msg);assert.equal(r.t,'ok',JSON.stringify(r))}
  const host=await player('Host'), guest=await player('Guest');
- await ok(host,{t:'room.create',mode:'coop',difficulty:'HARD',prepMultiplier:2,battleSpeed:4});
+ await ok(host,{t:'room.create',mode:'coop',difficulty:'HARD',pauseMode:'vote',prepMultiplier:2,battleSpeed:4});
  const room=await host.waitFor('room.state');
  await ok(guest,{t:'room.join',code:room.code});await ok(guest,{t:'room.ready',ready:true});await ok(host,{t:'room.start'});
  const initial=await host.waitFor('m.public',p=>p.phase==='INFO_CHECK');

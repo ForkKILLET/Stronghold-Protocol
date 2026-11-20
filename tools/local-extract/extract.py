@@ -42,10 +42,10 @@ aklz4.py registers a decoder for it. This script pulls the art the web sources l
     .cache/official-scenes/*, filled by tools/local-extract/fetch_scenes.py)
   - optional Windows PRTS cursor from the original PC prefab and animation clips → ui/cursor;
     --only ui/cursor extracts only this art; not required on mobile-only installations
-  - 规程's ten battlefields (regulation_scenes.REGULATION_IDS). Their art is three piece prefabs, not the logic
-    scene bundle; the same --only scene / --scenes <dir> run writes scene/<stageId>/ with the rows layouts.mjs
-    borrows. Each stage's materials come from regulation_scenes.STAGE_DEPS (sand, Syracuse metro, icewild or
-    ltny2). Those groups are not in expected_local_groups, so a client without them keeps the metal board
+  - 规程's ten battlefields (regulation_scenes.STAGES). Their art comes from three MapGraphic prefabs rather
+    than the logic scene bundle; --only scene / --scenes <dir> writes each composed scene/<stageId>/ with its
+    source placements and material dependencies (sand, Syracuse metro, icewild or ltny2). Those groups are not
+    in expected_local_groups, so a client without them keeps the metal board
   - the official battle effects (特效) of the mode's operators, enemies and tokens (fx.py, DESIGN §33)
     → fx/index.json, fx/textures.json, fx/prefabs/*.json, fx/tex/**.webp (or .png), fx/mesh/*.json, listed in their own
     data/local-fx.json (next to --manifest; data/local-assets.json has no fx group);
@@ -90,7 +90,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import scenes  # noqa: E402  (the battlefield scene table and exporter; imports UnityPy only when it runs)
-import regulation_scenes  # noqa: E402  (规程 piece prefabs → the same scene/ group; no UnityPy at import)
+# This deployment publishes assets in bounded resource ZIPs.
+os.environ.setdefault('SP_SCENE_PART_BYTES', '15000000')
 import fx  # noqa: E402  (the official battle effects, DESIGN §33; imports UnityPy only when it runs)
 import operators  # noqa: E402 (installed plugin operators' optional official art, §34.28)
 import cursor  # optional Windows-client PRTS hand

@@ -5,10 +5,10 @@ import {finishCombatCapture} from '../../users/combatCapture.js';
 // view carries) and RESULT (finish: m.result to every human still here, onEnd).
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
-import { PHASE, layerGainRoom } from '../../../shared/constants.js';
+import { PHASE } from '../../../shared/constants.js';
 import { uniteSurvivors } from '../unite.js';
 import { buildResult } from '../results.js';
-import { FLOW_TICKER_PRIORITY, DELAYS } from './common.js';
+import { FLOW_TICKER_PRIORITY, DELAYS, applyTempLayers, commitBattleLayerGains } from './common.js';
 import { msg } from '../../../shared/i18n.js';
 import { onSettle, resetRoundCounters } from '../botEmotes.js';
 import { creditedKillsOf } from '../../sim/spec.js';
@@ -67,32 +67,14 @@ export class MatchSettle {
       if (coins > 0) { ps.pendingFunds += coins; ps.stats.fundsGained += coins; }
       for (const b of ps.bounties) b.roundsLeft--;
       ps.bounties = ps.bounties.filter((b) => b.roundsLeft > 0);
-      // IN_BATTLE layer gains (normal battles only), at most the room left under BOND_LAYER_CAP (999, as the battle's
-      // live copy: Battle.addLayers); a bond at the cap gains nothing and dispatches nothing
-      for (const [bondId, n] of Object.entries(r.layerGains || {})) {
-        if (!this.gd.bond(bondId) || !(n > 0)) continue;
-        const before = ps.layers[bondId] || 0;
-        const add = layerGainRoom(before, Math.floor(n));
-        if (!(add > 0)) continue;
-        ps.layers[bondId] = before + add;
-        this.dispatch(ps, 'onLayers', { bondId, from: before, to: ps.layers[bondId], reason: 'battle' });
-      }
+      // IN_BATTLE layer gains, at most the room left under BOND_LAYER_CAP (999, as the battle's live copy:
+      // Battle.addLayers). A bond at the cap gains nothing and dispatches nothing. Boss / hidden fields commit the
+      // same way in _finishFinal; 盟约 leaves those maps empty because the field flag is off.
+      commitBattleLayerGains(this.gd, ps, r.layerGains, (p, ev, ctx) => this.dispatch(p, ev, ctx));
       this._charDamageTickers(ps, r);
-      // 规程: temporary layers exist only for this dispatch. Converters read and consume them; they are not stored.
-      if (r.tempLayerGains && typeof r.tempLayerGains === 'object') {
-        const bag = {};
-        for (const [bondId, n] of Object.entries(r.tempLayerGains)) {
-          if (!this.gd.bond(bondId) || !(typeof n === 'number' && n > 0)) continue;
-          const add = Math.min(1e4, Math.floor(n));
-          if (add > 0) bag[bondId] = add;
-        }
-        if (Object.keys(bag).length) ps.tempLayers = bag;
-      }
-      try {
-        this.dispatch(ps, 'onBattleResult', { result: r, lpLoss: loss, perfect: counted === 0 && r.perfect !== false, unite: uniteResult || null });
-      } finally {
-        delete ps.tempLayers;
-      }
+      // Preserve the own-battle pool through SETTLE. Conversion runs when the next prep actually opens.
+      applyTempLayers(this.gd, ps, r);
+      this.dispatch(ps, 'onBattleResult', { result: r, lpLoss: loss, perfect: counted === 0 && r.perfect !== false, unite: uniteResult || null });
       ps.recompute();
     }
     this.eliminateBroken();

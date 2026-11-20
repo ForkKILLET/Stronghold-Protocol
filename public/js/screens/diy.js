@@ -470,7 +470,7 @@ export function DiyPanel(props) {
 }
 
 /** The tab's view (no hooks: the tests draw it): `picking` = the slot being filled, or null. */
-export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPicking: setPicking, ops = {}, onOps = null, view = 'list', scroll = {} }) {
+export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPicking: setPicking, ops = {}, onOps = null, view = 'list', scroll = {}, pluginControl = null }) {
   const slots = diySlotList(diyData());
   const slot = picking ? slots.find((s) => s.slotId === picking) : null;
   const tiers = [...new Set(slots.map((s) => s.tier))];
@@ -485,6 +485,7 @@ export function DiyPanelView({ m, picks, legal, kitted, onSet, picking, onPickin
   return html`<main class=${cx('diy', view === 'deck' && 'diy--deck')} data-testid="diy" data-view=${view}>
     <div class="own__bar">
       <p class="own__lead">${lead}</p>
+      ${pluginControl ? html`<div class="diy__plug">${pluginControl}</div>` : null}
     </div>
     <div class=${cx('diy__body', view === 'deck' && 'lo-deck')} ...${view === 'deck' ? scroll : {}}>
       ${tiers.map((tier) => html`<section key=${tier} class="own-tier diy-tier" data-tier=${tier} aria-label=${t('{tier}阶', { tier })}>

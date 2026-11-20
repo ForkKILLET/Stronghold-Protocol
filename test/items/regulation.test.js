@@ -8,9 +8,10 @@ import { setGameData, unitBonds } from '../../server/sim/content/support/index.j
 import { createRegistry, resetDefaultRegistry } from '../../server/match/effectsMeta.js';
 import { makeBattle, chessRec, enemyRec } from '../helpers/battleHarness.js';
 import { makeMatch, give, giveItem } from '../match/harness.js';
-import { install as installItems, installItem } from '../../server/sim/content/items/battle.js';
+import { install as installItems, installItem, lendItemEffects } from '../../server/sim/content/items/battle.js';
 import { createBotPrepSteps } from '../../server/match/bot.js';
 import { beginCommandPrep } from '../../server/match/bandCommands.js';
+import { install as installCoreBonds } from '../../server/sim/content/bonds/core.js';
 import { KITTED_CHARS } from '../../server/sim/content/kits/index.js';
 
 const QUIET = { warn() {}, error() {}, info() {} };
@@ -52,7 +53,7 @@ function fight(opts = {}) {
   const chess = opts.ops || { t_op: op('t_op', opts.op || {}) };
   const foes = opts.foes === undefined ? [[10, 6]] : opts.foes;
   return makeBattle({
-    content: 'lite', extraContent: [installItems],
+    content: 'lite', extraContent: [installItems, ...(opts.extraContent || [])],
     defs: {
       chess,
       enemies: { e_d: enemyRec({ key: 'e_d', hp: opts.ehp ?? 1e7, def: opts.edef ?? 0, res: opts.eres ?? 0, speed: 0 }) },
@@ -193,6 +194,38 @@ test('灵巧涡轮手套: ASPD per second, damage clears the stacks and they bui
   }
 });
 
+test('灵巧涡轮手套: a fully shielded hit keeps the stacks; a lent copy does not tick', () => {
+  const id = A('2_10');
+  const p = bb(id, 'act3autochess_equip_acarm132_global_buff');
+  const h = fight({ items: [id], foes: [] });
+  h.step(1);
+  const u = unit(h);
+  h.run(1.05);
+  assert.equal(u.s.aspd, 100 + p.attack_speed);
+  h.b.addBuff(u, { key: 'test:shield', shieldHits: 1 });
+  h.b.dealDamage(u, u, { amount: 50, type: 'true' });
+  assert.equal(u.hp, u.s.maxHp, 'shield absorbed the hit');
+  assert.equal(u.s.aspd, 100 + p.attack_speed, 'no real HP loss, stacks stay');
+  h.b.dealDamage(u, u, { amount: 50, type: 'true' });
+  assert.equal(u.s.aspd, 100, 'HP loss clears the stacks');
+
+  const h2 = fight({
+    ops: { source: op('source'), receiver: op('receiver') },
+    units: [
+      { chessId: 'source', row: 10, col: 4, items: [id] },
+      { chessId: 'receiver', row: 10, col: 5 },
+    ],
+    foes: [],
+  });
+  h2.step(1);
+  const source = h2.unit('source');
+  const receiver = h2.unit('receiver');
+  assert.equal(lendItemEffects(h2.b, source, receiver, { duration: 5 }), 1);
+  h2.run(1.05);
+  assert.equal(receiver.s.aspd, 100, 'lent glove does not gain ASPD');
+  assert.equal(source.s.aspd, 100 + p.attack_speed, 'the owner still ticks');
+});
+
 test('乌萨斯呼吸器: the deployment in progress is layer 1', () => {
   const p = bb(A('3_12'), 'act3autochess_equip_acarm138_global_buff');
   const h = fight({ items: [A('3_12')], foes: [] });
@@ -202,22 +235,51 @@ test('乌萨斯呼吸器: the deployment in progress is layer 1', () => {
   close(s.atk, 500 * (1 + p.atk_cell), 'atk');
 });
 
-test('多功能补剂: a hit adds layers to the carrier\'s active bond, capped', () => {
-  const p = bb(A('3_13'), 'act3autochess_equip_acarm131_global_buff');
+test('乌萨斯呼吸器: a lent copy is one cell and a later deploy does not stack it', () => {
+  const id = A('3_12');
+  const p = bb(id, 'act3autochess_equip_acarm138_global_buff');
+  assert.ok(p.layer_max > 1, 'the record can stack, so a deploy listener would be visible');
   const h = fight({
-    items: [A('3_13')], foes: [[10, 9]],
-    op: { bonds: ['yanShip'] },
-    bondState: { yanShip: { count: 1, active: true, tier: 1, layers: 0 } },
+    ops: { source: op('source'), receiver: op('receiver') },
+    units: [
+      { chessId: 'source', row: 10, col: 4, items: [id] },
+      { chessId: 'receiver', row: 10, col: 5 },
+    ],
+    foes: [],
   });
   h.step(1);
-  const u = unit(h);
-  const bond = h.b.getPlayer(u.ownerId).bonds.yanShip;
-  h.b.dealDamage(u, h.enemies()[0], { amount: 100, type: 'true' });
-  assert.equal(bond.layers, p.temp_stack_count_add);
-  bond.layers = p.temp_stack_count_max;
-  // the cap is tracked on the grant, not the live total we just wrote; one more hit still adds until the grant's own count hits the cap
-  h.b.dealDamage(u, h.enemies()[0], { amount: 100, type: 'true' });
-  assert.ok(bond.layers >= p.temp_stack_count_max);
+  const source = h.unit('source');
+  const receiver = h.unit('receiver');
+  const ownerBlock = source.s.blockCnt;
+  const ownerAtk = source.s.atk;
+  assert.equal(lendItemEffects(h.b, source, receiver, { duration: 5 }), 1);
+  assert.equal(receiver.s.blockCnt, 2 + p.block_cnt_cell, 'lent block is one cell');
+  close(receiver.s.atk, 500 * (1 + p.atk_cell), 'lent atk is one multiplier cell');
+  assert.equal(source.s.blockCnt, ownerBlock, 'lending does not change the owner layer');
+  close(source.s.atk, ownerAtk, 'owner atk');
+  receiver.deploySeq += 1;
+  h.b.emit('deploy', { unit: receiver });
+  assert.equal(receiver.s.blockCnt, 2 + p.block_cnt_cell, 'a later deploy does not add a lent layer');
+  close(receiver.s.atk, 500 * (1 + p.atk_cell), 'lent atk stays one cell');
+  assert.equal(source.s.blockCnt, ownerBlock, 'the owner layer is still untouched');
+});
+
+test('多功能补剂: shared temporary layers, per-carrier cap and no permanent-layer mutation', () => {
+  for (const id of quals(A('3_13'))) {
+    const p = bb(id, 'act3autochess_equip_acarm131_global_buff');
+    const h = fight({ items: [id], foes: [[10, 9]], op: { bonds: ['yanShip'] },
+      bondState: { yanShip: { count: 3, active: true, tier: 1, layers: 999 } } });
+    h.step(1);
+    const u = unit(h), target = h.enemies()[0];
+    const before = h.b.tempLayers(u.ownerId, 'yanShip');
+    for (let i = 0; i < 40; i++) h.b.dealDamage(u, target, { amount: 1, type: 'true' });
+    assert.equal(h.b.tempLayers(u.ownerId, 'yanShip'), p.temp_stack_count_max);
+    assert.equal(h.b.getPlayer(u.ownerId).bonds.yanShip.layers, 999);
+    assert.equal(h.b.effectiveBondLayers(u.ownerId, 'yanShip'), 999 + p.temp_stack_count_max);
+    assert.equal(h.b.result().perPlayer[u.ownerId].tempLayerGains.yanShip, p.temp_stack_count_max);
+    assert.equal(h.b.result().perPlayer[u.ownerId].layerGains.yanShip, undefined);
+    assert.ok(h.b.tempLayers(u.ownerId, 'yanShip') >= before);
+  }
 });
 
 test('伊比利亚骨刺刀: extra arts on a hit, same seed twice', () => {
@@ -886,6 +948,33 @@ test('prep: passbook, dice, documents, dolls, letter, identity, pager, beacon, m
       assert.equal(ps.shop.slots.filter((s) => s && s.kind === 'chess').length, 3 - n);
     });
   }
+  for (const id of quals(A('2_02'))) {
+    withPrep(33, ({ m, ps, equip }) => {
+      const dry = XING;
+      ps.shop.slots = [slot('chess', dry)];
+      m.pool.take(m.gd.baseIdOf(dry), m.pool.left(m.gd.baseIdOf(dry)));
+      const t = give(m, ps, XIA, 'hand');
+      const before = chessHeld(ps).length;
+      assert.deepEqual(equip(giveItem(m, ps, id), t), OK);
+      assert.equal(chessHeld(ps).length, before, 'nothing is granted from an empty pool');
+      assert.equal(ps.shop.slots[0] && ps.shop.slots[0].id, dry, 'the shop chess stays when it cannot be granted');
+    });
+    withPrep(34, ({ m, ps, equip }) => {
+      const dry = XING;
+      const other = [...m.pool.entries.keys()].find((cid) => cid !== m.gd.baseIdOf(dry) && m.pool.left(cid) > 0);
+      assert.ok(other, 'a second shop chess still has a pool copy');
+      ps.shop.slots = [slot('chess', dry), slot('chess', other)];
+      m.pool.take(m.gd.baseIdOf(dry), m.pool.left(m.gd.baseIdOf(dry)));
+      const t = give(m, ps, XIA, 'hand');
+      const before = new Set(chessHeld(ps).map((p) => p.uid));
+      assert.deepEqual(equip(giveItem(m, ps, id), t), OK);
+      const gained = chessHeld(ps).filter((p) => !before.has(p.uid));
+      assert.equal(gained.length, 1);
+      assert.equal(gained[0].id, other);
+      assert.equal(ps.shop.slots[0] && ps.shop.slots[0].id, dry);
+      assert.equal(ps.shop.slots[1], null);
+    });
+  }
   withPrep(19, ({ m, ps, equip }) => {
     const t = give(m, ps, XIA, 'board', [10, 5]);
     assert.deepEqual(equip(giveItem(m, ps, A('5_02')), t), OK);
@@ -980,4 +1069,69 @@ test('bot takes both picks of a golden 促销券', () => {
     const items = held(ps).filter((x) => x.kind === 'item');
     assert.equal(items.length, p.select_count);
   });
+});
+
+test('multiple equipment sources combine with other temporary gains; disposing effects retains all earned layers', () => {
+  const h = fight({ foes: [[10, 9]], op: { bonds: ['yanShip', 'swiftShip'] },
+    bondState: { yanShip: { count: 3, active: true, tier: 1, layers: 7 }, swiftShip: { count: 1, active: false, tier: 0, layers: 4 } } });
+  h.step();
+  const u = unit(h), b = h.b;
+  const normal = installItem(b, u, A('3_13'));
+  const elite = installItem(b, u, A('3_13').replace('_a', '_b'));
+  b.addTempLayers(u.ownerId, 'yanShip', 5);
+  b.dealDamage(u, h.enemies()[0], { amount: 1, type: 'true' });
+  assert.equal(b.tempLayers(u.ownerId, 'yanShip'), 8);
+  assert.equal(b.tempLayers(u.ownerId, 'swiftShip'), 0, 'inactive bonds gain nothing from the equipment');
+  normal.dispose();
+  assert.equal(b.tempLayers(u.ownerId, 'yanShip'), 8);
+  normal.dispose();
+  assert.equal(b.tempLayers(u.ownerId, 'yanShip'), 8, 'disposal is idempotent');
+  elite.dispose();
+  assert.equal(b.tempLayers(u.ownerId, 'yanShip'), 8);
+  b.dealDamage(u, h.enemies()[0], { amount: 1, type: 'true' });
+  assert.equal(b.tempLayers(u.ownerId, 'yanShip'), 8, 'expired effects no longer grant layers');
+  assert.equal(b.getPlayer(u.ownerId).bonds.yanShip.layers, 7);
+  assert.equal(b.result().perPlayer[u.ownerId].tempLayerGains.yanShip, 8);
+});
+
+test('equipment temporary gains refresh core standing buffs and retain them after expiry', () => {
+  for (const gainsEnabled of [true, false]) {
+    const h = fight({ foes: [[10, 9]], op: { bonds: ['yanShip'] }, extraContent: [installCoreBonds],
+      bondState: { yanShip: { count: 3, active: true, tier: 1, layers: 10 } } });
+    h.b.flags.layerGainsEnabled = gainsEnabled;
+    h.step();
+    const b = h.b, u = unit(h), before = u.s.atk;
+    const grant = installItem(b, u, A('3_13'));
+    b.dealDamage(u, h.enemies()[0], { amount: 1, type: 'true' });
+    h.step();
+    close(u.s.atk, before + u.base.atk * V3.bonds.yanShip.bb.atk_per_stack, 'core ATK refreshed by temporary gain');
+    assert.equal(b.getPlayer(u.ownerId).bonds.yanShip.layers, 10);
+    assert.ok(b.result().perPlayer[u.ownerId].tempLayerGains.yanShip > 0);
+    grant.dispose();
+    h.step();
+    close(u.s.atk, before + u.base.atk * V3.bonds.yanShip.bb.atk_per_stack, 'earned temporary buff survives equipment expiry');
+    assert.equal(b.errorCount, 0);
+  }
+});
+
+test('borrowed supplement expiry preserves layers and borrowing again retains the per-battle cap', () => {
+  const h = fight({ ops: { source: op('source'), receiver: op('receiver', { bonds: ['yanShip'] }) },
+    units: [{ chessId: 'source', row: 10, col: 4, items: [A('3_13')] }, { chessId: 'receiver', row: 10, col: 5 }],
+    foes: [[10, 9]], bondState: { yanShip: { count: 3, active: true, tier: 1, layers: 10 } } });
+  h.step();
+  const b = h.b, receiver = h.unit('receiver'), source = h.unit('source'), foe = h.enemies()[0];
+  assert.equal(lendItemEffects(b, source, receiver, { duration: .1 }), 1);
+  for (let i = 0; i < 3; i++) b.dealDamage(receiver, foe, { amount: 1, type: 'true' });
+  h.run(.2);
+  const afterExpiry = b.tempLayers(receiver.ownerId, 'yanShip');
+  assert.ok(afterExpiry >= 3, 'grants persist after the loan timer expires');
+  b.dealDamage(receiver, foe, { amount: 1, type: 'true' });
+  assert.equal(b.tempLayers(receiver.ownerId, 'yanShip'), afterExpiry, 'expired loan cannot grant more');
+  lendItemEffects(b, source, receiver, { duration: 1 });
+  for (let i = 0; i < 30; i++) b.dealDamage(receiver, foe, { amount: 1, type: 'true' });
+  assert.equal(b.tempLayers(receiver.ownerId, 'yanShip'), 12, 'repeated borrowing shares the 12-layer battle cap');
+  h.run(1.1);
+  assert.equal(b.tempLayers(receiver.ownerId, 'yanShip'), 12);
+  assert.equal(b.getPlayer(receiver.ownerId).bonds.yanShip.layers, 10);
+  assert.equal(b.result().perPlayer[receiver.ownerId].tempLayerGains.yanShip, 12);
 });

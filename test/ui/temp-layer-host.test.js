@@ -11,21 +11,23 @@ const spec = () => ({ fieldId: 'n:p1', kind: 'normal', seed: 1, players: [{ play
   bonds: { ursusShip: { count: 0, tier: 0, active: false, layers: 100 } } }], spawns: [] });
 const sim = { spec: specModule, ds };
 
-test('display observes actual temporary receipts, including combat-local receipts, and cleans up its old listener', () => {
+test('display observes actual temporary receipts, including signed adjustments, and replaces its old battle', () => {
   const host = new InPageSimHost(); host.sim = sim; host.start(spec());
   const b = host.battle;
   assert.equal(b.addTempLayers('p1', 'ursusShip', 20), 20);
-  assert.equal(host.tempBondLayers.p1.ursusShip, 20);
+  assert.equal(host.tempLayersSnapshot().p1.ursusShip, 20);
   assert.equal(b.getPlayer('p1').bonds.ursusShip.layers, 100);
   b.flags.layerGainsEnabled = false;
   b.emit('tempLayerGain', { playerId: 'p1', bondId: 'ursusShip', n: 2 });
-  assert.equal(host.tempBondLayers.p1.ursusShip, 22, 'disabled settlement gains do not disable combat-local display');
-  assert.equal(b.tempLayers('p1', 'ursusShip'), 20, 'the observer cannot add settlement rewards');
+  assert.equal(host.tempLayersSnapshot().p1.ursusShip, 20, 'a fabricated event cannot change the battle ledger');
+  b.removeTempLayers('p1', 'ursusShip', 3);
+  assert.equal(host.tempLayersSnapshot().p1.ursusShip, 17);
+  assert.equal(b.tempLayers('p1', 'ursusShip'), 17, 'the observer cannot add settlement rewards');
   host.start(spec());
-  assert.equal(host.tempBondLayers.p1, undefined);
+  assert.equal(host.tempLayersSnapshot().p1, undefined);
   b.emit('tempLayerGain', { playerId: 'p1', bondId: 'ursusShip', n: 4 });
-  assert.equal(host.tempBondLayers.p1, undefined, 'reusing the host detaches the old battle');
-  host.stop(); assert.equal(host.tempBondLayers, null);
+  assert.equal(host.tempLayersSnapshot().p1, undefined, 'reusing the host detaches the old battle');
+  host.stop(); assert.deepEqual(host.tempLayersSnapshot(), {});
 });
 
 test('temporary display does not change logical snapshots, results, events or RNG', () => {
@@ -50,9 +52,9 @@ test('the simulation Worker packet carries temporary display separately and clea
   const host = new WorkerSimHost({ workerFactory: () => ({ terminate() {}, postMessage() {} }) });
   try {
     host.accept(structuredClone(await runtime('step', [0])));
-    assert.equal(host.tempBondLayers.p1.ursusShip, 20);
+    assert.equal(host.tempLayersSnapshot().p1.ursusShip, 20);
     assert.equal(host.battle.getPlayer('p1').bonds.ursusShip.layers, 100);
     host.accept(structuredClone(await runtime('start', [spec()])));
-    assert.equal(host.tempBondLayers.p1, undefined);
+    assert.equal(host.tempLayersSnapshot().p1, undefined);
   } finally { host.stop(); }
 });

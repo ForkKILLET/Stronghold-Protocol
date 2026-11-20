@@ -369,7 +369,7 @@ export class BoardScene {
   setStage(stage) {
     if (this.destroyed) return;
     const official = stage ? this.scenePacks.get(stage.id) || null : null;
-    const key = stage ? `${stage.id || ''}|${official ? official.key : ''}|${(stage.rows || []).join('/')}|${JSON.stringify((stage.devices || []).map((d) => [d.key, d.pos, d.active, d.dir]))}` : '';
+    const key = stage ? `${stage.id || ''}|${official ? official.key : ''}|${stage.scenePiece?.group || ''}|${(stage.rows || []).join('/')}|${JSON.stringify((stage.devices || []).map((d) => [d.key, d.pos, d.active, d.dir]))}` : '';
     if (key === this.stageKey) return;
     this.stageKey = key;
     this.stage = stage || null;
@@ -377,12 +377,12 @@ export class BoardScene {
     this.sceneWater = [];
     this.official = null;
     if (!stage) { applyWaterMaterial(this.mat.water, null); return; }
-    let board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry(),
+    let board = buildBoard(stage, { uv: this.pack?.uv || null, area: stage.scenePiece ? null : this.area, platformMesh: !!this.platformGeometry(),
       heightClasses: official?.doc?.tileHeightClasses || null });
     const M = this.meshes = {};
     this.official = official && this._buildScene(official, board) ? official : null;
     if (!this.official && official?.doc?.tileHeightClasses) {
-      board = buildBoard(stage, { uv: this.pack?.uv || null, area: this.area, platformMesh: !!this.platformGeometry() });
+      board = buildBoard(stage, { uv: this.pack?.uv || null, area: stage.scenePiece ? null : this.area, platformMesh: !!this.platformGeometry() });
     }
     this.board = board;
     // Apply only the active, successfully built pack: preloading another stage must not recolour this board.
@@ -456,9 +456,12 @@ export class BoardScene {
     const infos = pack.doc?.materials || {};
     this.sceneWater = [];
     const buckets = new Map();
+    const pieces = pack.doc?.layout === 'pieces';
+    const piece = this.stage?.scenePiece || null;
+    if (pieces !== !!piece) return false;
     for (let c of pack.chunks || []) {
       if (this.battleRect && c.material === 'MT_trap_196_cnnon') continue; // runtime devices own life/visibility
-      if (c.group && !sceneGroupVisible(pack.groups?.[c.group], this.area, c.group)) continue;
+      if (pieces ? c.group !== piece.group : c.group && !sceneGroupVisible(pack.groups?.[c.group], this.area, c.group)) continue;
       if (c.material === 'MT_trap_196_cnnon' && board && pack.doc.staticDevices?.positions?.length) {
         // Extracted prefab vertices start at local ground zero; the game places each trap on its tile surface.
         const position = c.position.slice(), origins = pack.doc.staticDevices.positions;
@@ -513,6 +516,7 @@ export class BoardScene {
       mesh.name = c.material;
       mesh.castShadow = false; mesh.receiveShadow = false;
       mesh.renderOrder = water ? 1 : mat.userData.blend === 'blend' ? 2 : mat.userData.blend === 'cutout' ? -3 : -4;
+      if (piece) mesh.position.set(piece.dc || 0, piece.dr || 0, 0);
       mesh.matrixAutoUpdate = false; mesh.updateMatrix();
       this.root.add(mesh);
       this.meshes[`scene${n++}`] = mesh;
@@ -534,7 +538,7 @@ export class BoardScene {
       if (d.kind === 'crate') this.staticCrates.push(d);
       else if (d.kind === 'platform' && plat) platforms.push(placeMesh(plat, { x: d.c, y: d.r, z: d.z0 }));
       else if (d.kind === 'blower' && wind && this.mat.wind) blowers.push(placeMesh(wind, { x: d.c, y: d.r, z: d.z0 + 0.078, rot: DIR_TURNS[d.dir] ?? 0 }));
-      else if (d.kind === 'blower' || d.kind === 'turret') crates.push(placeMesh(boxWithTop(this.pack?.uv, d.kind), { x: d.c, y: d.r, z: d.z0 }));
+      else if (d.kind === 'blower' || d.kind === 'turret' || d.kind === 'cannon') crates.push(placeMesh(boxWithTop(this.pack?.uv, d.kind), { x: d.c, y: d.r, z: d.z0 }));
       else if (d.kind === 'mound') crates.push(placeMesh(this.boxGeometry(), { x: d.c, y: d.r, z: d.z0, s: 0.95, sz: 0.55 }));
       else if (d.kind === 'bush') crates.push(placeMesh(bushData(), { x: d.c, y: d.r, z: d.z0 }));
       else if (d.kind === 'saltCannon' && !this.cannonModel() && !this.battleRect) {
@@ -655,10 +659,11 @@ export class BoardScene {
     }
   }
 
-  /** Hide only the fallback whose real client effect has actually started; missing FX retains a visible tile. */
+  /** Replace a fallback only after its extracted terrain effect has started. */
   setNativeTerrain(glyphs) {
-    if (this.meshes.mire) this.meshes.mire.visible = !glyphs.has('m');
-    if (this.meshes.duelGrass) this.meshes.duelGrass.visible = !glyphs.has('w');
+    for (const [glyph, key] of [['w', 'duelGrass'], ['i', 'infection'], ['m', 'mire']]) {
+      if (this.meshes?.[key]) this.meshes[key].visible = !glyphs.has(glyph);
+    }
   }
 
   _buildBackground(board) {
@@ -927,7 +932,8 @@ export function boxData(size, height) {
 
 /** Device box with an atlas top (blower fallback ▶▶ hatch, turret target plate) and grey sides. */
 function boxWithTop(uvTable, kind) {
-  const size = kind === 'turret' ? 0.72 : 0.86, h = kind === 'turret' ? 0.34 : DEVICE_H.platform;
+  const size = kind === 'turret' ? 0.72 : kind === 'cannon' ? 0.55 : 0.86;
+  const h = kind === 'turret' ? 0.34 : kind === 'cannon' ? 0.62 : DEVICE_H.platform;
   const b = boxData(size, h);
   const top = surfaceUV(uvTable?.mech || { src: 'D', rect: [1088, 708, 356, 310] });
   const side = surfaceUV(uvTable?.graySide || { src: 'D', rect: [272, 1664, 272, 120] });

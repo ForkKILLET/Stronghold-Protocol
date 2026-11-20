@@ -22,8 +22,8 @@
   --dock-team-gap: 0.14;
   --dock-team-rows: 4;
   --dock-bond-left: 1.56;
-  --dock-bond-top: 1.36;
-  --dock-bond-bottom: 2.16;
+  --dock-bond-top: 1;
+  --dock-bond-bottom: 1.98;
   --dock-bond-slot: 0.74;
   --dock-bond-gap: 0.1;
   --dock-top: 1.02;
@@ -100,8 +100,7 @@
   .testconsole__tab, .testconsole__run, .testconsole__row button,
   .testconsole__field input, .testconsole__field select {
     min-height: 32px; min-width: 32px; font-size: 14px; padding: 6px 10px;
-  }
-}
+  }}
 
 /* ---- top bar -------------------------------------------------------------------------------------- */
 .gtop {
@@ -307,7 +306,7 @@
 @keyframes ot-in { from { opacity: 0; transform: translateY(-.06rem); } }
 @keyframes ot-pulse { 0%, 100% { box-shadow: 0 0 .12rem rgba(255, 36, 36, .3); } 50% { box-shadow: 0 0 .32rem rgba(255, 36, 36, .75); border-color: #ff6a6a; } }
 @keyframes ot-tick { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-.3rem); } }
-@media (prefers-reduced-motion: reduce) { .otwarn, .otwarn--drain, .otwarn__tick, .otwarn--pending .otwarn__icon { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .otwarn, .otwarn--drain, .otwarn__tick, .otwarn--pending .otwarn__icon { animation: none; }}
 
 .roundbox { display: flex; align-items: center; gap: .08rem; }
 .roundbox__label { font-size: .16rem; color: var(--text-lo); letter-spacing: .08em; }
@@ -444,8 +443,7 @@
 @keyframes capfx-out { to { transform: translateY(-100%); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .capfx { display: none; }
-  .gtop__cap .capsule > * { animation: none; visibility: visible; }
-}
+  .gtop__cap .capsule > * { animation: none; visibility: visible; }}
 .bossbar { position: relative; flex: 1; min-width: 2.2rem; height: .2rem; background: rgba(0, 0, 0, .6); border: 1px solid rgba(255, 122, 51, .5); overflow: hidden; }
 .bossbar__fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #b8340d, var(--orange-hi)); box-shadow: 0 0 .1rem rgba(255, 110, 40, .8); transition: width 300ms var(--ease-out); }
 .bossbar__txt { position: absolute; inset: 0; display: grid; place-items: center; font-size: .14rem; font-weight: 700; color: #fff; text-shadow: 0 1px 2px #000; }
@@ -476,7 +474,7 @@
 }
 .lp--sm .lp__note { font-size: .6em; }
 @keyframes lp-pend { 0% { opacity: 0; transform: scale(1.9); } 45% { opacity: 1; transform: scale(.92); } 100% { transform: scale(1); } }
-@media (prefers-reduced-motion: reduce) { .lp__pend { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .lp__pend { animation: none; }}
 .sp-reduced-motion .lp__pend { animation: none; }
 
 /* enemy preview button: amber [🔍▶▶] → the pen (research 09 §2); grey [🔍] in the pen view and outside 休整期 */
@@ -503,8 +501,8 @@
 
 /* the 准备 question (funds left, an unused command — §37.201): its sentences, then the 「本局不再提醒」 box */
 .ready-ask .modal__text + .modal__text { margin-top: .06rem; }
-.ready-ask__mute { display: flex; align-items: center; gap: .08rem; margin-top: .14rem; color: var(--text-md); font-size: calc(.15 * var(--t)); cursor: pointer; }
-.ready-ask__mute input { flex: none; width: max(.2rem, 18px); height: max(.2rem, 18px); margin: 0; accent-color: var(--mint-400); cursor: pointer; }
+.ready-ask__mute { display: flex; align-items: center; gap: .08rem; margin-top: .14rem; color: var(--text-md); font-size: calc(.15 * var(--t)); cursor: var(--sp-cursor-pointer, pointer); }
+.ready-ask__mute input { flex: none; width: max(.2rem, 18px); height: max(.2rem, 18px); margin: 0; accent-color: var(--mint-400); cursor: var(--sp-cursor-pointer, pointer); }
 
 /* ready toggle */
 .readywrap { display: flex; flex-direction: column; align-items: flex-end; gap: .05rem; }
@@ -928,8 +926,7 @@
 .combat-metrics button:focus-visible { outline: 2px solid var(--mint-400); outline-offset: -2px; }
 @media (pointer: coarse), (any-pointer: coarse) {
   .combat-metrics__close, .combat-metrics__scopes button { min-height: 44px; }
-  .combat-metrics__close { min-width: 44px; }
-}
+  .combat-metrics__close { min-width: 44px; }}
 @media (max-height: 460px) {
   .combat-metrics__body { display: block; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
   .combat-metrics__list { overflow: visible; }
@@ -938,8 +935,7 @@
   .combat-metrics__tools { padding-top: 4px; padding-bottom: 4px; }
   .combat-metrics__totals, .combat-metrics__legend { padding-bottom: 4px; }
   .combat-metrics__note { padding-top: 4px; padding-bottom: 4px; }
-  .combat-metrics__note br { display: none; }
-}
+  .combat-metrics__note br { display: none; }}
 /* Phones in landscape (short touch screens: 1rem is clamped at 40 px by theme.css): the ported desktop card — 12–16 px
    text, 340 px wide, 30 px thumbs — took 40 % of an 844 × 390 screen, about twice the HUD's own 6–7 px text, and hid
    the battle behind it. Scale the card by the HUD's proportion instead of the desktop one: 9–12 px text, 24 px thumbs,
@@ -969,8 +965,7 @@
   .combat-metrics__values { gap: 4px; }
   .combat-metrics__values small { font-size: max(calc(.14 * var(--t)), 8px); }
   .combat-metrics__values b { font-size: max(calc(.18 * var(--t)), 9px); }
-  .combat-metrics__note { padding: max(.06rem, calc(6px * var(--sp-ui, 1))) max(.12rem, calc(8px * var(--sp-ui, 1))); font-size: max(calc(.14 * var(--t)), 8px); }
-}
+  .combat-metrics__note { padding: max(.06rem, calc(6px * var(--sp-ui, 1))) max(.12rem, calc(8px * var(--sp-ui, 1))); font-size: max(calc(.14 * var(--t)), 8px); }}
 
 .ewheel { position: relative; }
 .ewheel__btn {
@@ -1369,8 +1364,7 @@
 
 /* ---- small screens (1280×720 → root ≈ 66px) ------------------------------------------------------------------------ */
 @media (max-aspect-ratio: 16/10) {
-  .gm__bonds { right: 4.6rem; }
-}
+  .gm__bonds { right: 4.6rem; }}
 
 /* fallback view: enemy preview pen (setCamera('pen')) */
 .ff-board--pen .ff-pen__enemy { padding: 0; border: 0; background: none; cursor: var(--sp-cursor-pointer, pointer); border-radius: 50%; }
@@ -1772,8 +1766,7 @@
 @keyframes downm-shake { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-.06rem); } 40%, 80% { transform: translateX(.06rem); } }
 @keyframes downm-in { from { opacity: 0; transform: translateX(.3rem); } }
 @media (prefers-reduced-motion: reduce) {
-  .downm__face.is-out, .downm__title { animation: none; }
-}
+  .downm__face.is-out, .downm__title { animation: none; }}
 
 /* 规程 command: the strategy badge remains the anchor for click and drag interactions. */
 .effects__row { display: flex; align-items: center; gap: .12rem; }

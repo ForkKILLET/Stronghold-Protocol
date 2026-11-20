@@ -87,11 +87,31 @@ test('regulation keys stay off the default kit maps and carry fly / beFactor', (
   assert.ok(gd.enemy('enemy_9030_acpara'));
 });
 
-test('械 below half health spawns an untargetable armor pair; the hidden form does not', () => {
+test('hidden 械 summons an untargetable armor pair the moment it enters', () => {
+  const h = fight();
+  const boss = put(h, MECH_2, [9, 8]);
+  const armors = living(h, ARMOR);
+  assert.equal(armors.length, 2);
+  for (const a of armors) {
+    assert.equal(a.s.flags.untargetable, true);
+    assert.equal(Math.round(a.y), 9);
+    assert.equal(a.mem.regBossId, boss.id);
+    assert.equal(a.mem.regLaunch, undefined);
+  }
+  const xs = armors.map((a) => Math.round(a.x)).sort((a, b) => a - b);
+  assert.deepEqual(xs, [7, 9]);
+  // LaunchArmor (cd 10, init 10) starts the pair that is already on the field.
+  h.run(10);
+  assert.equal(living(h, ARMOR).length, 2);
+  for (const a of living(h, ARMOR)) assert.equal(a.mem.regLaunch, true);
+});
+
+test('械 below half health spawns an untargetable armor pair; hidden 械 does not spawn another', () => {
   const ratio = V.enemies[MECH].talents.bb['Armor.hp_ratio'];
   assert.equal(ratio, 0.5);
   const h = fight();
   const e = put(h, MECH, [9, 8]);
+  assert.equal(living(h, ARMOR).length, 0);
   e.hp = e.s.maxHp * 0.49;
   h.step(2);
   const armors = living(h, ARMOR);
@@ -100,9 +120,10 @@ test('械 below half health spawns an untargetable armor pair; the hidden form d
   assert.equal(V.enemies[MECH_2].talents.bb['Armor.hp_ratio'], undefined);
   const h2 = fight();
   const hidden = put(h2, MECH_2, [9, 8]);
+  assert.equal(living(h2, ARMOR).length, 2);
   hidden.hp = hidden.s.maxHp * 0.49;
   h2.step(2);
-  assert.equal(living(h2, ARMOR).length, 0);
+  assert.equal(living(h2, ARMOR).length, 2);
 });
 
 test('茧 volley hits the highest-HP operators and evade stacks from missing health', () => {
@@ -221,7 +242,26 @@ test('丛生 doubles the first hit and locks healing; 左手泰特斯 revives on
   assert.equal(e.s.flags.untargetable, true);
 });
 
-test('speedup raises ASPD and move speed; grassland grants stealth instead; a flyer skips the tile', () => {
+test('左手泰特斯 halves the highest-ATK operator for 25 s after 10 s and marks it with the weaken status (round 83)', () => {
+  const chess = { ...CHESS, t_hit: chessRec({ id: 't_hit', profession: 'SNIPER', projectile: 'none', stats: { atk: 600, maxHp: 1e7, def: 0, res: 0, blockCnt: 0 }, rangeGrid: [[0, 0]], skill: null }) };
+  const h = makeBattle({
+    content: 'generic', extraContent: [enemiesMod, bossesMod], seed: 1, autoFinish: false, timeLimit: 40,
+    defs: { enemies: V.enemies, chess }, units: [{ chessId: 't_hit', row: 9, col: 2 }, { chessId: 't_gun', row: 9, col: 3 }],
+  });
+  put(h, TITUS, [9, 12]);
+  const hit = h.unit('t_hit');
+  h.run(9);
+  assert.ok(!hit.findBuff('reg:weaken'));
+  h.run(2);
+  const buff = hit.findBuff('reg:weaken');
+  assert.ok(buff, 'the cut lands after the 10 s initial cooldown');
+  assert.equal(buff.status, 'weaken');
+  assert.ok(near(hit.s.atk, 300), 'ATK -50 % (additive atkPct)');
+  assert.ok(h.eventsOf('status').some((e) => e[1] === hit.id && e[2] === 'weaken'), 'the client gets the weaken status');
+  assert.ok(!h.unit('t_gun').findBuff('reg:weaken'), 'only the highest ATK');
+});
+
+test('speedup gives allies ASPD only and enemies move speed only; grassland grants stealth; a flyer skips the tile', () => {
   const row = '##hrrzrwrrfrrrrrrrf##';
   assert.equal(row.length, 21);
   assert.equal(row[5], 'z');
@@ -242,9 +282,9 @@ test('speedup raises ASPD and move speed; grassland grants stealth instead; a fl
   const speed = fast.findBuff('terrain:speedup');
   assert.ok(speed);
   assert.equal(speed.mods.aspd, 25);
-  assert.equal(speed.mods.moveMul, 1.5);
+  assert.equal(speed.mods.moveMul, undefined);
   assert.equal(fast.s.aspd, 125);
-  // Operators are created with base move 0, so the multiplier does not change their stat.
+  // Operators are created with base move 0. Allies do not get the enemy move scaler.
   assert.equal(fast.s.moveSpeed, 0);
   assert.equal(grass.findBuff('terrain:speedup'), null);
   assert.ok(grass.findBuff('terrain:duelGrass'));
@@ -254,7 +294,7 @@ test('speedup raises ASPD and move speed; grassland grants stealth instead; a fl
   const gear = put(h, 'enemy_9028_acfncb', [10, 5]);
   h.step(1);
   assert.ok(gear.findBuff('terrain:speedup'));
-  assert.equal(gear.s.aspd, 125);
+  assert.equal(gear.s.aspd, 100);
   assert.ok(near(gear.s.moveSpeed, 0.6));
   const fly = put(h, ARMOR, [10, 5], 'FLY');
   h.step(1);
@@ -284,6 +324,106 @@ test('solo schedule uses countSingle and specialEnemyNumSingle; multi and the de
   assert.equal(getData().factions.generation.specialEnemyNumSingle, undefined);
 });
 
+test('投石机 throws one snowball with a plus splash, then only melees', () => {
+  const WING = 'enemy_1388_wingnt';
+  const h = fight({
+    units: [
+      { chessId: 't_gun', row: 9, col: 6, uid: 1 },
+      { chessId: 't_gun', row: 9, col: 7, uid: 2 },
+      { chessId: 't_gun', row: 10, col: 7, uid: 3 },
+      { chessId: 't_gun', row: 9, col: 10, uid: 4 },
+      { chessId: 't_wall', row: 12, col: 4, uid: 5 },
+    ],
+  });
+  h.step(1);
+  const primary = h.allies().find((u) => u.uid === 1);
+  const ortho = h.allies().find((u) => u.uid === 2);
+  const diag = h.allies().find((u) => u.uid === 3);
+  const far = h.allies().find((u) => u.uid === 4);
+  const wall = h.allies().find((u) => u.uid === 5);
+  const p0 = primary.hp, o0 = ortho.hp, d0 = diag.hp, f0 = far.hp, w0 = wall.hp;
+  put(h, WING, [9, 4]);
+  const landed = h.runUntil(() => primary.hp < p0, 8);
+  assert.equal(landed, true);
+  assert.equal(p0 - primary.hp, 1200);
+  assert.equal(o0 - ortho.hp, 1200);
+  assert.equal(diag.hp, d0);
+  assert.equal(far.hp, f0);
+  assert.equal(wall.hp, w0);
+  const lobs = h.eventsOf('atk').filter((e) => e[3] === 'lob');
+  assert.equal(lobs.length, 1);
+  const blast = h.eventsOf('fx').filter((e) => e[1] === 'explode');
+  assert.equal(blast.length, 1);
+  assert.deepEqual(blast[0][4].tiles, [[9, 6], [10, 6], [8, 6], [9, 7], [9, 5]]);
+
+  const afterP = primary.hp, afterO = ortho.hp;
+  assert.equal(h.b.relocate(wall, 9, 4), true);
+  const hit = h.runUntil(() => wall.hp < w0, 8);
+  assert.equal(hit, true);
+  assert.equal(w0 - wall.hp, 800);
+  assert.equal(primary.hp, afterP);
+  assert.equal(ortho.hp, afterO);
+  assert.equal(h.b.errors.length, 0);
+});
+
+test('聚焦魂灵残迹 picks up to three vortices and spends them on a line laser', () => {
+  const WIZ = 'enemy_1429_lrwzrd';
+  const SOUL = 'enemy_1428_lrsoul';
+  const held = fight();
+  put(held, WIZ, [9, 8]);
+  const near = [put(held, SOUL, [9, 7]), put(held, SOUL, [9, 8.2]), put(held, SOUL, [9, 6.5]), put(held, SOUL, [9, 7.4])];
+  const outside = put(held, SOUL, [12, 10]);
+  held.run(1);
+  const aliveNear = near.filter((e) => e.alive).length;
+  assert.equal(aliveNear, 1);
+  assert.equal(outside.alive, true);
+  assert.equal(held.b.errors.length, 0);
+
+  const h = fight({
+    units: [
+      { chessId: 't_gun', row: 9, col: 9, uid: 1 },
+      { chessId: 't_gun', row: 9, col: 10, uid: 2 },
+      { chessId: 't_gun', row: 10, col: 9, uid: 3 },
+    ],
+  });
+  h.step(1);
+  const onLine = h.allies().find((u) => u.uid === 2);
+  const off = h.allies().find((u) => u.uid === 3);
+  const line0 = onLine.hp, off0 = off.hp;
+  put(h, WIZ, [9, 8]);
+  const soul = put(h, SOUL, [9, 7]);
+  soul.bounty = { coins: 9, ownerPlayerId: 'p1' };
+  const fired = h.runUntil(() => onLine.hp < line0, 3);
+  assert.equal(fired, true);
+  assert.equal(soul.alive, false);
+  assert.equal(line0 - onLine.hp, 200);
+  assert.equal(off.hp, off0);
+  const beams = h.eventsOf('fx').filter((e) => e[1] === 'beam');
+  assert.equal(beams.length >= 1, true);
+  assert.equal(beams[0][4].kind, 'soulLaser');
+  const again = onLine.hp;
+  put(h, SOUL, [9, 7]);
+  h.run(2);
+  assert.equal(onLine.hp, again);
+  assert.equal(h.b.errors.length, 0);
+
+  const elite = fight({
+    units: [
+      { chessId: 't_gun', row: 9, col: 9, uid: 1 },
+      { chessId: 't_gun', row: 9, col: 10, uid: 2 },
+    ],
+  });
+  elite.step(1);
+  const far = elite.allies().find((u) => u.uid === 2);
+  const f0 = far.hp;
+  put(elite, 'enemy_1429_lrwzrd_2', [9, 8]);
+  put(elite, SOUL, [9, 7]);
+  const hit = elite.runUntil(() => far.hp < f0, 3);
+  assert.equal(hit, true);
+  assert.equal(f0 - far.hp, 280);
+  assert.equal(elite.b.errors.length, 0);
+});
+
 test('each new kit can spawn for a short step without a handler error', () => {
   const keys = [...Object.keys(REGULATION_KITS), ...Object.keys(REGULATION_BOSS_KITS)];
   for (const key of keys) {
@@ -310,6 +450,120 @@ test('刺胄之弹 / 余音 hits leave out the 补给线 share where the season 
     assert.equal(hits(V), Math.max(1, Math.round(raw(V) * 2 / 1.6)), `${key}: 规程 drops the 补给线 share`);
     assert.equal(hits(D), Math.max(1, Math.round(raw(D) * 2)), `${key}: 下半 keeps the whole multiplier`);
   }
+});
+
+test('锋盔骑士团学徒 weakens the highest ATK after its own 25 s cooldown and revives once', () => {
+  const KEY = 'enemy_1104_lfkght';
+  const chess = {
+    ...CHESS,
+    t_hit: chessRec({ id: 't_hit', profession: 'SNIPER', projectile: 'none', stats: { atk: 600, maxHp: 1e7, def: 0, res: 0, blockCnt: 0 }, rangeGrid: [[0, 0]], skill: null }),
+  };
+  const h = makeBattle({
+    content: 'generic', extraContent: [enemiesMod, bossesMod], seed: 1, autoFinish: false, timeLimit: 40,
+    defs: { enemies: V.enemies, chess },
+    units: [{ chessId: 't_hit', row: 9, col: 2 }, { chessId: 't_gun', row: 9, col: 3 }],
+  });
+  const e = put(h, KEY, [9, 12]);
+  const hit = h.unit('t_hit');
+  h.run(24);
+  assert.ok(!hit.findBuff('reg:weaken'), 'still inside the 25 s initial cooldown');
+  h.run(2);
+  const buff = hit.findBuff('reg:weaken');
+  assert.ok(buff, 'the cut lands after 25 s');
+  assert.equal(buff.status, 'weaken');
+  assert.ok(near(hit.s.atk, 300), 'ATK -50 % from this row, not from 左手');
+  assert.ok(!h.unit('t_gun').findBuff('reg:weaken'));
+  h.b.kill(e, null);
+  assert.equal(e.alive, true);
+  assert.equal(e.s.flags.untargetable, true);
+  assert.equal(h.b.errors.length, 0);
+});
+
+test('沙地兽 and 岩蛛 death-split the pinned child and count; silence stops it', () => {
+  const cases = [
+    ['enemy_1131_sbeast', 'enemy_1137_plasm', 2],
+    ['enemy_1131_sbeast_2', 'enemy_1138_tumor', 2],
+    ['enemy_1132_sarchn', 'enemy_1137_plasm', 3],
+    ['enemy_1132_sarchn_2', 'enemy_1138_tumor', 3],
+  ];
+  for (const [key, child, n] of cases) {
+    assert.equal(V.enemies[key].talents.bbStr['deathrattle.enemy_key'], child, key);
+    assert.equal(V.enemies[key].talents.bb['deathrattle.cnt'], n, key);
+    const h = fight();
+    const e = put(h, key, [9, 8]);
+    h.b.kill(e, null);
+    h.run(0.3);
+    assert.equal(living(h, child).length, n, key);
+    assert.equal(h.b.errors.length, 0, key);
+  }
+  const silenced = fight();
+  const e = put(silenced, 'enemy_1131_sbeast', [9, 8]);
+  silenced.b.applyStatus(e, 'silence', { duration: 30 });
+  silenced.b.kill(e, null);
+  silenced.run(0.3);
+  assert.equal(living(silenced, 'enemy_1137_plasm').length, 0);
+});
+
+test('雪怪小队 deals atkup.atk_scale only against a frozen target', () => {
+  const KEY = 'enemy_1064_snsbr';
+  const scale = V.enemies[KEY].talents.bb['atkup.atk_scale'];
+  assert.equal(scale, 1.5);
+  const h = fight({ units: [{ chessId: 't_wall', row: 9, col: 5 }], captureNoisy: true, hooks: ['damaged'] });
+  h.step(1);
+  const wall = h.unit('t_wall');
+  const e = put(h, KEY, [9, 5]);
+  assert.equal(h.runUntil(() => e.stats.attacks >= 1, 8), true);
+  const first = h.hooksOf('damaged').find((c) => c.source === e);
+  assert.ok(near(first.amount, e.s.atk));
+  h.b.applyStatus(wall, 'freeze', { duration: 30 });
+  assert.equal(h.runUntil(() => e.stats.attacks >= 2, 8), true);
+  const second = h.hooksOf('damaged').filter((c) => c.source === e)[1];
+  assert.ok(near(second.amount, e.s.atk * scale));
+  assert.equal(h.b.errors.length, 0);
+});
+
+test('冰爆源石虫·α death blast is physical ATK×boom within rawRangeRadius and applies cold', () => {
+  const KEY = 'enemy_1067_snslime_2';
+  const rec = V.enemies[KEY];
+  const h = fight({
+    units: [
+      { chessId: 't_wall', row: 10, col: 6, uid: 1 },
+      { chessId: 't_gun', row: 10, col: 4, uid: 2 },
+    ],
+  });
+  h.step(1);
+  const nearW = h.unit('t_wall');
+  const far = h.allies().find((u) => u.uid === 2);
+  const e = put(h, KEY, [10, 7.6]);
+  h.b.kill(e, null);
+  assert.ok(near(nearW.stats.taken, rec.stats.atk * rec.talents.bb['boom.atk_scale']));
+  assert.equal(far.stats.taken, 0, 'past rawRangeRadius 1.9');
+  assert.equal(nearW.s.flags.cold, true);
+  assert.equal(h.b.errors.length, 0);
+});
+
+test('沸血骑士团精锐 gains ATK and ASPD per enemy knock-down, capped at 10; a leak does not count', () => {
+  const KEY = 'enemy_1103_wdkght_2';
+  const bb = V.enemies[KEY].talents.bb;
+  assert.equal(bb['enhance.atk'], 0.1);
+  assert.equal(bb['enhance.attack_speed'], 5);
+  assert.equal(bb['enhance.max_stack_cnt'], 10);
+  const h = fight();
+  const e = put(h, KEY, [9, 8]);
+  h.step(1);
+  const baseAtk = e.s.atk;
+  const baseAspd = e.s.aspd;
+  h.b.kill(put(h, 'enemy_1000_gopro_2', [9, 12]), null);
+  assert.ok(near(e.s.atk, baseAtk * 1.1));
+  assert.equal(e.s.aspd, baseAspd + 5);
+  for (let i = 0; i < 12; i++) h.b.kill(put(h, 'enemy_1000_gopro_2', [9, 12]), null);
+  assert.ok(near(e.s.atk, baseAtk * 2));
+  assert.equal(e.s.aspd, baseAspd + 50);
+  const leaked = put(h, 'enemy_1000_gopro_2', [9, 12]);
+  h.b.leak(leaked);
+  assert.ok(near(e.s.atk, baseAtk * 2));
+  assert.equal(e.s.aspd, baseAspd + 50);
+  assert.equal(h.b.errors.length, 0);
 });
 
 test('规程 round multipliers use its own 攻坚装备 / 补给线II / 急行军 values on 下半\'s stack schedule', () => {

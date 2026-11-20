@@ -192,8 +192,9 @@ export function bondTier(battle, pid, bondId) {
   return b && b.active ? Math.max(1, Math.floor(num(b.tier, 1))) : 0;
 }
 export const bondActive = (battle, pid, bondId, minTier = 1) => bondTier(battle, pid, bondId) >= minTier;
-/** Live layers (also while the bond is inactive). */
-export const bondLayers = (battle, pid, bondId) => Math.max(0, num(bondState(battle, pid, bondId)?.layers, 0));
+/** Effective battle layers (permanent + temporary, also while inactive). */
+export const bondLayers = (battle, pid, bondId) => typeof battle.effectiveBondLayers === 'function'
+  ? battle.effectiveBondLayers(pid, bondId) : Math.max(0, num(bondState(battle, pid, bondId)?.layers, 0));
 /** Ids of the player's active bonds. */
 export function activeBondIds(battle, pid) {
   const out = [];
@@ -403,7 +404,8 @@ export function battleStore(battle, ns, init = () => ({})) {
 // battle: IN_BATTLE layer gains
 
 /**
- * Add IN_BATTLE layers (no-op in 联防 / boss / hidden fields: `battle.flags.layerGainsEnabled`).
+ * Add IN_BATTLE layers. No-op unless `battle.flags.layerGainsEnabled` (联防 always off; boss / hidden follow
+ * config.finalAssault.layerGainsEnabled — 规程 on, 盟约 off).
  *   playerId       receiving player
  *   bonds          bond id or array of ids (each gets `n`)
  *   n              layers per bond (floored)

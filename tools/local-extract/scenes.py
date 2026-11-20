@@ -38,6 +38,7 @@ import re
 import struct
 from pathlib import Path
 from regulation_scenes import STAGES as REGULATION_STAGES
+from scene_transport import write_scene_bins, record_scene_bins
 
 SAND = ['arts/maps/map_autochesssand/res.ab', 'arts/maps/map_survivaloasis_city/res.ab', 'arts/maps/map_yumen/res.ab']
 SHORE = ['arts/maps/map_doss_shore/res.ab']
@@ -68,8 +69,10 @@ SCENE_VERSION = 1
 # Manifest `scene` record (kind Scene) of each scene/<stageId> group. scene.json `version` stays SCENE_VERSION so a
 # scene extracted before this still loads. setup / doctor compare this with expected.mjs and ask once when an
 # existing record is older (DESIGN §34.12). 3: emission maps are lossless too, so a version-2 extract (normal and
-# gloss only) is stale and that same prompt asks again. 4: remove exact redundant renderers (#684, §34.24).
-SCENE_EXTRACT_VERSION = 4
+# gloss only) is stale and that same prompt asks again. 4: remove exact redundant renderers (#684, §34.24). 5: 规程's
+# three pieces are written whole (regulation_scenes.py, scene.json layout 'pieces'). 6: preserve opaque albedo RGB
+# beneath zero alpha in a lossless RGB companion; keep the original shared alpha atlas.
+SCENE_EXTRACT_VERSION = 6
 # display-space light value that a lightmap page's 1.0 stands for (decode_rgbm; scene.json lightRange, with
 # lightEncoding 'gamma'). The pages of the eleven scenes stay below 2.8.
 LIGHT_RANGE = 3.0
@@ -372,7 +375,7 @@ def opaque_albedo(img, info):
     the already encoded albedo so its RGB, including the existing lossy fit, stays exact.
     """
     keywords = set(info.get('keywords') or [])
-    if info.get('kind') == 'water' or keywords.intersection({
+    if info.get('kind') == 'water' or str(info.get('shader', '')).endswith('/Trap/Shadow') or keywords.intersection({
             '_ALPHATEST_ON', '_ALPHABLEND_ON', '_ALPHAPREMULTIPLY_ON'}):
         return None
     if 'A' not in img.getbands() or img.getchannel('A').getextrema()[0] != 0:
@@ -715,9 +718,9 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
                         'bounds': [round(v, 3) for v in (min(xs), min(ys), min(zs), max(xs), max(ys), max(zs))]})
         blob += data
     n = 0
-    (out_dir / 'scene.bin').write_bytes(bytes(blob))
-    manifest.setdefault(sub, {})['bin'] = {'path': f'/assets/local/{sub}/scene.bin', 'kind': 'SceneData', 'bytes': len(blob)}
-    n += 1
+    bin_parts = ([{'key': 'bin', 'bytes': (out_dir / 'scene.bin').write_bytes(blob), 'name': 'scene.bin'}]
+                 if source_adapter is not None else write_scene_bins(out_dir, blob))
+    n += record_scene_bins(manifest.setdefault(sub, {}), sub, bin_parts)
 
     # lightmap pages: light RGB + the shadow mask's R as alpha
     pages = {}
@@ -828,6 +831,8 @@ def export_scene(stage_id, deps, scene_path, ab_root, out_root, manifest, log, m
         if skipped:
             raise ValueError(f'{stage_id}: {skipped} sub-meshes have unresolved materials')
         doc['source'] = source_adapter.receipt
+    if len(bin_parts) > 1:
+        doc['binParts'] = [part['bytes'] for part in bin_parts]
     (out_dir / 'scene.json').write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     manifest[sub]['scene'] = {'path': f'/assets/local/{sub}/scene.json', 'kind': 'Scene', 'chunks': len(records),
                               'version': SCENE_EXTRACT_VERSION}

@@ -1,4 +1,7 @@
 import { boardToUnity } from './math.js';
+import { GLYPH } from '../style.js';
+
+export const TERRAIN_EFFECTS = Object.freeze({ w: 'mapeff_079_dikuai_01', i: 'map_promote_01', m: 'mapeff_mud_ground_01' });
 
 /** Map-owned loops have their own lifetime: battle resets must not remove preparation terrain effects. */
 export class TerrainFx {
@@ -6,8 +9,10 @@ export class TerrainFx {
 
   update(board, dt) {
     const pack = board?.official;
-    const effects = pack?.doc?.tileEffects;
-    const key = this.ofx.active && effects ? `${pack.key}|${board.areaKey}|${this.ofx.tier}` : '';
+    const effects = pack?.doc?.tileEffects || (board?.stage?.arena ? TERRAIN_EFFECTS : { w: TERRAIN_EFFECTS.w });
+    const rawHeight = pack?.doc?.tileDepthHeights?.[board?.stage?.scenePiece?.group];
+    const height = Number.isFinite(rawHeight) && rawHeight >= 0 && rawHeight <= 4 ? rawHeight : null;
+    const key = board && this.ofx.active && effects ? `${pack?.key || board.stageKey}|${board.areaKey}|${this.ofx.tier}|${height}` : '';
     if (key !== this.key) {
       this.clear(); this.key = key;
       if (key) {
@@ -15,7 +20,12 @@ export class TerrainFx {
         // This independent FX renderer does not inherit the 3D canvas's depth buffer.
         // Give its native ZTest materials the visible board's heights, including the bench
         // in front of the road. Hidden field families must not become phantom occluders.
-        this.ofx.setGround((r, c) => grid[r]?.[c]?.drawn ? grid[r][c].h : 0, key);
+        this.ofx.setGround((r, c) => {
+          const tile = grid[r]?.[c];
+          if (!tile?.drawn) return 0;
+          const cls = GLYPH[tile.glyph]?.h;
+          return height != null && (cls === 'wall' || cls === 'bench') ? height : tile.h;
+        }, key);
         for (let r = 0; r < grid.length; r++) for (let c = 0; c < grid[r].length; c++) {
           const tile = grid[r][c], effect = effects[tile.glyph];
           if (!tile.drawn || !effect || !this.ofx.lib.has(effect)) continue;

@@ -149,6 +149,7 @@ import { TileField } from './tiles.js';
 import { UnitView, ItemView, DeviceView, FORMS, syncView } from './units.js';
 import { FxSystem, ensureDamageFonts, projSpeed } from './fx.js';
 import { OfficialFx } from './vfx/system.js';
+import { TerrainFx } from './vfx/terrainfx.js';
 import { FxWiring } from './vfx/wiring.js';
 import { PluginFxPlayer } from './vfx/pluginPlayer.js';
 import { resolveOfficialFx } from './vfx/tier.js';
@@ -159,9 +160,9 @@ import { loadBoardArt } from './boardArt.js';
 import { ImpostorAtlas } from './impostor.js';
 import { stepClipBounds } from './spine.js';
 import { loadThree, loadBoardPack, loadScenePack, webgl2Available, boardArtListed } from './board3d/load.js';
-import { TerrainFx } from './vfx/terrainfx.js';
 import { BoardScene } from './board3d/scene.js';
 import { parsePenRect, layoutPen, penSignature } from './pen.js';
+import { arenaField, arenaViewOf } from './arenaView.js';
 import { IDENTITY, bossPrepField, tilesToDisp, leaderStand } from './prepfield.js';
 import { pickOnTile, pickBattle, hitTiles } from './pick.js';
 import { promotionsOf } from './promote.js';
@@ -315,6 +316,7 @@ export async function createFieldView(host, options = {}) {
   };
 
   let mode = 'idle';          // 'idle' | 'prep' | 'battle'
+  let stageData = null;
   let stageRec = null;
   let renderStage = null;
   let cam = presetCamera('prep', { width: s0.width, height: s0.height, padding: defaultPadding('prep', s0) }, { hud: hudBands('prep', s0) });
@@ -676,6 +678,7 @@ export async function createFieldView(host, options = {}) {
     camOpts = { ...o };
     // the field actually shown (a 'prep' camera on the boss rows is the Final Assault prep: boss field built / drawn)
     const vk = viewKind(camKind, camOpts);
+    showField(vk);
     if (vk === 'prep') setPrepField(IDENTITY);
     else if (vk === 'bossPrep') setPrepField(bossPrepField(camOpts.side === 'R' ? 'R' : 'L'));
     syncPresentationStage(vk);
@@ -779,6 +782,24 @@ export async function createFieldView(host, options = {}) {
 
   function setStage(st) {
     if (!st || typeof st !== 'object' || !Array.isArray(st.rows)) return false;
+    stageData = st;
+    drawStage(st.renderLayouts ? st : arenaField(st, arenaViewFor(viewKind(camKind, camOpts))));
+    return true;
+  }
+
+  /** 规程: the piece of the arena a view kind shows (render/arenaView.js); a stage without an arena stays as it is. */
+  function showField(vk) {
+    if (!stageData) return;
+    const st = stageData.renderLayouts ? stageData : arenaField(stageData, arenaViewFor(vk));
+    if (st !== stageRec) drawStage(st);
+  }
+
+  function arenaViewFor(vk) {
+    const origin = camBeforePen ? viewKind(camBeforePen.kind, camBeforePen.opts) : null;
+    return arenaViewOf(vk, origin);
+  }
+
+  function drawStage(st) {
     stageRec = st;
     renderStage = presentationStage(st, viewKind(camKind, camOpts));
     tiles.setStage(renderStage);
@@ -793,7 +814,6 @@ export async function createFieldView(host, options = {}) {
     // a pen laid out before the stage arrived (setPrep / a scouting board first) used the default zones and the old
     // tile heights: lay it out again on this stage
     if (penList) { const l = penList; clearPen(); setPenList(l); }
-    return true;
   }
 
   // ---- views ----------------------------------------------------------------------------------------------
@@ -976,6 +996,8 @@ export async function createFieldView(host, options = {}) {
       v._home = w;
       v.dimmed = false;
       if (info.kind === 'item' && v.setIcon) v.setIcon(info.icon); // an icon the manifest named late (onAssets)
+      // Reused views must restore full size when the operator leaves the hand.
+      if (v instanceof UnitView) v.bench = e.area === 'hand' && info.kind === 'op';
       if (v.setCount) v.setCount(e.piece.kind === 'token' ? e.piece.count : 0);
       if (v.setItemProgress) v.setItemProgress(pieceItemProgress(e.piece));
       if (v.setItems) v.setItems(Array.isArray(e.piece.items) ? e.piece.items.map((it) => { const r = data.item(it?.id); return assets.itemIcon ? assets.itemIcon(r ? { trapId: r.trapId, iconId: r.iconId } : it?.id) : null; }) : []);
@@ -1575,7 +1597,7 @@ export async function createFieldView(host, options = {}) {
     // own preview, bounties excluded); a real battle empties the pen (the enemies are about to spawn)
     if (battleMeta.prep) setPenList(Array.isArray(meta.nextEnemies) ? meta.nextEnemies : (ownPen || []).filter((x) => x && x.source !== 'bounty' && x.source !== 'effect'));
     else setPenList(null);
-    if (meta.stageId && (!stageRec || stageRec.id !== meta.stageId)) {
+    if (meta.stageId && (!stageData || stageData.id !== meta.stageId)) {
       const st = data.stage(meta.stageId);
       if (st) setStage(st);
     }
@@ -1678,7 +1700,7 @@ export async function createFieldView(host, options = {}) {
     if (!info || gone.has(id)) return null;
     v = info.kind === 'device' ? new DeviceView(ctx, info)
       : info.kind === 'item' ? new ItemView(ctx, scoutItemInfo(info))
-      : new UnitView(ctx, info, { prep: !!battleMeta?.prep && info.side === 'ally' });
+      : new UnitView(ctx, info, { prep: !!battleMeta?.prep && info.side === 'ally', bench: info.area === 'hand' && info.kind === 'op' });
     // a teammate's operator shows its equipped items like the own prep bench does (item pips; user playtest #2:
     // at the unit, not only in the detail card) — prep surfaces only, the battle HUD stays as it is
     if (v.setItems && battleMeta?.prep && Array.isArray(info.items) && info.items.length) {

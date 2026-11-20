@@ -4,6 +4,7 @@
 // coming enemies; in a boss round's prep on the player's half of the boss field).
 // Installed on Match.prototype by server/match/Match.js (a method container: never instantiated; `this` is the match).
 
+import { itemProgress, equippedItemProgress } from '../itemProgress.js';
 import { PHASE, GEO } from '../../../shared/constants.js';
 import { TEST_PUBLIC_LOG } from '../../../shared/testMode.js';
 import { boardOrder, pieceDir } from '../board.js';
@@ -14,7 +15,6 @@ import { bountySpawns, previewOf } from '../waves.js';
 import { timelineAt } from '../fields.js';
 import { bossFieldPlacement } from '../finalAssault.js';
 import { battleProgress } from '../../sim/spec.js';
-import { equippedItemProgress, itemProgress } from '../itemProgress.js';
 import { pieceGarrisonTags, pieceItemTags } from '../showTags.js';
 
 /** Milliseconds since the match started. A stamp before the start, or a bad stamp, is 0. The stored log keeps the epoch. */
@@ -146,7 +146,7 @@ export class MatchViews {
         // m.result's own bonds, so their layers would only cost every m.public bytes for the rest of the match
         // (the mode-off bonds with members included, `off: true`, as in m.private — bondsMeta.offBondCounts).
         // A 规程 replacement adds `effectId` and, when that bond has no members yet, a zero row the strip does not draw.
-        bonds: ps.alive ? bondList(this.gd, ps.bondsView(), { off: offBondCounts(ps.gd || this.gd, ps), effectOverrides: commandBondOverrides(ps) }) : [],
+        bonds: ps.alive ? bondList(this.gd, ps.bondsView(), { tempLayers: ps.tempLayers, off: offBondCounts(ps.gd || this.gd, ps), effectOverrides: commandBondOverrides(ps) }) : [],
         fieldId: this.fieldOf(ps),
         status: this.statusOf(ps),
         autoplay: ps.autoplay,
@@ -406,6 +406,8 @@ export class MatchViews {
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
         itemProgress: equippedItemProgress(ps, piece),
         garrisonTags: pieceGarrisonTags(ps, piece),
+        showTag: piece.kind === 'item' ? Object.values(pieceItemTags(ps, piece) || {}) : undefined,
+        progress: piece.kind === 'item' ? itemProgress(ps, piece) : undefined,
         standInFor: rec && rec.standInFor ? rec.standInFor : undefined,
         diy,
         // 皮肤 (docs/SKINS.md): built per player (the owner of the scouted board), so a teammate's piece shows THEIR
@@ -475,6 +477,7 @@ export class MatchViews {
         moduleId: lo && typeof lo.moduleId === 'string' ? lo.moduleId : undefined,
         items: piece.kind === 'chess' && Array.isArray(piece.items) && piece.items.length ? piece.items.map((it) => it.id) : undefined,
         itemProgress: equippedItemProgress(ps, piece),
+        showTag: piece.kind === 'item' ? Object.values(pieceItemTags(ps, piece) || {}) : undefined,
         progress: piece.kind === 'item' ? itemProgress(ps, piece) : undefined,
         garrisonTags: pieceGarrisonTags(ps, piece),
         showTags: pieceItemTags(ps, piece),

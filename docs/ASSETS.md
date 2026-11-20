@@ -24,6 +24,12 @@ cooldown. It respects the SFX/mute settings; a stale asynchronous decode cannot 
 All downloaded game assets the client needs are listed in **`data/assets.json`**. Game-art requests must use that manifest.
 The original project icons below are shipped static files, not downloaded game assets.
 
+Bond UI sprites are registered in `docs/research/07-assets.json` under `autochessUi` (`hudBondItem`,
+`bondDetail`, `bondChar`) and `arts.bondBoardIcon`; the asset plan consumes these registrations.
+After updating a checkout, run `npm run assets` to download them and regenerate the manifest. An older or incomplete
+manifest keeps text stages and rarity badges, CSS discs, borders and badge backgrounds, and generic navigation arrows;
+optional decoration disappears. The UI never guesses `/assets/ui/` paths for missing entries.
+
 ## Original project application icons (#413)
 
 By the maintainer's revised decision of 2026-10-10, **沿用 0.2.x 的薄荷绿城堡并精修**.
@@ -643,7 +649,7 @@ carry all three pieces and their dependencies. The archived `fetch_scenes.py` do
 scenes, and does not supply missing Regulation prefabs. Shared `scene/tex` entries survive a single-map merge.
 Exactly these ten new scene JSON paths are accepted by the standard resources / ZIP / fingerprints chain.
 
-Scene extraction version **4** removes complete, exact redundant renderers (GitHub #684, DESIGN §34.24).
+Scene extraction version **6** preserves opaque albedo RGB beneath zero alpha and includes native tile-depth metadata. The fork retains its version-2 composite layout; the renderer also understands upstream version-1 whole-piece packs. Version 4 removed exact redundant renderers (GitHub #684, DESIGN §34.24).
 The official Android `26-04-13-12-31-42_e9b560` m03 scene contains both a base rock (renderer 2048) and its
 `HIDDEN@1` copy (2193); static batching gives the base a different mesh buffer and lightmap UVs. **[ASSUMED]**
 The maintainer's 2026-10-17 correction keeps the normal bake: all submeshes, oriented triangles, UV0, colours,
@@ -656,7 +662,7 @@ ties are described in §34.24; deletion is a remake art correction, not an offic
 After updating, run `node tools/setup.mjs --scenes`, or answer a typed **yes** to setup's existing version-only
 re-extraction prompt. Version-3 scenes still load but contain the redundant geometry; replacing code alone does
 not repair already extracted files. A missing-scene/partial set retains the existing explicit `--scenes` / `--yes`
-gate. Legacy `scene.json` remains version 1; Regulation compositions use version 2, and both use manifest `scene` record version 4.
+gate. Legacy `scene.json` remains version 1; Regulation composites use mesh version 2. Both use manifest `scene` record version 6.
 
 For inspection without replacing installed assets, the local extractor already supports **both** output options:
 
@@ -1313,16 +1319,19 @@ Docker 复用旧素材镜像时，在复制素材后、生成哈希前运行 `np
 
 Large scenes can declare an ordered, nonempty `scene.json.binParts` array of byte lengths, for example
 `[15000000, 15000000, 2194384]`. The loader derives manifest keys `bin`, `bin1`, `bin2`, ... from array indices;
-`binBytes` is the complete original mesh length. Existing `{key, bytes}` record arrays remain readable with strict
-canonical-key validation; mixed numeric/record arrays are rejected. The format has variable part counts.
+`binBytes` is the complete original mesh length. The format has variable part counts.
 Each part is at most 15,000,000 bytes to fit deployments
 with a 16,000,000-byte resource-pack cap, including ZIP framing and its manifest.
 
 Loader/exporter policy is separate from the format: `sceneTransport.js` and `scene_transport.py` currently allow
 60,000,000 total bytes and 256 parts. The total preserves the previous four-by-15-MB budget. The part-count budget
 bounds request/metadata work while permitting smaller pieces; neither value is an official game or browser limit.
-The Python writer accepts `part_bytes`, `max_bytes` and `max_parts` keyword budgets. Default exports use 15 MB pieces;
-small scenes retain `scene.bin` alone, and existing single-file resources keep their original loading path.
+The Python writer accepts `part_bytes`, `max_bytes` and `max_parts` keyword budgets. **By default a scene stays one
+`scene.bin`** (no `binParts`), as before: the release packages allow 256 MiB per file and one request is cheaper. A
+deployment with a small per-file limit sets `SP_SCENE_PART_BYTES=15000000` (at most 15,000,000) while extracting, and
+every scene above that size is written in parts; a later export with fewer parts removes the stale `sceneN.bin` files
+and their manifest keys (`scene_transport.py` `write_scene_bins` / `record_scene_bins`). Existing single-file resources
+keep their original loading path. An old client reads only `scene.bin`, so a split scene needs the matching page too.
 
 The loader validates the complete declaration before allocating or requesting binary parts. It allocates the full
 destination once, awaits each part, checks its exact size, writes it at the next offset and releases the temporary
@@ -1334,4 +1343,8 @@ The loader retains the destination plus the current part, rather than all part b
 Network/cache storage and garbage-collection timing can add memory beyond these live references. Geometry is still
 parsed after the complete binary is loaded; this transport change does not introduce progressive scene rendering.
 
-See [transport receipts](research/scene-transport-20261112.md).
+The reporting fork's small-pack cap motivates the 15 MB piece size; upstream accepts 256 MiB per ZIP entry.
+Actual unmodified #977 MAP05 / MAP10 / MAP12 binaries are 19,614,492 / 31,660,444 / 32,194,384 bytes. Validation
+can repartition existing bytes without rerunning Unity extraction.
+
+The fork extraction entry explicitly defaults `SP_SCENE_PART_BYTES` to `15000000` for its small resource ZIPs. The shared writer remains single-file by default; intermediate composite sources stay whole until final publication. A shorter re-extraction removes obsolete segment files and manifest keys.

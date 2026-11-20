@@ -573,7 +573,9 @@ const BY_BUFF = {
   },
   // 灵巧涡轮手套: after deploy, +attack_speed ASPD per second, cap atk_speed_layer_max. [ASSUMED] "失去该效果" clears the
   // stacks when damage is taken (a 流失 is not 受到伤害) and they build again; a new deployment starts from zero.
+  // A lent copy does not tick: the official child buff is created only when autochess_share_equip_flag is not set.
   act3autochess_equip_acarm132_global_buff(battle, u, p, S) {
+    if (S.lent) return;
     const step = num(p.attack_speed);
     const cap = Math.max(1, Math.floor(num(p.atk_speed_layer_max, 20)));
     if (!step) return;
@@ -602,9 +604,18 @@ const BY_BUFF = {
   },
   // 乌萨斯呼吸器: block_cnt_cell and atk_cell × stacks, cap layer_max. [ASSUMED] the deployment already in progress is
   // stack 1; the same deploySeq does not add another, and each later deployment adds one.
+  // A lent copy is the autochess_share_equip_flag branch: one cell of block (ADDITION) and one cell of ATK
+  // (MULTIPLIER), and it does not read or write the layer key. The owner's ON_OWNER_POST_BORN increment stays
+  // on the owner's grant. [ASSUMED] the lent copy does not also run POST_BORN — that event is outside the share
+  // branch, and applying it on top of the one cell would stack a second cell. The layer key is the wearer's
+  // character blackboard, so a lent copy would not have raised the owner's count either way.
   act3autochess_equip_acarm138_global_buff(battle, u, p, S) {
     const block = num(p.block_cnt_cell);
     const atk = num(p.atk_cell);
+    if (S.lent) {
+      S.stat('breath', { blockCnt: block, ...directMods({ atk }) });
+      return;
+    }
     const cap = Math.max(1, Math.floor(num(p.layer_max, 1)));
     const st = { n: 0, seq: null };
     const apply = () => S.stat('breath', { blockCnt: block * st.n, ...directMods({ atk: atk * st.n }) });
@@ -618,12 +629,18 @@ const BY_BUFF = {
     S.on('deploy', (c) => { if (c.unit === u) add(u.deploySeq); });
   },
   // 多功能补剂: each non-proc damage adds temp_stack_count_add layers to each of the carrier's own active bonds, capped
-  // per bond at temp_stack_count_max. Live battle layers only — not gainLayers, so the match does not keep them.
+  // per carrier/bond at temp_stack_count_max. The shared temporary ledger owns gameplay, display and conversion.
   act3autochess_equip_acarm131_global_buff(battle, u, p, S) {
     const add = Math.floor(num(p.temp_stack_count_add));
     const cap = Math.floor(num(p.temp_stack_count_max));
     if (!(add > 0) || !(cap > 0)) return;
-    const got = new Map();
+    // Borrowing may expire and be granted again; neither earned layers nor the per-battle cap resets.
+    const rt = runtime(battle);
+    rt.supplementCounts ||= new WeakMap();
+    if (!rt.supplementCounts.has(u)) rt.supplementCounts.set(u, new Map());
+    const sources = rt.supplementCounts.get(u);
+    if (!sources.has(S.tag)) sources.set(S.tag, new Map());
+    const got = sources.get(S.tag);
     const player = () => battle.getPlayer(u.ownerId);
     onDamageEnemies(S, u, (_t, c) => {
       if (isProc(c.dmg)) return;
@@ -636,19 +653,11 @@ const BY_BUFF = {
         const have = got.get(id) || 0;
         const n = Math.min(add, cap - have);
         if (n <= 0) continue;
-        b.layers = num(b.layers) + n;
-        got.set(id, have + n);
+        const actual = battle.addTempLayers(u.ownerId, id, n);
+        got.set(id, have + actual);
       }
     });
-    S.onDispose(() => {
-      const ps = player();
-      if (!ps || !ps.bonds) return;
-      for (const [id, n] of got) {
-        const b = ps.bonds[id];
-        if (b) b.layers = Math.max(0, num(b.layers) - n);
-      }
-      got.clear();
-    });
+    // Disposing the scope only unsubscribes future damage triggers. Earned layers belong to the round pool.
   },
   // 伊比利亚骨刺刀: each non-proc damage also deals 1 + double_damage arts hits of atk_scale × ATK. Not bond-gated.
   act3autochess_equip_acarm133_global_buff(battle, u, p, S) {
@@ -696,8 +705,10 @@ const BY_BUFF = {
   },
   // Named so the key is handled. The 麻痹 itself is the hammer runtime (big_hammer); applying it here would stack twice.
   act3autochess_equip_acarm140_global_buff() {},
-  // 佣兵名牌: ATK and max HP per active bond of the player, cap max_layer. [ASSUMED] the player's active bonds, not
-  // only the ones on the carrier.
+  // 佣兵名牌: ATK and max HP per active bond of the player, cap max_layer. The same action
+  // AutoChessAssignActiveGarrisonBondCntToBlackboard is on act1autochess_band2_buff (众志合一,
+  // 「场上存在3、4或5种以上激活盟约」), whose count is activeBondIds — every active bond of the player,
+  // not a garrison-only subset. The 0.5s poll is unchanged.
   act3autochess_equip_acarm141_global_buff(battle, u, p, S) {
     const atk = num(p.atk), hp = num(p.hp);
     const cap = Math.max(0, Math.floor(num(p.max_layer, 8)));
@@ -790,14 +801,17 @@ const BY_BUFF = {
       });
     }
   },
-  // 动能单手弩: on a hit, prob to multiply that damage by atk_scale ("提升至130%"). [ASSUMED] the same hit-mul slot
-  // as 精准狙击镜, so it stacks multiplicatively with other hit multipliers. Element gauges and item procs are skipped.
+  // 动能单手弩 / 动能轰击弩: prob to raise that attack's ATK to atk_scale ("该次攻击力提升至130%"), before DEF.
+  // Template act3autochess_equip_acarm150_global_buff is ON_CALCULATE_DAMAGE → Dice → AtkScaleUp
+  // (_atkScaleKey atk_scale, _overwriteAtkScale false: multiply the attack's existing scale). The live
+  // blackboard is 1.3, so _cancelIfAtkScaleZero does not come up; a 0 scale still zeroes the hit.
+  // Element gauges and item procs are skipped.
   act3autochess_equip_acarm150_global_buff(battle, u, p, S) {
     const pr = num(p.prob), sc = num(p.atk_scale, 1);
     if (!(pr > 0) || sc === 1) return;
     S.on('hit', (c) => {
       if (c.source !== u || !c.dmg || c.dmg.type === 'element' || isProc(c.dmg)) return;
-      if (chance(battle, pr)) c.dmg.mul *= sc;
+      if (chance(battle, pr)) c.dmg.amount *= sc;
     });
   },
   // 汲取者之喙: heal self heal_scale × the damage dealt. can_double (the fused 镰) doubles that while the skill is on.
@@ -1392,6 +1406,7 @@ export function installItem(battle, u, itemId, { lent = false } = {}) {
   const copies = lent ? 0 : [...gm.values()].filter((g) => !g.lent && g.id === itemId).length;
   const tag = lent ? '@lend' : copies ? `#${(rt.copySeq = (rt.copySeq || 0) + 1)}` : '';
   const S = new Scope(battle, u, `item:${itemId}${tag}`);
+  S.lent = lent;
   const key = itemKeyOf(itemId);
   const grant = { gid, id: itemId, key, lent, scope: S, timer: null, dispose: null };
   grant.dispose = () => {

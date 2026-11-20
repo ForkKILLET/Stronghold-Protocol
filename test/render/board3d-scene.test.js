@@ -16,6 +16,7 @@ import { BoardScene, sceneGroupVisible, LIGHTING } from '../../public/js/render/
 import { parseObj } from '../../public/js/render/board3d/obj.js';
 import { TILE_H } from '../../public/js/render/style.js';
 import { AREAS } from '../../public/js/render/board3d/layout.js';
+import { arenaField } from '../../public/js/render/arenaView.js';
 import { resolveUvTable } from '../../public/js/render/board3d/atlas.js';
 import { presetCamera } from '../../public/js/render/projection.js';
 import { sceneMaterial, sceneWaterMaterial, sceneBlend, sceneEnvTexture, focusUniforms, SCENE_LIGHT, waterMaterial, applyWaterMaterial, WATER_DEFAULTS, SCENE_WATER_DEFAULTS, WATER_TUNING, boardMaterial, glassMaterial, trapMaterial } from '../../public/js/render/board3d/materials.js';
@@ -120,7 +121,7 @@ describe('scenes.py (no UnityPy needed)', { skip: !PY && 'no python3' }, () => {
     const { scenes } = JSON.parse(r.stdout);
     assert.equal(scenes.sub, 'scene');
     assert.equal(scenes.tex, SCENE_TEX_GROUP);
-    assert.equal(scenes.version, 4, 'manifest scene-record version; scene.json stays SCENE_VERSION');
+    assert.equal(scenes.version, 6, 'manifest scene-record version; scene.json stays SCENE_VERSION');
     const ids = scenes.stages.map((x) => x.id);
     const regulationStages = JSON.parse(readFileSync(path.join(ROOT, 'data/versions/act3autochess-v3_1/stages.json'), 'utf8'));
     const battlefields = [...Object.keys(stages), ...Object.keys(regulationStages)].filter((id) => /^act\dautochess_m\d+$/.test(id)).sort();
@@ -239,7 +240,7 @@ print(json.dumps({
   'lossless': lossless.get('webp'), 'lossy': lossy.get('webp'), 'match': match,
 }))`);
     assert.equal(out.mesh, SCENE_VERSION);
-    assert.equal(out.ver, 4);
+    assert.equal(out.ver, 6);
     assert.deepEqual(out.metro, ['map', 'normalMap', 'glossMap', 'emissionMap']);
     assert.deepEqual(out.floor, ['map', 'normalMap', 'glossMap']);
     assert.deepEqual(out.cut, ['map', 'normalMap', 'glossMap', 'emissionMap']);
@@ -296,6 +297,43 @@ print(json.dumps({
       assert.equal(out.mode, null);
     }
   });
+});
+
+test('scene transport writer: one scene.bin by default, parts only on request, a shorter export drops stale parts', { skip: !PY && 'no Python' }, () => {
+  const out = py(`import tempfile, hashlib, os
+from pathlib import Path
+os.environ.pop('SP_SCENE_PART_BYTES', None)
+with tempfile.TemporaryDirectory() as tmp:
+    folder = Path(tmp)
+    raw = b'abc' * 5000001
+    whole = s.write_scene_bins(folder, raw)
+    parts = s.write_scene_bins(folder, raw, part_bytes=15000000)
+    joined = b''.join((folder / p['name']).read_bytes() for p in parts)
+    entry = {'scene': {}}
+    s.record_scene_bins(entry, 'x', parts)
+    keys_split = sorted(entry)
+    os.environ['SP_SCENE_PART_BYTES'] = '15000000'
+    by_env = s.write_scene_bins(folder, raw)
+    del os.environ['SP_SCENE_PART_BYTES']
+    small = s.write_scene_bins(folder, b'abc')
+    s.record_scene_bins(entry, 'x', small)
+    left = sorted(p.name for p in folder.iterdir())
+    rejected = False
+    try:
+        s.write_scene_bins(folder, b'')
+    except ValueError:
+        rejected = True
+    print(json.dumps({'whole': whole, 'parts': parts, 'byEnv': len(by_env), 'same': hashlib.sha256(raw).digest() == hashlib.sha256(joined).digest(),
+                      'small': small, 'keysSplit': keys_split, 'keysAfter': sorted(entry), 'left': left, 'emptyRejected': rejected}))`);
+  assert.deepEqual(out.whole, [{ key: 'bin', bytes: 15000003, name: 'scene.bin' }], 'one file unless a part size is asked for');
+  assert.deepEqual(out.parts.map(p => [p.key, p.bytes]), [['bin', 15000000], ['bin1', 3]]);
+  assert.equal(out.byEnv, 2, 'SP_SCENE_PART_BYTES splits too');
+  assert.equal(out.same, true);
+  assert.deepEqual(out.keysSplit, ['bin', 'bin1', 'scene']);
+  assert.deepEqual(out.small, [{ key: 'bin', bytes: 3, name: 'scene.bin' }]);
+  assert.deepEqual(out.keysAfter, ['bin', 'scene'], 'the stale bin1 key is dropped');
+  assert.deepEqual(out.left, ['scene.bin'], 'the stale scene1.bin is removed');
+  assert.equal(out.emptyRejected, true);
 });
 
 describe('scene chunks (load.js)', () => {
@@ -1132,10 +1170,15 @@ describe('extracted scenes (when scene bundles were extracted here)', { skip: !O
       assert.ok(stage, `${doc.stage}: installed scene has its version's stage`);
       const board = new BoardScene(THREE, fakePack(), { renderer: stubRenderer() });
       board.setScenePack(doc.stage, { key: g, stage: doc.stage, doc, chunks, groups: rects, images: { tex: {}, lm: [] } });
+      // 规程: each view draws the stage of its piece (render/arenaView.js), and that piece's group alone
+      const pieces = doc.layout === 'pieces';
       board.setStage(stage);
+      if (pieces) assert.equal(sceneMeshes(board).length, 0, `${doc.stage}: the composed stage does not draw a pieces scene`);
       for (const [name, area] of views) {
         board.setArea(area);
-        const shown = chunks.filter((c) => sceneGroupVisible(c.group ? rects[c.group] : null, area, c.group));
+        if (pieces) board.setStage(arenaField(stage, name));
+        const piece = pieces ? board.stage.scenePiece : null;
+        const shown = chunks.filter((c) => (piece ? c.group === piece.group : sceneGroupVisible(c.group ? rects[c.group] : null, area, c.group)));
         const keys = new Set(shown.map((c) => sceneMaterialKey(c, doc.materials[c.material])));
         const meshes = sceneMeshes(board);
         assert.equal(meshes.length, keys.size, `${doc.stage} ${name}: ${shown.length} chunks → ${keys.size} meshes`);

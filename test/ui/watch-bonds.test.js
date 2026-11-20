@@ -31,6 +31,7 @@ globalThis.fetch = async (url) => {
 
 const { screenFieldId, bondOwnerId, ownerBonds, withLiveLayers, ownerBoard, stripView, playerBonds, watchedPlayer, playerLayer, screenStrip,
   detailBondOwner, toggleBond, popupView } = await import('../../public/js/ui/watchBonds.js');
+const { bondMembers, memberHeadCount } = await import('../../public/js/ui/gameLogic.js');
 const { BondStrip, BondPopup } = await import('../../public/js/ui/bondStrip.js');
 const { CombatHud } = await import('../../public/js/ui/combatHud.js');
 const { cameraLayers } = await import('../../public/js/battle/observe.js');
@@ -38,36 +39,30 @@ const { BOND_LAYER_CAP } = await import('../../shared/constants.js');
 const { data } = await import('../../public/js/data.js');
 await data.loadAll('bonds', 'chess', 'assets');
 
-test('temporary layers add to the capped permanent value without mutating it; strip and popup share the total', () => {
+test('temporary display keeps a permanent base, adds the yellow strip total and remains through settlement', () => {
   const original = [{ bondId: 'ursusShip', layers: 100, count: 3, active: true, tier: 1 }];
-  const list = withLiveLayers(original, null, { ursusShip: 20 });
-  assert.equal(list[0].layers, 120); assert.equal(list[0].tempLayers, 20);
-  assert.deepEqual(original, [{ bondId: 'ursusShip', layers: 100, count: 3, active: true, tier: 1 }]);
-  assert.equal(withLiveLayers(original, { ursusShip: 1000 }, { ursusShip: 20 })[0].layers, BOND_LAYER_CAP + 20);
-  assert.equal(withLiveLayers([{ ...original[0], layers: 120 }], { ursusShip: 100 }, { ursusShip: 20 })[0].layers, 120,
-    'a newer settled public view does not double-count the displayed battle’s temporary conversion');
-  const disc = [...walk(BondStrip({ bonds: list, onOpen() {} }))].find(v => v.type?.name === 'BondDisc');
-  assert.equal(disc.props.layers, 120); assert.equal(disc.props.tempLayers, 20);
-  const popup = [...walk(BondPopup({ bondId: 'sargonShip', entry: { ...list[0], bondId: 'sargonShip' },
-    priv: null, onClose() {}, onMember() {} }))];
-  const total = popup.find(v => v.type === 'b' && v.props.class?.includes('bond-layers--temporary'));
-  assert.equal(total.props.children, 120, 'the popup marks the same combined total yellow');
-  assert.match(read('public/css/components.css'), /\.bond__count\.is-temporary, \.bpop \.bond-layers--temporary \{ color: var\(--gold-2\); \}/);
-  assert.equal(withLiveLayers(original, null, null), original, 'leaving combat restores the permanent record');
-});
-
-test('temporary layers follow the current field owner and are absent in prep, settle and a mismatched field', () => {
-  const pub = { players: [{ playerId: 'me', bonds: [{ bondId: 'ursusShip', layers: 100 }] },
-    { playerId: 'other', bonds: [{ bondId: 'ursusShip', layers: 40 }] }] };
+  const pub = { players: [{ playerId: 'me', bonds: original },
+    { playerId: 'other', bonds: [{ bondId: 'ursusShip', layers: 40, count: 3, active: true, tier: 1 }] }] };
   const opts = { pub, myId: 'me', combat: true, watchingOther: true, watching: 'n:other', battleFieldId: 'n:other',
     bondTempLayers: { me: { ursusShip: 20 }, other: { ursusShip: 7 } } };
   const watched = screenStrip(opts);
-  assert.equal(watched.ownerId, 'other'); assert.equal(watched.bonds[0].layers, 47);
-  for (const patch of [{ combat: false }, { combat: false, settle: true }, { battleFieldId: 'n:me' }]) {
-    assert.equal(screenStrip({ ...opts, ...patch }).bonds[0].layers, 40);
+  assert.equal(watched.ownerId, 'other');
+  assert.equal(watched.bonds[0].layers, 40); assert.equal(watched.bonds[0].tempLayers, 7);
+  assert.equal(screenStrip({ ...opts, combat: false, settle: true }).bonds[0].tempLayers, 7);
+  for (const patch of [{ combat: false }, { battleFieldId: 'n:me' }]) {
+    assert.equal(screenStrip({ ...opts, ...patch }).bonds[0].tempLayers, undefined);
   }
-  assert.equal(playerBonds({ pub, myId: 'me', ownerId: 'me', tempLive: opts.bondTempLayers })[0].layers, 120);
-  assert.equal(popupView({ pub, myId: 'me', open: { id: 'ursusShip', ownerId: 'other' }, tempLive: opts.bondTempLayers }).entry.layers, 47);
+  const list = playerBonds({ pub, myId: 'me', ownerId: 'me', temporary: opts.bondTempLayers });
+  assert.equal(list[0].layers, 100); assert.equal(list[0].tempLayers, 20);
+  const nodes = [...walk(BondStrip({ bonds: list, onOpen() {} }))];
+  assert.equal(nodes.find(v => v.type?.name === 'BondDisc').props.layers, 120);
+  assert.ok(nodes.some(v => v.props?.class?.includes('has-temp-layers')));
+  const popup = popupView({ pub, myId: 'me', open: { id: 'ursusShip', ownerId: 'other' }, temporary: opts.bondTempLayers });
+  assert.equal(popup.entry.layers, 40); assert.equal(popup.entry.tempLayers, 7);
+  const converted = { players: [{ playerId: 'me', bonds: [{ ...original[0], layers: 120 }] }] };
+  const anchored = playerBonds({ pub: converted, myId: 'me', ownerId: 'me', live: { me: { ursusShip: 100 } }, temporary: opts.bondTempLayers });
+  assert.equal(anchored[0].layers + anchored[0].tempLayers, 120);
+  assert.equal(original[0].layers, 100);
 });
 
 /** Every vnode of a preact tree (htm output), depth first; function components are expanded. */
@@ -355,15 +350,17 @@ describe('§20.15 the bonds: views + live layers', () => {
     ] };
     const head = (bondId) => {
       const v = BondPopup({ bondId, entry: bond(bondId, 0, 0, 0), priv: ownerBoard(field, 'p2'), owner: '阿米娅', onClose() {} });
-      const h4 = [...walk(v)].find((x) => x.type === 'h4' && /成员/.test(textOf(x)));
+      const rec = data.lookup('bonds', bondId);
+      const rows = bondMembers(rec, ownerBoard(field, 'p2'), [], id => data.lookup('chess', id));
       const members = [...walk(v)].filter((x) => hasClass(x, 'bpop__member'));
-      return { head: textOf(h4).replace(/\s+/g, ''), on: members.filter((x) => hasClass(x, 'is-on')).length, owned: members.filter((x) => hasClass(x, 'is-owned')).length };
+      assert.deepEqual(members.map(x => x.key), rows.filter(x => !x.banned).map(x => x.id), 'rendered member ids match the full visible list');
+      return { counted: memberHeadCount(rows, rec.countsHand), on: members.filter((x) => hasClass(x, 'is-on')).length, owned: members.filter((x) => hasClass(x, 'is-owned')).length };
     };
     const visi = head('visiShip');
-    assert.match(visi.head.replace(/[\[\]]/g, ''), /^成员2\//, '远见: the board member and the hand member (含整备区), not the temp one');
+    assert.equal(visi.counted, 2, '远见: the board member and the hand member (含整备区), not the temp one');
     assert.deepEqual([visi.on, visi.owned], [1, 2], 'only 赫默 is 在场; 初雪 and 伊内丝 are owned');
     const yan = head('yanShip');
-    assert.match(yan.head.replace(/[\[\]]/g, ''), /^成员1\//, '炎: the board member only');
+    assert.equal(yan.counted, 1, '炎: the board member only');
     assert.deepEqual([yan.on, yan.owned], [1, 2]);
   });
   test('ownerBoard: under client-side combat the battle on screen\'s operators join (the runner\'s meta predates their deploy)', () => {
@@ -413,7 +410,7 @@ describe('§20.15 the strip and the popup say whose bonds they show', () => {
     assert.ok(hasClass(root, 'is-other') && root.props['data-owner'] === '阿米娅');
     assert.match(root.props['aria-label'], /^阿米娅 的盟约：/);
     assert.match(textOf([...walk(v)].find((x) => hasClass(x, 'bpop__owner'))), /阿米娅.*的盟约/);
-    assert.match(textOf([...walk(v)].find((x) => hasClass(x, 'bpop__facts'))), /333/);
+    assert.match(textOf([...walk(v)].find((x) => hasClass(x, 'bpop__layers'))), /333/);
     const on = [...walk(v)].filter((x) => hasClass(x, 'bpop__member') && hasClass(x, 'is-on'));
     assert.equal(on.length, 1, 'the teammate\'s operator on the field is the one member in play');
     const own = BondPopup({ bondId: id, entry: bond(id, 2, 5, 1), priv: PRIV, onClose() {} });
@@ -426,7 +423,7 @@ test('§20.15 wiring: the game screen feeds the strip, the popup and the detail 
   assert.match(src, /const strip = screenStrip\(\{[^}]*field, layers, layer, who: watchWho, bondLayers:/, 'the field on screen, the ‹ › layers, the picked teammate');
   assert.match(src, /<\$\{BondStrip\} bonds=\$\{stripBonds\}[^>]*owner=\$\{strip\.name\}/);
   // the popup carries the player it was opened for: the strip's owner from the strip, the unit owner from a card's chip
-  assert.match(src, /const bondPop = popupView\(\{ open: bondOpen, pub, priv, myId, field, units: popOps, live: liveLayers, tempLive: tempLiveLayers \}\)/);
+  assert.match(src, /const bondPop = popupView\(\{ open: bondOpen, pub, priv, myId, field, units: popOps, live: liveLayers, temporary: tempLayersSnapshot \}\)/);
   assert.match(src, /battleRunner\.ownerOps\(bondOpen\.ownerId, field\.fieldId\)/, 'a teammate\'s members in play: the battle on screen\'s operators');
   assert.match(src, /bondId=\$\{bondPop\.bondId\} entry=\$\{bondPop\.entry\} priv=\$\{bondPop\.priv\}[^>]*owner=\$\{bondPop\.name\}/);
   assert.match(src, /onOpen=\$\{\(id\) => openBond\(id, strip\.ownerId, 'strip'\)\}/, 'the strip opens its owner\'s bond');
@@ -512,18 +509,54 @@ describe('§20.15 the popup of a card\'s bond chip: the UNIT owner\'s bond (a sh
   });
 });
 
+test('temporary layers render separately in the card, as a gold total in the strip, and disappear when prep clears the pool', () => {
+  const records = data.get('bonds');
+  const id = Object.keys(records).find(id => !records[id].noStack);
+  const noStack = Object.keys(records).find(id => records[id].noStack);
+  const base = bond(id, 2, 12, 1);
+  const props = { bondId: id, priv: { board: [], hand: [], temp: [] }, onMember() {} };
+  const entry = { ...base, tempLayers: 100 };
+  const pop = [...walk(BondPopup({ ...props, entry }))];
+  assert.equal(textOf(pop.find(v => hasClass(v, 'bpop__temporary'))), '+100');
+  assert.match(textOf(pop.find(v => hasClass(v, 'bpop__layers'))), /层数\s*12/);
+  const strip = [...walk(BondStrip({ bonds: [entry], onOpen() {} }))];
+  assert.ok(strip.some(v => hasClass(v, 'has-temp-layers')));
+  assert.equal(strip.find(v => v.type?.name === 'BondDisc').props.layers, 112);
+  const ended = [...walk(BondStrip({ bonds: [base], onOpen() {} }))];
+  assert.ok(!ended.some(v => hasClass(v, 'has-temp-layers')));
+  assert.equal(ended.find(v => v.type?.name === 'BondDisc').props.layers, 12);
+  assert.ok(![...walk(BondPopup({ ...props, entry: base }))].some(v => hasClass(v, 'bpop__temporary')));
+  assert.ok(noStack, 'fixture includes a non-stacking bond');
+  const hidden = { ...entry, bondId: noStack };
+  assert.ok(![...walk(BondPopup({ ...props, bondId: noStack, entry: hidden }))].some(v => hasClass(v, 'bpop__layers')));
+  assert.equal([...walk(BondStrip({ bonds: [hidden], onOpen() {} }))].find(v => v.type?.name === 'BondDisc').props.layers, undefined);
+});
 
-describe('return from explicit teammate viewing across shared-field transitions', () => {
-  test('selection retains its return affordance when own home becomes the same unite field', () => {
-    assert.equal(watchingTeammate('u', 'n:p1', 'p1', {fieldId:'u', playerId:'p2'}), true);
-    assert.equal(watchingTeammate('u', 'u', 'p1', {fieldId:'u', playerId:'p2'}), true);
-    assert.equal(watchingTeammate(null, 'u', 'p1', null), false);
-    assert.equal(watchingTeammate('u', 'u', 'p1', {fieldId:'u', playerId:'p1'}), false);
-    assert.equal(watchingTeammate('n:p1', 'u', 'p1', null), false);
-  });
-  test('settlement keeps the combat return control; returning resets the selected camera half', () => {
-    const src=read('public/js/screens/game.js');
-    assert.match(src, /const observingName = cc && \(combat \|\| settleMode\) && watchedFid/);
-    assert.match(src, /setWatching\(null\);\s*setWatchWho\(null\);\s*setLayer\('ALL'\);/);
-  });
+test('disabled bond discs grey both the inner plate and the outer ring', () => {
+  assert.match(read('public/css/screens/bond.css'), /\.bond\.is-disabled \.bond__disc::before,\s*\.bond\.is-disabled \.bond__core\s*\{\s*filter: grayscale\(1\) brightness\(\.55\)/);
+});
+
+test('temporary display anchors permanent base to the battle and follows only the field on screen', () => {
+  const pub = PUB(), priv = { ...PRIV, bonds: [bond('yanShip', 3, 120)] };
+  const live = { p1: { yanShip: 100 }, p2: { sargonShip: 40 } };
+  const temporary = { p1: { yanShip: 20 }, p2: { sargonShip: 7 } };
+  const opts = { pub, priv, myId: ME, combat: true, battleFieldId: 'n:p1', bondLayers: live, bondTempLayers: temporary };
+  const own = screenStrip(opts).bonds.find(b => b.bondId === 'yanShip');
+  assert.deepEqual([own.layers, own.tempLayers], [100, 20], 'newer converted view does not add the same temporary gain twice');
+  assert.equal(priv.bonds[0].layers, 120, 'input view is immutable');
+  const capped = playerBonds({ pub, priv, myId: ME, ownerId: ME, live: { p1: { yanShip: 1000 } }, temporary });
+  assert.deepEqual([capped[0].layers, capped[0].tempLayers], [BOND_LAYER_CAP, 20], 'cap only the permanent base');
+  const watched = screenStrip({ ...opts, watchingOther: true, watching: 'n:p2', battleFieldId: 'n:p2' }).bonds.find(b => b.bondId === 'sargonShip');
+  assert.deepEqual([watched.layers, watched.tempLayers], [40, 7]);
+  const settled = screenStrip({ ...opts, combat: false, settle: true });
+  assert.equal(settled.bonds.find(b => b.bondId === 'yanShip').tempLayers, 20, 'SETTLE retains temporary layers until prep');
+  const mismatched = screenStrip({ ...opts, watchingOther: true, watching: 'n:p2' });
+  assert.ok(mismatched.bonds.every(b => !b.tempLayers));
+  assert.ok(screenStrip({ ...opts, combat: false }).bonds.every(b => !b.tempLayers));
+});
+
+test('a temporary-only bond joins the display even without permanent layers or members', () => {
+  const list = playerBonds({ pub: PUB(), priv: { ...PRIV, bonds: [] }, myId: ME, ownerId: ME,
+    live: { p1: { yanShip: 0 } }, temporary: { p1: { yanShip: 5 } } });
+  assert.deepEqual(list, [{ bondId: 'yanShip', count: 0, active: false, tier: 0, layers: 0, tempLayers: 5 }]);
 });

@@ -52,9 +52,10 @@ import { data, getConfig, getMode, getStage, useData } from '../data.js';
 import { t, tc, N_ } from '../../../shared/i18n.js';
 import { scriptOf } from '../../../shared/i18nPacks.js';
 import { NoticesButton } from '../ui/notices.js';
+import { LobbyPluginTag } from '../ui/pluginTag.js';
 import { VersionSwitch } from '../ui/versionPicker.js';
-import { contentSet, retryContentSet } from '../content.js';
-import { DEFAULT_VERSION, lobbyVersion, offeredDifficulties, fallbackDifficulty, ladderModes, ladderPick, seasonOf, soloTimedOf, soloTimeMsgid, versionLabel } from '../versions.js';
+import { activeLobbyPlugins, contentSet, lobbyPreview, retryContentSet } from '../content.js';
+import { DEFAULT_VERSION, lobbyVersion, offeredDifficulties, fallbackDifficulty, ladderModes, ladderPick, seasonOf, soloTimedOf, soloTimeMsgid, versionContentStatus, versionLabel } from '../versions.js';
 
 /** Official mode texts (activity_table act2autochess.modeDataDict), fallback when config.json is absent. */
 export const MODE_TEXT = {
@@ -631,9 +632,14 @@ export function LobbyScreen() {
   // one, or the server's fallback when the version lacks it (the pref is only overwritten when the player picks)
   const versions = useStore((s) => s.versions);
   const version = useStore(lobbyVersion);
-  const versionLoading = useStore((c) => version !== DEFAULT_VERSION && (c.kind !== 'version' || c.version !== version || c.status !== 'ready'), Object.is, contentSet);
-  // its set failed to load or its check (the chip's 重试 sits under the modal): 选择模拟协议 says so and offers 重试 too
-  const versionFailed = useStore((c) => version !== DEFAULT_VERSION && c.kind === 'version' && c.version === version && c.status === 'failed', Object.is, contentSet);
+  const preview = useStore((s) => s, Object.is, lobbyPreview);
+  const previewCs = (!preview.version || preview.version === version) && preview.content?.vanilla === false ? preview.content.cs : null;
+  const previewFailed = preview.status === 'failed' && (!preview.version || preview.version === version);
+  const activeState = useStore((c) => (version !== DEFAULT_VERSION
+    ? versionContentStatus(c, version, previewCs)
+    : (previewCs ? (c.kind === 'plugins' && c.cs === previewCs ? c.status : 'loading') : 'ready')), Object.is, contentSet);
+  const versionFailed = activeState === 'failed' || (previewFailed && !previewCs);
+  const versionLoading = !versionFailed && activeState !== 'ready';
   const cfg = getConfig();
   // null while that version's data is not on screen: the card states no time rule and the dialog hides the switch
   const soloTimed = soloTimedOf(versionLoading ? null : cfg, version);
@@ -658,9 +664,10 @@ export function LobbyScreen() {
       if (alive.current) setBusy(null);
     }
   };
+  const lobbyRoomPlugins = activeLobbyPlugins(versions ? version : DEFAULT_VERSION);
   const create = () => {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
-    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed, ...(roomMode === 'coop' ? { pauseMode } : {}) }));
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed, ...(roomMode === 'coop' ? { pauseMode } : {}), ...(lobbyRoomPlugins !== undefined ? { plugins: lobbyRoomPlugins } : {}) }));
   };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
@@ -712,6 +719,7 @@ export function LobbyScreen() {
       <div class="hub-center" aria-hidden="true">
         <div class="hub-center__mark"><${HubRadar} bg=${bg} /><${Emblem} /></div>
         <span class="hub-center__en">STRONGHOLD <b>PROTOCOL</b></span>
+        <${LobbyPluginTag} />
         <h1 class="hub-center__title">${seasonOf(version) === 'act3autochess' ? t('卫戍协议·规程') : t('卫戍协议：盟约')}</h1>
       </div>
       <aside class="hub-side">

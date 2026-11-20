@@ -117,6 +117,8 @@ FX_GENERIC = {
             'ranger': 'common_ranger_hit_01'},
     'die': {'char': 'common_char_die_01', 'enemy': 'common_enemy_die_01'},
     'birth': {'char': 'common_char_birth_01'},
+    # Tile._effect in battle/prefabs/[uc]tiles.ab; map-owned loops in render/vfx/terrainfx.js.
+    'tile': {'duelGrass': 'mapeff_079_dikuai_01', 'infection': 'map_promote_01', 'mire': 'mapeff_mud_ground_01'},
     'status': {'stun': 'buff_stun', 'freeze': 'buff_autochess_frozen', 'cold': 'buff_cold', 'sleep': 'buff_sleep',
                'burn': 'buff_burn', 'silence': 'buff_silence', 'slow': 'buff_slowdown', 'sluggish': 'buff_sluggish',
                'fear': 'common_buff_fear', 'levitate': 'common_levitate_01', 'bind': 'common_root_01',

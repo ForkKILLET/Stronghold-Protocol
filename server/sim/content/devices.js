@@ -20,9 +20,14 @@
 //   活性源石 i  a unit on it (allies and ground enemies) gets a timed effect: damage true dmg/s, ATK + atk, ASPD +
 //              attack_speed for `duration` s from its last contact — an enemy keeps it after walking off; one effect
 //              per unit, its time starts again while the unit is on the tile; the tiles never switch off
-//   加速 z      规程 tile_speedup: a ground unit standing on it (allies and enemies) gets ASPD +attack_speed (flat,
-//              official 25) and move ×move_speed (official 1.5), from stage.special.speedup when that block is present.
-//              Cleared on leaving. Flyers skip it (terrainFor).
+//   加速 z      规程 tile_speedup (buff template tile_speedup): a ground ally of profession PIONEER/WARRIOR/TANK/SNIPER/
+//              CASTER/MEDIC/SUPPORT/SPECIAL/TOKEN gets ASPD +attack_speed (flat, official 25); a ground enemy gets
+//              move ×move_speed (official 1.5) and no ASPD. The children are not removed when the tile buff ends, so
+//              they stay after leaving until a 重生 (archetypes.js rebirthCleanse) or the unit leaves the field.
+//              Standing on it again does not stack. Flyers skip it (terrainFor). From stage.special.speedup.
+//   盐坨子炮   规程 trap_196_cnnon on the separator above the field (row = rect.r1+1, facing DOWN): every 6 SP × the
+//              stage's char_skill_cd_mul (MAP10: 18 s; cannonRunes) a physical hit of its ATK on the far tile of range 4-1,
+//              and one adjacent ground enemy of 重量 ≤ 3 is moved there. Operators can attack it (taunt −1).
 //   隐匿 w      规程 tile_duel_grassland grants both sides' ground units stealth. Enemy blocking suppresses it;
 //              release restores it after stage.special.duelGrass.enemyStealthRestoreSec (fallback 0; the official
 //              0 is immediate). Leaving clears it.
@@ -57,6 +62,8 @@ const BUFF = { 1: 'terrain:mire', 2: 'terrain:smog', 3: 'terrain:deepsea', 4: 't
 const AIRFLOW = 'terrain:airflow';
 const CRATE_KEY = 'trap_1105_accrate';
 const TURRET_KEY = 'trap_1104_aclasert';
+/** tile_speedup success-branch professions (buff template). DEVICE is not in the list. */
+const SPEEDUP_PROFESSIONS = new Set(['PIONEER', 'WARRIOR', 'TANK', 'SNIPER', 'CASTER', 'MEDIC', 'SUPPORT', 'SPECIAL', 'TOKEN']);
 /** Research 05 §2.3 values, used only when a stage has no `special` block / device blackboard. */
 const RESEARCH = Object.freeze({
   mire: { intervalSec: 1, aspdPerStack: -0.05, moveMulPerStack: -0.05, maxStacks: 10, heavyWeight: 3 },
@@ -165,7 +172,7 @@ export function kjeragColdWind(battle, playerId, bb = {}, { bondId = 'kjeragShip
   const interval = num(bb['bond_eff_kjerag[storm].interval'], 0);
   const base = num(bb['bond_eff_kjerag[storm].base_time'], 0);
   const per = num(bb['bond_eff_kjerag[storm].time_per_stack'], 0);
-  const layers = () => num(battle.getPlayer(playerId)?.bonds?.[bondId]?.layers, 0);
+  const layers = () => battle.effectiveBondLayers(playerId, bondId);
   return startColdWind(battle, { playerId, interval, duration: () => base + per * layers() });
 }
 
@@ -176,7 +183,7 @@ export function kjeragColdWind(battle, playerId, bb = {}, { bondId = 'kjeragShip
 function topLayers(battle, playerId) {
   const bonds = battle.getPlayer(playerId)?.bonds;
   let L = 0;
-  if (bonds && typeof bonds === 'object') for (const b of Object.values(bonds)) L = Math.max(L, num(b?.layers, 0));
+  if (bonds && typeof bonds === 'object') for (const id of Object.keys(bonds)) L = Math.max(L, battle.effectiveBondLayers(playerId, id));
   return L;
 }
 
@@ -364,11 +371,29 @@ const deepWaterDamage = (battle, amount) => (ctx) => {
   if (amount > 0 && ctx.unit.alive) battle.dealDamage(null, ctx.unit, { amount, type: 'true', canDodge: false, sourceless: true, noSp: true, tags: ['dot', 'periodic', 'deepsea'] });
 };
 
+/** tile_speedup's derived child. maxStack 1: a unit that already has it (still standing, or back again) is left alone. */
+function grantSpeedup(battle, st, u) {
+  const key = BUFF[TERRAIN.speedup];
+  if (u.findBuff(key)) return;
+  const S = st.speedup;
+  if (u.side === 'enemy') {
+    battle.addBuff(u, { key, mods: { moveMul: S.moveMul } });
+    return;
+  }
+  if (!SPEEDUP_PROFESSIONS.has(u.def?.profession)) return;
+  battle.addBuff(u, { key, mods: { aspd: S.aspd } });
+}
+
 function enterTerrain(battle, st, u, code) {
   const m = u.mem;
-  if (m.terrain === code) return;
-  // leaving a tile ends its effect — except 活性源石's, which runs out on its own (touchInfection)
-  if (m.terrain && m.terrain !== TERRAIN.infection) battle.removeBuff(u, BUFF[m.terrain]);
+  if (m.terrain === code) {
+    // a 重生 clears the child while the unit is still standing on z; contact gives it back, still one stack
+    if (code === TERRAIN.speedup) grantSpeedup(battle, st, u);
+    return;
+  }
+  // leaving a tile ends its effect — except 活性源石's, which runs out on its own (touchInfection), and tile_speedup's
+  // child, which the template does not finish when the parent ends
+  if (m.terrain && m.terrain !== TERRAIN.infection && m.terrain !== TERRAIN.speedup) battle.removeBuff(u, BUFF[m.terrain]);
   m.terrain = code;
   m.terrainSince = battle.time;
   m.mireStacks = 0;
@@ -381,10 +406,7 @@ function enterTerrain(battle, st, u, code) {
   } else if (code === TERRAIN.deepsea) {
     const D = st.deepsea;
     battle.addBuff(u, { key: BUFF[code], mods: { aspd: D.aspd, moveMul: D.moveMul }, interval: 1, onTick: deepWaterDamage(battle, D.damage) });
-  } else if (code === TERRAIN.speedup) {
-    const S = st.speedup;
-    battle.addBuff(u, { key: BUFF[code], mods: { aspd: S.aspd, moveMul: S.moveMul } });
-  }
+  } else if (code === TERRAIN.speedup) grantSpeedup(battle, st, u);
   // mire layers are applied by tickMire, 活性源石 by touchInfection (every tick on the tile)
 }
 

@@ -38,6 +38,29 @@ test('observeTarget: prep, own battle running / over, boss pairs, eliminated pla
   assert.deepEqual(observeTarget(P('d', 3), dead, 'a'), { fieldId: 'b2' }, 'eliminated: anything');
 });
 
+test('设置「作战中查看队友」 off (PR #971): no other field while the own battle runs; once it is over, or switched on, it opens', () => {
+  const players = [P('a', 0), P('b', 1), P('c', 2), P('d', 3)];
+  const normal = pubOf('COMBAT', [
+    { fieldId: 'n:a', kind: 'normal', players: ['a'], live: true },
+    { fieldId: 'n:b', kind: 'normal', players: ['b'], live: true },
+  ], players);
+  assert.match(observeTarget(players[1], normal, 'a', { liveWatch: false }).reason, /设置/);
+  assert.deepEqual(observeTarget(players[1], normal, 'a', { liveWatch: false, ownDone: true }), { fieldId: 'n:b' }, 'the own battle already ended');
+  assert.deepEqual(observeTarget(players[1], normal, 'a', { liveWatch: true }), { fieldId: 'n:b' });
+  const bossFields = [
+    { fieldId: 'b1', kind: 'boss', players: ['a', 'b'], live: true },
+    { fieldId: 'b2', kind: 'boss', players: ['c', 'd'], live: true },
+  ];
+  const fa = pubOf('FINAL_ASSAULT', bossFields, players);
+  assert.match(observeTarget(players[2], fa, 'a', { liveWatch: false }).reason, /设置/);
+  assert.deepEqual(observeTarget(players[2], fa, 'a', { liveWatch: true }), { fieldId: 'b2' });
+  const over = pubOf('FINAL_ASSAULT', [{ ...bossFields[0], live: false }, bossFields[1]], players);
+  assert.deepEqual(observeTarget(players[2], over, 'a', { liveWatch: false }), { fieldId: 'b2' }, 'the own boss field is over');
+  const dead = pubOf('FINAL_ASSAULT', bossFields, [{ ...players[0], alive: false }, ...players.slice(1)]);
+  assert.deepEqual(observeTarget(players[2], dead, 'a', { liveWatch: false }), { fieldId: 'b2' }, 'eliminated: anything');
+  assert.match(observeTarget(players[1], fa, 'a', { liveWatch: false }).reason, /同一战场/);
+});
+
 test('cross-group boss/hidden viewing restores after reconnect, once, without overriding return-home', () => {
   const players = [P('a', 0), P('b', 1), P('c', 2), P('d', 3)];
   for (const [phase, kind] of [['FINAL_ASSAULT', 'boss'], ['HIDDEN_CORE', 'hidden']]) {

@@ -49,10 +49,10 @@ export function cycleField(fields, current, dir = 1) {
  * eliminated player has no board to watch. Final Assault and Hidden Core allow viewing the other pair's field.
  * @param {any} p m.public player row
  * @param {any} pub
- * @param {string} myId
+ * @param {string} _myId
  * @returns {{ fieldId: string } | { reason: string }}
  */
-export function watchTarget(p, pub, myId) {
+export function watchTarget(p, pub, _myId) {
   if (!isObj(p)) return { reason: t('无效的目标') };
   if (p.alive === false) return { reason: t('该队友已被淘汰，无法查看其阵地') };
   const combat = isCombatPhase(pub?.phase);

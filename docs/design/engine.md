@@ -58,6 +58,7 @@ b.on(event, fn, { priority=0, owner } ) / b.off(...)   // hook bus (§5.4)
              items: [itemId...],                  // equipped items (golden ids when merged)
              carryState?: { hpPct, sp } | { sp } | { down: true } } ],   // unite: an operator keeps its end-of-combat HP ratio + SP, a summon its SP (no running skill);
                                                   // { down: true } = knocked out at its end: deployed, then forced out (§19.3)
+  tempLayers?: { [bondId]: n }, // unite only: frozen balance inherited from own combat
   bonds: { [bondId]: { count, active, tier, layers } },   // snapshot from bondsMeta at combat start (联防: with the layers the
                                                           // helper's own combat reached, PlayerState.bondsView — §20.15)
   bandId, playerEffects: [ EffectRef ],                   // active band/choice/team effects with battle parts
@@ -74,7 +75,8 @@ b.on(event, fn, { priority=0, owner } ) / b.off(...)   // hook bus (§5.4)
      leaked: [ { enemyKey, mods, lpr, sourcePlayerId } ],   // for unite aggregation & LP
      perfect: bool,                       // no leaks
      layerGains: { [bondId]: n },         // IN_BATTLE gains (0 if flags.layerGainsEnabled false); what was added — capped at
-                                          // the bond's room under BOND_LAYER_CAP 999 (§6.3, §20.12)
+                                          // the bond's room under BOND_LAYER_CAP 999 (§6.3, §20.12). 规程 boss/hidden set the flag true;
+                                          // SETTLE and _finishFinal both keep the map. 盟约 boss/hidden and every 联防 leave it empty.
      coins: n,                            // bounty coins earned
      damageDealt: n, bossDamage: n, healingDone: n, deaths: n,
      unitsEnd: [ { uid, hpPct, sp, alive } ] } },   // operators + board summon pieces; sp = 技力 incl. stored charges
@@ -469,9 +471,35 @@ The enemy-status garrison event reads `check_ab_flag`: 16 means freeze, 33 means
 `garrison_99_a/b` grants active Swift 4/8 layers on a new fear entry inside her attack range, capped at 20/40
 per battle. Refreshing an existing fear, freezing an enemy, or fearing an enemy outside her range grants nothing.
 
+### Temporary bond layers
+
+Battle owns a temporary-layer ledger keyed by player and bond, separate from the permanent count in
+`getPlayer(pid).bonds[id].layers`. Permanent layers retain their 999 cap; temporary layers have a separate
+10000 cap per player/bond. Bond, garrison and equipment sources use the same ledger. Each equipment effect tracks
+its data-defined per-battle limit across repeated borrowing. Expiring a borrowed effect stops future grants while
+earned layers remain in the round pool until the next prep.
+
+`addTempLayers` and `removeTempLayers` return the actual positive amount added or removed. `tempLayers` reads one
+temporary count; `tempLayersSnapshot()` returns a detached copy of the whole ledger for hosts and Workers.
+`effectiveBondLayers` and the content helper `bondLayers` read permanent + temporary layers. A committed gain emits
+`tempLayerGain`; gains and removals emit `tempLayerChange`. Both permanent and temporary writes emit `bondLayersChanged` with `{ playerId, bondId, n }` after a nonzero committed change. Standing bond and garrison modifiers coalesce refreshes
+after these changes; periodic effects, equipment and devices read the effective count. Temporary changes neither
+consume permanent cap room nor invoke permanent `layerGain` modifiers.
+
+The ledger lasts from the end of prep until entry into the next prep. Normal, boss and hidden-core battles may gain
+temporary layers and report their remaining balance through `tempLayerGains`. Ending the player's own battle or
+entering SETTLE preserves that balance. Boss and hidden-core battles do not enter unite.
+
+Unite copies each helper's own-battle balance into `PlayerBattleInput.tempLayers` and restores it before content
+installation. This carried ledger is frozen: kills, garrisons, equipment and effect disposal cannot change it.
+Unite results do not report the inherited balance as a new gain.
+
+At the next `enterPrep`, `onPrepStart` converters consume a shared pool containing all temporary sources; any
+unconverted remainder is then discarded. Each new personal battle starts with an empty ledger. Only unite restores
+a carried ledger.
 ### Regulation rule corrections integrated on 2026-11-16
 
-Temporary Ursus layers from eligible kills and opening garrisons contribute to live ATK/HP, damage-to-bleed conversion and six-member block damage. Normal fields record those layers separately for end-of-battle garrison conversion; they never enter the permanent `layerGain` hook or change permanent counts directly. Combat-local kill gains in fields with layer collection disabled remain out of the result wire. The existing disabled-gain behavior of direct opening-garrison grants is unchanged. Talulah's additional kill grant uses the existing on-field garrison helper.
+
 
 Regulation Yan draws five element slots with equal probability; E_NUM=6 is a sentinel, not a sixth element. The engine still approximates Anger with necrosis [ASSUMED], as before. The garrison stack-cap filter accepts any listed bond, including effective Harmony membership. 后兽 Punishment uses the official template's 1.5-tile splash around its lock, with one hit on the locked unit; this does not change its body collision or implement the separate summoned-trap effect. Sources and validation limits: [integration record](../MERGE_DEV_2026-11-15.md#2026-11-16开放-pr-筛选与集成).
 
