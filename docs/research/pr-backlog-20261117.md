@@ -1,5 +1,7 @@
 # 本服待 PR 清单（2026-11-17）
 
+2026-11-20 更新：近期回复、已吸收 PR 和下一批本地草稿以 [新清单](pr-next-20261120.md) 为准。#978–#981 已合入，#982 直接移植后关闭；#970 由 #923 覆盖。下文为历史清点。
+
 执行更新：已提交 [#968 MapEffect 生命周期](https://github.com/sganggs/Stronghold-Protocol/pull/968)、[#969 移动召唤者保留合法召唤物](https://github.com/sganggs/Stronghold-Protocol/pull/969)（附完整官服录像）与 [#970 临时层数显示](https://github.com/sganggs/Stronghold-Protocol/pull/970)（明确依赖 #962）。观战 PR 最初因缺依据暂缓；同日用户补充官服 Boss 直播片段后，完成 Firefox 两尺寸／三阶段的真实 Match 动作桥接验证，已提交 [#971 战斗中查看队友及 Boss 跨组查看](https://github.com/sganggs/Stronghold-Protocol/pull/971)，分支 `feat/battle-teammate-viewing`／`2d396f8f`，普通战斗明确为 QoL。源码 PR 不含视频或截图二进制；审阅证据固定在独立证据分支 `3f6dc6326`。#971 修复遗漏的旁观者旧断言后，主线 [CI／完整 golden](https://github.com/sganggs/Stronghold-Protocol/actions/runs/44083482567) 及独立 Python 兼容共 12 项已全部通过；Fork 同 head CI 亦通过。其它条目以各自 PR 状态为准。地图拆分见[地图系列计划](map-pr-plan-20261117.md)。下文保留初次清点时的范围判断，当前状态以本段为准。
 
 初次清点时只整理，没有创建、推送或修改 GitHub PR。清点基线为主线 `dev 55f528e9f`、本服 `3edb85a5f`，并实时读取开放 PR、Issue 和本方未合入／手动关闭 PR 的评论与检查结果。主线没有新增 dev 提交；下列“待 PR”包含已经在本服推送、部署，但尚未向主线提交的内容。后续执行状态见上段。
