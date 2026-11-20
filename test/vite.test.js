@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { createStaticHandler, computeBuildTag, COMPRESSIBLE } from '../server/index.js';
@@ -46,6 +47,23 @@ test('built client keeps the WebSocket endpoint as an external runtime setting',
   assert.equal(response.headers.get('cache-control'), 'no-cache');
   const runtime = await import('data:text/javascript,' + encodeURIComponent(await response.text()));
   assert.equal(runtime.WS_URL, 'wss://backend.example.com/ws');
+});
+
+test('stylesheets keep independent block scopes in the production bundle', async () => {
+  // Use Vite's own locked CSS parser. Browsers implicitly close an unfinished sheet at EOF, but concatenation
+  // can accidentally put every later file inside that sheet's final media query.
+  const { parse } = createRequire(import.meta.resolve('vite'))('postcss');
+  const source = await fs.readFile(path.join(root, 'public/index.html'), 'utf8');
+  for (const [, href] of source.matchAll(/href="(\/css\/[^"?]+\.css)"/g)) {
+    parse(await fs.readFile(path.join(root, 'public', href), 'utf8'), { from: href });
+  }
+  const css = (await Promise.all(manifest['index.html'].css.map(file => fs.readFile(path.join(outDir, file), 'utf8')))).join('\n');
+  const rules = parse(css);
+  for (const selector of ['.lo', '.app-header']) {
+    let atRoot = false;
+    rules.walkRules(selector, rule => { if (rule.parent.type === 'root') atRoot = true; });
+    assert.ok(atRoot, `${selector} remains available outside short-screen media queries`);
+  }
 });
 
 test('management density overrides are bundled after touch rules without bypassing mandatory landscape', async () => {
