@@ -1,0 +1,256 @@
+{
+  "evidence": [
+    {
+      "kind": "normal",
+      "initial": {
+        "native": [
+          {
+            "id": 1,
+            "native": true,
+            "x": 6,
+            "y": 13
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              0,
+              0
+            ],
+            "time": 0.7178280000000019
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.14914792497933504,
+          "ball": [
+            -4,
+            3.8425354957580566,
+            -0.7616519927978516
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        3.3549418449401855,
+        -0.9218036532402039
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "unite",
+      "initial": {
+        "native": [
+          {
+            "id": 1,
+            "native": true,
+            "x": 6,
+            "y": 13
+          },
+          {
+            "id": 2,
+            "native": true,
+            "x": 14,
+            "y": 13
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              0,
+              0
+            ],
+            "time": 0.6472870479445095
+          },
+          {
+            "anchor": [
+              4,
+              0,
+              0
+            ],
+            "time": 0.6472870479445095
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.16387226812150146,
+          "ball": [
+            -4,
+            3.844968318939209,
+            -1.010939598083496
+          ]
+        },
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.16387226812150146,
+          "ball": [
+            4,
+            3.844968318939209,
+            -1.010939598083496
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        3.3637123107910156,
+        -1.1686049699783325
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ],
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 398,
+            "clientY": 301
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "boss",
+      "initial": {
+        "native": [
+          {
+            "id": 1,
+            "native": true,
+            "x": 6,
+            "y": 6
+          },
+          {
+            "id": 2,
+            "native": true,
+            "x": 14,
+            "y": 6
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              -7,
+              0
+            ],
+            "time": 0.4822455355860539
+          },
+          {
+            "anchor": [
+              4,
+              -7,
+              0
+            ],
+            "time": 0.4822455355860539
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.14987076368414876,
+          "ball": [
+            -4,
+            -3.1587791442871094,
+            -0.7620376944541931
+          ]
+        },
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.14987076368414876,
+          "ball": [
+            4,
+            -3.1587791442871094,
+            -0.7620376944541931
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        -3.6495895385742188,
+        -0.9234619736671448
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ],
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 398,
+            "clientY": 301
+          }
+        ],
+        [
+          "tile",
+          {
+            "row": 6,
+            "col": 6,
+            "button": 0,
+            "clientX": 412,
+            "clientY": 253
+          }
+        ]
+      ]
+    }
+  ],
+  "errors": [
+    "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
+  ],
+  "http": [],
+  "consoleErrors": []
+}

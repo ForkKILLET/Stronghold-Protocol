@@ -1,0 +1,16 @@
+{
+  "base": "bb1172306227e5d2511db85df2cc5cf664ace0a3",
+  "gameplay": "34ee42209",
+  "visual": "63359bae6",
+  "gameplayTests": 236,
+  "visualTests": 201,
+  "failed": 0,
+  "skipped": 0,
+  "screenshots": {
+    "chrome": 22,
+    "firefox": 22
+  },
+  "firefoxKnownDiagnostic": "data URL connect-src CSP",
+  "ci": "not run",
+  "golden": "paused"
+}
