@@ -810,9 +810,11 @@ describe('keyboard & settings', () => {
     assert.equal(sanitizeSettings({ bgm: 0.5 }).officialFx, 'auto', 'a profile saved before 官方特效 gets the default');
     for (const v of ['off', 'lite', 'full', 'auto']) assert.equal(sanitizeSettings({ officialFx: v }).officialFx, v);
     assert.equal(sanitizeSettings({ officialFx: 'ultra' }).officialFx, 'auto');
-    assert.equal(DEFAULT_SETTINGS.watchDuringBattle, false, '作战中查看队友 (PR #971) is off by default');
+    assert.equal(DEFAULT_SETTINGS.watchDuringBattle, true, 'this server enables 作战中查看队友 by default');
+    assert.equal(sanitizeSettings({}).watchDuringBattle, true, 'older preferences inherit the server default');
+    assert.equal(sanitizeSettings({ watchDuringBattle: false }).watchDuringBattle, false, 'an explicit opt-out survives');
     assert.equal(sanitizeSettings({ watchDuringBattle: true }).watchDuringBattle, true);
-    assert.equal(sanitizeSettings({ watchDuringBattle: 'yes' }).watchDuringBattle, false, 'a non-boolean stays off');
+    assert.equal(sanitizeSettings({ watchDuringBattle: 'yes' }).watchDuringBattle, true, 'invalid values fall back to the default');
     assert.equal(sanitizeSettings({ voiceLang: 'jp' }).voiceLang, 'jp');
     assert.equal(sanitizeSettings({ voiceLang: 'en' }).voiceLang, 'en');
     assert.equal(sanitizeSettings({ voiceLang: 'kr' }).voiceLang, 'kr');

@@ -29,7 +29,7 @@ export const TEXT_SIZES = Object.freeze(['sm', 'md', 'lg', 'xl']);
 
 /** Shortcuts persist separately in ui/shortcuts.js; voiceLang: VOICE_LANGS.
  *  textSize: TEXT_SIZES (css/theme.css `--t`, applied by ui/settings.js applyTextSize). */
-export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceSubtitles: false, voiceSubtitleMode: 'ui', officialFx: 'auto', voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, otherSkins: true, watchDuringBattle: false, deploymentZoom: false, quality: 'high', textSize: 'sm', fpsLimit: 0, uiTheme: '', themeMotion: true, officialRegulationHud: false, skinsEnabled: false, arknightsCursor: false, preload: false, preloadOptional: false, preloadVoiceLang: Object.freeze(['cn']), preloadSkins: false });
+export const DEFAULT_SETTINGS = Object.freeze({ bgm: 0.6, sfx: 0.8, voice: 0.8, voiceLang: 'cn', voiceNative: false, voiceSubtitles: false, voiceSubtitleMode: 'ui', officialFx: 'auto', voiceOverrides: Object.freeze({}), muted: false, damageNumbers: true, officialDamageNumbers: false, ammoEnergyCount: false, fullscreenWakeLock: false, bondTimers: false, otherSkins: true, watchDuringBattle: true, deploymentZoom: false, quality: 'high', textSize: 'sm', fpsLimit: 0, uiTheme: '', themeMotion: true, officialRegulationHud: false, skinsEnabled: false, arknightsCursor: false, preload: false, preloadOptional: false, preloadVoiceLang: Object.freeze(['cn']), preloadSkins: false });
 const QUALITIES = ['high', 'medium', 'low'];
 /** The values of 设置「官方特效」 (render/vfx/tier.js OFFICIAL_FX). Display order in the dialog is low / medium / high. */
 export const OFFICIAL_FX_MODES = Object.freeze(['auto', 'off', 'lite', 'full']);
@@ -77,7 +77,7 @@ export function sanitizeSettings(raw) {
     deploymentZoom: r.deploymentZoom === true,
     ammoEnergyCount: ammoEnergyCountOf(r),
     bondTimers: r.bondTimers === true,
-    watchDuringBattle: r.watchDuringBattle === true,
+    watchDuringBattle: typeof r.watchDuringBattle === 'boolean' ? r.watchDuringBattle : DEFAULT_SETTINGS.watchDuringBattle,
     otherSkins: typeof r.otherSkins === 'boolean' ? r.otherSkins : true,
     fullscreenWakeLock: typeof r.fullscreenWakeLock === 'boolean' ? r.fullscreenWakeLock : DEFAULT_SETTINGS.fullscreenWakeLock,
     quality: QUALITIES.includes(r.quality) ? r.quality : DEFAULT_SETTINGS.quality,
