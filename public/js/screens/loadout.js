@@ -306,14 +306,9 @@ const VIEW_PREF = 'loadout.view';
 export const loadoutViewPref = () => (loadPref(VIEW_PREF, 'deck') === 'list' ? 'list' : 'deck');
 const TIERS = [1, 2, 3, 4, 5, 6];
 
-/** 潜能 as six pips (the card's star row). */
-function PotPips({ n }) {
-  return html`<span class="lo-op__pot" title=${t('潜能 {n}', { n })}>${TIERS.map((i) => html`<i key=${i} class=${i <= n ? 'is-on' : ''}></i>`)}</span>`;
-}
-
 /**
  * One operator card of the deck: tier, the normal / elite levels, the half-body portrait with its branch icon, the equipped
- * skill and module, 潜能, name and bonds; a 替补 ribbon when marked not owned. `quick` ('skill' | 'module' | 'cult') adds a
+ * skill and module, name and bonds; a 替补 ribbon when marked not owned. `quick` ('skill' | 'module' | 'cult') adds a
  * column of quick choices beside the card — the same handlers as the list's RosterRow.
  */
 export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, quick = null, onPick, onChange, onOps, notOwned = false }) {
@@ -345,7 +340,7 @@ export function OpCard({ m, chess, golden, entries, ops = {}, selected = false, 
           <span class="lo-op__slot">${golden ? html`<${ModuleGlyph} m=${m} rec=${mod?.rec} id=${choice.module} size="q" />` : null}</span>
         </span>
       </button>
-      <span class="lo-op__meta"><${PotPips} n=${cv.potential} /><span class="lo-op__name">${chess.name}</span></span>
+      <span class="lo-op__meta"><span class="lo-op__name">${chess.name}</span></span>
       <span class="lo-op__bonds">${(chess.bonds || []).map((b) => html`<span key=${b} class="lo-op__bond" title=${data.lookup('bonds', b)?.name || b}>
         <${Img} src=${bondIconUrl(m, b)} fallback=${html`<i class="lo-bond__dot"></i>`} /></span>`)}</span>
     </div>

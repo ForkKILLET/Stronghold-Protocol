@@ -871,9 +871,6 @@
 .lo-op__slot .lo-sicon__outline, .lo-op__slot .lo-sicon__ring { display: none; }
 .lo-op__slot .lo-mglyph__t { font-size: max(calc(.16 * var(--utility-text, var(--t))), 10px); }
 .lo-op__meta { grid-row: 2; grid-column: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 0; padding-top: max(calc(.04 * var(--ui-unit, 1rem)), 2px); }
-.lo-op__pot { display: flex; gap: 2px; }
-.lo-op__pot i { width: max(calc(.06 * var(--ui-unit, 1rem)), 4px); height: max(calc(.06 * var(--ui-unit, 1rem)), 4px); background: rgba(255, 255, 255, .18); transform: rotate(45deg); }
-.lo-op__pot i.is-on { background: #c9cfcc; }
 .lo-op__name { max-width: 100%; font-size: max(calc(.17 * var(--utility-text, var(--t))), 11px); font-weight: 800; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lo-op__bonds { grid-row: 3; grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 3px; min-height: max(calc(.26 * var(--ui-unit, 1rem)), 16px); padding-top: 2px; }
 .lo-op__bond { display: grid; place-items: center; width: max(calc(.26 * var(--ui-unit, 1rem)), 16px); height: max(calc(.26 * var(--ui-unit, 1rem)), 16px); border-radius: 50%; background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .22); }

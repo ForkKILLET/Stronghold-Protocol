@@ -27,7 +27,7 @@ function* walk(v) {
   if (Array.isArray(v)) { for (const x of v) yield* walk(x); return; }
   if (!v || typeof v !== 'object') return;
   yield v;
-  if (typeof v.type === 'function' && ['QuickSkill', 'QuickModule', 'CultivationSelects', 'PotPips'].includes(v.type.name)) { yield* walk(v.type(v.props)); return; }
+  if (typeof v.type === 'function' && ['QuickSkill', 'QuickModule', 'CultivationSelects'].includes(v.type.name)) { yield* walk(v.type(v.props)); return; }
   yield* walk(v.props?.children);
 }
 const find = (tree, pred) => [...walk(tree)].filter(pred);

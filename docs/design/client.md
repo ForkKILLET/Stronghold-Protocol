@@ -684,7 +684,8 @@ Overrides are local listening preferences, absent from room loadouts and their e
 等阶筛选、普通／自选卡片、分组、持有管理、选人详情及三期带入页共用 `TierChip` 的原版八边形／CSS 回退；
 不再同时画徽标和另一套罗马数字标记。分组使用 `RosterTierMark`，字号与最小尺寸限于这些管理／选人界面。
 记牌器复用同一 TierFilter，因此同步显示同一等阶徽标；不改局内战斗渲染或卡池数据。
-普通干员卡片仍跟随本人皮肤、未持有替补及原技能／模组选择，详情抽屉和 Esc 逐层退出保持。
+普通干员卡片隐藏姓名上方的潜能菱形，潜能仍在详情与快速配置中调整。
+卡片仍跟随本人皮肤、未持有替补及原技能／模组选择，详情抽屉和 Esc 逐层退出保持。
 布局及卡片排布属于本服设计，不将之当作官服 UI 取证。
 
 Automatic combat screen wake lock restores the official mobile client's screen-awake experience. App requests it
