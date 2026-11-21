@@ -246,7 +246,13 @@ export function BondDisc({
   const [badFrame, setBadFrame] = useState(null);
   const frameUrl = uiUrl(data.get('assets'), key);
   const frame = badFrame === frameUrl ? null : frameUrl;
-  const frameStyle = `--bond-frame: ${frame ? `url("${frame}")` : 'none'}; --bond-frame-size: calc(var(--disc) * ${full ? .815 / .52 : .688 / .52})`;
+  // Partial-tier sprites have a grey centre. An activated bond uses the lit plate independently of its ring.
+  const lit = active && !disabled;
+  const corePicture = useAssetImage(lit ? uiUrl(data.get('assets'), 'bondBoardIcon/1_1') : null);
+  const coreFrame = lit ? (corePicture.src ? `url("${corePicture.src}")` : 'none') : 'var(--bond-frame)';
+  const coreSize = lit ? `calc(var(--disc) * ${.815 / .52})` : 'var(--bond-frame-size)';
+  const frameStyle = `--bond-frame: ${frame ? `url("${frame}")` : 'none'}; --bond-frame-size: calc(var(--disc) * ${full ? .815 / .52 : .688 / .52}); `
+    + `--bond-core-frame: ${coreFrame}; --bond-core-size: ${coreSize}`;
   const stack = layers ?? count;
   const glyph = (name || '?').trim().charAt(0) || '?';
   const Tag = onClick ? 'button' : 'div';
@@ -255,6 +261,7 @@ export function BondDisc({
       style=${frameStyle} onClick=${onClick} title=${title || name}>
     <span class="bond__disc">
       ${frame ? html`<img src=${frame} alt="" hidden onError=${() => setBadFrame(frame)} />` : null}
+      ${corePicture.src ? html`<img src=${corePicture.src} alt="" hidden onError=${corePicture.onError} />` : null}
       <span class="bond__core">
         ${imgOk
           ? html`<img class="bond__icon" src=${picture.src} alt="" draggable=${false} onError=${picture.onError} />`
