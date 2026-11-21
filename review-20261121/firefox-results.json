@@ -1,0 +1,274 @@
+{
+  "evidence": [
+    {
+      "kind": "normal",
+      "initial": {
+        "native": [
+          {
+            "id": 2,
+            "native": true,
+            "x": 6,
+            "y": 13
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              0,
+              0
+            ],
+            "time": 0.6936879999999981
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.0708821675244451,
+          "ball": [
+            -4,
+            3.861999988555908,
+            -0.7559999823570251
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        3.484710216522217,
+        -0.8758307695388794
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "unitHits": [
+        {
+          "key": "trap_cnnon_explode_hit",
+          "id": 1
+        }
+      ],
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "unite",
+      "initial": {
+        "native": [
+          {
+            "id": 2,
+            "native": true,
+            "x": 6,
+            "y": 13
+          },
+          {
+            "id": 3,
+            "native": true,
+            "x": 14,
+            "y": 13
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              0,
+              0
+            ],
+            "time": 0.6077993738337183
+          },
+          {
+            "anchor": [
+              4,
+              0,
+              0
+            ],
+            "time": 0.6077993738337183
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.0974866056685677,
+          "ball": [
+            -4,
+            3.861999988555908,
+            -1.0059999227523804
+          ]
+        },
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.0974866056685677,
+          "ball": [
+            4,
+            3.861999988555908,
+            -1.0059999227523804
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        3.484710693359375,
+        -1.1258306503295898
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "unitHits": [
+        {
+          "key": "trap_cnnon_explode_hit",
+          "id": 1
+        }
+      ],
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ],
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 398,
+            "clientY": 301
+          }
+        ]
+      ]
+    },
+    {
+      "kind": "boss",
+      "initial": {
+        "native": [
+          {
+            "id": 2,
+            "native": true,
+            "x": 6,
+            "y": 6
+          },
+          {
+            "id": 3,
+            "native": true,
+            "x": 14,
+            "y": 6
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              -7,
+              0
+            ],
+            "time": 0.50343309895993
+          },
+          {
+            "anchor": [
+              4,
+              -7,
+              0
+            ],
+            "time": 0.50343309895993
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.06618397627408612,
+          "ball": [
+            -4,
+            -3.138000011444092,
+            -0.7559999823570251
+          ]
+        },
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.06618397627408612,
+          "ball": [
+            4,
+            -3.138000011444092,
+            -0.7559999823570251
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        -3.515289306640625,
+        -0.8758307099342346
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "unitHits": [
+        {
+          "key": "trap_cnnon_explode_hit",
+          "id": 1
+        }
+      ],
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ],
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 398,
+            "clientY": 301
+          }
+        ],
+        [
+          "tile",
+          {
+            "row": 6,
+            "col": 6,
+            "button": 0,
+            "clientX": 412,
+            "clientY": 253
+          }
+        ]
+      ]
+    }
+  ],
+  "errors": [
+    "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
+  ],
+  "http": [],
+  "consoleErrors": []
+}

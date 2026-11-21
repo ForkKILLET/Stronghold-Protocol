@@ -1,0 +1,43 @@
+{
+  "gameplay": "f431a29e9dbfc5cc99ab5e83daeb431032a2f56d",
+  "visual": "c9a9eefa63817b9f387c584b4094ec93d33a6d1a",
+  "base": "bb1172306227e5d2511db85df2cc5cf664ace0a3",
+  "gameplayTests": {
+    "pass": 241,
+    "fail": 0,
+    "skip": 0
+  },
+  "visualTests": {
+    "pass": 207,
+    "fail": 0,
+    "skip": 7
+  },
+  "gameplayFormattedTests": {
+    "pass": 79,
+    "fail": 0,
+    "skip": 0
+  },
+  "visualFormattedTests": {
+    "pass": 79,
+    "fail": 0,
+    "skip": 7
+  },
+  "fullSimulationAndGolden": "paused; upstream Actions to verify",
+  "optionalSkips": [
+    "Pillow-dependent extraction checks",
+    "local extracted FX and scene packages not configured in this worktree"
+  ],
+  "chromeInitialCapture": "one empty impact screenshot retained and excluded; same frozen stage recaptured successfully after waiting two animation frames",
+  "chromeRecheck": "all normal-field screenshots nonempty; no page, console or HTTP errors",
+  "firefox": {
+    "scenarios": [
+      "normal",
+      "unite",
+      "boss"
+    ],
+    "screenshots": 25,
+    "httpErrors": 0,
+    "consoleErrors": 0,
+    "pageDiagnostics": "one existing data-URL CSP diagnostic, unchanged policy"
+  }
+}
