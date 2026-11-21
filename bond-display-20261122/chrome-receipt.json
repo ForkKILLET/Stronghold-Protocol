@@ -1,0 +1,226 @@
+{
+  "engine": "chrome",
+  "phase": "after",
+  "alignment": [
+    {
+      "id": "yanShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "sargonShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "victoriaShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "kjeragShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "lateranoShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "egirShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "siracusaShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "kazimierzShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 43.080108642578125,
+      "coreHeight": 43.080108642578125
+    },
+    {
+      "id": "maniShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "preciShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "swiftShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "skillfulShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "arcaneShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "steadShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "deputShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "visiShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "miraShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "investShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "raidShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "indomShip",
+      "active": false,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "emptyShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "soloShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    },
+    {
+      "id": "suntShip",
+      "active": true,
+      "dy": 0,
+      "discHeight": 33.74615478515625,
+      "coreHeight": 33.74615478515625
+    }
+  ],
+  "states": [
+    [
+      {
+        "active": true,
+        "full": false,
+        "frame": "url(\"/assets/ui/bondBoardIcon/2_1.png\")",
+        "coreFrame": "url(\"/assets/ui/bondBoardIcon/1_1.png\")",
+        "filter": "brightness(0) opacity(0.85)",
+        "fallback": false
+      },
+      {
+        "active": true,
+        "full": false,
+        "frame": "url(\"/assets/ui/bondBoardIcon/2_1.png\")",
+        "coreFrame": "url(\"/assets/ui/bondBoardIcon/1_1.png\")",
+        "filter": "brightness(0) opacity(0.85)",
+        "fallback": false
+      }
+    ],
+    [
+      {
+        "active": true,
+        "full": true,
+        "frame": "url(\"/assets/ui/bondBoardIcon/2_2.png\")",
+        "coreFrame": "url(\"/assets/ui/bondBoardIcon/1_1.png\")",
+        "filter": "brightness(0) opacity(0.85)",
+        "fallback": false
+      },
+      {
+        "active": true,
+        "full": true,
+        "frame": "url(\"/assets/ui/bondBoardIcon/2_2.png\")",
+        "coreFrame": "url(\"/assets/ui/bondBoardIcon/1_1.png\")",
+        "filter": "brightness(0) opacity(0.85)",
+        "fallback": false
+      }
+    ],
+    [
+      {
+        "active": false,
+        "full": false,
+        "frame": "url(\"/assets/ui/bondBoardIcon/3_2.png\")",
+        "coreFrame": "var(--bond-frame)",
+        "filter": "brightness(0) invert(0.65)",
+        "fallback": false
+      },
+      {
+        "active": false,
+        "full": false,
+        "frame": "url(\"/assets/ui/bondBoardIcon/2_1.png\")",
+        "coreFrame": "var(--bond-frame)",
+        "filter": "brightness(0) invert(0.65)",
+        "fallback": false
+      }
+    ]
+  ],
+  "errors": [],
+  "http": [],
+  "consoleErrors": []
+}
