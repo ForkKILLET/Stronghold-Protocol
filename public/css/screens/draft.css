@@ -237,7 +237,22 @@ button.dorder__box:hover { border-color:var(--mint-400); }
 .draft-detail { --draft-action-gap:calc(.18 * var(--ui-unit,1rem)); grid-column:4; min-width:0; gap:calc(.1 * var(--ui-unit,1rem)); padding:var(--draft-action-gap); }
 .draft-detail__btns { --draft-action-height:max(32px,calc(.6 * var(--ui-unit,1rem))); gap:var(--draft-action-gap); }
 .draft-detail__body { flex:1; align-items:stretch; overflow:auto; }
-.draft-detail__art { flex:none; align-self:center; width:calc(1.6 * var(--ui-unit,1rem)); height:calc(1.6 * var(--ui-unit,1rem)); }
+/* The official brackets flank the portrait; the whole decoration shares its centre and scale. */
+.draft-detail__art {
+ flex:none; align-self:center; width:min(100%,calc(2.4 * var(--ui-unit,1rem))); height:auto; aspect-ratio:3 / 2;
+ padding:0; border:0; background:none;
+}
+.draft-detail__art .bandicon { --bi:calc(1.6 * var(--ui-unit,1rem)); width:66.666667%; height:100%; }
+.draft-detail__art::before {
+ inset:12% 3.333333%; border-width:max(1px,calc(.012 * var(--ui-unit,1rem)));
+ clip-path:polygon(0 0,7% 0,7% 100%,0 100%,0 0,100% 0,100% 100%,93% 100%,93% 0,100% 0);
+}
+.draft-detail__art::after { content:none; }
+.draft-detail__corners {
+ position:absolute; inset:0; display:grid; grid-template-columns:repeat(2,7.5%); grid-template-rows:repeat(2,11.25%);
+ justify-content:space-between; align-content:space-between; color:rgba(220,240,236,.25); pointer-events:none;
+}
+.draft-detail__corners > .icon { width:100%; height:100%; }
 .draft-detail__eff { flex:none; overflow:visible; }
 .draft-detail__actions { align-self:stretch; padding:0; }
 .draft-detail__status { box-sizing:border-box; height:2.8em; margin:0; overflow:auto; font-size:calc(.16 * var(--utility-text,var(--t))); }
@@ -253,8 +268,8 @@ button.dorder__box:hover { border-color:var(--mint-400); }
  .draft-order__deco { display:none; }
  .draft-order__rows { gap:4px; padding-block:2px; }
  .dorder { height:calc(.72 * var(--ui-unit,1rem)); }
- .draft-detail__overview { display:grid; grid-template-columns:calc(.9 * var(--ui-unit,1rem)) minmax(0,1fr); gap:4px; align-items:center; }
- .draft-detail__overview .draft-detail__art { grid-column:1; grid-row:1 / span 2; width:calc(.9 * var(--ui-unit,1rem)); height:calc(.9 * var(--ui-unit,1rem)); }
+ .draft-detail__overview { display:grid; grid-template-columns:calc(1.35 * var(--ui-unit,1rem)) minmax(0,1fr); gap:4px; align-items:center; }
+ .draft-detail__overview .draft-detail__art { grid-column:1; grid-row:1 / span 2; width:100%; height:auto; }
  .draft-detail__overview .draft-detail__hp { grid-column:2; font-size:10px; white-space:nowrap; gap:4px; }
  .draft-detail__overview .draft-detail__hp b { font-size:12px; }
  .draft-detail__overview .draft-tag { display:none; }
@@ -265,7 +280,7 @@ button.dorder__box:hover { border-color:var(--mint-400); }
  .draft-order .dorder { height:max(32px,calc(.72 * var(--ui-unit,1rem))); }
  .draft-order .dorder__name { font-size:min(12px,calc(.2 * var(--utility-text,var(--t)))); line-height:1.2; }
  .draft-order .dorder__state { font-size:min(10px,calc(.15 * var(--utility-text,var(--t)))); line-height:1.2; }
- .draft-detail__overview .draft-detail__art .bandicon { --bi:100%; width:100%; height:100%; }
+ .draft-detail__overview .draft-detail__art .bandicon { --bi:calc(.9 * var(--ui-unit,1rem)); }
 }
 
 .draft-confirm__compact { display:none; }

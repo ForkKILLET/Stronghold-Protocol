@@ -334,7 +334,10 @@ export function BandDraftScreen({ held = null } = {}) {
         ${shownBand ? html`<aside class="draft-detail" key="detail" data-stats-source=${progress.source} data-stats-status=${progress.status}>
           <div class="draft-detail__body" key=${shownBand.bandId}>
             <div class="draft-detail__overview">
-            <div class="draft-detail__art"><${BandIcon} bandId=${shownBand.bandId} size="xl" /></div>
+            <div class="draft-detail__art">
+              <span class="draft-detail__corners" aria-hidden="true">${[0, 1, 2, 3].map((i) => html`<${Icon} key=${i} name="plus" />`)}</span>
+              <${BandIcon} bandId=${shownBand.bandId} size="xl" />
+            </div>
             ${progress.status!=='ready'?html`<span class="draft-detail__stats-status" role="status">${progress.status==='error'?t('统计暂不可用'):t('正在读取统计数据…')}
               ${progress.status==='error'?html`<${Button} size="sm" square icon="refresh" aria-label=${t('重新读取统计')} title=${t('重新读取统计')} onClick=${progress.retry}/>`:null}</span>`:
               progress.won[shownBand.bandId]?html`<span class="draft-detail__medal" title=${progress.source==='server'?t('服务器账户统计'):t('此设备记录')}>${t('已通过模拟{n}次',{n:progress.won[shownBand.bandId]})}</span>`:null}
