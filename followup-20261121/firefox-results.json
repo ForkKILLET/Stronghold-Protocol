@@ -1,0 +1,74 @@
+{
+  "evidence": [
+    {
+      "scenario": "scout-normal",
+      "rect2d": null,
+      "rect3d": null,
+      "cannons": 1,
+      "crates": 0,
+      "native": 1,
+      "model": true,
+      "live": 0,
+      "staticCrateVertices": 0
+    },
+    {
+      "scenario": "missing-model",
+      "model": null,
+      "count": 1
+    },
+    {
+      "scenario": "scout-boss",
+      "rect2d": null,
+      "rect3d": null,
+      "cannons": 2,
+      "crates": 0,
+      "native": 2,
+      "model": true,
+      "live": 0,
+      "staticCrateVertices": 0
+    },
+    {
+      "scenario": "crate-scout-2d",
+      "rect2d": null,
+      "rect3d": null,
+      "cannons": 0,
+      "crates": 3,
+      "native": 0,
+      "model": false,
+      "live": 0,
+      "staticCrateVertices": 0
+    },
+    {
+      "scenario": "crate-scout-3d",
+      "rect2d": null,
+      "rect3d": null,
+      "cannons": 0,
+      "crates": 3,
+      "native": 0,
+      "model": false,
+      "live": 0,
+      "staticCrateVertices": 1908
+    },
+    {
+      "scenario": "death-full",
+      "born": 1,
+      "breaks": 0,
+      "deaths": 0,
+      "destroyed": 1,
+      "idle": 0
+    },
+    {
+      "scenario": "death-off",
+      "born": 0,
+      "breaks": 0,
+      "deaths": 1,
+      "destroyed": 0,
+      "idle": 0
+    }
+  ],
+  "errors": [
+    "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
+  ],
+  "http": [],
+  "consoleErrors": []
+}

@@ -1,0 +1,24 @@
+{
+  "head": "b2f81d423ea06a8f04d3acf2bab057da94b75225",
+  "base": "d675b81d93a98e137e133e75f5662f02bc06e080",
+  "tests": {
+    "pass": 228,
+    "fail": 0,
+    "skip": 8
+  },
+  "browserRegression": {
+    "file": "test/render/fieldview.browser.test.js",
+    "name": "scouted preparation keeps static devices through stage redraw and board-mode changes",
+    "pass": 1
+  },
+  "browsers": {
+    "chrome": 11,
+    "firefox": 11
+  },
+  "types": "pass",
+  "lint": "no errors; existing warnings retained",
+  "imports": "pass",
+  "fullLocalSimulationAndGolden": "paused",
+  "previousCiFailure": "old regulation worker golden differed; latest dev includes the maintainer-recomputed MAP10 snapshots",
+  "resourceFixture": "read-only asset overlay; two temporary worktree links removed after browser verification"
+}
