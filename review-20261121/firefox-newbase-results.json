@@ -1,0 +1,72 @@
+{
+  "evidence": [
+    {
+      "kind": "normal",
+      "initial": {
+        "native": [
+          {
+            "id": 2,
+            "native": true,
+            "x": 6,
+            "y": 13
+          }
+        ],
+        "static": 0,
+        "markers": [
+          {
+            "anchor": [
+              -4,
+              0,
+              0
+            ],
+            "time": 0.696048000000001
+          }
+        ]
+      },
+      "cast": [
+        {
+          "key": "trap_cnnon_attack_start",
+          "time": 0.11985253284866104,
+          "ball": [
+            -4,
+            3.861999988555908,
+            -0.7559999823570251
+          ]
+        }
+      ],
+      "ball": [
+        -4,
+        3.484710693359375,
+        -0.8758307099342346
+      ],
+      "destroyed": {
+        "exists": false,
+        "idle": false,
+        "static": 0
+      },
+      "unitHits": [
+        {
+          "key": "trap_cnnon_explode_hit",
+          "id": 1
+        }
+      ],
+      "clicks": [
+        [
+          "tile",
+          {
+            "row": 13,
+            "col": 6,
+            "button": 0,
+            "clientX": 720,
+            "clientY": 247
+          }
+        ]
+      ]
+    }
+  ],
+  "errors": [
+    "Content-Security-Policy: The page’s settings blocked the loading of a resource (connect-src) at data:image/png;base64,iVBORw0KGgoAAAANSU… because it violates the following directive: “connect-src 'self'”"
+  ],
+  "http": [],
+  "consoleErrors": []
+}

@@ -1,7 +1,7 @@
 {
-  "gameplay": "f431a29e9dbfc5cc99ab5e83daeb431032a2f56d",
-  "visual": "c9a9eefa63817b9f387c584b4094ec93d33a6d1a",
-  "base": "bb1172306227e5d2511db85df2cc5cf664ace0a3",
+  "gameplay": "f5d44aa1ee79eb165be99f1c9c595d5ceccd1063",
+  "visual": "95ad5d7fbf5767bfafa83e3b4f7f1e4ffe2a3044",
+  "base": "6870c725b27c0f6edefee621b0358037ae177822",
   "gameplayTests": {
     "pass": 241,
     "fail": 0,
@@ -39,5 +39,17 @@
     "httpErrors": 0,
     "consoleErrors": 0,
     "pageDiagnostics": "one existing data-URL CSP diagnostic, unchanged policy"
+  },
+  "previousGameHead": "f431a29e9dbfc5cc99ab5e83daeb431032a2f56d",
+  "previousVisualHead": "c9a9eefa63817b9f387c584b4094ec93d33a6d1a",
+  "newbaseValidation": {
+    "gameplayPass": 241,
+    "visualPass": 207,
+    "visualSkip": 7,
+    "types": "both passed",
+    "imports": "both passed",
+    "lint": "both no errors",
+    "browser": "Chrome and Firefox normal field, desktop/short, pause, FX tiers, 2D/3D, late assets and destruction passed",
+    "regeneratedBattleFrames": "byte-identical, SHA-256 56c59f5c4c0a0e2ab4b0c520ca60318e98b3e7fa5ed84fd080cd955307d82210"
   }
 }
