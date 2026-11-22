@@ -106,14 +106,14 @@ export function CardCounterPanel({ myId, pub, connected = true, onClose, client 
           ${target ? html`<${UnitThumb} id=${target.chessId} ownerId=${null} size="sm" /><span><b>${target.name}</b><small>${t('搜索并选择干员')}</small></span>` : html`<b>${t('选择目标干员')}</b>`}
           <${Icon} name="search" /></button>
         <button class="card-counter__favorite" type="button" disabled=${!target} aria-pressed=${!!target && favorites.includes(target.charId)}
-          aria-label=${t(target && favorites.includes(target.charId) ? '取消收藏' : '收藏干员')} title=${t(target && favorites.includes(target.charId) ? '取消收藏' : '收藏干员')}
+          aria-label=${(target && favorites.includes(target.charId) ? t('取消收藏') : t('收藏干员'))} title=${(target && favorites.includes(target.charId) ? t('取消收藏') : t('收藏干员'))}
           onClick=${favorite}><${Icon} name="star" /></button>
       </div>
       <nav class="card-counter__favorites" aria-label=${t('已收藏干员')}>${favoriteRows.length ? favoriteRows.map(c => html`<button type="button" key=${c.chessId}
-        aria-pressed=${selected === c.chessId} onClick=${() => pick(c.chessId)}>${c.name}</button>`) : html`<small>${t(favorites.length ? '此赛季没有已收藏干员' : '暂无收藏干员')}</small>`}</nav>
+        aria-pressed=${selected === c.chessId} onClick=${() => pick(c.chessId)}>${c.name}</button>`) : html`<small>${(favorites.length ? t('此赛季没有已收藏干员') : t('暂无收藏干员'))}</small>`}</nav>
       ${error ? html`<div class="card-counter__error" role="status">${error}${connected && current?.error !== 'BAD_MSG' ? html`<button type="button" onClick=${() => watcher.current?.refresh()}>${t('重试')}</button>` : null}</div>` : null}
       ${stock ? html`<div class=${`card-counter__data${error ? ' is-stale' : ''}`}>
-        ${stock.status !== 'shared' ? html`<p class="card-counter__status">${t(stock.status === 'banned' ? '本局禁用' : '不进入共享卡池')}</p>` : null}
+        ${stock.status !== 'shared' ? html`<p class="card-counter__status">${(stock.status === 'banned' ? t('本局禁用') : t('不进入共享卡池'))}</p>` : null}
         <div class="card-counter__totals">${[[t('卡池总量'), stock.total], [t('卡池剩余'), stock.remaining], [t('持有折算'), stock.held]].map(([label, value]) => html`<div><small>${label}</small><b>${value ?? '—'}</b></div>`)}</div>
         <table class="card-counter__holders"><thead><tr><th>${t('玩家')}</th><th>${t('玩家持有')}</th><th>${t('占池')}</th></tr></thead><tbody>
           ${stock.holders.map(p => html`<tr key=${p.playerId} class=${p.playerId === myId ? 'is-self' : ''}><th scope="row" title=${p.name}>${p.name}</th>

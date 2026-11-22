@@ -208,7 +208,7 @@ function variantMat(t) {
 }
 
 /** Device roles we draw, and whether they stand on the tile as a 3D prop. */
-const DEVICE_ROLES = new Set(['crate', 'platform', 'mound', 'blower', 'turret', 'waterPlatform', 'bush', 'sealedFloor', 'saltCannon']);
+const DEVICE_ROLES = new Set(['crate', 'platform', 'mound', 'blower', 'turret', 'waterPlatform', 'bush', 'sealedFloor', 'cannon']);
 /** Textured box props: role → { size (tiles), height, top / side materials }. */
 export const DEVICE_BOX = Object.freeze({
   crate: { size: 0.84, height: 0.74, top: 'crateTop', side: 'crateSide' },
@@ -217,12 +217,12 @@ export const DEVICE_BOX = Object.freeze({
   sealedFloor: { size: 0.92, height: 0.05, top: 'sealed', side: 'forbidSide' },
   blower: { size: 0.86, height: 0.28, top: 'blowerTop', side: 'forbidSide' },
   turret: { size: 0.72, height: 0.34, top: 'turretTop', side: 'forbidSide' },
-  cannon: { size: 0.55, height: 0.62, top: 'turretTop', side: 'forbidSide' },
+  cannon: { cannon: true, size: 0.55, height: 0.62, top: 'turretTop', side: 'forbidSide' },
 });
 /** Box prop of a battle device unit by its defId (sim `spawnDevice`: stage device keys). */
 export function deviceBoxOf(defId) {
   const k = String(defId || '');
-  if (k === 'trap_196_cnnon') return DEVICE_BOX.saltCannon;
+  if (k === 'trap_196_cnnon') return DEVICE_BOX.cannon;
   if (k.includes('accrate') || k.includes('crate')) return DEVICE_BOX.crate;
   if (k.includes('cnnon')) return DEVICE_BOX.cannon;
   if (k.includes('aclasert') || k.includes('turret')) return DEVICE_BOX.turret;
@@ -630,11 +630,7 @@ export class TileField {
   _applyBattleRect() {
     const R = this.battleRect;
     const inside = (d) => !!R && d.row >= R.r0 && d.row <= R.r1 && d.col >= R.c0 && d.col <= R.c1;
-    for (const d of this.devBoxes) {
-      const cannon = d.role === 'saltCannon' && !!R && d.col >= R.c0 && d.col <= R.c1
-        && d.row - (d.dev.cannon?.distance || 4) >= R.r0 && d.row - (d.dev.cannon?.distance || 4) <= R.r1;
-      d.visible = !(cannon || inside(d) && (d.role === 'crate' || d.role === 'turret'));
-    }
+    for (const d of this.devBoxes) d.visible = !(R && d.role === 'cannon') && !(inside(d) && (d.role === 'crate' || d.role === 'turret'));
     for (const d of this.devices) { d.visible = true; d.gfx.visible = true; }
   }
 

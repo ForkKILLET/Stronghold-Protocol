@@ -62,7 +62,7 @@ export function healthReport({ startedAt, network, registry, lobby, content = nu
     build,
     ...(content ? { content: { vanilla: content.cs, sets: contentSets(lobby), ...pluginCount(lobby) } } : {}),
     ...(trusted && Object.keys(trusted).length ? { plugins: trusted } : {}),
-    ...(versions?.nonDefault.length ? { versions: { enabled: [...versions.ids], default: versions.defaultId,
+    ...(versions?.nonDefault.length ? { versions: { enabled: [...versions.ids], default: versions.defaultId, loaded: versions.stats().loaded,
       hosts: versionHosts?.stats() || { workers: 0, matches: 0, transport: 'process' } } } : {}),
     sockets: network.connectionCount, sessions: registry.size, ...counters,
   };

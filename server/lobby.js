@@ -104,8 +104,10 @@ import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatar
 //     exactly what the server accepts.
 //   * 干员皮肤 (docs/SKINS.md): room.skins { skins } — `{ [charId]: skinId }`, the appearance each operator wears — is
 //     a plain map of charIds to skinIds, at most SKIN_LIMITS.entries (256 [ASSUMED]); a bad shape is BAD_MSG and does
-//     not clear the stored choice. A charId the room's content does not have is dropped (shared/protocol.js
-//     checkSkinSelection). An unknown skinId can do nothing worse than fail to resolve in the client's spineEntry.
+//     not clear the stored choice. A charId neither the room's content nor the cross-period 名片干员 roster has is
+//     dropped (shared/protocol.js checkSkinSelection; the roster since DESIGN §37.325, so a seat card of another period
+//     wears its outfit — a match start keeps only the room's operators, seatSettings). An unknown skinId can do nothing
+//     worse than fail to resolve in the client's spineEntry.
 //     Stored on the session and the seat. Unlike
 //     the settings above there is NO phase gate: a match receives seats[].skins when it starts AND takes a later change
 //     at once (match.setSkins, any phase), because the choice is public — a teammate sees your model — and cosmetic.
@@ -116,16 +118,21 @@ import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatar
 //     the room waits; during a match its m.public carries it, and the room.state at the match's end. [ASSUMED] The whole
 //     map rides in room.state, not one skinId per card: a seat without a pick shows an operator its clients choose by
 //     player id (ui/seatArt.js seatOperator), which the server does not compute.
-//   * 名片干员 (PR #643 split 6): room.card { charId } — the operator whose portrait fills the player's seat card in the
-//     waiting room, '' for none — is kept only when it is a visible charId of the room's chess.json (another id, a hidden
-//     preset, a stand-in body or a 自选-only operator: BAD_MSG, the stored one stays). Stored on the session (it follows the player into
-//     the next room) and the seat; the room's members see it as room.state seats[].card (human seats with a card only,
-//     so a room without one sends what it sent before). Checked again when the player takes a seat (humanSeat): a card
-//     the room's content does not have (a plugin operator picked in a room with gameplay plugins) is left off that seat
-//     — the session keeps it, and the player's page sends the card it can show for the room (ui/loadoutSync.js
-//     installCardSync). Cosmetic: no phase gate, never handed to a match. [ASSUMED] A card picked in this browser stands
-//     in for the event's account assistant (名片形象, display_meta_table avatarTypeData ASSISTANT); the client's default
-//     for a seat without one is ui/seatArt.js'.
+//   * 名片干员 (PR #643 split 6; other periods #877, DESIGN §37.325): room.card { charId } — the operator whose portrait
+//     fills the player's seat card in the waiting room, '' for none — is kept only when cardAllowed: an operator of the
+//     cross-period roster (data/card-roster.json, shared/cardRoster.js: every official period's visible, non-自选 chess
+//     operators and 自选编队 pool), or a card candidate of the room's own content (cardCharIds: its visible chess records
+//     and its 自选 pool — a plugin operator in a room with gameplay plugins). The roster is asked first, so a card of
+//     another period never loads a version's data. Another id (a hidden preset, a stand-in body, an unknown id: BAD_MSG)
+//     leaves the stored one. Stored on the session (it follows the player into the next room) and the seat; the room's
+//     members see it as room.state seats[].card (human seats with a card only, so a room without one sends what it sent
+//     before). Checked again when the player takes a seat (humanSeat), when the room switches version (applyVersion)
+//     and when its plugins change (setPlugins, DESIGN §37.326): an official operator's card stays, one the room's content
+//     no longer has (a plugin operator) is left off or taken off that seat — the session keeps it, and the player's page
+//     sends the card it can show for the room (ui/loadoutSync.js installCardSync). Without a roster in the server's data
+//     (a test data directory) only the room's content counts. Cosmetic: no phase gate, never handed to a match.
+//     [ASSUMED] A card picked in this browser stands in for the event's account assistant (名片形象, display_meta_table
+//     avatarTypeData ASSISTANT); the client's default for a seat without one is ui/seatArt.js'.
 //   * Content identity (DESIGN §32, the plugin system's first step): the lobby is given the server's vanilla content
 //     (server/plugins/identity.js; none in unit tests that build a Lobby without it). Every `welcome` carries
 //     `content: { vanilla: <cs> }` — and `plugins: <n>` when this server has n > 0 unofficial plugins (every class but a
@@ -231,8 +238,9 @@ import { cleanPlayerCard, isCardPortraitId, cardPortraitOperatorId, isCardAvatar
 //     The switch (applyVersion): room.version, the difficulty lowered as at create, the content the version's base with
 //     the room's cosmetic plugins applied again (none when they do not resolve there), every member's page loading it
 //     again, the other humans un-readied, the WHOLE result replay dropped (its frames name the old version's chess ids),
-//     every human seat's loadout / 潜能 / 干员持有 / 自选 cleared (the pages send them again) and a seat card the version
-//     lacks dropped. ▸ A setting sent in such a room before its page reported the room's content ready is kept unverified
+//     every human seat's loadout / 潜能 / 干员持有 / 自选 cleared (the pages send them again) and a seat card neither the
+//     cross-period roster nor the version has dropped (header 名片干员). ▸ A setting sent in such a room before its page
+//     reported the room's content ready is kept unverified
 //     (the version's chess ids are reused with other operators: chess_char_1_02 is 角峰 in 第二期, 讯使 in 第一期) — a
 //     version room's match then drops that loadout's skill / module choices and that 干员持有 list whole, while 潜能 /
 //     练度 and 自选 (keyed by charId) are checked again against the version's data (seatSettings); a setting checked for
@@ -258,6 +266,7 @@ import { ruleOption } from '../shared/plugins/rules.js';
 import { msg, wireMessage } from '../shared/i18n.js';
 import { freezeSkins } from '../shared/skins.js';
 import { DEFAULT_VERSION } from '../shared/versions.js';
+import { CARD_ROSTER, cardEntries, parseCardRoster } from '../shared/cardRoster.js';
 import { parseTestModeEnv, testModeGate, unrecognizedTestMode } from './testMode.js';
 
 /** Room code alphabet: uppercase letters without I and O (and no digits, so no 0/1). */
@@ -341,20 +350,22 @@ function opsCharIds(data) {
   return ids;
 }
 
-/** The operator charIds of a data object's chess.json that a player can see (room.card's whitelist, the client's picker
- * list: no hidden preset, no stand-in or 自选-only body). */
-const CHESS_IDS = new WeakMap();
-function chessCharIds(data) {
-  const chess = data && typeof data.chess === 'object' ? data.chess : null;
-  if (!chess) return new Set();
-  let ids = CHESS_IDS.get(chess);
-  if (!ids) {
-    ids = new Set();
-    for (const c of Object.values(chess)) if (c && !c.isDiy && c.visible !== false && typeof c.charId === 'string') ids.add(c.charId);
-    CHESS_IDS.set(chess, ids);
-  }
+/** The card candidates of one data set (shared/cardRoster.js cardEntries, per data object): the visible, non-自选 chess
+ * records (no hidden preset) plus the 自选编队 pool (`backups.diy.ownedPool` — operators outside the chess pool with no
+ * chess record of their own; a seat card shows their portrait like any other, the roster rules of the room unchanged).
+ * room.card's whitelist is these of the room's content and the cross-period roster (Lobby#cardAllowed, DESIGN §37.325). */
+const CARD_IDS = new WeakMap();
+function cardCharIds(data) {
+  if (!data || typeof data !== 'object') return new Set();
+  let ids = CARD_IDS.get(data);
+  if (ids) return ids;
+  ids = new Set(cardEntries(data.chess, data.backups).keys());
+  CARD_IDS.set(data, ids);
   return ids;
 }
+
+/** The roster of a server without data/card-roster.json: nothing (read only, never added to). */
+const NO_CARD_IDS = new Set();
 
 /** Deep-frozen copy of checked 自选 picks (shared by the session, the seat and the match's PlayerState). */
 function freezeDiy(picks) {
@@ -1108,7 +1119,7 @@ export class Lobby {
           connected: false,
           left,
           skins: isBot ? null : (session?.skins || s.skins || null),
-          card: isBot || !(session?.card ?? s.card) ? null : cleanPlayerCard(session?.card ?? s.card, (id) => opsCharIds(this.safeData()).has(id)),
+          card: isBot || !(session?.card ?? s.card) ? null : cleanPlayerCard(session?.card ?? s.card, (id) => this.officialCardIds().has(id) || opsCharIds(this.safeData()).has(id)),
           loadout: isBot ? null : (session?.loadout || (s.loadout && typeof s.loadout === 'object' ? s.loadout : null)),
           loadoutCs: isBot ? null : session?.loadoutCs ?? s.loadoutCs ?? null,
           notOwnedCs: isBot ? null : session?.notOwnedCs ?? s.notOwnedCs ?? null,
@@ -2089,6 +2100,9 @@ export class Lobby {
       for (const s of room.seats) if (s && !s.isBot && s.playerId !== room.hostId) s.ready = false;
       // another content set: every page loads and checks it again (room.contentReady)
       if ((before?.cs ?? null) !== (content?.cs ?? null)) for (const s of [...room.seats, ...room.spectators]) if (s && !s.isBot)  { s.content = null; s.consentCs = null; }
+      // 名片干员 (header, DESIGN §37.326): a card the room's new content lacks (a plugin operator of the set it left) is
+      // taken off the seat; the session keeps it, as humanSeat leaves it off a room without that operator
+      for (const s of room.seats) if (s && !s.isBot && s.card) s.card = cleanPlayerCard(s.card, id => this.cardAllowed(room, id));
       this.log.info(`[lobby] ${room.code} plugins: ${content?.plugins?.length ? content.plugins.map((p) => `${p.id}@${p.version}`).join(', ') : 'none'}${room.modded ? ` (content ${content.cs.slice(0, 8)})` : ''}`);
     }
     this.broadcastState(room);
@@ -2447,8 +2461,8 @@ export class Lobby {
   /**
    * Switch the room to `version` (header "Official versions"): its difficulty, its content (the version's base with the
    * room's plugins composed again — a gameplay failure preserves the original room), every member's page loading it, the other humans
-   * un-readied, the whole result replay and every human seat's stored settings dropped, a seat card the version lacks
-   * dropped. Broadcast.
+   * un-readied, the whole result replay and every human seat's stored settings dropped, a seat card neither the
+   * cross-period roster nor the new content has dropped (cardAllowed: an official operator's card stays). Broadcast.
    * @param {Room} room @param {string} version @param {'vote' | 'alone'} how
    */
   applyVersion(room, version, how) {
@@ -2477,8 +2491,6 @@ export class Lobby {
     room.pluginsChanged = null;
     room.pluginNoticeKeys = {};
     room.replay = null;
-    const data = this.dataFor(room);
-    const operators = chessCharIds(data);
     for (const s of [...room.seats, ...room.spectators]) {
       if (!s || /** @type {any} */ (s).isBot) continue;
       const seat = /** @type {Seat} */ (s);
@@ -2490,7 +2502,7 @@ export class Lobby {
       if (s.playerId !== room.hostId) s.ready = false;
       s.loadout = null; s.ops = null; s.notOwned = null; s.diy = null;
       s.loadoutCs = null; s.notOwnedCs = null; s.diyCs = null;
-      if (s.card && !operators.has(cardPortraitOperatorId(s.card.charId))) s.card = null;
+      if (s.card) s.card = cleanPlayerCard(s.card, id => this.cardAllowed(room, id));
     }
     this.log.info(`[lobby] ${room.code} version → ${version} (${how})`);
     this.broadcastState(room);
@@ -2599,9 +2611,10 @@ export class Lobby {
   skins(session, { skins }) {
     const room = this.roomOf(session);
     const source = this.dataFor(room);
-    const checked = checkSkinSelection(skins, (id) => !!source.chess?.[id] || operatorCharIds(source).has(id));
+    const allowed = (id) => this.officialCardIds().has(id) || operatorCharIds(source).has(id);
+    const checked = checkSkinSelection(skins, (id) => !!source.chess?.[id] || allowed(id));
     if (!checked.ok) return fail(ERR.BAD_MSG, 'bad skin selection');
-    const clean = freezeSkins(checked.skins, id => source.chess?.[id], id => operatorCharIds(source).has(id));
+    const clean = freezeSkins(checked.skins, id => source.chess?.[id], allowed);
     session.skins = clean;
     const seat = room?.seatOf(session.playerId);
     if (seat) { const changed = !sameSkins(seat.skins, clean); seat.skins = clean; if (changed && !room.match) this.broadcastState(room); }
@@ -2623,13 +2636,18 @@ export class Lobby {
   /** Authenticated player's public room display, independent of Match/Worker gameplay state. */
   card(session, msg) {
     if (!isCardPortraitId(msg?.charId) || !isCardAvatarId(msg?.avatar)) return fail(ERR.BAD_MSG);
-    const ids = opsCharIds(this.dataFor(this.roomOf(session)));
+    const roomForCard = this.roomOf(session);
+    const ids = new Set(this.officialCardIds());
+    if ([cardPortraitOperatorId(msg.charId), cardAvatarOperatorId(msg.avatar)].some((id) => id && !ids.has(id))) {
+      const content = this.dataFor(roomForCard);
+      for (const id of [...opsCharIds(content), ...cardCharIds(content)]) ids.add(id);
+    }
     if ((msg.charId && !ids.has(cardPortraitOperatorId(msg.charId))) || (msg.avatar && !ids.has(cardAvatarOperatorId(msg.avatar)))) return fail(ERR.BAD_TARGET);
     const clean = cleanPlayerCard(msg, (id) => ids.has(id));
-    const previous = session.card;
-    session.card = clean;
     const room = this.roomOf(session);
     const seat = room?.seatOf(session.playerId);
+    const previous = seat ? seat.card : session.card;
+    session.card = clean;
     if (seat) seat.card = clean;
     const queuedSeat = this.queueByPlayer.get(session.playerId)?.players.find((p) => p.playerId === session.playerId);
     if (queuedSeat) queuedSeat.card = clean;
@@ -2726,6 +2744,26 @@ export class Lobby {
    * *does*; a skin changes only what it looks like, and it is public — a teammate switching model mid-match is
    * harmless, and the next `m.public` broadcast carries it to everyone.
    */
+  /**
+   * The cross-period 名片干员 roster's charIds (DESIGN §37.325): data/card-roster.json of the server's data
+   * (shared/cardRoster.js parseCardRoster, parsed once per data object) — an empty set when the data has none.
+   * @returns {Set<string>}
+   */
+  officialCardIds() {
+    return parseCardRoster(this.safeData()[CARD_ROSTER])?.ids ?? NO_CARD_IDS;
+  }
+
+  /**
+   * May a seat card show `charId` in `room` (header 名片干员)? An operator of the cross-period roster — asked first, so
+   * an official operator never loads a version's data — or a card candidate of the room's content (outside a room, of
+   * the server's default version).
+   * @param {Room | null} room @param {any} charId
+   */
+  cardAllowed(room, charId) {
+    const id = typeof charId === 'string' ? cardPortraitOperatorId(charId) : cardPortraitOperatorId(charId?.charId);
+    return this.officialCardIds().has(id) || cardCharIds(this.dataFor(room)).has(id);
+  }
+
   /**
    * The game data of a room's content (header "Gameplay plugins", "Official versions"): its content set's, else its
    * version's — outside a room, the server's default version's —, else the server's. Another version's data that cannot
@@ -3734,13 +3772,13 @@ export class Lobby {
   }
 
   /**
-   * A human seat for `session` in `room`. The card is checked against the room's operators (header 名片干员): one the
-   * room's content lacks is left off the seat, never cleared from the session.
+   * A human seat for `session` in `room`. The card is checked with cardAllowed (header 名片干员): one neither the
+   * cross-period roster nor the room's content has is left off the seat, never cleared from the session.
    * @param {number} idx @param {any} session @param {Room} room
    * @returns {Seat}
    */
   humanSeat(idx, session, room) {
-    const checkedCard = session.card ? cleanPlayerCard(session.card, id => opsCharIds(this.dataFor(room)).has(id)) : null;
+    const checkedCard = session.card ? cleanPlayerCard(session.card, id => this.cardAllowed(room, id) || opsCharIds(this.dataFor(room)).has(id)) : null;
     const card = checkedCard && (checkedCard.charId || checkedCard.avatar) ? checkedCard : null;
     return {
       seat: idx, playerId: session.playerId, name: session.name, avatarId:session.avatarId || null, publicId:session.publicId || null, isBot: false, ready: false, connected: session.connected, left: false,

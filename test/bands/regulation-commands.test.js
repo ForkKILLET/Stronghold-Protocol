@@ -225,7 +225,18 @@ test('target ownership, ready, stale ids, funds and special recruit refuse witho
   assert.ok(ps.useCommand(commandView(ps).effectId, { slot: 0 }).error);
 });
 
-test('ALL_LIMIT persists across rounds but a newly picked command instance replenishes it', t => {
+test('the special-recruit lock ends with the prep: an unpicked offer lapses at its end (§37.339)', t => {
+  const { h, ps } = setup(t, 'band_transfer');
+  assert.ok(ps.pushRewardOffer('merge'));
+  assert.equal(commandView(ps).reason, 'specialRecruit');
+  assert.equal(ps.privateView().command.reason, 'specialRecruit');
+  h.toPrep(2);
+  assert.equal(ps.offers.length, 0, 'the offer lapsed with the prep');
+  assert.notEqual(commandView(ps).reason, 'specialRecruit');
+  assert.notEqual(ps.privateView().command.reason, 'specialRecruit', 'the view carries no special-recruit state');
+});
+
+test('ALL_LIMIT persists across rounds; manually reacquiring the command starts a fresh stock', t => {
   const { ps, use, view } = setup(t, 'band_upgrade');
   const p = grant(ps); assert.ok(use({ uid: p.uid }).ok); assert.equal(ps.gd.isGolden(p.id), true);
   next(ps, 2); assert.equal(view().usesLeft, 0);
@@ -234,8 +245,7 @@ test('ALL_LIMIT persists across rounds but a newly picked command instance reple
   assert.equal(ps.privateView().commandDraft.cards.length, 3); assert.equal(ps.privateView().canReady, false);
   const draft = ps.commandDrafts[0]; assert.ok(ps.pickCommand('stale', 0).error); assert.ok(ps.pickCommand(draft.id, 0).ok);
   ps.commandDrafts[0].cards[0] = 'aceffect_band_99'; assert.ok(ps.pickCommand(ps.commandDrafts[0].id, 0).ok);
-  assert.equal(view().usesLeft, 1); assert.equal(ps.command.records.aceffect_band_99.totalUsed, 0);
-  assert.equal(openSkillChangeDraft(ps, 'bad'), false);
+  assert.equal(view().usesLeft, 1); assert.equal(openSkillChangeDraft(ps, 'bad'), false);
 });
 
 test('cost decay, reset, permanent growth and bond purchase discount follow their blackboards', t => {

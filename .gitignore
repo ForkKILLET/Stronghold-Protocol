@@ -18,6 +18,7 @@ public/fonts/
 # The repository never stores those official files.
 # 规程 scene extract (regulation_scenes.py): written under out/ for review, then installed into
 # public/assets/local. The directory is official art and must not be committed.
+# extract.py --only skins / library (skins.py, §37.331) write under out/local-extract/ unless --out names a folder.
 /out/
 data/local-assets.json
 # tools/asset-hashes.mjs → per-file hashes of public/assets + public/fonts (ship it next to the manifests)

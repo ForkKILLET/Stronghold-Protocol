@@ -1,3 +1,4 @@
+import { CARD_PERIOD_ORDER, cardPoolIds, isCardChess, parseCardRoster } from '../../../shared/cardRoster.js';
 import { chessPortraitUrl } from './assetUrls.js';
 import { cardAvatarOperatorId, cardPortraitOperatorId } from '../../../shared/playerCard.js';
 
@@ -13,21 +14,37 @@ function hash32(s) {
  * @param {any[]} chessList chess.json records
  * @returns {any[]}
  */
-export function cardOperators(chessList) {
+export function cardOperators(chessList, backups = null) {
   const by = new Map();
   for (const c of Array.isArray(chessList) ? chessList : []) {
-    if (!c || c.isDiy || c.isHidden || c.visible === false || typeof c.charId !== 'string') continue;
+    if (!isCardChess(c)) continue;
     const prev = by.get(c.charId);
     if (!prev || (c.isGolden && !prev.isGolden)) by.set(c.charId, c);
+  }
+  const diy = backups && typeof backups === 'object' ? backups.diy : null;
+  const ops = diy && diy.operators && typeof diy.operators === 'object' ? diy.operators : {};
+  const units = backups && typeof backups === 'object' && backups.units && typeof backups.units === 'object' ? backups.units : {};
+  for (const id of cardPoolIds(backups)) {
+    if (by.has(id)) continue;
+    const rec = Object.hasOwn(ops, id) ? ops[id] : null;
+    const unit = Object.hasOwn(units, id) ? units[id] : null;
+    by.set(id, {
+      charId: id,
+      name: rec && typeof rec.name === 'string' ? rec.name : id,
+      rarity: rec && Number.isFinite(rec.rarity) ? rec.rarity : 0,
+      appellation: unit && typeof unit.appellation === 'string' ? unit.appellation : '',
+    });
   }
   return [...by.values()].sort((a, b) => ((b.rarity ?? 0) - (a.rarity ?? 0)) || String(a.name).localeCompare(String(b.name), 'zh'));
 }
 
 /** Every viewer uses the seat owner's server-published choice, never their own local card. */
-export function seatPortrait(seat, { pool, m }) {
+export function seatPortrait(seat, { pool, m, byChar, pending = false }) {
   if (!seat || seat.playerId == null || !Array.isArray(pool) || !pool.length) return null;
   if (seat.isBot) return null;
-  const chosen = pool.find((c) => c.charId === cardPortraitOperatorId(seat.card?.charId));
+  const id = cardPortraitOperatorId(seat.card?.charId);
+  const chosen = byChar?.get(id) || pool.find((c) => c.charId === id);
+  if (id && !chosen && pending) return null;
   if (chosen) return cardPortraitUrl(seat.card.charId, m, chosen);
   return chessPortraitUrl(m, pool[hash32(seat.playerId) % pool.length]);
 }
@@ -63,9 +80,14 @@ export function cardAvatarSkins(charId, m, catalogue) {
     .map((skin) => ({ id: skin.id, name: skin.name, group: skin.group || '' }));
 }
 
-export function cardContext(list) {
+export function cardContext(list, { pending = false, extra = [] } = {}) {
+  const byChar = new Map(list.map((c) => [c.charId, c]));
+  for (const c of Array.isArray(extra) ? extra : []) if (c && !byChar.has(c.charId)) byChar.set(c.charId, c);
   return {
-    byChar: new Map(list.map((c) => [c.charId, c])),
+    // PR #894 follow-up: true while the room version's 自选 pool (backups) — and, #877, the cross-period roster — is
+    // still loading: a pick that is not in the list yet waits for it instead of drawing a default pool operator for a moment
+    pending,
+    byChar,
     pool: list.filter((c) => (c.rarity ?? 0) >= 5).sort((a, b) => (a.charId < b.charId ? -1 : a.charId > b.charId ? 1 : 0)),
   };
 }
@@ -79,12 +101,13 @@ export function cardContext(list) {
  * @param {{ myId?: any, myCard?: string }} [own]
  * @returns {{ chess: any, picked: boolean } | null}
  */
-export function seatOperator(seat, { byChar, pool }, { myId, myCard } = {}) {
+export function seatOperator(seat, { byChar, pool, pending = false }, { myId, myCard } = {}) {
   if (!seat || seat.playerId == null || seat.isBot) return null;
   const choice = (seat.playerId === myId ? myCard : seat.card);
   const pick = cardPortraitOperatorId(choice?.charId || choice || '');
   const rec = pick && byChar ? byChar.get(pick) : null;
   if (rec) return { chess: rec, picked: true };
+  if (pick && pending) return null;
   if (!Array.isArray(pool) || !pool.length) return null;
   return { chess: pool[hash32(seat.playerId) % pool.length], picked: false };
 }
@@ -118,4 +141,71 @@ export function seatCardSkin(seat, charId, { myId = null, localSkins = {}, playe
 export function seatArtSrc(srcs, failed = []) {
   for (const src of Array.isArray(srcs) ? srcs : []) if (src && !failed.includes(src)) return src;
   return null;
+}
+
+export function cardName(row, { lang = 'zh', localeName = (s) => s } = {}) {
+  const zh = typeof row?.name === 'string' ? row.name : '';
+  if (!lang || lang === 'zh' || !zh) return zh;
+  const got = localeName(zh);
+  if (typeof got === 'string' && got && got !== zh) return got;
+  if (/^zh(-|$)/.test(lang)) return zh;
+  return typeof row.appellation === 'string' && row.appellation ? row.appellation : zh;
+}
+
+export function rosterOperators(roster, { exclude = null, lang = 'zh', localeName = (s) => s } = {}) {
+  const parsed = parseCardRoster(roster);
+  if (!parsed) return [];
+  const out = [];
+  for (const r of parsed.byChar.values()) {
+    if (exclude && exclude.has(r.charId)) continue;
+    out.push({ charId: r.charId, name: cardName(r, { lang, localeName }), zh: r.name, appellation: r.appellation, rarity: r.rarity,
+      isGolden: r.golden, periods: r.periods, other: true });
+  }
+  return out.sort((a, b) => (b.rarity - a.rarity) || a.zh.localeCompare(b.zh, 'zh'));
+}
+
+export function withCardZh(list, rawList) {
+  const zh = new Map((Array.isArray(rawList) ? rawList : []).map((c) => [c.charId, c.name]));
+  return (Array.isArray(list) ? list : []).map((c) => {
+    const name = zh.get(c.charId);
+    return typeof name === 'string' && name && name !== c.name && c.zh !== name ? { ...c, zh: name } : c;
+  });
+}
+
+export function cardMatches(c, needle) {
+  if (!needle) return true;
+  return [c?.name, c?.zh, c?.appellation].some((v) => String(v || '').toLowerCase().includes(needle));
+}
+
+export function cardGroups(list, others, roomVersion) {
+  const room = Array.isArray(list) ? [...list] : [];
+  /** @type {Map<string, any[]>} */
+  const by = new Map();
+  for (const c of Array.isArray(others) ? others : []) {
+    if (!c) continue;
+    const periods = Array.isArray(c.periods) ? c.periods : [];
+    const rest = periods.filter((p) => p !== roomVersion && CARD_PERIOD_ORDER.includes(p));
+    if (!rest.length || periods.includes(roomVersion)) { room.push(c); continue; }
+    const key = rest.reduce((a, b) => (CARD_PERIOD_ORDER.indexOf(b) > CARD_PERIOD_ORDER.indexOf(a) ? b : a));
+    if (!by.has(key)) by.set(key, []);
+    by.get(key).push(c);
+  }
+  const groups = [{ key: 'room', version: roomVersion, ops: room }];
+  for (const v of [...CARD_PERIOD_ORDER].reverse()) if (by.has(v)) groups.push({ key: v, version: v, ops: by.get(v) });
+  return groups.filter((g) => g.ops.length);
+}
+
+export function cardSkinPlayers(players, roomSeats, matchOps = null) {
+  const list = Array.isArray(players) ? players : [];
+  const seats = new Map();
+  for (const s of Array.isArray(roomSeats) ? roomSeats : []) if (s && s.playerId != null) seats.set(s.playerId, s);
+  return list.map((p) => {
+    if (!p || typeof p !== 'object') return p;
+    const fromRoom = seats.get(p.playerId)?.skins;
+    if (!fromRoom || typeof fromRoom !== 'object') return p;
+    const extra = {};
+    for (const [charId, skinId] of Object.entries(fromRoom)) if (!(matchOps instanceof Set && matchOps.has(charId))) extra[charId] = skinId;
+    if (!Object.keys(extra).length) return p;
+    return { ...p, skins: { ...extra, ...(p.skins && typeof p.skins === 'object' ? p.skins : {}) } };
+  });
 }

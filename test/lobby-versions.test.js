@@ -546,7 +546,7 @@ test('the content gate: contentReady flips the seat, ready / start wait for it; 
   h.lobby.shutdown();
 });
 
-test('a switch: others un-readied, settings cleared, a card the version lacks dropped, replay gone, every page loading', () => {
+test('a switch: others un-readied, settings cleared, an official card kept, replay gone, every page loading', () => {
   const h = harness();
   const { people: [a, b], room } = coop(h, 2);
   const spy = h.player('Spy');
@@ -566,12 +566,31 @@ test('a switch: others un-readied, settings cleared, a card the version lacks dr
   assert.equal(seat.loadout, null);
   assert.equal(seat.notOwned, null);
   assert.equal(seat.loadoutCs, null);
-  assert.equal(seat.card, null, '本 version has no 温蒂 (char_494_vendla)');
+  assert.equal(seat.card.charId, 'char_494_vendla', 'an official cross-period card stays');
   assert.equal(room.seatOf(a.playerId).card.charId, 'char_102_texas');
   assert.equal(b.loadout?.chess_char_1_02_a?.skill, 0, 'the session keeps its own copy (the page sends again)');
   assert.deepEqual(h.last(a).seats.filter(Boolean).map((s) => s.content), ['loading', 'loading']);
   assert.equal(room.replay, null, 'the replay is gone');
   assert.equal(h.lobby.replayFor(room, spy.playerId), null, 'a spectator is never replayed the old version\'s result');
+  h.lobby.shutdown();
+});
+
+test('a switch drops a card neither the roster nor the new version has (a plugin room\'s operator); the session keeps it', () => {
+  const h = harness();
+  const { people: [a, b], room } = coop(h, 2);
+  // a card a plugin room left on the seat (no official period has char_x_card_demo): written directly, as setPlugins would
+  // have taken it
+  const OP = 'char_x_card_demo';
+  room.seatOf(b.playerId).card = { charId: OP, avatar: '' };
+  b.card = { charId: OP, avatar: '' };
+  ok(h.lobby.card(a, { charId: 'char_344_beewax', avatar: '' }));
+  ok(h.lobby.proposeVersion(a, { version: 'act1autochess' }));
+  ok(h.lobby.versionVote(b, { voteId: 1, agree: true }));
+  assert.equal(room.version, 'act1autochess');
+  assert.equal(room.seatOf(b.playerId).card.charId, '', 'dropped from the seat');
+  assert.equal(b.card.charId, OP, 'the session keeps it (its page sends the card it can show)');
+  assert.equal(room.seatOf(a.playerId).card.charId, 'char_344_beewax', 'a card of another period stays');
+  assert.ok(!h.last(a).seats.find((x) => x && x.playerId === b.playerId).card?.charId);
   h.lobby.shutdown();
 });
 
@@ -665,7 +684,7 @@ test('startMatch: a version room plays in its version host (version + requireCs)
   ok(h.lobby.start(q));
   assert.equal(hosted.length, 1);
   const keys = Object.keys(Rec.last).sort();
-  assert.deepEqual(keys, ['aiPicksLast', 'broadcast', 'combatSpeed', 'consoleEnabled', 'cs', 'data', 'difficulty', 'hostId', 'log', 'matchNo', 'mode', 'modeId', 'now', 'onEnd', 'prepMultiplier', 'prepSeconds', 'replayMaxBytes', 'roomCode', 'seats', 'seed', 'send', 'spectators', 'userPersistence', 'workerPool']);
+  assert.deepEqual(keys, ['aiPicksLast', 'broadcast', 'combatSpeed', 'consoleEnabled', 'cs', 'data', 'difficulty', 'hostId', 'log', 'matchNo', 'mode', 'modeId', 'now', 'onEnd', 'pauseMode', 'prepMultiplier', 'prepSeconds', 'replayMaxBytes', 'roomCode', 'seats', 'seed', 'send', 'spectators', 'userPersistence', 'workerPool']);
   // a version room without a version host, and the real Match class: never in this process
   const lone = new Lobby({ registry: new SessionRegistry(), log: quiet, content: { cs: VANILLA }, getData, versions: versionStub() });
   const s = lone.registry.create('C');

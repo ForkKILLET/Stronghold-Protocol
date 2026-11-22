@@ -26,8 +26,8 @@
 //              they stay after leaving until a 重生 (archetypes.js rebirthCleanse) or the unit leaves the field.
 //              Standing on it again does not stack. Flyers skip it (terrainFor). From stage.special.speedup.
 //   盐坨子炮   规程 trap_196_cnnon on the separator above the field (row = rect.r1+1, facing DOWN): every 6 SP × the
-//              stage's char_skill_cd_mul (MAP10: 18 s; cannonRunes) a physical hit of its ATK on the far tile of range 4-1,
-//              and one adjacent ground enemy of 重量 ≤ 3 is moved there. Operators can attack it (taunt −1).
+//              stage's char_skill_cd_mul (MAP10: 18 s), launches a loaded projectile. saltCannon.js handles
+//              boarding, release routes and one-HP destruction; operators can attack it (taunt −1).
 //   隐匿 w      规程 tile_duel_grassland grants both sides' ground units stealth. Enemy blocking suppresses it;
 //              release restores it after stage.special.duelGrass.enemyStealthRestoreSec (fallback 0; the official
 //              0 is immediate). Leaving clears it.

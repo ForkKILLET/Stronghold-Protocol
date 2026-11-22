@@ -39,7 +39,7 @@ import { audio } from '../audio.js';
 import { detectFeatures, isIOS } from './device.js';
 import { ResourceRow } from './resourcePanel.js';
 import { FRAME_RATES } from '../frameRate.js';
-import { LangToggle, machineTranslationNote } from './lang.js';
+import { LangToggle, machineTranslationNote, communityTranslationNote } from './lang.js';
 import { t, tc, tParts, N_ } from '../../../shared/i18n.js';
 import { errorCount, currentBattle, diagnosticsText, ISSUE_TRACKERS } from '../diag.js';
 import { copyText } from './clipboard.js';
@@ -85,6 +85,8 @@ settingsStore.subscribe((s) => {
   audio.setVolumes(s);
   audio.setVoiceLang(s.voiceLang, s.voiceOverrides);
   audio.setVoiceNative(s.voiceNative);
+  // 显示其他玩家的皮肤 also decides whose outfit a teammate's operator speaks in (#733: as it is drawn)
+  audio.setOtherSkins(s.otherSkins);
   applyTextSize(s.textSize);
   applyCursor(s.arknightsCursor);
   applyUiTheme(s.uiTheme);
@@ -94,6 +96,7 @@ shortcutsStore.subscribe((s) => savePref('shortcuts', sanitizeShortcuts(s)));
 audio.setVolumes(settingsStore.get());
 audio.setVoiceLang(settingsStore.get().voiceLang, settingsStore.get().voiceOverrides);
 audio.setVoiceNative(settingsStore.get().voiceNative);
+audio.setOtherSkins(settingsStore.get().otherSkins);
 // before the first render (main.js boot renders after its imports ran): the stored step is on screen without a flash
 applyTextSize(settingsStore.get().textSize);
 applyCursor(settingsStore.get().arknightsCursor);
@@ -341,6 +344,7 @@ export function SettingsModal({ open, onClose }) {
   const [touchUi] = useState(() => detectFeatures().coarse && !detectFeatures().fine);
   const [shortcutOpen, setShortcutOpen] = useState(false);
   const mtNote = machineTranslationNote(); // a pack marked as machine translation says so under the switch
+  const communityNote = communityTranslationNote(); // version i18n marked communityTranslated (act3 Terra fills)
   const [fxOk, setFxOk] = useState(false);  // effects extracted from the local client: the 官方特效 row shows
   // only while it is open (the title page keeps the modal mounted, closed), and from the effects' own file list: the
   // asset store (assets.js) is not loaded before a match (test/ui/plugins.e2e.test.js). A Phase 1a extraction (0.3.0
@@ -361,6 +365,7 @@ export function SettingsModal({ open, onClose }) {
         <${LangToggle} class="set-lang" />
       </div>
       ${mtNote ? html`<p class="set-hint set-lang-note" data-testid="lang-mt-note">${mtNote}</p>` : null}
+      ${communityNote ? html`<p class="set-hint set-lang-note" data-testid="lang-community-note">${communityNote}</p>` : null}
     ` },
     { id: 'textSize', category: 'interface', render: () => html`
       <div class="set-row">

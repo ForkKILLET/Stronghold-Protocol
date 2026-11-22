@@ -1,3 +1,4 @@
+import { CARD_ROSTER, parseCardRoster } from '../../../shared/cardRoster.js';
 import { loadDefaultCharMap } from './loadoutSync.js';
 // 干员皮肤：客户端状态与同步 (docs/SKINS.md).
 //
@@ -18,6 +19,13 @@ import { data } from '../data.js';
 import { contentSet } from '../content.js';
 import { operatorCharIds } from '../../../shared/protocol.js';
 import { cleanSkins } from '../../../shared/skins.js';
+
+/** Cosmetic choices can name the room's operators and any official-period card. */
+export function skinOperatorIds(raw, roster) {
+  const ids = new Set(operatorCharIds(raw));
+  for (const id of parseCardRoster(roster)?.ids || []) ids.add(id);
+  return ids;
+}
 
 export const SKINS_PREF = 'skins';
 export const SKINS_KEY = 'entries';
@@ -232,8 +240,9 @@ export function loadSkinData() {
  */
 export function installSkinsSync({ net, settings, target = skinsStore, timers, content = contentSet, operatorsReady, defaultMapReady = loadDefaultCharMap } = {}) {
   const operators = operatorsReady || (async () => {
-    const [chess, backups] = await Promise.all([data.load('chess'), data.load('backups')]);
-    return chess == null || backups == null ? null : operatorCharIds({ chess: data.getRaw('chess'), backups: data.getRaw('backups') });
+    const [chess, backups] = await Promise.all([data.load('chess'), data.load('backups'), data.load(CARD_ROSTER)]);
+    if (chess == null || backups == null) return null;
+    return skinOperatorIds({ chess: data.getRaw('chess'), backups: data.getRaw('backups') }, data.getRaw(CARD_ROSTER));
   });
   const T = timers || { setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms), clearTimeout: (id) => globalThis.clearTimeout(id) };
   let timer = null;

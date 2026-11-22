@@ -15,7 +15,7 @@
 // Texts go through t() (docs/I18N.md). [ASSUMED] The existing book glyph represents an archived event period;
 // the room's version controls use the same glyph.
 
-import { useState } from '../../vendor/hooks.module.js';
+import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { html, Button, Icon, Modal, Spinner } from './components.js';
 import { useStore } from '../store.js';
 import { contentSet, lobbyPreview, retryContentSet } from '../content.js';
@@ -42,16 +42,25 @@ export function versionLoadText(c, id, previewCs = null) {
  */
 export function VersionPicker({ mode, versions, current, serverDefault, roomMode = null, editable = true, busy = false, onPick, onClose, note = null }) {
   const list = Array.isArray(versions) ? versions : [];
-  const chineseTexts = getLang() !== 'zh';
+  const lang = getLang(), listRef = useRef(null);
+  useEffect(() => { scrollCurrentCard(listRef.current); }, [current]);
+  const chineseTexts = lang !== 'zh';
   return html`<${Modal} open=${true} utility=${true} onClose=${onClose} class="verpick" micro="OFFICIAL VERSION" title=${t('游戏版本')} width="min(8.4rem, 96vw)"
       actions=${html`<${Button} variant="secondary" onClick=${onClose}>${t('关闭')}<//>`}>
     <p class="verpick__lead">${mode === 'room' ? t('同盟的版本由创建者发起切换，在座的博士全部同意后生效。') : t('大厅版本只影响本机：加入其他版本的同盟时会载入该版本，离开后恢复。')}</p>
-    <ul class="verpick__list" role="listbox" aria-label=${t('游戏版本')} data-testid="version-picker">
+    <ul ref=${listRef} class="verpick__list" role="listbox" aria-label=${t('游戏版本')} data-testid="version-picker">
       ${list.map((v) => {
         const on = v.id === current;
         const usable = !roomMode || !Array.isArray(v.roomModes) || v.roomModes.includes(roomMode);
         const preview = v.id !== DEFAULT_VERSION;
-        return html`<li key=${v.id} role="option" aria-selected=${on ? 'true' : 'false'} class=${cx('verpick__row', on && 'is-on', preview && 'is-preview')}>
+        const season = versionSeason(v);
+        // welcome.versions[].i18n lists the version's game-text packs; en also covers ja / ko (their chain falls back to it)
+        const packs = Array.isArray(v.i18n) ? v.i18n : [];
+        const covered = packs.includes(lang) || (packs.includes('en') && (lang === 'ja' || lang === 'ko'));
+        const showZhOnlyNote = chineseTexts && !covered;
+        // Colour is the season: red 规程, teal 盟约. (No registry id on the card: it means nothing to a player.)
+        return html`<li key=${v.id} role="option" aria-selected=${on ? 'true' : 'false'} data-season=${season}
+            class=${cx('verpick__row', season === 'regulation' ? 'is-reg' : 'is-covenant', on && 'is-on', preview && 'is-preview')}>
           <button type="button" class="verpick__pick" data-version=${v.id} data-autofocus=${on ? '' : undefined}
               disabled=${!editable || busy || on || !usable} onClick=${() => onPick(v.id)}>
             <span class="verpick__name">${versionLabel(v.id)}</span>
@@ -61,7 +70,7 @@ export function VersionPicker({ mode, versions, current, serverDefault, roomMode
               ${preview ? html`<span class="verpick__badge is-preview">${t('预览')}</span>` : null}
             </span>
             <span class="verpick__period t-lo">${periodLine(v.id)}</span>
-            ${preview ? html`<span class="verpick__note t-dim">${t('核心规则已按该版本。悬赏抽取、部分数值和六名敌人的攻击前摇仍是推算')}${chineseTexts ? html`<br />${t('该版本的游戏文本暂时只有中文')}` : null}</span>` : null}
+            ${preview ? html`<span class="verpick__note t-dim">${t('核心规则已按该版本。悬赏抽取、部分数值和六名敌人的攻击前摇仍是推算')}${showZhOnlyNote ? html`<br />${t('该版本的游戏文本暂时只有中文')}` : null}</span>` : null}
             ${usable ? null : html`<span class="verpick__note is-warn">${t('该版本不支持当前的模拟方式')}</span>`}
           </button>
         </li>`;
@@ -105,4 +114,16 @@ export function VersionSwitch() {
     ${open ? html`<${VersionPicker} mode="lobby" versions=${versions} current=${current} serverDefault=${serverDefault}
       onPick=${(id) => { setLobbyVersion(id); setOpen(false); }} onClose=${() => setOpen(false)} />` : null}
   </span>`;
+}
+
+export function versionSeason(v) {
+  const id = v && typeof v === 'object' ? v.id : v;
+  if ((v && typeof v === 'object' && v.family) === 'regulation' || VERSION_PERIODS[id]?.half === 'regulation') return 'regulation';
+  return 'covenant';
+}
+
+export function scrollCurrentCard(root) {
+  const row = root?.querySelector?.('.verpick__row.is-on, .verpick__row[aria-selected="true"]') || null;
+  row?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  return row;
 }

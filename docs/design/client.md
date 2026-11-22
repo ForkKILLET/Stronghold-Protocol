@@ -34,6 +34,13 @@ icons follow the adjusted head height at their original sizes. Own and scouted p
 Dragging / deployment restores normal presentation. Tile geometry, logical coordinates, tile picking, loose equipment,
 temporary reserves, summons and battle operators keep their existing behaviour.
 
+Loose equipment in the hand, the temporary row and 规程's equipment row is its shop icon without the plate's frame and
+black backing (GitHub #993, §37.335): the icon's longer side is `BENCH_ITEM.size` 0.62 tile, the official world size of
+the 坚守盾牌 model (228 skeleton units × 0.01 × 0.27), inside the box the plate took, so the drawn rect, the drag point
+and tile picking are unchanged. A soft glow in the tier / 精锐 colour replaces the frame's colour; the framed '?' plate
+shows until the icon loads, and equipped-item pips keep their frame. [ASSUMED] One size for every item, the existing
+0.12-tile float, and the glow (the official model carries no tier mark).
+
 Normal healing ranges use cyan-blue battlefield highlights; damaging ranges keep orange. Placement previews and
 inspected operators / healing summons resolve the same loadout record (dmgType heal or attackKind heal).
 The solid fill, Pixi stripes and SVG stripes share that choice, preserving highlight groups and orientation.
@@ -72,7 +79,8 @@ or leaving preparation also removes it. In-game ownership, live layers, morph ru
 view data; opening a member closes the information overlays before showing its operator card. Before combat the
 member grid is informational. Mode activation bans and drawn incomplete lineups keep their existing distinct meanings.
 On 规程, when the owner's bond entry carries `effectId`, the popup and the strip tier read that effect
-(`effectDescParams`, `displayThresholds`, `params`) instead of the bond's own effect. The effects column shows the
+(`effectDescParams`, `displayThresholds`, `params`, and `phaseType` / `phaseCounts` for the stage numeral, §37.341)
+instead of the bond's own effect. The effects column shows the
 current command line, each replacement the battle uses, and a retained opening passive when that buff is still the
 opening band's. A zero-count mapped row is popup data only; the strip does not draw it. A mode-off bond stays the
 grey disc and does not take the replacement text.
@@ -113,8 +121,9 @@ do not generate layer cues. Field entry, leaving the game and muting cancel play
 Temporary bond layers (#961 / #962 follow-up, fork 2026-11-16) use a display-only receipt map on the client
 simulation host. The in-page and simulation Worker hosts observe actual `tempLayerGain` amounts, including the
 existing combat-local gains in boss / joint-defense fields, without altering permanent bonds, results or RNG.
-The runner publishes `bondTempLayers` only for the displayed unfinished battle; switching fields, finishing or
-returning to prep removes that battle's temporary view. Permanent live gains retain their existing round scope.
+The runner publishes `bondTempLayers` for the displayed battle and clears its live overlay on field changes.
+The match retains each player’s temporary ledger after combat and through 联防; the next preparation converts it
+into permanent layers. Permanent live gains retain their existing round scope.
 The strip and popup show the permanent-plus-temporary total in yellow while the temporary amount is positive
 (user-confirmed official display: 100 + 20 appears as yellow 120), then restore the permanent value. The permanent
 999 cap is applied before adding temporary layers, never to the combined display. This adds no server battle event
@@ -186,7 +195,44 @@ their attack clip.
 
 A normal attack's wind-up (`UnitView.windUp`, started by `app/windup.js` ahead of the 'atk') turns an enemy toward
 that attack's target with the same rule as `onAttack` (|dx| > 0.1) the moment the clip starts (#869, DESIGN §37.54).
-Operators keep their deploy direction. The clip's start time is unchanged.
+Operators turn by their own rule below. The clip's start time is unchanged.
+
+Operator attack facing (PR #730 by @Seals-awa, DESIGN §37.329; `render/facing.js`, `UnitView._faceTurn`): an operator's or
+summon's **model** turns toward the target of an attack when that attack starts — the look-ahead's wind-up once
+`SpineActor.windUp` accepted it, or, for an attack no wind-up started (a late batch, a lead too short), its strike in
+`onAttack` (`woundUp` tells the two apart) — and keeps that facing until the next attack starts. Nothing else turns it:
+not the end of the attack clip, not the target's death or departure, not a delay (the maintainer's frame-by-frame
+measurement of the official recordings, 2026-10-21: the model turned back exactly on the frame the next attack started,
+and stayed turned ~1.7 game s with nothing in range); a long idle keeps it too [ASSUMED]. The direction is the
+official one disassembled by the contributor (docs/research/10-face-logic.md): `ParseDirection` with the 0.25
+horizontal bias picks UP / RIGHT / DOWN / LEFT, the mirror keeps its side inside the ±0.2 dead zone — on the raw x
+offset, |dx| ≤ 0.2 tile [ASSUMED: the method compares the x it is given, and the caller, whose body was not read, runs
+a TOO_CLOSE test on |v|² that only fits a raw offset] —, and closer than 0.25 tile nothing is judged; UP asks for the
+Back model, DOWN for the Front one, a horizontal target keeps the skeleton and only mirrors [ASSUMED: the contributor's
+comparison with the official game]. The turn lasts `FaceSwitcher._switchTime` = 0.15 game s (all 471 operator art
+bundles, `tools/local-extract/face_switcher.py`; ~0.13 measured by the maintainer): the model is squeezed edge-on, the
+mirror flips there and the Front ⇄ Back swap is asked for there; the attack it started with goes on on the new model
+(`_holdAttack` / `_resumeAttack`; only a swap the turn asked for, so #786's skill swap still shows its skill clip). The
+official effects place by the side the running turn ends on (`UnitView.settledFacing`, read by `FxWiring.pose` and
+`boneOffset`): the wind-up's cast effects and a late strike's shot spawn in the turn's first frame; the skeleton they
+read stays the one loaded. An area attack — more than one distinct target of one source in a `b.ev` batch, marked once
+at ingestion (`markAreaAttacks`), so a late batch is grouped too — does not turn [ASSUMED: the PR's rule the maintainer
+asked for]; nor does a stunned, frozen or sleeping model. A batch is a server field's 3-tick drain (one `gt`); a field
+the local runner plays (`battle/runner.js`) sends one batch per rendered frame, so its tick count follows the frame
+rate, and a catch-up frame keeps only the state-bearing events (`keepsState`: no `atk`, so nothing turns then). The
+official per-ability face modes (`render/faceModes.js`, the contributor's extraction: 109 operators with a non-`Target`
+row) pick the row of the clip being played (the running skill's first, its first attack's `FirstCastTarget` row apart
+from the later ones); rows that still disagree on what the model does (none / deploy / target: the nameless default
+rows of 新约能天使, 阿米娅, 夕 and others, the `Attack` rows of 百炼嘉维尔, char_4126_fuze and char_4182_oblvns — 13
+operators, listed in test/render/face-modes.test.js) resolve to `Target` [ASSUMED: the table's order is the
+extraction's, not a priority]. `none` keeps the facing, `Default` goes back to the deployed facing at the attack's start
+[ASSUMED timing], `FirstCastTarget` keeps the running skill's first target, `Front` only mirrors; the direction clips of
+`ForceToDirection` / `CheckDownAttack` are not played and `escapeTime` is not read. Operators without rows (7 of the
+pool's, and summons) use `Target` [ASSUMED]. #786's skill model rule reads the turned facing (`_facesUp`). A
+(re)deployment and `setDir` settle on the deploy direction, and so does every view that is built again — a reconnect,
+watching another field, the local runner's hidden-tab backlog re-entered from the field meta — until its next attack:
+the facing is no part of the snapshot. Display only: `dir`, the range, targeting, blocking, the ground wedge, the sim,
+the protocol and the goldens are unchanged.
 
 The pre-game text fit (§35.56): while a strategy status shows, the draft's step name gives way at 大 / 特大 at any
 width, and at heights ≤ 640 px; 小 / 中 retain it in taller windows. The guide button keeps its width. On short screens
@@ -199,6 +245,13 @@ Spine is wearable, labelled 「仅更换头像与立绘」. Owner-specific cards
 missing pictures and the battle model use the effective operator's defaults. #686's visibility switch and
 stand-in / DIY resolution remain in force. [ASSUMED] E2 picture and illustration fields count too; metadata alone
 does not. Official field separation and the exact fallback / live-update contract: [SKINS.md](../SKINS.md).
+
+Outfit voices (#733, §37.330): an operator skin's `voice` / `voiceJp` / `voiceEn` / `voiceKr` / `voiceNative` replace
+the operator's lines per dub and slot while it is worn (`audio.js voiceLine`'s `outfit`; a missing slot or an empty list
+is the operator's own); the player's 语音语言 still picks the dub. Which outfit: the speaking unit's own seat by
+`render/app.js skinOf`'s rule (`audio.js wornSkinKey`; `installAudio` feeds the seats and `me`, `ui/settings.js`
+显示其他玩家的皮肤), the detail panel's 选中 the card's (`selectVoiceOutfit`), the settlement this seat's. Details:
+[SKINS.md](../SKINS.md).
 
 ### Official battle effects (官方特效; render/vfx, 0.3.0)
 
@@ -262,8 +315,10 @@ history and the open points: DESIGN §32.14.25.
   direct blow's damage lands (else the generic hit by damage type) — a projectile attack's with its projectile's hit, the
   damage or heal the sim lands for a shot before its drawn hit covered by it (round 46, §33.16 "Hits against the sim's
   timing") —; a direct ranged attack with official rows draws no procedural shot; a chain's bounces after an official
-  shot of a chain projectile draw its line and hit (`wiring.chain`). One attack on several targets — the sim sends an
-  'atk' per target in one tick — casts once (its target rows play on each). Index version 2 (0.3.0 Phase 3c, §33.16): a
+  shot of a chain projectile draw its line and hit (`wiring.chain`); an 'atk' of kind 'mortar' (帝国炮火先兆者's shell,
+  which the sim lands with the kit's 'bombard' 3 s later) plays its cast rows only — the kit's 'bombardShell' and
+  'bombard' place its projectile's start, trail and reached effects (§33.16 Enemies' areas; GitHub #143). One attack on
+  several targets — the sim sends an 'atk' per target in one tick — casts once (its target rows play on each). Index version 2 (0.3.0 Phase 3c, §33.16): a
   melee blow of a unit that is blocked or blocks (UF.BLOCKED), and every attack of a mode without `attack`, plays the
   mode's `combat` (so does a 领主's ranged-kind 'atk' on the enemy it blocks, round 46); a group ability plays the sub-abilities that fire (a Parallel group all, a Random group one picked by
   a seed of the unit's id and attack count, the others the one that fits the attack's kind) and flies the first one's
@@ -276,7 +331,8 @@ history and the open points: DESIGN §32.14.25.
   burst attack left out); a shot leaves from its ability's `mount` (a `mountGroup`'s points in turn or at random) and a
   multi attack flies its `additionalTimes` follow-up shots every `triggerDelta` s. Also the generic heal hit, the status
   loops (`generic.status` by the sim's status names) on the unit's mount point while they last, and the unit's own death
-  / deploy effect or the generic one. A drawn official hit replaces the procedural spark and slash (the numbers stay);
+  / deploy effect or the generic one. A drawn official hit replaces the procedural spark and slash and a splash
+  attacker's ground ring (the numbers stay; the ring until GitHub #143);
   what index.json does not drive — a unit it does not list, a chain no official shot opened, an enemy skill no signal opens (Skills,
   below), a talent no signal binds (Talents) — stays procedural. `mounts.js` reads the skin's points (HitPoint, Muzzle,
   HeadPoint, Special points; front / back skeleton, mirrored for a unit facing left) at the unit's feet — a point a
@@ -963,12 +1019,15 @@ hit target clear of the other controls.
 be `vanilla: true`, name the version expected, carry no plugins and no settings, and its composition must hash to the
 cs — the room's `room.state.content.cs` in a room, welcome's entry in the lobby), every data file it lists — only under
 `/data/versions/<slug>/`, no `..` — and its official-bounds snapshot under `/cs/<cs16>/`, each checked by size and
-SHA-256 of its bytes before it is decoded. `data.js` then shows the files (`setContent({ id: cs, values })`; a
-version's files take only the Chinese texts — `versionFiles`, the language folder is keyed by 第二期下半's ids — until
-M3), and `contentSet` says `{ cs, kind: 'version', version, status, loaded, total }`. The set on screen stays until the
+SHA-256 of its bytes before it is decoded. `data.js` then shows the files (`setContent({ id: cs, values, overlay, langs })`;
+a version's files never take the language folder's `data/i18n` — `versionFiles` — but may take the version's own
+`data/versions/<slug>/i18n/<lang>.json` listed on the version index under `i18n`; that index is served `no-cache` with an
+ETag (data files and bounds stay `immutable`) and is fetched with `cache: 'reload'` — including a background re-read when
+a kept set is shown again — because i18n is not part of `cs`; `setContent` runs again only when the `i18n` entry changed),
+and `contentSet` says `{ cs, kind: 'version', version, status, loaded, total }`. The set on screen stays until the
 next one is checked (lobby 第一期 → a room of 第二期上半 never shows 第二期下半 in between); a gameplay plugin room still
 starts from the server's files (its own path, `kind: 'plugins'`, unchanged). The last two checked version sets are kept
-(`VERSION_CACHE`): a lobby ⇄ room round trip downloads and checks nothing twice. `room.contentReady { cs }` is sent only
+(`VERSION_CACHE`): a lobby ⇄ room round trip reuses their data and bounds (the index alone is revalidated). `room.contentReady { cs }` is sent only
 for the room's own content (never from the lobby), again whenever this page's seat or spectator entry shows another
 state (a reconnect, a page returning to a kept set). A set that fails is said once per set (「版本数据未能通过校验…」),
 told `{ ok: false }`, and the page falls back to the server's files; the lobby chip offers 重试 (`retryContentSet`).
@@ -1053,7 +1112,7 @@ sends the seat-bound settings again (loadout, 干员持有, 自选: the server c
 on a switch); skins and the card go out then only when their payload changed (`installPrefSync` `seatBound: false`),
 and their payload follows the data on screen: the skins map is filtered to its operators (`operatorCharIds`, the set
 the server keeps, on the session too — a 第一期-only operator's skin goes out once a 第一期 room's data is on the page),
-the card is '' when that data lacks the operator. The wire keys of `room.loadout` / `room.ownership`
+the card keeps official operators from the cross-period roster, and clears a plugin operator only when neither roster nor room data contains it. The wire keys of `room.loadout` / `room.ownership`
 stay the chess ids of the room's data.
 
 **Statistics.** Records of another version carry `version` (a registry id, never 第二期下半; not part of the record id;
@@ -1398,7 +1457,7 @@ Covenant rendering and controls retain the mixed hand and visible temporary row.
 
 盟约卡片标题参照维护者提供的官方截图：左侧为盟约图标、名称，下方显示人数、激活勾选及阶段标签；右上角独立显示层数，背景使用统一的青绿色 `bondDetail/active_stack_deco` 装饰图标。人数分母沿用原有下一门槛（满阶显示最高门槛）；调和、整备区计数、禁用和不显示层数的提示保留。
 
-盟约卡片不提供右上角关闭按钮，沿用点击卡片外部关闭；移除单独的「当前效果」区块，保留盟约效果说明。标题中的「阶段Ⅰ／Ⅱ／Ⅲ……」读取盟约激活阶数（tier），与层数独立；未激活及本局禁用分别显示对应状态。
+盟约卡片不提供右上角关闭按钮，沿用点击卡片外部关闭；移除单独的「当前效果」区块，保留盟约效果说明。标题中的「阶段Ⅰ／Ⅱ／Ⅲ……」与顶部盟约栏圆盘上方的罗马数字相同（`gameLogic` `bondStage`，§37.341）。规程按当前生效效果的官方阶段表（`phaseType` / `phaseCounts`）计算：人数型（`PEOPLE_COUNT`）取激活阶数（tier），助力的高档也就沿用服务器「名字或精锐状态不同」的算法（官方阶段等级是否这样算未定，录像里没有助力的圆盘，[ASSUMED]）；层数型（`STACK_COUNT`：迅捷、灵巧、突袭、投资人、奇迹、远见）数层数达到了几个表项，临时层数也算（[ASSUMED]）；无阶段型（`NONE`：调和、协防干员、独行）为 0。阶段为 0 时（例如远见不足 80 层）不显示阶段标签，只显示激活勾选。盟约各期没有官方阶段表，仍取激活阶数，与层数无关（[ASSUMED]，待维护者确认）。未激活及本局禁用分别显示对应状态。
 
 禁用圆盘的内盘与外环一起灰显；相机避让常量与 CSS 顶部位置保持一致（#923）。
 
@@ -1412,15 +1471,16 @@ Covenant rendering and controls retain the mixed hand and visible temporary row.
 
 盟约卡片的干员头像使用 `ui/gameComponents.js` 中的通用 `SquareOperatorThumb` 方形组件，不切角；通用 `UnitThumb` 及其在开局信息、统计和其他界面的样式保持原样。
 
-局内顶部盟约栏移除人数角标，圆形正上方按激活阶段显示罗马数字Ⅰ／Ⅱ／Ⅲ；未激活不显示阶段。阶段素材使用 `hudBondItem/bond_level_3`，Ⅰ和Ⅱ按原像素列裁出，层数仍显示在圆形内。
+局内顶部盟约栏移除人数角标，圆形正上方按阶段显示罗马数字Ⅰ／Ⅱ／Ⅲ（规程为官方阶段等级，见上文盟约卡片的「阶段」标签；战斗中按实时层数计算，层数越过表项时数字随之变化）；未激活或阶段为 0 时不显示。阶段素材使用 `hudBondItem/bond_level_3`，Ⅰ和Ⅱ按原像素列裁出，层数仍显示在圆形内。干员详情卡盟约条目的提示文字（「已激活 N 阶」）用同一个阶段，阶段为 0 时只写「已激活」；条目上的小圆点仍表示人数门槛。
 
-顶部盟约栏的圆形底板和分段外环使用原版 `bondBoardIcon` 素材，按阶段数和当前激活阶段选择；未激活时按「已有人数／最低激活人数」显示分段进度，零人时保留分段但全部灰显；本局禁用仍使用 `1_0`。不再叠加 CSS／SVG 绘制的底板和外环。
+顶部盟约栏的圆形底板和外环使用原版 `bondBoardIcon` 素材：已激活的盟约在每一档都用 `1_1`（完整的一圈外环和点亮的中央盘）；未激活时按「已有人数／最低激活人数」显示分段进度 `N_k`，零人时保留分段但全部灰显；本局禁用仍使用 `1_0`（`components.js` `bondFrame`）。不再叠加 CSS／SVG 绘制的底板和外环。
 
 局内盟约栏和卡片的专属样式集中在 `public/css/screens/bond.css`；`BondDisc` 的基础及新版样式也统一在此文件，方形头像样式保留在共享样式表，混合 HUD 的布局与隐藏状态规则仍由 game 样式表管理。
 
-所有 `BondDisc` 统一使用新版原版底板／分段外环素材及放大的内盘，包括开局信息确认、本局信息弹窗、顶部盟约栏、盟约卡片左上角和 UI Kit；内部标志大小独立，悬停不再放大。
+所有 `BondDisc` 统一使用原版底板／外环素材及放大的内盘（同一张素材，内盘取它的中心放大），包括开局信息确认、本局信息弹窗、本局禁用干员分组、顶部盟约栏（含套用官方主题时的 `.gm__bonds--pf`）、盟约卡片左上角和 UI Kit；内部标志大小独立，悬停不再放大。
 
-已激活盟约的各档位使用相同亮度的中央盘，外环分段表示当前档位；未激活的人数进度保留灰色中央盘。“阵容不完整”角标绝对定位在圆盘右上方，不参与内部网格排版。
+已激活（且未禁用）的盟约圆盘在每一档都画完整的一圈外环和相同的中央盘（`bondBoardIcon/1_1`），圆盘本身不表示档位；圆盘上方的罗马数字和盟约卡片的「阶段」标签在盟约各期是档位，在规程是官方阶段等级（§37.341，见上文），不一定等于档位：激活的调和、协防干员、独行和不足 80 层的远见都不显示，1 档的迅捷满 40 层显示Ⅱ；分段外环只表示未激活时的人数进度，这时中央盘是灰的；只有人数已达到最低激活人数却未激活时例外，画全亮的 `N_N`（中央盘点亮，按 77 单位的尺寸，[ASSUMED]：很少见，官方截图里没有这种情况）（§37.340，维护者 2026-11-22）。开局信息确认、本局信息和本局禁用干员分组里还没有达到任何档位，那里的圆盘不带档位（`data-tier`）。依据是官服规程截图（PR #923 评论里的第 11 回合）：灵巧Ⅱ、精准Ⅰ、不屈Ⅱ、绝技Ⅰ的中央盘和外环完全相同，外环都是完整的一圈（这些数字是阶段等级；灵巧只有一个人数门槛，它的Ⅱ来自层数，满 40 层）。盟约各期没有官方截图，按维护者的决定同样处理（[ASSUMED]：官方资料没有定论）。PR #994（§37.336）曾让外环按档位分段、只点亮中央盘，已由此取代。“阵容不完整”角标绝对定位在圆盘右上方，不参与内部网格排版。
+
 
 `components.css` 不再包含旧版 `BondDisc` 的 SVG 圆环、渐变底板及悬停缩放规则；各页面继续按自身布局设置圆形尺寸和名称字号。
 
@@ -1458,9 +1518,9 @@ is a remake UI choice, not a claim about official-game spacing. No equipment cap
 
 原 compileEffect 不识别 MapEffect，播放完有限粒子后回收整个实例。现在识别启用的 MapEffect，由地图持有至 stop／kill／clear；粒子照常结束，材质时间连续，不反复重播或按 effect ID 特判。保留结束延迟、最大时长、销毁、池复用和普通特效完成规则。
 
-本 PR 仅修复通用播放器，不新增地图地块声明或第二套地形特效管理器，不复制本服 TerrainFx，也不与主线 syncGrassFx 重复播放。源石／沼泽等新地形接入属于后续地图系列；开发特效查看器可用真实 map_promote_01 独立复现和截图。
+本服由地图持有的 `TerrainFx` 管理源石／沼泽／隐匿地块，并复用修复后的通用播放器；清理、特效档位切换和渲染器重建都跟随地图生命周期。开发特效查看器可用真实 map_promote_01 独立复现和截图。
 
-这是客户端字段确定的生命周期语义，不改变 shader、深度或模拟规则，不提交提取出的游戏资源。
+播放器按客户端字段决定循环与持续时间。
 
 临时层显示统一读取 Battle 临时账本的 detached snapshot，经 InPageSimHost／Worker／runner 传递，包含 Boss 新增和联防继承的临时层。
 卡片保留普通层数与金色 `+N`，顶部条显示金色合计。只展示当前战场所属玩家的临时值，本人战斗结束和 SETTLE 保留，下一次进入休整期才清除；切换战场时读取对应玩家的池；

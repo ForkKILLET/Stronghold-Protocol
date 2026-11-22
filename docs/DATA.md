@@ -8,6 +8,8 @@ with `docs/research/*.json`. Do not edit them by hand — change the build scrip
 fails while it is stale).
 `data/assets.json` is written by `tools/fetch-assets.mjs`, which keeps the current file rather than drop entries whose
 downloads failed on this machine unless `--allow-shrink` (or `--prune`) is passed (docs/ASSETS.md, DESIGN §21.25).
+`data/card-roster.json` (the 名片干员 roster of every official period) is written by `node tools/build-card-roster.mjs`,
+which `tools/build-data.mjs` runs after writing a version's default output directory ("Cross-period 名片干员 roster" below).
 
 ```
 node tools/build-data.mjs              # build (downloads missing official files into .cache/gamedata@<commit>/, the profile's pins)
@@ -17,18 +19,46 @@ node tools/build-data.mjs --no-research --out /tmp/x   # research-free build (fa
 node tools/build-data.mjs --cache <dir> --report <file> # other cache dir / report file (tests, CI)
 node tools/build-data.mjs --force      # write data/ even when integrity checks fail (debugging only)
 node tools/build-data.mjs --version act1autochess   # another official version → data/versions/<slug>/ (see "Official versions (M0)")
+node tools/build-data.mjs --gamedata-commit <sha> --out /tmp/x   # every official file from one full upstream commit (#567)
 node --test test/data.test.js          # integrity tests (+ raw-data cross-check and rebuild check when the pinned official files are cached)
 ```
 Unknown options or a missing option value are errors (exit code 2); `--refresh` and `--offline` are exclusive.
 
 - **Cache.** Official files live under `.cache/gamedata/<repo path>` (`excel/activity_table.json`,
   `levels/enemydata/enemy_database.json`, `levels/activities/act1autochess/level_*.json`, …) and are fetched from
-  `https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/<path>` when missing.
+  `https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/<path>` when missing; a file a
+  version profile pins to a commit (every profile pins all of its files today) lives under `.cache/gamedata@<sha>/` and
+  comes from that commit ("Official versions (M0)").
   Downloads are validated (must parse as JSON) and written atomically. With `--refresh`, a download that still fails
   after four attempts aborts the build (exit code 1), even if an older cached file exists. Generated files and the
   previous report remain untouched, including with `--force`; successfully downloaded cache entries are not rolled
   back. Retry `--refresh` to complete the refresh; cached files are not verified to share an upstream revision.
-- **Report.** A run that reaches integrity validation writes `.cache/build-data-report.json` (counts, byte sizes, warnings (each once), errors, `written`).
+- **Upstream commit (`--gamedata-commit <sha>`, GitHub #567, DESIGN §37.323).** Reads the selected version’s official files at
+  one full commit of Kengxxiao/ArknightsGameData: 40 hex digits (any case, kept in lower case). A branch, a tag or a short
+  SHA exits 2 with the reason, because the cache is keyed by the commit. The files are cached in `<cache>@<sha>/`
+  (`.cache/gamedata@<sha>/` by default: the directory a profile pin at the same commit uses, since the files are the same)
+  and downloaded from `https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/<sha>/zh_CN/gamedata/<path>`. It
+  replaces the version profile's `pins` (and a mirror `source`) for every file and prints a note saying so (`--quiet`
+  hides it like the counts and the warnings; the report's `replacedPins` / `replacedSource` keep it) [ASSUMED: #567
+  settles the option, not how it meets a pinned profile]; `--version` still picks the profile's adapters, tables,
+  research, expected counts and output directory (`--out` keeps `data/` untouched). `--refresh` downloads every file of
+  the commit again; `--offline` downloads nothing and, when files are missing from `<cache>@<sha>/`, fails (exit code 1)
+  naming all of them at once (while `excel/activity_table.json` is missing, the level files it names cannot be listed,
+  and the message says so). Without the option nothing changes: the profile's pins, or master for a profile without
+  pins (`test/build-data-commit.test.js` rebuilds `data/*.json` without it, and `data/versions/act3autochess-v3_1/`
+  with it set to that profile's own pin, byte for byte). Asset downloads (`tools/fetch-assets.mjs`,
+  `tools/fetch-stats-assets.mjs`, `tools/local-extract/`) never read it, and the switch between the official versions
+  does not stand in for it (the maintainer on #567). The fork’s temporary six-title catalog (`titlesFrom`) keeps the
+  referenced period’s pinned table; it is recorded under `gamedata.references`, independently of the selected version’s commit.
+- **Report.** A run that reaches integrity validation writes `.cache/build-data-report.json` (counts, byte sizes, warnings (each once), errors, `written`,
+  and `gamedata`: `files[<path>]` = `{ commit, from, pin, source }` for every official file read, `from` being `option`
+  (`--gamedata-commit`), `pin` (`pin` = the profile's pins key, `default` / `character` …) or `master` (`commit` null: the
+  branch head at download time); `groups`, the same files counted per commit and origin, which the run also prints after
+  the counts as `official data: <sha> (pin default): <n> file(s); …`; `commit`, the `--gamedata-commit` value or null;
+  `replacedPins` and `replacedSource`, the profile pins and the mirror `source` the option replaced, or null; and, for a
+  profile that reads a mirror only, `references`, the Kengxxiao files at the default version's pins that the mirror's
+  empty `{}` were checked against, in the same `{ commit, from, pin, source }` form; `tools/versions/profiles.mjs`
+  `gamedataReport` / `gamedataSummary`).
   Integrity errors (see §17) make the exit code 1 **and leave the previous output untouched** (unless `--force`);
   warnings never do. Each output file is written atomically (temp file + rename).
 - **Determinism.** Same inputs ⇒ byte-identical outputs (stable key order, no timestamps, no randomness).
@@ -302,6 +332,7 @@ full-rank build from the others; the build fails unless `atRank` rebuilds every 
 | `countsHand`, `countsGoldenOnly` | `false`, `false` | convenience flags |
 | `activeType`, `isActiveInDeck`, `noStack`, `weight`, `maxInactiveBondCount` | `"BATTLE"`, `false`, `false`, `10`, `-1` | `weight` 0 ⇒ never drawn for per-match bans |
 | `layerMilestones[]` | `[{"layer":25,"mode":"every","effect":"bond_layer_added_reward_equip"}]` | layer-based powers: `reach` (while L ≥ layer), `every` (each multiple), `first` (latched once) |
+| `phaseType`, `phaseCounts[]` (规程 only) | `"PEOPLE_COUNT"`, `[2,3]` (迅捷 `"STACK_COUNT"`, `[0,40]`) | the official phase table of the bond's own effect, copied from `effects.json` (§7). The client draws the numeral over an active disc from it (gameLogic `bondStage`, §37.341). Display only: the server, the sim and the bots read `thresholds`. 盟约 seasons omit both |
 | `desc`, `descRaw` | | bond panel text |
 | `effectId`, `effectName`, `effectDesc`, `effectDescRaw` | `"bondeffect_deput"`, …, `"所有干员防御力+{0:0%}（受层数影响）…"` | in-battle text with **positional** placeholders |
 | `effectDescParams[]` | `[{"index":0,"format":"0%","base":"base_def","perStack":"def_per_stack"}]` | `{i:fmt}` = `bb[base] + bb[perStack] × layers` — layers never exceed 999 (the official `MAX_GARRISON_STACK`, not in any table: shared/constants.js `BOND_LAYER_CAP`, research 11). 盟约's bond rows list the keys (`descParamBaseList` / `descParamPerStackList`); 规程 keeps them in `effectDescParamDataDict[effectId].descParamInfos`, whose `descParamMax` becomes `max` (the number never exceeds it: 萨尔贡's slow 60 %, the chances 100 %; §37.208) |
@@ -391,6 +422,7 @@ Types: `BAND_INITIAL` 41, `BOND` 23, `EQUIP` 115, `ENEMY_GAIN` 129 (悬赏), `BU
 | `buffs[]` | `{"key":"…","countType":"NONE","bb":{…},"bbStr":{…}}` | |
 | `params` | `{"layer":2}` | merged convenience view |
 | `effectDescParams[]`, `displayThresholds[]` (规程 `BOND` only) | `{ index, format, base, perStack, max? }`, `[3,6,9]` | Present when `effectDescParamDataDict[effectId].descParamInfos` is non-empty. Same `{i:fmt}` binding as a bond's `effectDescParams` (§3), read from that effect so a strategy's `auto_chess_effect_replace` target formats its own numbers. `displayThresholds` is `bondPhaseCountList` when `phaseType` is `PEOPLE_COUNT`. `max` is omitted unless `descParamMax` > 0. Older seasons omit both. |
+| `phaseType`, `phaseCounts[]` (规程 `BOND` only) | `"STACK_COUNT"`, `[80,150]` (远见) | `effectDescParamDataDict[effectId].phaseType` and `bondPhaseCountList`, written for every `BOND` effect that has an entry, also when `descParamInfos` is empty. `phaseType` is the client's `ActAutoChessBondPhaseType`: `PEOPLE_COUNT` (counts members), `STACK_COUNT` (counts layers) or `NONE` (`[]`: 调和, 协防干员, 独行). The phase level is how many entries the count reaches; the bond strip draws it over an active disc (§37.341). Older seasons omit both. |
 
 ## 8. `choices.json` — 机变 draft data
 
@@ -942,7 +974,8 @@ Mixed draws reuse the existing per-tier copy model [ASSUMED weights], not a newl
   group), V1_2 over two, `21b1f240` 48 MB with 6 tables and the levels plus
   `ee2cabff` 13 MB with the 2 enemy tables, V2_1 in one, `1457587e` 65 MB with the 8 tables and the 50 level files of
   both seasons). `--offline` / `--refresh` keep their per-file meaning; `--cache
-  <dir>` moves every cache (`<dir>` and `<dir>@<sha>`).
+  <dir>` moves every cache (`<dir>` and `<dir>@<sha>`). `--gamedata-commit <sha>` reads every file at one commit instead
+  of the pins (the "Upstream commit" note at the top of this file).
 - **`adapters`** (`tools/versions/adapters.mjs`, applied to the season section right after it is loaded, never for the
   default; each throws on a shape it does not know):
   - `bondActiveType` — 上半's `bondInfoDict` activates by `activeType` + `isActiveInDeck`; 下半 by `activeCondition` +
@@ -1162,8 +1195,9 @@ it under `enabled` and keeps the configured `default`. The default version is th
 
 The vanilla `/cs/<cs16>/index.json` is byte-identical (no `version`, no `bounds`, URLs under `/data/`). The build tag
 (`server/http/buildTag.js`) counts the served version directories only, so rebuilding a version the server does not offer
-is no new build. `/healthz` adds `versions: { enabled, default, hosts: { workers, matches, transport } }` only when a
-non-default version is enabled.
+is no new build. `/healthz` adds `versions: { enabled, default, loaded, hosts: { workers, matches, transport } }` only when
+a non-default version is enabled (`loaded`: how many versions other than 第二期下半 have their data in memory now, the lobby's default 规程 included — they load on
+first use; a 名片干员 of another period loads none, DESIGN §37.325).
 
 **Match hosts**: unmodded rooms of a non-default version start their matches in `server/match/host/` with `kind: 'version'` —
 one child process per version `cs`, at most `maxHosts`, counted apart from the plugin hosts (docs/design/match.md). The
@@ -1217,3 +1251,11 @@ The generator keeps MAP09's official `w` cells and emits `special.duelGrass` wit
 terrain stealth buff; the official 0 restores concealment as soon as the block ends. Missing blackboard values do not imply plain ground: these
 rules come from the official tile and buff templates, recorded in
 [the field receipt](research/regulation-map09-20261112.json). No other map record changes.
+
+### Salt cannon landing data
+
+A regulation `role:cannon` device stores `level`, `distance`, `initSp`, `spCost`, `spRecovery`, `branchId` and
+its resolved landing `route`. Both layout composition and device generation read the distance from the unlocked
+EnemyCannon00 talent's `rangeId` and `range_table`. Routes come from the owning sub-scene's `extraRoutes` and
+move with the battle coordinates. [ASSUMED] Bare prefab-key runes apply once; parallel alias selectors are
+considered duplicates. Missing base stats remain null when processing attribute runes.

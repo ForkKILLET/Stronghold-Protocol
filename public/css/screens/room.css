@@ -509,3 +509,6 @@
  .room-screen .rseat__strip { height:36px; min-height:36px; }
  .room-screen .rseat__strip .rseat__pick { width:32px; height:32px; min-height:32px; }
 }
+
+/* Cross-period card candidates share the fork's existing portrait/skin picker. */
+.cardpick__group { grid-column: 1 / -1; margin: .06rem 0 0; padding: 0 .02rem .02rem; border-bottom: 1px solid var(--line); color: var(--text-lo); font-size: max(11px, calc(.15 * var(--utility-text, var(--t)))); font-weight: 400; line-height: 1.25; overflow-wrap: break-word; }

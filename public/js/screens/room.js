@@ -59,10 +59,10 @@ import { DEFAULT_VERSION, ladderModes, lobbyVersion, needsContent, offeredDiffic
 import { hasScriptConsent, rememberScriptConsent, pageVersion } from '../content.js';
 import { net } from '../net.js';
 import { store, useStore, shallowEqual, emptyMatch, isSpectating, savePref } from '../store.js';
-import { difficultyInfo, modeInfo, ProtocolSelect } from './lobby.js';
+import { AI_LAST_PREF, difficultyInfo, modeInfo, ProtocolSelect } from './lobby.js';
 import { data, useData, getConfig } from '../data.js';
 import { cardOperators, seatPortrait } from '../ui/seatArt.js';
-import { useMyCard, setCardOperator } from '../ui/playerCard.js';
+import { useMyCard, setCardOperator, useCardOptions } from '../ui/playerCard.js';
 import { PortraitPicker } from '../ui/opPicker.js';
 import { useRise } from '../ui/transitions.js';
 import { chessAvatarUrl, chessPortraitUrl } from '../ui/assetUrls.js';
@@ -482,8 +482,7 @@ export function RoomScreen() {
     observer?.observe(el);el.querySelectorAll('.rseat__strip,.rseat__plate').forEach(n=>observer?.observe(n));window.addEventListener('resize',fit);
     return()=>{observer?.disconnect();window.removeEventListener('resize',fit);};
   },[!!room,!!configDraft,room?.mode,room?.seats?.filter(Boolean).length]);
-  const artReady = useData('chess', 'assets');
-  const portraits = useMemo(() => ({ pool: cardOperators(data.list('chess')), m: data.get('assets') }), [artReady, data.locale()]);
+  const portraits = useCardOptions(roomVersion(room));
   const myCard = useMyCard();
   const [picking, setPicking] = useState(null);
   const [busy, setBusy] = useState(null);
@@ -581,7 +580,10 @@ export function RoomScreen() {
   const cancelConsole = () => setConsoleOpen(false);
   const setDifficulty = (difficulty) => run('diff', () => net.request('room.setDifficulty', { difficulty }));
   const setAiTakeover = (on) => run('aihandover', () => net.request('room.setAiTakeover', { on }));
-  const setAiLast = (on) => run('ailast', () => net.request('room.setAiPicksLast', { on }));
+  const setAiLast = async (on) => {
+    const sent = await run('ailast', () => net.request('room.setAiPicksLast', { on }));
+    if (sent) savePref(AI_LAST_PREF, on === true);
+  };
   // the room is the authority; the lobby card reads the same pref the next time this browser creates a solo room
   const setSoloUnlimited = async (on) => {
     const sent = await run('solofree', () => net.request('room.setSoloUnlimited', { on }));
@@ -711,7 +713,7 @@ export function RoomScreen() {
     <main ref=${seatsRef} class=${`seats${coop ? '' : ' seats--solo'}`}>
       ${facts.seats.map((s, i) => html`<${SeatCard} key=${s ? `p${s.playerId}` : `e${i}`} seat=${s} index=${i} room=${room} facts=${facts}
         myId=${me.playerId} busy=${busy} onAddBot=${addBot} onRemoveBot=${removeBot} onKick=${kick} searching=${!!room.matching} portraits=${portraits}
-        onPickCard=${artReady ? () => setPicking('op') : null} onPickAvatar=${openStats} />`)}
+        onPickCard=${portraits.ready ? () => setPicking('op') : null} onPickAvatar=${openStats} />`)}
       ${coop ? null : html`<aside class="solo-brief brackets">
         <${MicroLabel} tone="mint">BRIEFING<//>
         <h2>${room.modeId ? info.name : DIFFICULTY_NAMES[room.difficulty] ? t(DIFFICULTY_NAMES[room.difficulty]) : ''} <span class="num t-dim">${info.code}</span></h2>
@@ -776,7 +778,7 @@ export function RoomScreen() {
     <${ConsoleWarning} open=${consoleOpen} remaining=${Math.max(0, Math.ceil((consoleReadyAt - consoleNow) / 1000))}
       busy=${busy === 'console'} onCancel=${cancelConsole} onConfirm=${confirmConsole} />
     ${picking === 'op' && facts.mine && !facts.spectating && !room.inMatch ? html`<${PortraitPicker}
-      current=${myCard.charId} list=${portraits.pool} m=${portraits.m}
+      current=${myCard.charId} list=${portraits.list} groups=${portraits.groups} rosterState=${portraits.rosterState} onRetryRoster=${() => data.invalidate('card-roster')} m=${portraits.m}
       onPick=${(id) => { setCardOperator(id); setPicking(null); }} onClose=${() => setPicking(null)} />` : null}
     ${versionPicker}
   </div>`;

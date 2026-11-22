@@ -595,3 +595,17 @@ export function problemsOf(clients) {
   for (const c of clients) for (const p of c.problems) out.push(`${c.label}: ${p}`);
   return out;
 }
+
+export async function passEntryFilm(page, { timeout = 15000 } = {}) {
+  const centre = await page.evaluate(async () => {
+    await Promise.race([globalThis.__SP__?.entryFilm, new Promise((r) => setTimeout(r, 10000))]);
+    return document.querySelector('.spa-entry') ? { x: innerWidth / 2, y: innerHeight / 2 } : null;
+  });
+  if (!centre) return false;
+  const until = (fn, what) => page.waitForFunction(fn, { timeout }).catch((e) => { throw new Error(`entry film: ${what} (${e.message})`); });
+  if (await page.$('.spa-entry__gate')) await page.mouse.click(centre.x, centre.y);
+  await until(() => !document.querySelector('.spa-entry') || !!document.querySelector('.spa-entry .spa-stage'), 'no film after 点击进入');
+  if (await page.$('.spa-entry')) await page.mouse.click(centre.x, centre.y);
+  await until(() => !document.querySelector('.spa-entry'), 'the overlay stayed after the skip');
+  return true;
+}

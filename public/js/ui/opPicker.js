@@ -9,10 +9,11 @@ import { data, useData } from '../data.js';
 import { cardAvatarOperatorId } from '../../../shared/playerCard.js';
 import { t } from '../../../shared/i18n.js';
 import { operatorSearch } from './operatorSearch.js';
+import { versionLabel } from '../versions.js';
 
 export function filterCardOperators(list, query = '', star = 0) {
   const matches = operatorSearch(query);
-  return list.filter((c) => (!star || c.rarity === star) && matches([c.name, c.appellation], c.charId));
+  return list.filter((c) => (!star || c.rarity === star) && matches([c.name, c.zh, c.appellation], c.charId));
 }
 
 export function OperatorPicker({ title, micro, current, list, m, faceOf = (c) => chessAvatarUrl(m, c), autoLabel, autoTitle, autoIcon = 'refresh',
@@ -26,7 +27,9 @@ export function OperatorPicker({ title, micro, current, list, m, faceOf = (c) =>
 }
 
 export function OperatorPickerView({ title, micro, current, list, faceOf, autoLabel, autoTitle, autoIcon = 'refresh',
-  note, onPick, onClose, q, star, onQuery, onStar, body = null, bodyRef = null }) {
+  note, onPick, onClose, q, star, onQuery, onStar, body = null, bodyRef = null, groups = null, rosterState = null, onRetryRoster = null }) {
+  const shown = groups ? groups.map((g) => ({ ...g, ops: g.ops.filter((c) => list.some((v) => v.charId === c.charId)) })).filter((g) => g.ops.length)
+    : [{ key: 'all', ops: list }];
   return html`<${Modal} open=${true} utility=${true} title=${title} micro=${micro} onClose=${onClose} width="min(9.6rem, 94vw)" class="cardpick">
     <div ref=${bodyRef}>${body || html`
     <div class="cardpick__bar">
@@ -36,12 +39,15 @@ export function OperatorPickerView({ title, micro, current, list, faceOf, autoLa
           class=${star === v ? 'is-on' : ''} onClick=${() => onStar(v)}>${label}</button>`)}
       </div>
     </div>
+    ${rosterState && rosterState !== 'ready' ? html`<p class="cardpick__note" role="status">${rosterState === 'missing' ? t('其他时期的干员暂时无法载入') : t('其他时期载入中…')}
+      ${rosterState === 'missing' ? html`<${Button} size="sm" variant="secondary" onClick=${onRetryRoster}>${t('重试')}<//>` : null}</p>` : null}
     <div class="cardpick__grid">
       <button type="button" class=${`cardpick__op cardpick__op--auto${!current ? ' is-on' : ''}`} onClick=${() => onPick('')} title=${autoTitle} aria-pressed=${String(!current)}>
         <span class="cardpick__img"><${Icon} name=${autoIcon} /></span><span class="cardpick__name">${autoLabel}</span></button>
-      ${list.map((c) => html`<button key=${c.charId} type="button" data-operator=${c.charId} class=${`cardpick__op${current === c.charId ? ' is-on' : ''}`} onClick=${() => onPick(c.charId)} title=${c.name} aria-pressed=${String(current === c.charId)}>
+      ${shown.map((group) => html`${groups ? html`<h3 class="cardpick__group">${group.key === 'room' ? t('本房间版本 · {version}', { version: versionLabel(group.version) }) : t('其他时期 · {version}', { version: versionLabel(group.version) })}</h3>` : null}
+      ${group.ops.map((c) => html`<button key=${c.charId} type="button" data-operator=${c.charId} class=${`cardpick__op${current === c.charId ? ' is-on' : ''}`} onClick=${() => onPick(c.charId)} title=${c.name} aria-pressed=${String(current === c.charId)}>
         <span class="cardpick__img"><${Img} src=${faceOf(c)} fallback=${html`<${Icon} name="user" />`} /></span>
-        <span class="cardpick__name">${c.name}</span>${c.rarity ? html`<span class=${`cardpick__star r${c.rarity}`}>${c.rarity}★</span>` : null}</button>`)}
+        <span class="cardpick__name">${c.name}</span>${c.rarity ? html`<span class=${`cardpick__star r${c.rarity}`}>${c.rarity}★</span>` : null}</button>`)}`)}
     </div>
     ${note ? html`<p class="cardpick__note"><${Icon} name="info" />${note}</p>` : null}`}</div>
   <//>`;
@@ -51,7 +57,7 @@ export function PortraitPicker(props) {
   return html`<${AvatarPicker} ...${props} kind="portrait" />`;
 }
 
-export function AvatarPicker({ current, list, m, onPick, onClose, kind = 'avatar' }) {
+export function AvatarPicker({ current, list, m, onPick, onClose, kind = 'avatar', groups = null, rosterState = null, onRetryRoster = null }) {
   const [operator, setOperator] = useState(null);
   const [q, setQ] = useState('');
   const [star, setStar] = useState(0);
@@ -67,16 +73,16 @@ export function AvatarPicker({ current, list, m, onPick, onClose, kind = 'avatar
     }
   }, [operator]);
   return html`<${AvatarPickerView} kind=${kind} current=${current} list=${list} m=${m} onPick=${onPick} onClose=${onClose}
-    operator=${operator} onOperator=${setOperator} q=${q} star=${star} onQuery=${setQ} onStar=${setStar} bodyRef=${bodyRef} />`;
+    operator=${operator} onOperator=${setOperator} q=${q} star=${star} onQuery=${setQ} onStar=${setStar} bodyRef=${bodyRef} groups=${groups} rosterState=${rosterState} onRetryRoster=${onRetryRoster} />`;
 }
 
 /** Both steps keep one Modal and one preference-sync lifecycle; picking an operator is only a preview. */
 export function AvatarPickerView({ current, list, m, onPick, onClose, operator, onOperator,
-  q = '', star = 0, onQuery, onStar, bodyRef = null, kind = 'avatar' }) {
+  q = '', star = 0, onQuery, onStar, bodyRef = null, kind = 'avatar', groups = null, rosterState = null, onRetryRoster = null }) {
   const selected = list.find((c) => c.charId === operator);
   const portrait = kind === 'portrait';
   return html`<${OperatorPickerView} title=${portrait ? t('更换立绘') : t('头像')} micro=${portrait ? 'SEAT CARD' : 'AVATAR'} current=${cardAvatarOperatorId(current)}
-    list=${filterCardOperators(list, q, star)} faceOf=${(c) => cardAvatarUrl(c.charId, m)}
+    list=${filterCardOperators(list, q, star)} groups=${groups} rosterState=${rosterState} onRetryRoster=${onRetryRoster} faceOf=${(c) => cardAvatarUrl(c.charId, m)}
     autoLabel=${t('默认')} autoTitle=${portrait ? t('按博士编号自动分配') : t('不使用头像：显示策略图标或名字首字')} autoIcon=${portrait ? 'refresh' : 'user'}
     note=${portrait ? t('选择后，同盟里的博士都会看到这张立绘') : t('选择后，同盟里的博士都会看到这个头像')} onPick=${(id) => id ? onOperator(id) : onPick('')}
     onClose=${onClose} q=${q} star=${star} onQuery=${onQuery} onStar=${onStar} bodyRef=${bodyRef}

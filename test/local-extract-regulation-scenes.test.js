@@ -69,7 +69,7 @@ test('large scene transport splits fit existing ZIP packs and rejoin byte-for-by
 from pathlib import Path
 blob=bytes(range(251))*120000
 with tempfile.TemporaryDirectory() as temp:
- parts=s.write_scene_bins(Path(temp),blob)
+ parts=s.write_scene_bins(Path(temp),blob,part_bytes=15000000)
  joined=b''.join((Path(temp)/p['name']).read_bytes() for p in parts)
  print(json.dumps({'sizes':[p['bytes'] for p in parts],'keys':[p['key'] for p in parts],
  'same':hashlib.sha256(joined).digest()==hashlib.sha256(blob).digest()}))`);

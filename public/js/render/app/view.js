@@ -146,7 +146,7 @@ export function switchableBox({ board, pixi, spec }) {
     update(cam, b) {
       const scene = board() || null;
       if (!inner || owner !== scene || inner.destroyed
-        || (spec?.saltCannon && (inner.cannonModel ?? null) !== (scene?.cannonModel?.() ?? null))) {
+        || (spec?.cannon && (inner.cannonModel ?? null) !== (scene?.cannonModel?.() ?? null))) {
         drop();
         inner = scene ? scene.createDevice(spec) : pixi();
         owner = scene;

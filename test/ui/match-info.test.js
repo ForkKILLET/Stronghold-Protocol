@@ -95,7 +95,7 @@ test('MatchBondRow: greyed by state (✕ when the mode never activates it, the o
   assert.equal([...walk(row)].some((v) => hasClass(v, 'brief-bond__ban')), false);
   // Fork static bans restrict the pool but do not disable activation: show the incomplete-lineup fold.
   assert.ok(hasClass(cell('arcaneShip'), 'is-off') && hasClass(cell('arcaneShip'), 'is-incomplete'));
-  assert.deepEqual([disc('arcaneShip').props.disabled, disc('arcaneShip').props.active, disc('arcaneShip').props.tier], [true, false, 0]);
+  assert.deepEqual([disc('arcaneShip').props.disabled, disc('arcaneShip').props.active], [true, false]);
   assert.equal(disc('arcaneShip').props.cross, false);
   assert.equal(disc('arcaneShip').props.tag?.type, BondLackTag);
   assert.equal(tipOf('arcaneShip').props.text, '奥术：部分盟约所含干员阵容不完整（2 名干员无法出现）');
@@ -114,7 +114,8 @@ test('MatchBondRow: greyed by state (✕ when the mode never activates it, the o
   assert.ok(!hasClass(cell('deputShip'), 'is-off') && !hasClass(cell('deputShip'), 'is-partial'));
   assert.deepEqual([disc('deputShip').props.cross, disc('deputShip').props.tag], [false, null]);
   assert.equal(tipOf('deputShip').props.text, '助力');
-  assert.equal(disc('deputShip').props.tier, DATA.bonds.deputShip.thresholds.length);
+  // no tier is reached before the match (§37.340 review): the disc carries none (the lit disc is the full ring anyway)
+  assert.equal(disc('deputShip').props.tier, undefined);
   // the box beside the tip: one line per banned member (avatar, name, its bonds with this one highlighted); none ⇒ null
   const aside = tipOf('preciShip').props.aside;
   const ops = [...walk(aside)].filter((v) => hasClass(v, 'brief-bantip__op'));

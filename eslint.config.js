@@ -65,6 +65,8 @@ export default [
       'public/fonts/**',
       'public/dev/**',
       '.cache/**',
+      '.state/**',
+      'dist/**',
       'coverage/**',
     ],
   },

@@ -7,6 +7,8 @@
   },
   "roomState": {
     "t": "room.state",
+    "aiTakeoverEnabled": true,
+    "aiTakeoverVotes": [],
     "code": "<code>",
     "hostId": "<player>",
     "mode": "coop",
@@ -18,6 +20,7 @@
     "prepSeconds": null,
     "prepMultiplier": null,
     "battleSpeed": 2,
+    "pauseMode": "veto",
     "seats": [
       {
         "seat": 0,
@@ -88,6 +91,9 @@
       "roomModes": [
         "solo",
         "coop"
+      ],
+      "i18n": [
+        "en"
       ]
     }
   ]

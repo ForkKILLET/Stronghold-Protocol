@@ -1009,10 +1009,13 @@ a ground enemy move ×`move_speed` (official 1.5) and no ASPD. Both children are
 parent tile buff ends, so they stay after the unit leaves the tile, until a 重生 clears them or the unit leaves the
 field. Standing on the tile again does not stack (maxStack 1). Flyers skip it (`terrainFor`). Devices are not allies of
 those professions. 规程 盐坨子炮 (`trap_196_cnnon`, role `cannon`) stands on the separator just above the field
-(row = rect.r1 + 1, facing DOWN; `spawnDevice` `allowOutside`) and does not block the road. Every 6 s (`sktok_cnnon`
-SP; the stage runes `char_skill_cd_mul` / `char_attribute_add` are not applied [ASSUMED]) it deals its ATK as physical
-damage to allies on the far tile of range 4-1 and moves one adjacent ground enemy of 重量 ≤ 3 onto that tile.
-Operators can attack it. 寻险水手 (`enemy_10043_sailor`) gains a short move-speed buff from that teleport only.
+(row = rect.r1 + 1, facing DOWN; `spawnDevice` `allowOutside`) and does not block the road. Every 18 s on MAP10 (`sktok_cnnon`
+SP base; MAP10's runes produce 60,000 HP, 900 ATK and an 18 SP cycle) it launches a physical shell to
+its official range's far tile, carrying one adjacent eligible ground enemy of weight ≤3. Splash covers the 3×3
+cells around the landing tile. A normal shell cleared in flight still unloads its passenger; clearing the final shell
+kills that passenger. At 1 HP the cannon launches its final shell and destroys itself without a killer attribution.
+寻险水手 (`enemy_10043_sailor`) gains ×2 move speed for one second after unloading. See the reviewed
+[implementation evidence](research/salt-cannon-20261119.md).
 Glyph `w` (`tile_duel_grassland`) grants both sides' ground units Stealth through the independent
 `terrain:duelGrass` buff. Leaving clears only that source; blocked enemies are visible and regain it after
 `stage.special.duelGrass.enemyStealthRestoreSec` seconds (`stealthRestore`, fallback 0). The official value is 0, so
@@ -1744,7 +1747,8 @@ Unknown subprofessions fall back to the profession default (test `professions.te
   client plays the deploy and its interpolation snaps instead of sliding), `['atk', src, tgt, projKind]`
   (`none|arrow|bolt|bomb|lob|orb|drone|enemy|boomerang|droneBomb|chain|chainHeal`; a boomerang's way back has no event —
   the renderer flies it back to the thrower at `BOOMERANG_RETURN_SPEED`; an enemy's `profile.shot` may name another
-  kind, e.g. `mortar` for 帝国炮火先兆者, which the renderer does not draw — its fx `bombardShell` is the shell), `['dmg', tgt,
+  kind, e.g. `mortar` for 帝国炮火先兆者, for which the renderer flies no projectile (官方特效: its cast row only) — its fx
+  `bombardShell` is the shell, its `bombard` the landing), `['dmg', tgt,
   amount, type]` (`phys|arts|true|burn|neural|necrosis|apoptosis`), `['heal', tgt, amount]`, `['skill', id, 1|0]`,
   `['engage', id]` (an ally's first attack that hits an enemy — the client's 行动开始 voice, DESIGN §21.30), `['die', id,
   reason]`, `['leak', id]`, `['status', id, key, 1|0]`, `['fx', kind, x, y, extra]` (`hitCap` `{ id, n }`: a leader's

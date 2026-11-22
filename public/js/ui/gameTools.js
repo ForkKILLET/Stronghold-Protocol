@@ -25,8 +25,8 @@ function ToolsMenu({ pinned, onPin, onOpen, onClose, tools }) {
     <div class="game-tools__list">${tools.map(tool => html`<div key=${tool.id} class="game-tools__row">
       <button class="game-tools__open" type="button" onClick=${() => onOpen(tool.id)}><${Icon} name=${tool.icon} />
         <span><b>${t(tool.label)}</b><small>${t(tool.description)}</small></span></button>
-      <button class="game-tools__pin" type="button" aria-label=${t(pinned.includes(tool.id) ? '取消固定' : '固定到工具栏')}
-          title=${t(pinned.includes(tool.id) ? '取消固定' : '固定到工具栏')} aria-pressed=${pinned.includes(tool.id)}
+      <button class="game-tools__pin" type="button" aria-label=${(pinned.includes(tool.id) ? t('取消固定') : t('固定到工具栏'))}
+          title=${(pinned.includes(tool.id) ? t('取消固定') : t('固定到工具栏'))} aria-pressed=${pinned.includes(tool.id)}
           onClick=${() => onPin(tool.id)}><${Icon} name="pin" /></button>
     </div>`)}</div>
     <p class="game-tools__note">${t('常用工具可固定在外面')}</p>

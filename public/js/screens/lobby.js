@@ -239,6 +239,29 @@ export function rememberRoom(code, test = false) {
   savePref('recentRooms', recent);
 }
 
+/**
+ * This browser's 「AI 队友最后选择」 (#995, §37.334; default off): the host's last switch that the server took in a room
+ * (screens/room.js), the default of the next co-op room this browser creates.
+ */
+export const AI_LAST_PREF = 'lobby.aiPicksLast';
+
+/**
+ * Applies the remembered 「AI 队友最后选择」 to the room 创建同盟 has just made (#995, §37.334): an "on" goes out through
+ * the room's own room.setAiPicksLast, so the server stays the authority (host-only, co-op only) and room.create keeps
+ * its keys; a new room is off already, so "off" sends nothing. Only after this browser created a co-op room — never on
+ * joining, a host handover or a later match of the same room, so a value set in the current room is never overridden
+ * and nobody else's room changes. A refusal leaves the room off without a toast: the switch in ⚙ 同盟设置 shows the
+ * room's state and the host can still turn it on.
+ * @param {string} mode the mode of the room just created
+ * @param {(t: string, fields: object) => Promise<unknown>} request net.request
+ * @param {(key: string, fallback: boolean) => unknown} [load] store.js loadPref
+ * @returns {Promise<boolean>} whether the server took the remembered "on"
+ */
+export function sendRememberedAiLast(mode, request, load = loadPref) {
+  if (mode === 'solo' || load(AI_LAST_PREF, false) !== true) return Promise.resolve(false);
+  return request('room.setAiPicksLast', { on: true }).then(() => true, () => false);
+}
+
 export async function joinKnown(type, key) {
   try { return await net.request(type, { code: key }); } catch (err) {
     if (err?.code !== ERR.TEST_CONFIRM) throw err;
@@ -664,10 +687,13 @@ export function LobbyScreen() {
       if (alive.current) setBusy(null);
     }
   };
+  // 独立模拟: at the difficulty picked on 选择模拟协议; 创建同盟: at the remembered one, changed in the room by the host
+  // (`version`: the lobby's, only when welcome.versions is present — protocol §4; omitted when the server offers 第二期下半 alone);
+  // once the server made a co-op room, the remembered 「AI 队友最后选择」 follows (sendRememberedAiLast, #995)
   const lobbyRoomPlugins = activeLobbyPlugins(versions ? version : DEFAULT_VERSION);
   const create = () => {
     if (roomMode === 'coop' && !validPrepChoice(prepChoice)) return;
-    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed, ...(roomMode === 'coop' ? { pauseMode } : {}), ...(lobbyRoomPlugins !== undefined ? { plugins: lobbyRoomPlugins } : {}) }));
+    return run('create', () => net.request('room.create', { mode: roomMode, difficulty: roomMode === 'solo' ? shownSolo : shownCoop, ...(versions ? { version } : {}), ...(roomMode === 'solo' && shownMode ? { modeId: shownMode } : {}), ...(testMode && asTest ? { test: true } : {}), ...(roomMode === 'solo' && soloFree && soloTimed ? { soloUnlimited: true } : {}), prepMultiplier: roomMode === 'coop' ? prepChoiceMultiplier(prepChoice) : null, battleSpeed, ...(roomMode === 'coop' ? { pauseMode } : {}), ...(lobbyRoomPlugins !== undefined ? { plugins: lobbyRoomPlugins } : {}) }).then(() => sendRememberedAiLast(roomMode, (type, fields) => net.request(type, fields))));
   };
   const matchmaking = () => run('match', () => net.request('match.join', { mode: 'coop', difficulty }));
   const cancelMatchmaking = () => run('cancel-match', () => net.request('match.leave', {}));
