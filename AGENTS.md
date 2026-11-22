@@ -1,5 +1,7 @@
 # 合并上游时的仓库约定
 
+- 2026-11-22 用户要求就 #994 后续开 PR 修复层数阶段与激活满圈；刷新发现最新 dev 18e7600ee 已由 8b4d8db5c／8b9eb177f 实现两项需求，未创建重复 PR。独立 worktree 核对官方 phaseType／phaseCounts，主线现有定向 11 项通过；Chrome／Firefox 各桌面、短屏六场景，灵巧 39→40／149 层、不屈 2→3 人，顶部／详情阶段、满圈及 Esc 通过，页面／控制台／HTTP 零错误。截图使用三期真实数据与受控 DOM fallback；开发 mock 只替换 config／stages 的初轮夹具失败保留，补齐内容后通过。临时素材／字体／vendor 链接已移除。收据 .state/bond-stage-20261122；本轮未同步本服运行源码或部署，完整模拟／golden 仍暂停。
+
 - 2026-11-22 按用户官服截图修复本服策略详情头像装饰：旧 art 容器为 1.6 单位，内部仍为 2.1，桌面中心偏移 32px。改为统一 3:2 比例盒，方形头像居中；左右括号位于头像两侧，四角十字复用 Icon 并绝对定位，移除多余矩形底框；短屏为整套装饰留列宽，预览／确认／队友查看共用。31 项定向、新增 Chrome 浏览器回归 1 项、实际生产 CSS 2 项及类型／lint／导入通过；Chrome／Firefox 各四尺寸、7 场景／14 图，中心误差小于 0.01px，页面／HTTP 零错误，确认及队友查看保持本人选择。夹具补齐实际 utility-mobile 样式、隔离账户读统计；初轮短屏选卡超时日志保留，最终先用关闭按钮收起交流框，再用真实指针选卡。对照与用户原图保存在 .state/strategy-frame-20261122；本次本机提交，未推送部署，完整模拟／golden 仍暂停。
 
 - 2026-11-22 用户授权推送部署及提交 PR：本服功能提交 5c5239c8e 已推送 Fork main，游戏部署至构建 ddd4748675de，复用现有资源／Python 构建缓存，候选校验 41,128 文件／121 分包通过；切换前两次空服／无排队检查，保留 Redis／SQLite 和旧镜像配置。线上健康、HTTPS、Redis failures=0／Worker failed=0 通过；Chrome 经本机 SSH TLS 转发加载真实生产包标题页并核对新编译 CSS，账户初始化以 USER_STORAGE_DISABLED 拦截，确认不发 hello、不创建生产账户，不冒充登录／对局验证。正式主线 PR #994 基于 dev d4531f0a1，head 3f5a45805，公开证据固定 5a737a5a7（六图及说明 HTTP 200），正文回读一致、MERGEABLE。主线类型／lint／导入、Node 24 守卫和 Python 检查已绿，完整分片／golden 仍运行，不记全绿。本机完整模拟／golden 仍暂停；收据 .state/bond-release-20261122。
