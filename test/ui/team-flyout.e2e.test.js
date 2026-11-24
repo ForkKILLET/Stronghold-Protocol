@@ -163,4 +163,90 @@ describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=
       await page.close();
     }
   });
+
+  test('320px: every strategy square stays inside the viewport and can be tapped', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setViewport({ width: 320, height: 568, isMobile: true, hasTouch: true });
+      await page.goto(`${srv.url}${URL_FLYOUT}`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.team__fly-row:nth-child(2) .team__fly-ops .uthumb');
+      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.screenshot({ path: `${OUT}/team-flyout-320.png` });
+      const state = await page.evaluate(() => ({
+        edge: document.querySelector('.team__fly-window').getBoundingClientRect().right,
+        width: innerWidth,
+        strategies: [...document.querySelectorAll('.team__fly-band.is-clickable')].map(e => {
+          const r = e.getBoundingClientRect();
+          return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        }),
+      }));
+      assert.ok(state.edge <= state.width, `flyout edge ${state.edge} exceeds ${state.width}`);
+      assert.equal(state.strategies.length, 4);
+      assert.ok(state.strategies.every(Boolean));
+      await page.click('.team__fly-band.is-clickable');
+      await page.waitForSelector('.team__fly-bandpop');
+      const popup = await page.$eval('.team__fly-bandpop', e => e.getBoundingClientRect().toJSON());
+      assert.ok(popup.left >= 0 && popup.right <= state.width);
+    } finally {
+      await page.close();
+    }
+  });
+
+  test('an arriving regulation command stays reachable while the flyout is open', async () => {
+    const { getVersionData } = await import('../../server/data.js');
+    const { makeMatch } = await import('../match/harness.js');
+    const raw = getVersionData('act3autochess@V3_1', { log: { warn() {}, error() {}, info() {} } });
+    const h = makeMatch({ mode: 'coop', difficulty: 'HARD', humans: 1, data: raw, fake: true }).start();
+    let priv;
+    try {
+      h.toPrep(1, { band: 'band_survive' });
+      priv = h.ps('p_0').privateView();
+    } finally {
+      h.m.dispose();
+    }
+    assert.ok(priv.command && priv.effects.some(e => e.id === priv.command.effectId));
+    const page = await browser.newPage();
+    try {
+      await page.setViewport({ width: 1600, height: 900 });
+      await page.goto(`${srv.url}/dev/game-mock.html?shot=1&render=fallback&version=regulation&phase=PREP`, { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => !!globalThis.__MOCK__);
+      await page.evaluate(async raw => {
+        const { data } = await import('/js/data.js');
+        data.setContent({ id: 'act3autochess@V3_1', values: raw });
+        const mock = globalThis.__MOCK__;
+        mock.setPhase('PREP');
+        mock.S().pub.players.forEach((p, i) => {
+          p.bandId = ['band_survive', 'band_amiya', 'band_price', 'band_transfer'][i];
+        });
+        mock.S().priv.bandId = 'band_survive';
+        mock.pushPublic();
+      }, raw);
+      await page.waitForSelector('.team__bonds-toggle');
+      await page.click('.team__bonds-toggle');
+      await page.waitForSelector('.team__fly-window');
+      await page.evaluate(({ command, effects }) => {
+        const mock = globalThis.__MOCK__, { match } = mock.store.get();
+        Object.assign(mock.S().priv, { command, effects });
+        mock.store.patch('match', { private: { ...match.private, bandId: command.bandId, command, effects } });
+      }, { command: priv.command, effects: priv.effects });
+      await page.waitForSelector('.band-command');
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({ path: `${OUT}/team-flyout-command-arrived-1600.png` });
+      await page.waitForFunction(() => {
+        const fly = document.querySelector('.team__fly-window').getBoundingClientRect();
+        const effects = document.querySelector('.gm__effects').getBoundingClientRect();
+        return fly.right <= effects.left - 6;
+      }, { timeout: 3000 });
+      const hit = await page.$eval('.band-command', e => {
+        const r = e.getBoundingClientRect();
+        return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+      });
+      assert.equal(hit, true, 'the flyout must leave the actual command control reachable');
+      assert.ok(await page.$('.team__fly-window'), 'layout updates keep the flyout open');
+      await page.screenshot({ path: `${OUT}/team-flyout-command-arrived-1600.png` });
+    } finally {
+      await page.close();
+    }
+  });
 });

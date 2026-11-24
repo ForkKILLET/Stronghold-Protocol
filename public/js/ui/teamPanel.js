@@ -529,7 +529,8 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
         const r = tool.getBoundingClientRect();
         if (r.width > 0 && r.top < box.bottom && r.bottom > box.top && r.right > start) width = Math.min(width, Math.round(r.left - start - 8));
       }
-      el.style.setProperty('--fly-w', `${Math.max(220, width)}px`);
+      // The cells scroll individually; a minimum window width would push the strategy off a narrow viewport.
+      el.style.setProperty('--fly-w', `${Math.max(0, width)}px`);
     };
     const measure = () => {
       frame = null;
@@ -547,6 +548,10 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
     const observer = new ResizeObserver(schedule);
     observer.observe(el);
     for (const row of el.querySelectorAll('.team__row')) observer.observe(row);
+    // Commands and shop tools can change size while the flyout stays open, independently of the roster.
+    for (const obstacle of (el.closest('.gm') || document).querySelectorAll('.gm__effects, .shopbar, .shopbar__tools')) {
+      observer.observe(obstacle);
+    }
     measure();
     globalThis.addEventListener('resize', schedule);
     return () => {

@@ -1541,3 +1541,10 @@ quality/mode changes and view teardown cancel outstanding handles. No extra dash
 Fresh pieces export `tileDepthHeights` per group from MapSettings.highlandHeight for wall and bench occlusion.
 Re-extract scenes to get that optional metadata; older packs keep the existing board-height approximation. This is
 not an exact reconstruction of decorative meshes and does not change unit positions, simulation or battle ownership.
+
+### Alliance flyout layout
+
+The team flyout follows the roster width and row heights, reserving the effects/command column and any overlapping
+shop controls. While open, its ResizeObserver also follows the effects column, shop bar and shop tools, so a command
+arriving in a private update immediately gets its space. The window uses the remaining width on narrow viewports,
+including 320px; the bond and operator cells retain independent horizontal scrolling. Closing the flyout disconnects these observations.
