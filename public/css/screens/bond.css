@@ -376,7 +376,3 @@ button.bpop__harmony:hover { border-style: solid; color: #fff; }
 .match-bond-dialog .bpop__mname { font-size: max(calc(.12 * var(--t)), 10px); }
 .match-bond-dialog .bpop__close { position: absolute; right: .08rem; top: .08rem; z-index: 1; display: grid; place-items: center; background: none; border: 1px solid var(--line-2); color: var(--text-lo); }
 .match-bond-dialog .bpop__close .icon { width: .18rem; height: .18rem; }
-
-/* With no members, retain every segment but light none of them. */
-.bond.is-empty-progress .bond__disc::before,
-.bond.is-empty-progress .bond__core::before { filter: grayscale(1) brightness(.6); }

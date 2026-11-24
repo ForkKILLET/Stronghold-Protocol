@@ -58,10 +58,10 @@ test('an active bond draws a full lit ring at every tier (规程 1_1, 盟约 and
       `${members}/${minCount}`);
     assert.equal(bondFrame({ active: true, members, minCount, phased: false }).key, `bondBoardIcon/${key}`);
   }
-  // before activation: k of N members (N = the first threshold, at most 4), 65-unit sprites; none yet → N_1 greyed (filled 0)
+  // before activation: k of N members (N = the first threshold, at most 4), 65-unit sprites; none yet → 1_0
   assert.deepEqual(bondFrame({ members: 1, minCount: 2 }), { key: 'bondBoardIcon/2_1', lit: false, progress: true, filled: 1, full: false });
   assert.deepEqual(bondFrame({ members: 2, minCount: 3 }), { key: 'bondBoardIcon/3_2', lit: false, progress: true, filled: 2, full: false });
-  assert.deepEqual(bondFrame({ members: 0, minCount: 2 }), { key: 'bondBoardIcon/2_1', lit: false, progress: true, filled: 0, full: false });
+  assert.deepEqual(bondFrame({ members: 0, minCount: 2 }), { key: 'bondBoardIcon/1_0', lit: false, progress: false, filled: 0, full: false });
   assert.equal(bondFrame({ members: 3, minCount: 6 }).key, 'bondBoardIcon/4_3');
   // a count at the threshold without activation draws N_N, the 77-unit sprite (sized as such)
   assert.deepEqual(bondFrame({ members: 3, minCount: 3 }), { key: 'bondBoardIcon/3_3', lit: false, progress: true, filled: 3, full: true });
@@ -151,3 +151,13 @@ test('the bond strip (规程): every active slot sits its stage numeral on the u
   assert.equal(bondFrame(indom.props).key, 'bondBoardIcon/2_2');
   assert.equal(bondFrame(head(bonds[3]).props).key, 'bondBoardIcon/2_1', 'inactive: the member progress');
 }));
+
+test('zero members never borrow a one-member progress segment', () => {
+  for (const phased of [false, true]) {
+    for (const minCount of [1, 2, 3, 4]) {
+      assert.deepEqual(bondFrame({ members: 0, minCount, phased }), {
+        key: 'bondBoardIcon/1_0', lit: false, progress: false, filled: 0, full: false,
+      }, `${phased ? 'regulation' : 'covenant'} 0/${minCount}`);
+    }
+  }
+});

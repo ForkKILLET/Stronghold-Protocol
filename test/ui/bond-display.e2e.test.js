@@ -83,7 +83,6 @@ test('active bonds draw a full ring at every tier (规程 1_1 with the numeral, 
         ring: ring.backgroundImage, size: parseFloat(ring.width) / el.querySelector('.bond__disc').getBoundingClientRect().width,
         plate: getComputedStyle(el.querySelector('.bond__core'), '::before').backgroundImage,
         glyph: getComputedStyle(el.querySelector('.bond__glyph')).color, tier: el.dataset.tier ?? null,
-        empty: el.classList.contains('is-empty-progress'),
       };
     }));
     // every active tier: the same full ring (1_1) and lit centre, the 77-unit sprite's size; the tier stays on the element
@@ -97,8 +96,7 @@ test('active bonds draw a full ring at every tier (规程 1_1 with the numeral, 
     // before activation: the member progress (k of N), the grey centre, no tier
     assert.match(discs[5].ring, /bondBoardIcon\/2_1\.png/);
     assert.match(discs[6].ring, /bondBoardIcon\/3_2\.png/);
-    assert.match(discs[7].ring, /bondBoardIcon\/2_1\.png/);
-    assert.equal(discs[7].empty, true);
+    assert.match(discs[7].ring, /bondBoardIcon\/1_0\.png/);
     assert.match(discs[8].ring, /bondBoardIcon\/1_0\.png/);
     for (const disc of discs.slice(5, 9)) {
       assert.doesNotMatch(disc.plate, /1_1\.png/);
@@ -124,6 +122,8 @@ test('active bonds draw a full ring at every tier (规程 1_1 with the numeral, 
       { bondId: 'siracusaShip', count: 6, tier: 2, active: true, layers: 7, thresholds: [3, 6] },
       { bondId: 'swiftShip', count: 2, tier: 1, active: true, layers: 6, thresholds: [2] },
       { bondId: 'sargonShip', count: 2, tier: 0, active: false, layers: 0, thresholds: [3, 6] },
+      // A no-stack bond's historical layers must not keep a zero-member disc (Orange replay 34:49).
+      { bondId: 'emptyShip', count: 0, tier: 0, active: false, layers: 33, thresholds: [2] },
     ];
     const setBonds = (pg) => pg.evaluate((bonds) => {
       const mock = globalThis.__MOCK__;

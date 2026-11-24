@@ -245,7 +245,7 @@ export function TierChip({ tier, golden = false, size = 'md', class: cls, overla
  */
 export function bondFrame({ active = false, disabled = false, members = 0, minCount = 0, phased = false, split = !phased } = {}) {
   const lit = !!active && !disabled;
-  const progress = !active && !disabled && minCount > 0;
+  const progress = !active && !disabled && minCount > 0 && members > 0;
   const n = Math.max(1, Math.min(4, minCount | 0 || 1));
   const filled = progress ? Math.max(0, Math.min(n, members | 0)) : 0;
   const key = lit ? (split ? `${n}_${n}` : '1_1') : progress ? `${n}_${Math.max(1, filled)}` : '1_0';
@@ -275,7 +275,7 @@ export function BondDisc({
   // Remember which URL failed (a per-URL flag can't race a reset effect).
   const picture = useAssetImage(icon);
   const imgOk = !!picture.src;
-  const { key, lit, progress, filled, full } = bondFrame({ active, disabled, members, minCount, phased, split });
+  const { key, lit, full } = bondFrame({ active, disabled, members, minCount, phased, split });
   const [badFrame, setBadFrame] = useState(null);
   const frameUrl = uiUrl(data.get('assets'), key);
   const frame = badFrame === frameUrl ? null : frameUrl;
@@ -285,7 +285,7 @@ export function BondDisc({
   const glyph = (name || '?').trim().charAt(0) || '?';
   const Tag = onClick ? 'button' : 'div';
   return html`<${Tag} type=${onClick ? 'button' : undefined}
-      class=${cx('bond', 'is-sprite', !frame && 'is-frame-missing', full && 'is-full', progress && !filled && 'is-empty-progress', `bond--${size}`, active && 'is-active', disabled && 'is-disabled', layersDisabled && 'is-frozen', onClick && 'is-clickable', cls)}
+      class=${cx('bond', 'is-sprite', !frame && 'is-frame-missing', full && 'is-full', `bond--${size}`, active && 'is-active', disabled && 'is-disabled', layersDisabled && 'is-frozen', onClick && 'is-clickable', cls)}
       style=${frameStyle} onClick=${onClick} title=${title || name} data-tier=${lit && tier > 0 ? tier : undefined}>
     <span class="bond__disc">
       ${frame ? html`<img src=${frame} alt="" hidden onError=${() => setBadFrame(frame)} />` : null}
