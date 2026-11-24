@@ -1,0 +1,158 @@
+[
+  {
+    "engine": "chrome",
+    "phase": "after",
+    "errors": [],
+    "http": [],
+    "console": [],
+    "cases": [
+      {
+        "width": 1440,
+        "height": 900,
+        "strip": [
+          "preciShip",
+          "swiftShip",
+          "deputShip",
+          "docShip",
+          "arcaneShip",
+          "skillfulShip",
+          "visiShip",
+          "suntShip",
+          "miraShip",
+          "indomShip",
+          "steadShip",
+          "sargonShip"
+        ],
+        "fly": [
+          "精准 3/2",
+          "迅捷 2/2",
+          "助力 2/2",
+          "聚合 3/2",
+          "奥术 2/2",
+          "灵巧 3/2",
+          "远见 2/2",
+          "绝技 4/2",
+          "奇迹 1/2",
+          "不屈 0/2",
+          "坚守 0/2",
+          "萨尔贡 1/3"
+        ],
+        "rings": [],
+        "layerText": null
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "strip": [
+          "preciShip",
+          "swiftShip",
+          "deputShip",
+          "docShip",
+          "arcaneShip",
+          "skillfulShip",
+          "visiShip",
+          "suntShip",
+          "miraShip",
+          "indomShip",
+          "steadShip",
+          "sargonShip"
+        ],
+        "fly": [
+          "精准 3/2",
+          "迅捷 2/2",
+          "助力 2/2",
+          "聚合 3/2",
+          "奥术 2/2",
+          "灵巧 3/2",
+          "远见 2/2",
+          "绝技 4/2",
+          "奇迹 1/2",
+          "不屈 0/2",
+          "坚守 0/2",
+          "萨尔贡 1/3"
+        ],
+        "rings": [],
+        "layerText": null
+      }
+    ],
+    "interaction": "strip popup opens and closes"
+  },
+  {
+    "engine": "firefox",
+    "phase": "after",
+    "errors": [],
+    "http": [],
+    "console": [],
+    "cases": [
+      {
+        "width": 1440,
+        "height": 900,
+        "strip": [
+          "preciShip",
+          "swiftShip",
+          "deputShip",
+          "docShip",
+          "arcaneShip",
+          "skillfulShip",
+          "visiShip",
+          "suntShip",
+          "miraShip",
+          "indomShip",
+          "steadShip",
+          "sargonShip"
+        ],
+        "fly": [
+          "精准 3/2",
+          "迅捷 2/2",
+          "助力 2/2",
+          "聚合 3/2",
+          "奥术 2/2",
+          "灵巧 3/2",
+          "远见 2/2",
+          "绝技 4/2",
+          "奇迹 1/2",
+          "不屈 0/2",
+          "坚守 0/2",
+          "萨尔贡 1/3"
+        ],
+        "rings": [],
+        "layerText": null
+      },
+      {
+        "width": 844,
+        "height": 390,
+        "strip": [
+          "preciShip",
+          "swiftShip",
+          "deputShip",
+          "docShip",
+          "arcaneShip",
+          "skillfulShip",
+          "visiShip",
+          "suntShip",
+          "miraShip",
+          "indomShip",
+          "steadShip",
+          "sargonShip"
+        ],
+        "fly": [
+          "精准 3/2",
+          "迅捷 2/2",
+          "助力 2/2",
+          "聚合 3/2",
+          "奥术 2/2",
+          "灵巧 3/2",
+          "远见 2/2",
+          "绝技 4/2",
+          "奇迹 1/2",
+          "不屈 0/2",
+          "坚守 0/2",
+          "萨尔贡 1/3"
+        ],
+        "rings": [],
+        "layerText": null
+      }
+    ],
+    "interaction": "strip popup opens and closes"
+  }
+]
