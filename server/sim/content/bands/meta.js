@@ -271,11 +271,9 @@ K.band_cost_coin_reach_cnt_gain_chess_from_pool = (ps) => ({
 });
 
 /**
- * 余 【文火慢炖】 「第8回合开始时，若仅激活了1个盟约，使其增加36层；否则使所有已激活盟约增加12层」. The owner's decision of 2026-10-08
- * overrides PRTS here (下半/PRTS盟约记录: layers of a bond that shows none 「仍然对其生效」): a bond without layers — bonds.json
- * `noStack`: 绝技, 独行, 调和, 协防干员 — gets none. The count stays the sentence's (every active bond), so one active bond
- * that is such a bond means nothing is added, and with two active bonds a layered one still gets count2. Only this
- * strategy: 协防's 「使所有已激活的盟约层数」 (bonds/addon/meta.js) and 华法琳's 【重点监护】 keep adding to every bond they name.
+ * 余 【文火慢炖】 「第8回合开始时，若仅激活了1个盟约，使其增加36层；否则使所有已激活盟约增加12层」.
+ * noStack bonds remain in the active-bond count, but receive no layers (the common layer-gain rule).
+ * With one active noStack bond nothing is added; with two active bonds a stacking one still gets count2.
  */
 K.round_start_bond_check_gain_layer = (ps) => ({
   onRoundStart(ctx) {

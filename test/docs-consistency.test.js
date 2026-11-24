@@ -107,7 +107,7 @@ test('联防 helpers follow unite.helperOrder (units > active bond > standing > 
     playerId, seat, lp, deployCount: units, board: new Map(), layers: {},
     bonds: bond ? { bond_x: { active: true, layers: 5 } } : {},
   });
-  const m = { gd: { unite: { maxHelpers: 2 } } };
+  const m = { gd: { unite: { maxHelpers: 2 }, bond: () => ({ noStack: false }) } };
   const a = player('a', 0, 40, 3);          // most LP, fewest units
   const b = player('b', 1, 1, 5);           // most units
   const c = player('c', 2, 2, 5, true);     // most units + an active bond

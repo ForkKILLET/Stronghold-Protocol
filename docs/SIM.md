@@ -2026,3 +2026,9 @@ immediately. See [the source record](research/sarkaz-death-spawns-20261113.md).
 ### Regulation corrections (2026-11-16)
 
 Ursus normal-field kill grants and direct opening-garrison temporary grants now contribute to its live scaling and recorded temporary settlement gains. They remain distinct from permanent layer gains: `tempLayerGain` reports only the actual increase below the 10,000 temporary cap, and never invokes the permanent `layerGain` hook. Disabled-gain fields keep kill grants combat-local and omit `tempLayerGains` from results; direct opening grants retain their pre-existing no-op in those fields. Talulah uses the existing maximum-extra helper, not a nonexistent bond parameter. Other corrected rules are Yan's five equiprobable element slots (existing Anger approximation unchanged), the Leithania CHORUS aura on allied member operators, any-listed-bond garrison cap matching, and 后兽's 1.5-tile Punishment splash. See [engine contract](design/engine.md#regulation-rule-corrections-integrated-on-2026-11-16) and [integration](MERGE_DEV_2026-11-15.md#2026-11-16开放-pr-筛选与集成).
+
+### Bonds without layers
+
+`DataSource.rawBond(id)` provides the content set's bond metadata. `noStack` input layers are zeroed; permanent
+and temporary grants produce no balance, hooks or receipts. Carried ledgers omit them and effective layers are
+zero. See [official recordings](research/no-hidden-bond-layers-20261125.md).

@@ -57,8 +57,8 @@ Core (isPower, bondType SEASON): 炎 萨尔贡 维多利亚 谢拉格 拉特兰 
 
 ### 2.2 Layers (层数)
 
-- Each player has one integer layer counter L per bond (23 counters). All start at 0 when the simulation starts, are never reset between rounds and are never reduced (no layer-loss effect exists in the data) [ASSUMED: never reduced].
-- `noStack: true` hides layer counts for 调和 / 协防干员 / 独行 / 绝技; it does not prohibit gains or clear stored layers. Their effects depend on member thresholds, but internal layers still participate in active-layer totals and unite ordering. [PRTS 下半盟约记录](https://prts.wiki/w/卫戍协议：盟约_下半/PRTS盟约记录): hidden-layer bonds still accept trait / strategy / equipment layer gains (review correction, 2026-10-04) — its header: 「下述盟约中部分盟约不会显示叠加层数，但是叠加层数的特质/策略/装备等效果仍然对其生效」. The client hides the count on the bond strip and popup (0.1.4, PR #66) and on the result card (0.2.0, `screens/result.js resultBonds`: no number, not ranked by it).
+- Each player has one integer layer counter L per stacking bond. All start at 0 when the simulation starts, are never reset between rounds and are never reduced (no layer-loss effect exists in the data) [ASSUMED: never reduced].
+- `noStack: true` means the bond has no layers: gains produce neither permanent nor temporary balances, and these bonds contribute zero to layer totals and ranking while still counting as active bonds. Official 2026-11-25 recordings show highest-layer and neighbouring-operator grants do not build hidden counts; see [recordings and the correction](no-hidden-bond-layers-20261125.md). This supersedes the earlier interpretation of the 下半 PRTS header and #139. The UI still shows their activation without a layer number.
 - L is kept while the bond is inactive, but bond effects only apply while the bond is active (PRTS 盟约记录).
 - Wording contract used by every source: "使已激活的【X】层数+N" -> add only if bond X is active at the moment of the trigger; "（无需激活盟约）" -> add even if X is inactive. "自身所属盟约" = every bond of that operator; "自身已激活的盟约" = only its bonds that are active.
 - No layer cap in the data. Caps are per source: max_add_count_per_battle (layers a single garrison instance may add in one battle), max_layer (per round, e.g. 安洁莉娜 12/round). The official cap is in the client, not the data: `AutoChessBattleConst.MAX_GARRISON_STACK = 999`, `AddBondCount` stores `min(L + n, 999)` per bond (research 11 §1). Since 2026-10-01 (DESIGN §20.12) the remake stops each bond at 999 (`shared/constants.js BOND_LAYER_CAP`, `layerGainRoom`); the community agrees (巴哈姆特 12534 "每把都能999层", "沒999層的盟約情況下"; 12316 "999謝").
@@ -1035,7 +1035,7 @@ Members (2 chess, 1 in current shop pool; by tier in shop: {'6': 1}):
 - **[2 distinct]** ALL operators take -20% physical and magic damage; 协防干员 members deal damage x1.2 (elite 协防 x1.4).
 - Formulas: `damageTakenMul = 0.8`; `memberDamageMul = 1.2 (elite 1.4)`
 - Meaning: "协防干员" (assist operators) = fallback bond (constData.fallbackBondId). DIY/self-selected 6-star operators whose faction matches no core bond become 协防干员; some preset operators (调香师, 松果, 瑰盐, 魔王, 铃兰, 迷迭香, 盟约·辅助干员) are natively 协防.
-- Note: noStack=true: no layer-scaled effect, but layers are still counted (巴哈姆特).
+- Note: noStack=true: no layers; the former hidden-counter interpretation (巴哈姆特) is superseded by the 2026-11-25 correction above.
 
 Members (8 chess, 5 in current shop pool; by tier in shop: {'2': 1, '3': 1, '4': 1, '5': 1, '6': 1}):
 
@@ -1332,7 +1332,7 @@ Bond items for 变形同构体 (`chess_item_6_09_e`, "携带者获得额外盟�
 5. 炎佑 spawn position/movement AI and whether its template DEF 200 is kept; 祛恶之焰 tick model.
 6. 突袭 teleport destination selection rule.
 7. Whether layer milestones (维多利亚 25, 远见 10, 奇迹 100) also pay for layers added while the bond is inactive via "无需激活" sources (assumed yes - they read L).
-8. Hidden-round total: whether 协防/独行/绝技/调和 (noStack) layers count (they have counters in the backend per 巴哈姆特).
+8. Resolved 2026-11-25: noStack bonds have zero layers and contribute zero to the hidden-round total; see [recordings and scope](no-hidden-bond-layers-20261125.md).
 
 
 ---

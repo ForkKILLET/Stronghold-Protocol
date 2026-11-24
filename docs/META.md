@@ -1490,3 +1490,9 @@ the original item. See [the match rule and footage](design/match.md#stainless-up
 联防输入 `tempLayers` 继承本人余额并冻结，不再叠加，也不重新记为收益；Boss 本身没有联防。
 下一次进入休整期时由 `onPrepStart` 转换器读取、消耗，然后清除余额，多功能补剂同样适用。
 完整 API 和来源见 [临时层数约定](design/engine.md#temporary-bond-layers)。
+
+### noStack bonds
+
+`noStack` bonds have no permanent or temporary layers. Prep grants, battle-result settlement and temporary
+conversion skip them; recompute removes old balances from saved state. Highest-layer selection and helper layer
+ranking ignore them, while activation counts retain them. See [official recordings](research/no-hidden-bond-layers-20261125.md).

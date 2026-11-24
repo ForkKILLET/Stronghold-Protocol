@@ -206,7 +206,7 @@ export function activeBondIds(battle, pid) {
 export function topActiveBond(battle, pid) {
   let best = null, bl = -1;
   for (const id of Object.keys(gameData().bonds || {})) {
-    if (!bondActive(battle, pid, id)) continue;
+    if (!bondActive(battle, pid, id) || bondRecord(id)?.noStack) continue;
     const l = bondLayers(battle, pid, id);
     if (l > bl) { bl = l; best = id; }
   }

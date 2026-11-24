@@ -567,6 +567,7 @@ export class DataSource {
       waves: asMap(unwrap(raw.waves, 'waves'), 'id') ?? {},
       backups: raw.backups && typeof raw.backups === 'object' && raw.backups.units ? raw.backups : null,
       effects: raw.effects && typeof raw.effects === 'object' ? raw.effects : null,
+      bonds: raw.bonds && typeof raw.bonds === 'object' ? raw.bonds : null,
       config: raw.config ?? null,
     };
     this.fallback = fallback;
@@ -593,6 +594,10 @@ export class DataSource {
     if (typeof this.fallback?.rawEffect === 'function') return this.fallback.rawEffect(id);
     const fx = generatedCache && generatedCache.effects;
     return fx && Object.prototype.hasOwnProperty.call(fx, id) ? fx[id] : null;
+  }
+  /** Bond metadata of this content set, including plugin overlays and noStack. */
+  rawBond(id) {
+    return this.raw.bonds?.[id] ?? this.fallback?.rawBond?.(id) ?? generatedCache?.bonds?.[id] ?? null;
   }
   /**
    * The 练度 (自持有) multipliers of tier `cultivate` (0–3): ATK / DEF / max HP from the effects.json CHAR_MAP record's
