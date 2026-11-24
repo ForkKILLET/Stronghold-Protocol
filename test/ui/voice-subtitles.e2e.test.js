@@ -67,6 +67,17 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
         }, {}, selectors);
       };
       await checkClear('.shopbar,.gm__corner');
+      await page.click('.team__bonds-toggle');
+      await page.waitForSelector('.team__fly-window');
+      await checkClear('.team__fly-window,.shopbar,.gm__corner');
+      await page.screenshot({ path: new URL(`${engine}-team-flyout.png`, out).pathname });
+      await page.click('.team__bonds-toggle');
+      await page.waitForSelector('.team__fly-window', { hidden: true });
+      await page.click('.gm__tools');
+      await page.waitForSelector('.game-tools__menu');
+      await checkClear('.game-tools__menu,.shopbar,.gm__corner');
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.game-tools__menu', { hidden: true });
       const readPlacement = () => page.$eval('.voice-subtitles', e => ({ left: e.getBoundingClientRect().left, top: e.getBoundingClientRect().top, width: e.getBoundingClientRect().width }));
       const assertPlacement = (actual, expected, message) => {
         for (const k of ['left', 'top', 'width']) assert.ok(Math.abs(actual[k] - expected[k]) < 1, `${message}: ${k}`);
@@ -218,6 +229,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
 
       // Full overlays reserve their own caption lane; natural audio end still clears the playing line.
       await page.click('.gm__gear[aria-label="设置"]'); await page.waitForSelector('.settings-modal');
+      await page.click('[data-settings-tab=audio]');
       await page.waitForSelector('.voice-subtitles.is-docked', { visible: true });
       await checkClear('.settings-modal');
       await page.screenshot({ path: new URL(`${engine}-modal-captions.png`, out).pathname });

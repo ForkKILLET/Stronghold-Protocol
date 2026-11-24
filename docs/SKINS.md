@@ -139,7 +139,7 @@ file name is the token id (its Spine is read through the prefab's SkeletonDataAs
 node names as for an operator (never the order; a one-sided model is the front). The avatar is the 180×180 Sprite
 named `tokenSkinId` in `spritepack/ui_char_avatar_*.ab`; when the client has none, the record carries no avatar and the
 summon's own is the fallback. `name` and `group` are the OWNER outfit's `displaySkin.skinName` and `skinGroupName` (a
-summon has no name of its own). A summon's record carries no voice slot ("Outfit voices" below), and the extraction
+summon has no name of its own). A summon's record carries no voice slot, and the extraction
 writes no `portrait` / `illust`: the summon's own pictures are the fallback.
 
 The summon appearances are a run of the outfit job, not a roster of their own: `--only skins/<charId>` writes that
@@ -151,8 +151,8 @@ first 64 in official order and warns about the rest. Two appearances belong to u
 run skips them with their names in the log; that is expected, not a lost appearance. Of the 59
 summons the source module's client knew, 11 are not among the 60 `token_*` entries of `data/assets.json`, so the plugin
 asks for `assets.add` (docs/PLUGINS.md §9); the other 48 are overrides. That client exported 88 summon outfits over 57
-summons — the local-client scope; the 172 quoted under "Outfit voices" is the official full table's count, which no
-single client needs to carry. The art stays on that machine: `out/local-extract/` is git-ignored, and neither the
+summons — the scope of that local client, rather than a requirement for every installation.
+The art stays on that machine: `out/local-extract/` is git-ignored, and neither the
 repository nor a release package ships it (docs/ASSETS.md).
 
 

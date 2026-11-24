@@ -1,5 +1,7 @@
 # 主线 dev 与新 PR 合入计划（2026-11-24）
 
+更新：第一批已在本地完成，实际合并及验证见 [合入报告](MERGE_DEV_2026-11-24.md)。下文保留合入前审查依据。
+
 本服当前 `22a67c698`，最近已合入的主线为 `18e7600ee`。本次固定 dev
 [`c7cea5a9b`](https://github.com/sganggs/Stronghold-Protocol/commit/c7cea5a9b1723736ca9563ac42e0770253ebeb6e)，
 刷新结束时仍为该 SHA。新增 46 个提交，82 个文件（3,124 增行／417 删行）。

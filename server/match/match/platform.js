@@ -89,7 +89,7 @@ export class MatchPlatform {
         return OK;
       } catch (e) { this.reportError('handle g.cardCounter', e); return fail(ERR.INTERNAL); }
     }
-    if (this.paused && !['g.pause', 'g.watch', 'g.emote', 'b.progress', 'b.result'].includes(msg.t)) return fail(ERR.WRONG_PHASE, 'match paused');
+    if (this.paused && !['g.pause', 'g.watch', 'g.peek', 'g.emote', 'b.progress', 'b.result'].includes(msg.t)) return fail(ERR.WRONG_PHASE, 'match paused');
     let res;
     try {
       res = this._handle(ps, msg);

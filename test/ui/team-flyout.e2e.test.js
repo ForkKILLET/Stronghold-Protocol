@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const FIREFOX = process.env.SP_FLYOUT_BROWSER === 'firefox';
+const CHROME = (FIREFOX ? process.env.FIREFOX_PATH : process.env.CHROME_PATH) || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const ENABLED = process.env.SP_E2E === '1' && existsSync(CHROME);
 const OUT = fileURLToPath(new URL('../e2e/out/', import.meta.url));
 const URL_FLYOUT = '/dev/game-mock.html?shot=1&render=fallback&phase=PREP&variant=flyout';
@@ -20,8 +21,13 @@ describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=
   before(async () => {
     const { startServer } = await import('../../server/index.js');
     const puppeteer = (await import('puppeteer-core')).default;
-    srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
-    browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--no-proxy-server'] });
+    srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, clientBuild: false, workers: 0,
+      roomWorkers: 0, matchWorkers: 0, userFile: ':memory:', assetIndex: false, announcementsFile: null, serverConfigFile: false });
+    browser = await puppeteer.launch({ browser: FIREFOX ? 'firefox' : 'chrome', executablePath: CHROME, headless: true,
+      args: FIREFOX ? [] : ['--no-sandbox', '--no-proxy-server'],
+      extraPrefsFirefox: { 'dom.ipc.processCount': 2, 'dom.ipc.processPrelaunch.enabled': false, 'fission.autostart': false } });
+    // Keep a tab open between cases: Firefox exits when its last tab closes.
+    if (FIREFOX) await browser.newPage();
     mkdirSync(OUT, { recursive: true });
   });
   after(async () => { await browser?.close(); await srv?.close(); });
@@ -114,6 +120,45 @@ describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 640, 'no horizontal page scroll');
       await page.screenshot({ path: `${OUT}/team-flyout-640.png` });
       assert.deepEqual(errors, []);
+    } finally {
+      await page.close();
+    }
+  });
+
+  test('temporary-only bonds stay visible and their totals stay yellow in the strip and flyout', async () => {
+    const page = await browser.newPage();
+    try {
+      await page.setViewport({ width: 1600, height: 900 });
+      await page.goto(`${srv.url}${URL_FLYOUT}`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.team__fly-row:nth-child(2) .team__fly-ops .uthumb');
+      const id = await page.evaluate(async () => {
+        const { data } = await import('/js/data.js');
+        const mock = globalThis.__MOCK__, state = mock.store.get(), match = state.match;
+        const bond = match.private.bonds.find(b => !b.off && !data.lookup('bonds', b.bondId)?.noStack);
+        if (!bond) throw new Error('fixture needs a stacking bond');
+        const bonds = [{ ...bond, count: 0, tier: 0, active: false, layers: 0, tempLayers: 20 }];
+        mock.store.set({ match: { ...match, private: { ...match.private, bonds },
+          public: { ...match.public, players: match.public.players.map(p => ({ ...p, bonds })) } } });
+        return bond.bondId;
+      });
+      const strip = `.gm__bonds [data-bond="${id}"] .bond__count`;
+      const fly = '.team__fly-row:nth-child(2) .bond.has-temp-layers .bond__count';
+      await page.waitForSelector(fly);
+      assert.equal(await page.$eval(strip, e => e.textContent), '20');
+      assert.equal(await page.$eval(fly, e => e.textContent), '20');
+      assert.equal(await page.$eval(strip, e => e.closest('.bslot').classList.contains('has-temp-layers')), true);
+      const colors = await page.evaluate(({ strip, fly }) => [strip, fly].map(s => getComputedStyle(document.querySelector(s)).color), { strip, fly });
+      assert.equal(colors[0], colors[1], 'the strip and flyout use the same temporary-layer colour');
+      await page.evaluate(() => {
+        const mock = globalThis.__MOCK__, { match } = mock.store.get();
+        const total = bonds => bonds.map(b => ({ ...b, layers: 100 }));
+        mock.store.set({ match: { ...match, private: { ...match.private, bonds: total(match.private.bonds) },
+          public: { ...match.public, players: match.public.players.map(p => ({ ...p, bonds: total(p.bonds) })) } } });
+      });
+      await page.waitForFunction(s => document.querySelector(s)?.textContent === '120', {}, fly);
+      assert.equal(await page.$eval(strip, e => e.textContent), '120');
+      await new Promise(resolve => setTimeout(resolve, 400));
+      await page.screenshot({ path: `${OUT}/team-flyout-temporary-1600.png` });
     } finally {
       await page.close();
     }

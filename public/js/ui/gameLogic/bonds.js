@@ -36,7 +36,7 @@ export function sortBonds(bonds, getBond = () => null) {
  * bond (`off`, grey 本局禁用 disc) only with members. A zero-count mapped row — a strategy that replaces a bond's
  * effect adds that bond with count 0 so the popup can resolve it, also for a player with no member of it — is not a
  * disc. The strip popup's ‹ › walk this same list (teamPanel.js bondPopupNav), so › never opens a bond with no disc.
- * @template {{bondId:string, active?:boolean, layers?:number, count?:number, tier?:number, off?:boolean}} B
+ * @template {{bondId:string, active?:boolean, layers?:number, tempLayers?:number, count?:number, tier?:number, off?:boolean}} B
  * @param {B[]} bonds
  * @param {(id:string)=>any} [getBond]
  * @returns {B[]}
