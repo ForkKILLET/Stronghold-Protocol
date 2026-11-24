@@ -49,6 +49,8 @@ function randomIntent(rng, m, ps) {
     case 'g.emote': return { t, id: rng.pick(EMOTES) };
     case 'g.chat': return { t, text: rng.pick(['你好', '中'.repeat(20), '😀'.repeat(20), '<b>队友</b>']) };
     case 'g.watch': return { t, fieldId: rng.pick(['n:p_0', 'n:p_1', 'n:ai_0', 'u', 'b1', 'b2', 'zz', '']) };
+    // 「同盟盟约速查」：浮窗会展开与收起；对局回一次快照或丢弃订阅
+    case 'g.peek': return { t, open: rng() < 0.5 };
     case 'g.autoplay': return { t, on: rng() < 0.05 };
     case 'g.console': return { t, kind: 'bond', id: 'kjeragShip', amount: 1 + rng.int(30) };
     case 'g.cardCounter': return { t, chessId: rng.pick(Object.keys(DATA.chess)), seq: rng.int(1000) };

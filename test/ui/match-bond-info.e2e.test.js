@@ -43,7 +43,10 @@ for (const [engine, executablePath] of [
       await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.match-bond-modal')).opacity) > .99);
       assert.equal(await page.$eval(`${card} .bpop__name`, e => e.textContent), expected.name);
       assert.equal(await page.$eval(card, e => e.getAttribute('aria-modal')), 'true');
-      assert.ok((await page.$$eval(`${card} .bpop__member.is-banned`, es => es.map(e => e.textContent))).some(t => t.includes(expected.bannedName)));
+      // the card lists the bond's other members and hides the banned one (PR #923, §37.258: the member list filters out
+      // 本局禁用 operators; the ban itself is unchanged)
+      const members = await page.$$eval(`${card} .bpop__member`, es => es.map(e => e.textContent));
+      assert.ok(members.length > 0 && !members.some(t => t.includes(expected.bannedName)), `members ${JSON.stringify(members)}`);
     };
     const checkSize = async label => {
       const rect = await page.$eval(card, e => {
@@ -84,7 +87,8 @@ for (const [engine, executablePath] of [
     await page.waitForFunction(id => window.__MOCK__.store.get().match.field?.fieldId === `n:${id}`, {}, mate.id);
     await page.click('[data-testid="check-player"]'); await showCard(chip);
     assert.equal(await page.$eval(card, e => e.dataset.owner), mate.name);
-    assert.match(await page.$eval(`${card} .bpop__facts`, e => e.textContent), /43/);
+    // the watched player's layers sit in the card's own corner since PR #923 (§37.258), no longer in the facts line
+    assert.match(await page.$eval(`${card} .bpop__layers`, e => e.textContent), /43/);
     await page.screenshot({ path: path.join(out, `${engine}-watched.png`) });
     await page.keyboard.press('Escape'); await page.waitForSelector(card, { hidden: true });
 
