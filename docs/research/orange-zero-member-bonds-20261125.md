@@ -48,3 +48,10 @@ Chrome／Firefox 使用真实回放的 Orange 盟约列表驱动共用 UI 组件
 首轮清理圆盘变量时漏留了 `lit`，浏览器捕获后已补回；失败日志保留，最终重新跑定向和浏览器验证。
 
 完整收据、公开回放副本、34:49 状态、截图与中间失败日志位于本机 `.state/replay-orange-20261125`。本轮本地修复，尚未推送或部署。
+
+## 主线 PR
+
+图标残留修复已单独提交 [PR #1002](https://github.com/sganggs/Stronghold-Protocol/pull/1002)，
+基于 dev `c7cea5a9b`，head `60c02d351`。盟约栏、同盟速查及卡片导航共用 noStack 筛选。
+Chrome／Firefox 两尺寸前后对照及详情开关通过，公开截图固定在证据提交 `a7f8800db`；
+正文已回读核对，发布时可合并，主线 CI 已启动。完整收据位于 `.state/no-stack-icon-pr-20261125`。
