@@ -1,0 +1,87 @@
+{
+  "start": {
+    "bonds": [
+      {
+        "bondId": "preciShip",
+        "count": 2,
+        "active": true,
+        "tier": 1,
+        "layers": 0,
+        "thresholds": [
+          2,
+          3
+        ],
+        "countsHand": false
+      },
+      {
+        "bondId": "soloShip",
+        "count": 1,
+        "active": true,
+        "tier": 1,
+        "layers": 0,
+        "thresholds": [
+          1
+        ],
+        "countsHand": false
+      }
+    ],
+    "layers": {
+      "solo": 0,
+      "precision": 0
+    },
+    "total": 0
+  },
+  "triggered": {
+    "bonds": [
+      {
+        "bondId": "preciShip",
+        "count": 2,
+        "active": true,
+        "tier": 1,
+        "layers": 2,
+        "thresholds": [
+          2,
+          3
+        ],
+        "countsHand": false
+      },
+      {
+        "bondId": "soloShip",
+        "count": 1,
+        "active": true,
+        "tier": 1,
+        "layers": 0,
+        "thresholds": [
+          1
+        ],
+        "countsHand": false
+      }
+    ],
+    "layers": {
+      "solo": 0,
+      "precision": 2
+    },
+    "total": 2
+  },
+  "withdrawn": {
+    "bonds": [
+      {
+        "bondId": "preciShip",
+        "count": 2,
+        "active": true,
+        "tier": 1,
+        "layers": 2,
+        "thresholds": [
+          2,
+          3
+        ],
+        "countsHand": false
+      }
+    ],
+    "layers": {
+      "solo": 0,
+      "precision": 2
+    },
+    "total": 2
+  }
+}

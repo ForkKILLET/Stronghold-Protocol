@@ -1,0 +1,64 @@
+[
+  {
+    "source": "明日方舟 2026-11-25 01-52-06.mp4",
+    "segments": [
+      {
+        "start": 130,
+        "duration": 30
+      },
+      {
+        "start": 276,
+        "duration": 45.65
+      }
+    ],
+    "clip": "highest-active.mp4",
+    "bytes": 36577282,
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1920,
+          "height": 1080,
+          "r_frame_rate": "30/1"
+        }
+      ],
+      "format": {
+        "duration": "75.600000"
+      }
+    }
+  },
+  {
+    "source": "明日方舟 2026-11-25 01-41-48.mp4",
+    "segments": [
+      {
+        "start": 45,
+        "duration": 18
+      },
+      {
+        "start": 202,
+        "duration": 38.3
+      }
+    ],
+    "clip": "adjacent-active.mp4",
+    "bytes": 34047516,
+    "probe": {
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "codec_type": "video",
+          "width": 1920,
+          "height": 1080,
+          "r_frame_rate": "30/1"
+        }
+      ],
+      "format": {
+        "duration": "56.233333"
+      }
+    }
+  }
+]

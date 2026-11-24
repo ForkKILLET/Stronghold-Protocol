@@ -1,0 +1,98 @@
+{
+  "start": {
+    "bonds": [
+      {
+        "bondId": "soloShip",
+        "count": 1,
+        "active": true,
+        "tier": 1,
+        "layers": 33,
+        "thresholds": [
+          1
+        ],
+        "countsHand": false
+      },
+      {
+        "bondId": "preciShip",
+        "count": 2,
+        "active": true,
+        "tier": 1,
+        "layers": 0,
+        "thresholds": [
+          2,
+          3
+        ],
+        "countsHand": false
+      }
+    ],
+    "layers": {
+      "solo": 33,
+      "precision": 0
+    },
+    "total": 33
+  },
+  "triggered": {
+    "bonds": [
+      {
+        "bondId": "soloShip",
+        "count": 1,
+        "active": true,
+        "tier": 1,
+        "layers": 35,
+        "thresholds": [
+          1
+        ],
+        "countsHand": false
+      },
+      {
+        "bondId": "preciShip",
+        "count": 2,
+        "active": true,
+        "tier": 1,
+        "layers": 0,
+        "thresholds": [
+          2,
+          3
+        ],
+        "countsHand": false
+      }
+    ],
+    "layers": {
+      "solo": 35,
+      "precision": 0
+    },
+    "total": 35
+  },
+  "withdrawn": {
+    "bonds": [
+      {
+        "bondId": "preciShip",
+        "count": 2,
+        "active": true,
+        "tier": 1,
+        "layers": 0,
+        "thresholds": [
+          2,
+          3
+        ],
+        "countsHand": false
+      },
+      {
+        "bondId": "soloShip",
+        "count": 0,
+        "active": false,
+        "tier": 0,
+        "layers": 35,
+        "thresholds": [
+          1
+        ],
+        "countsHand": false
+      }
+    ],
+    "layers": {
+      "solo": 35,
+      "precision": 0
+    },
+    "total": 0
+  }
+}

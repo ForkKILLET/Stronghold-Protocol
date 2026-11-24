@@ -1,0 +1,128 @@
+[
+  {
+    "engine": "chrome",
+    "target": "fork",
+    "phase": "after",
+    "errors": [],
+    "http": [],
+    "console": [],
+    "cases": [
+      {
+        "step": "triggered",
+        "width": 1440,
+        "height": 900,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip",
+          "soloShip"
+        ],
+        "fly": [
+          "精准 2/2",
+          "独行 1/1"
+        ]
+      },
+      {
+        "step": "withdrawn",
+        "width": 1440,
+        "height": 900,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip"
+        ],
+        "fly": [
+          "精准 2/2"
+        ]
+      },
+      {
+        "step": "triggered",
+        "width": 844,
+        "height": 390,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip",
+          "soloShip"
+        ],
+        "fly": [
+          "精准 2/2",
+          "独行 1/1"
+        ]
+      },
+      {
+        "step": "withdrawn",
+        "width": 844,
+        "height": 390,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip"
+        ],
+        "fly": [
+          "精准 2/2"
+        ]
+      }
+    ],
+    "interaction": "case buttons and bond popup open/close"
+  },
+  {
+    "engine": "firefox",
+    "target": "fork",
+    "phase": "after",
+    "errors": [],
+    "http": [],
+    "console": [],
+    "cases": [
+      {
+        "step": "triggered",
+        "width": 1440,
+        "height": 900,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip",
+          "soloShip"
+        ],
+        "fly": [
+          "精准 2/2",
+          "独行 1/1"
+        ]
+      },
+      {
+        "step": "withdrawn",
+        "width": 1440,
+        "height": 900,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip"
+        ],
+        "fly": [
+          "精准 2/2"
+        ]
+      },
+      {
+        "step": "triggered",
+        "width": 844,
+        "height": 390,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip",
+          "soloShip"
+        ],
+        "fly": [
+          "精准 2/2",
+          "独行 1/1"
+        ]
+      },
+      {
+        "step": "withdrawn",
+        "width": 844,
+        "height": 390,
+        "text": "独行内部余额 0 · 精准层数 2 · 已激活盟约总层数 2",
+        "strip": [
+          "preciShip"
+        ],
+        "fly": [
+          "精准 2/2"
+        ]
+      }
+    ],
+    "interaction": "case buttons and bond popup open/close"
+  }
+]
