@@ -557,8 +557,8 @@ async function watchTeammatePrep(c) {
   });
   if (!target) return false;
   await c.click('.team__row:not(.is-self) .team__btn', null, { nth: 0 });
-  // research 09 §3.1: the avatar expands a 前往查看 button (client-side combat flow)
-  if (await c.click('.team__ob', '前往查看', { optional: true, timeout: 3000 })) c.note('prep: 前往查看');
+  // The second click on the same avatar opens its field.
+  if (await c.click('.team__row:not(.is-self) .team__btn', null, { optional: true, timeout: 3000 })) c.note('prep: 前往查看');
   await c.page.waitForSelector('.gm__watching', { timeout: 5000 });
   await c.waitFor((s) => (s.field || '').startsWith('n:') && s.field !== `n:${s.me}` || s.phase !== 'PREP', 'teammate board', 6000);
   await sleep(1200);
@@ -725,13 +725,14 @@ async function observeAfterFinish(c) {
   const s0 = await runnerState(c);
   if (!s0 || !s0.own) return false;
   if (!s0.done) {
-    // not yet: tapping a teammate never offers 前往查看 while the own battle runs (checked once)
+    // The first avatar click opens information without leaving the running battle (checked once).
     if (!observeAfterFinish.refusedChecked) {
       observeAfterFinish.refusedChecked = true;
       await c.click('.team__row:not(.is-self) .team__btn', null, { nth: 0, optional: true, timeout: 2000 });
-      await sleep(300);
-      assert.equal(await c.exists('.team__ob'), false, 'no 前往查看 while the own battle runs');
-      c.note('own battle running: a teammate row offers no 前往查看');
+      await c.page.waitForSelector('.team__fly-window');
+      assert.equal((await runnerState(c))?.fieldId, s0.fieldId, 'first click keeps the own battle');
+      await c.page.keyboard.press('Escape');
+      c.note('own battle running: first avatar click opens information');
     }
     return false;
   }
@@ -751,7 +752,7 @@ async function observeAfterFinish(c) {
   assert.ok(await c.exists('.chud__progress'), "teammates' progress under the pill");
   await c.shot('combat-waiting');
   await c.click('.team__row:not(.is-self) .team__btn', null, { nth: other.nth });
-  if (!(await c.click('.team__ob', '前往查看', { optional: true, timeout: 3000 }))) return false;
+  if (!(await c.click('.team__row:not(.is-self) .team__btn', null, { nth: other.nth, optional: true, timeout: 3000 }))) return false;
   const ok = await c.page.waitForFunction((fid) => { const s = globalThis.__SP_RUNNER__?.state(); return !!s && s.fieldId === fid && s.watch; }, { timeout: 15000 }, other.fieldId).then(() => true, () => false);
   if (!ok) return false; // the phase moved on
   const st = await waitUnits(c, 8000);
@@ -760,7 +761,7 @@ async function observeAfterFinish(c) {
   await sleep(800);
   await c.shot('combat-observe');
   if ((await c.st()).phase === 'COMBAT') {
-    await c.click('.team__back, .chud__back', '返回战场', { optional: true, timeout: 3000 });
+    await c.click('.chud__back', '返回战场', { optional: true, timeout: 3000 });
     await c.page.waitForFunction(() => { const s = globalThis.__SP_RUNNER__?.state(); return !s || (s.own && !s.watch); }, { timeout: 10000 }).catch(() => {});
     // user playtest #2 item 6: back on the own battlefield the enemy pen stays hidden (figures, 2D rows, 3D area)
     await sleep(1300);

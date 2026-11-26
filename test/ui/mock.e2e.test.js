@@ -845,7 +845,7 @@ describe('in-match UI (mock harness, headless Chrome)', { skip: !ENABLED && 'set
       const rows = await page.$$('.team__btn');
       await rows[2].click();
       await sleep(250);
-      if (await page.$('.team__ob')) await page.click('.team__ob');
+      await rows[2].click();
       await page.waitForSelector('.gm__watching', { timeout: 4000 });
       await page.click('.enemybtn');
       await page.waitForFunction(() => document.querySelector('.gm')?.dataset.camera === 'pen', { timeout: 3000 });
@@ -1124,7 +1124,8 @@ describe('in-match UI (mock harness, headless Chrome)', { skip: !ENABLED && 'set
     });
     assert.ok(target.fieldId && target.fieldId !== target.mine, `the other pair's field (${JSON.stringify(target)})`);
     const rows = await page.$$('.team__row');
-    await (await rows[2].$('.team__btn')).click(); // P3 (Doctor·B): the other pair
+    await (await rows[2].$('.team__btn')).click(); // P3 (Doctor·B): information first
+    await (await rows[2].$('.team__btn')).click(); // second click: the other pair's field
     await page.waitForFunction((id) => globalThis.__MOCK__.store.get().match.field?.fieldId === id, { timeout: 5000 }, target.fieldId);
     await page.waitForFunction(() => [...document.querySelectorAll('.team__row.is-watched .team__name')].some((e) => e.textContent === 'Doctor·B'), { timeout: 5000 });
     assert.equal(await page.$$eval('.toast', (els) => els.some((el) => /另一组/.test(el.textContent))), false, 'no refusal');

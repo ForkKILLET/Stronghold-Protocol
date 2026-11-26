@@ -117,7 +117,7 @@ describe('DESIGN §16 — a teammate\'s unit shows its owner\'s loadout (real se
 
       // the host scouts the guest (前往查看) — the scouting m.field carries the guest's loadout
       await host.click('.team__row:not(.is-self) .team__btn', null, { nth: 0 });
-      assert.ok(await host.click('.team__ob', '前往查看', { optional: true, timeout: 3000 }), 'host: 前往查看 in prep');
+      assert.ok(await host.click('.team__row:not(.is-self) .team__btn', null, { optional: true, timeout: 3000 }), 'host: 前往查看 in prep');
       await host.page.waitForSelector('.gm__watching', { timeout: 6000 });
       const unit = await host.page.waitForFunction((uid) => {
         const f = globalThis.__SP__.store.get().match.field;

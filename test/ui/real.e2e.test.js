@@ -624,14 +624,14 @@ describe('real server + real browsers', { skip: !ENABLED && 'set SP_REAL_E2E=1 (
               });
               if (!other || other.nth < 0) continue;
               await c.click('.team__row:not(.is-self) .team__btn', null, { nth: other.nth });
-              if (!(await c.click('.team__ob', '前往查看', { optional: true, timeout: 3000 }))) continue;
+              if (!(await c.click('.team__row:not(.is-self) .team__btn', null, { nth: other.nth, optional: true, timeout: 3000 }))) continue;
               const ok = await c.page.waitForFunction((fid) => { const s = globalThis.__SP_RUNNER__?.state(); return !!s && s.fieldId === fid && s.watch; }, { timeout: 15000 }, other.fieldId).then(() => true, () => false);
               if (!ok) continue;
               await sleep(1200);
               const other2 = await c.viewStats();
               assert.ok(other2 && other2.units > 0, 'the observed field renders units');
               await c.shot(`combat-observe-r${hs.round}`);
-              await c.click('.team__back, .chud__back', '返回战场', { optional: true, timeout: 3000 });
+              await c.click('.chud__back', '返回战场', { optional: true, timeout: 3000 });
               did.watched = true;
               c.note(`前往查看 ${other.fieldId} (${other2.units} views) and 返回战场`);
             }

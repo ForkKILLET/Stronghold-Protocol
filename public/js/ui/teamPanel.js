@@ -1,14 +1,9 @@
 // Left team panel (research 06 §11.1, research 09 §3.1): one row per seat — avatar (band icon once picked), name, LP
 // tower, status glyph (… acting / ✓ ready / ⌛ deciding / ⚔ combat / door left / ✕ dead), AI badge, "you" marker, the
-// field being watched (eye badge), and emote bubbles. In a boss round the viewer's pair is framed in green from the
+// field being watched (avatar highlight), and emote bubbles. In a boss round the viewer's pair is framed in green from the
 // round's start (gameLogic teamFrameIds; community report of 2026-10-06, item 51).
-// Observing (client-side combat, `observe` prop — the official flow): tapping a teammate's avatar expands a mint
-// "前往查看" button under the row (when that teammate can be observed now; otherwise the reason is toasted through
-// onWatch); while observing, the own row shows a "返回战场" button. Without `observe` (server-run combat) a click
-// watches that player's field at once, and a click while that field is already on screen does not ask again.
-// In PHASE.PREP a double-click on a teammate's avatar opens their field (GitHub #131, the 「前往查看」 shortcut).
-// It does not open a field the teammate does not have, and it does not open one the click already opened.
-// Boss-prep phases (最终攻势 / 隐秘核心) are not PHASE.PREP, so they still use 「前往查看」.
+// Avatar interaction: the first click selects a player and opens alliance information; clicking that avatar again
+// watches their field. The own avatar returns home on one click; navigation closes the information.
 // Live LP (user playtest #3 item 2): during a normal round's battle each row's tower shows lp − the loss that player's
 // leaks so far will cost (red, −N): the own row the top bar's live value (`self`, ui/hud.js liveLp), a teammate's row
 // m.public players[].pendingLp (server/match/match/views.js, ~1 Hz). 联防 (user playtest #6 item 7): a leaker's row adds the
@@ -21,7 +16,7 @@
 // (the own row's "you" marker moves to the bottom-left corner while it shows), the leader-damage scan over the avatar
 // during a leader fight; `badges` = { pack, still } (the theme's avatar prefabs, else ac_n_initial's; null pack: CSS).
 
-import { useEffect, useRef, useState } from '../../vendor/hooks.module.js';
+import { useEffect, useLayoutEffect, useRef, useState } from '../../vendor/hooks.module.js';
 import { PHASE } from '../../../shared/constants.js';
 import { html, Icon, Tooltip, BondDisc } from './components.js';
 import { PlayerAvatar, LpTower, GIcon, LocalSprite, UnitThumb, BandIcon, RichText } from './gameComponents.js';
@@ -34,6 +29,7 @@ import { WinStreakBadge, BossDamageBadge, avatarBadgeTips } from './avatarBadges
 import { localAsset, data } from '../data.js';
 import { bondIconUrl } from './assetUrls.js';
 import { t } from '../../../shared/i18n.js';
+import { usePresence } from './transitions.js';
 
 const cx = (...p) => p.flat().filter(Boolean).join(' ');
 
@@ -71,37 +67,19 @@ export function teammateFieldShown(watching, player) {
   return watching === player.fieldId || watching === `n:${player.playerId}`;
 }
 
-/**
- * A single click on a teammate avatar calls onWatch only in server-run combat (no `observe`), and only when
- * that field is not already on screen. A double-click fires click first; the second click, and any later click
- * while the view is already theirs, must not open it again. Client combat never watches from the avatar click.
- * `askedRecently`: this avatar's click already called onWatch in the last moment (the other click of a double-click,
- * before `watching` has re-rendered).
- * @param {{ observe?: unknown, watching?: string|null, player?: { playerId?: string, fieldId?: string }|null, askedRecently?: boolean }} [o]
- * @returns {boolean}
- */
-export function teammateClickWatches(o = {}) {
-  if (o.observe || o.askedRecently) return false;
-  if (teammateFieldShown(o.watching, o.player)) return false;
-  return !!o.player;
+/** Teammates open information before watching; the own avatar returns home immediately. */
+export function playerAvatarAction({ openPid = null, player, self = false, observe = null, watching = null, askedRecently = false }) {
+  if (self) {
+    const away = observe ? observe.observing : watching && !teammateFieldShown(watching, player);
+    if (away) return askedRecently ? 'close' : observe ? 'back' : 'watch';
+    if (openPid !== null && openPid !== player.playerId) return 'close';
+  }
+  if (openPid !== player.playerId) return 'open';
+  if (askedRecently || self || teammateFieldShown(watching, player)) return 'close';
+  return 'watch';
 }
 
-/**
- * Double-click in PHASE.PREP opens a teammate's field, skipping 「前往查看」. False — do not call onWatch — when
- * the phase is not PREP, the row is your own, there is no client-combat `observe` (the click already watched),
- * `canObserve` has no field (do not force a view; the click toasts), or that field is already open.
- * @param {{ phase?: string, self?: boolean, observe?: { canObserve?: (p: any) => { fieldId?: string }|null }|null,
- *   watching?: string|null, player?: any, askedRecently?: boolean }} [o]
- * @returns {boolean}
- */
-export function prepDblClickWatches(o = {}) {
-  if (o.phase !== PHASE.PREP || o.self || !o.player || !o.observe) return false;
-  if (o.askedRecently || teammateFieldShown(o.watching, o.player)) return false;
-  const view = (typeof o.observe.canObserve === 'function' ? o.observe.canObserve(o.player) : null) || {};
-  return !!view.fieldId;
-}
-
-/** How long the second click of a double-click counts as "already asked" before `watching` re-renders. */
+/** Suppress repeated navigation requests while the watched field is updating. */
 const AVATAR_CLICK_GAP_MS = 500;
 
 /**
@@ -297,82 +275,113 @@ function FlyOps({ ops, onOp = null }) {
   });
 }
 
-/**
- * The strategy a seat picked in the opening draft, in the same grid row (sticky to the right while scrolling). With a
- * band it is a button: the click opens `BandPopup` beside the square, the same name / effect / description the 本局信息
- * drawer shows (that tab is closed while the flyout is open, so the flyout needs its own way in).
- */
-function FlyBand({ bandId, owner = null, onOpen = null }) {
+/** Strategy details open on mouse hover or keyboard focus; touch devices can tap to toggle. */
+function FlyBand({ bandId, owner = null, shown = false, onOpen = null, onClose = null, onLeave = null }) {
+  const touch = useRef(false);
   const b = typeof bandId === 'string' && bandId ? data.lookup('bands', bandId) : null;
   if (!b) return html`<div class="team__fly-band" role="group" aria-label=${t('策略')}></div>`;
-  return html`<button type="button" class="team__fly-band is-clickable" aria-label=${t('策略')} title=${b.name || ''}
-    onClick=${(e) => onOpen?.(bandId, owner, e.currentTarget)}><${BandIcon} bandId=${bandId} /></button>`;
+  const show = (el) => onOpen?.(bandId, owner, el);
+  return html`<button type="button" class="team__fly-band is-clickable" aria-label=${b.name || t('策略')}
+    aria-describedby=${shown ? 'team-strategy-tip' : undefined}
+    onPointerEnter=${(e) => { if (e.pointerType === 'mouse') show(e.currentTarget); }}
+    onPointerLeave=${(e) => { if (e.pointerType === 'mouse') onLeave?.(); }}
+    onFocus=${(e) => { if (!touch.current) show(e.currentTarget); }}
+    onBlur=${() => onLeave?.()}
+    onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }}
+    onPointerDown=${(e) => { touch.current = e.pointerType !== 'mouse'; }}
+    onClick=${(e) => {
+      if (touch.current) { touch.current = false; if (shown) onClose?.(); else show(e.currentTarget); }
+      else if (e.detail === 0) show(e.currentTarget);
+    }}><${BandIcon} bandId=${bandId} /></button>`;
 }
 
-/** Band details anchored to the right of the flyout (fixed, so the per-cell scrollers cannot clip it). */
-function BandPopup({ band, onClose }) {
+/** Fixed positioning keeps the hover card outside the flyout's scrolling cells. */
+function BandPopup({ band, onHold, onLeave }) {
+  const box = useRef(null);
+  const [pos, setPos] = useState(null);
   const b = data.lookup('bands', band.bandId);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el || !band.anchor) return undefined;
+    const place = () => {
+      const r = band.anchor.getBoundingClientRect();
+      const vw = globalThis.innerWidth, vh = globalThis.innerHeight;
+      const left = Math.max(8, Math.round(r.right + 8));
+      const maxWidth = Math.max(0, vw - left - 8);
+      el.style.maxWidth = `${maxWidth}px`;
+      const top = Math.max(8, Math.min(Math.round(r.top), vh - el.getBoundingClientRect().height - 8));
+      setPos(old => old?.left === left && old?.top === top && old?.maxWidth === maxWidth ? old : { left, top, maxWidth });
+    };
+    const observer = new ResizeObserver(place);
+    observer.observe(el);
+    observer.observe(band.anchor);
+    const flyWindow = band.anchor.closest('.team__fly-window');
+    if (flyWindow) observer.observe(flyWindow);
+    globalThis.addEventListener('resize', place);
+    place();
+    return () => { observer.disconnect(); globalThis.removeEventListener('resize', place); };
+  }, [band]);
   if (!b) return null;
-  return html`<div class="team__fly-bandpop" role="dialog" aria-label=${t('策略')}
-      style=${`right:${band.right}px;top:${band.top}px`}>
+  return html`<div ref=${box} class="team__fly-bandpop" id="team-strategy-tip" role="tooltip"
+      onPointerEnter=${(e) => { if (e.pointerType === 'mouse') onHold(); }}
+      onPointerLeave=${(e) => { if (e.pointerType === 'mouse') onLeave(); }}
+      style=${pos ? `left:${pos.left}px;top:${pos.top}px;max-width:${pos.maxWidth}px` : 'visibility:hidden'}>
     <header class="team__fly-bandpop__head">
       <${BandIcon} bandId=${b.bandId} size="md" />
       <div class="team__fly-bandpop__titles">
         <small class="team__fly-bandpop__kicker">STRATEGY // ${band.owner ? t('{bandOwner} 的策略', { bandOwner: band.owner }) : t('我的策略')}</small>
         <b>${b.name}${b.effectName ? html` <small>${b.effectName}</small>` : null}</b>
       </div>
-      <button type="button" class="team__fly-bandpop__close tapx" aria-label=${t('关闭')} onClick=${onClose}>
-        <${Icon} name="close" /></button>
     </header>
     <${RichText} as="p" text=${b.descRaw || b.desc} class="team__fly-bandpop__desc" />
   </div>`;
 }
 
-function BondsToggle({ open, onToggle }) {
-  const label = open ? t('收起同盟盟约速查') : t('展开同盟盟约速查');
-  return html`<button type="button" class=${cx('team__bonds-toggle', open && 'is-open')}
-    aria-expanded=${String(open)} aria-controls="team-bonds" title=${label} aria-label=${label}
-    onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }}
-    onClick=${onToggle}><${Icon} name=${open ? 'chevronLeft' : 'chevronRight'} /></button>`;
-}
-
 /**
- * 「同盟盟约速查」: the toggle bar and the window. A row is a three-column grid — bonds 1fr, on-field operators 1fr,
+ * 「同盟盟约速查」: the avatar-opened window. A row is a three-column grid — bonds 1fr, on-field operators 1fr,
  * the strategy square — so both halves take the same width and the strategy always shares its row. Rows mirror the
- * roster heights (`rowH`, measured by TeamPanel), so expanding a 「前往查看」 row does not shift the rest. Every cell
+ * roster heights (`rowH`, measured by TeamPanel), so each player stays aligned with their information. Every cell
  * pans sideways on its own (mouse drag or native touch pan); each close/reopen starts at the leftmost bond again.
  */
-function BondsFlyout({ players, myId, open, onToggle, onBond = null, flyOps = null, seatBonds = null, onOp = null, rowH = null, layersDisabled = false }) {
+function BondsFlyout({ players, myId, open, onBond = null, flyOps = null, seatBonds = null, onOp = null, rowH = null, layersDisabled = false }) {
+  const [mounted, leaving] = usePresence(open, 200);
   const rows = useRef(null);
   const drag = useRef(null);
   const dragged = useRef(false);
   const [bandPop, setBandPop] = useState(null);
-  useEffect(() => { if (!open) setBandPop(null); }, [open]);
+  const bandTimer = useRef(null);
+  const holdBand = () => clearTimeout(bandTimer.current);
+  const closeBand = () => { holdBand(); setBandPop(null); };
+  const leaveBand = () => { holdBand(); bandTimer.current = setTimeout(() => setBandPop(null), 150); };
+  useEffect(() => () => clearTimeout(bandTimer.current), []);
+  useEffect(() => { if (!open) closeBand(); }, [open]);
   // a click anywhere but the card / the square itself dismisses the band card (pointerdown, like the flyout's own)
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!bandPop) return undefined;
     const away = (e) => {
       if (!(e.target instanceof Element)) return;
       if (e.target.closest('.team__fly-bandpop') || e.target.closest('.team__fly-band')) return;
-      setBandPop(null);
+      closeBand();
+    };
+    const key = (e) => {
+      if (e.key !== 'Escape' || document.querySelector('.modal, .guide, .st, .offerov[role="dialog"]')) return;
+      e.stopPropagation();
+      closeBand();
     };
     document.addEventListener('pointerdown', away, true);
-    return () => document.removeEventListener('pointerdown', away, true);
+    document.addEventListener('keydown', key, true);
+    return () => {
+      document.removeEventListener('pointerdown', away, true);
+      document.removeEventListener('keydown', key, true);
+    };
   }, [bandPop]);
   useEffect(() => {
     if (!open || !rows.current) return;
     for (const cell of rows.current.querySelectorAll('.team__fly-cell')) cell.scrollLeft = 0;
   }, [open]);
-  const openBand = (bandId, owner, el) => {
-    const r = el.getBoundingClientRect();
-    const vw = globalThis.innerWidth || document.documentElement.clientWidth || 1920;
-    const vh = globalThis.innerHeight || document.documentElement.clientHeight || 1080;
-    setBandPop({
-      bandId,
-      owner: owner || null,
-      right: Math.max(8, Math.round(vw - r.left + 8)),
-      top: Math.max(8, Math.min(Math.round(r.top), Math.round(vh - 240))),
-    });
+  const openBand = (bandId, owner, el, playerId) => {
+    holdBand();
+    setBandPop(old => old?.anchor === el ? old : { bandId, owner: owner || null, anchor: el, playerId });
   };
   const cellAt = (e) => (e.target instanceof Element ? e.target.closest('.team__fly-cell') : null);
   const down = (e) => {
@@ -417,16 +426,18 @@ function BondsFlyout({ players, myId, open, onToggle, onBond = null, flyOps = nu
         style=${h ? `--fly-row-h:${h}px` : undefined}>
       ${cell('team__fly-bonds', dead, html`<${FlyBonds} bonds=${seatBonds?.[p.playerId] ?? p.bonds} ownerId=${p.playerId} onBond=${onBond} layersDisabled=${layersDisabled} />`)}
       ${cell('team__fly-ops', dead, html`<${FlyOps} ops=${flyOps?.[p.playerId]} onOp=${onOp ? (u) => onOp(u, p) : null} />`)}
-      <${FlyBand} bandId=${dead ? null : p.bandId} owner=${p.playerId === myId ? null : p.name} onOpen=${openBand} />
+      <${FlyBand} bandId=${dead ? null : p.bandId} owner=${p.playerId === myId ? null : p.name}
+        shown=${bandPop?.playerId === p.playerId} onOpen=${(id, owner, el) => openBand(id, owner, el, p.playerId)}
+        onClose=${closeBand} onLeave=${leaveBand} />
     </div>`;
   };
-  return html`<div class=${cx('team__fly', open && 'is-open')}>
-    <${BondsToggle} open=${open} onToggle=${onToggle} />
-    ${open ? html`<div class="team__fly-window" id="team-bonds" role="region" aria-label=${t('同盟盟约速查')}>
+  return html`<div class=${cx('team__fly', open && 'is-open', leaving && 'is-leaving')}>
+    ${mounted ? html`<div class="team__fly-window" id="team-bonds" role="region" aria-label=${t('同盟盟约速查')}
+        aria-hidden=${open ? undefined : 'true'} inert=${!open}>
       <div class="team__fly-rows" ref=${rows} onPointerDown=${down} onPointerMove=${move}
         onPointerUp=${up} onPointerCancel=${up} onClickCapture=${clickCapture}>${players.map(row)}</div>
     </div>` : null}
-    ${bandPop ? html`<${BandPopup} band=${bandPop} onClose=${() => setBandPop(null)} />` : null}
+    ${open && bandPop ? html`<${BandPopup} band=${bandPop} onHold=${holdBand} onLeave=${leaveBand} />` : null}
   </div>`;
 }
 
@@ -436,7 +447,7 @@ function BondsFlyout({ players, myId, open, onToggle, onBond = null, flyOps = nu
  *   cap?: number, uniteLocal?: Record<string, number> | null,
  *   flyOps?: Record<string, Array<{ id:string, golden?:number }>> | null, seatBonds?: Record<string, any[]> | null,
  *   onBond?: ((bondId:string, ownerId:string)=>void) | null,
- *   observe?: null | { canObserve: (p:any) => { fieldId?: string, reason?: string|null, back?: boolean }, observing: boolean, onBack: () => void },
+ *   observe?: null | { observing: boolean, onBack: () => void },
  *   badges?: { pack: any, still?: boolean } | null }} props
  *   uniteLocal: the local 联防 replica's per-leaker counts while it is on screen (battle runner state().uniteLeft), else null
  *   badges: how the 完美连胜 / 领袖伤害 badges are drawn (ui/avatarBadges.js); null draws the CSS stand-ins
@@ -452,13 +463,14 @@ function BondsFlyout({ players, myId, open, onToggle, onBond = null, flyOps = nu
  */
 export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = false, observe = null, self: selfLive = null, cap = 10, uniteLocal = null, spMarks = null, flyOps = null, seatBonds = null, onBond = null, onOp = null, layersDisabled = false, onFlyToggle = null, online = null, badges = null }) {
   const [openPid, setOpenPid] = useState(null);
-  const [bondsOpen, setBondsOpen] = useState(false);
+  const bondsOpen = openPid !== null;
+  const selected = useRef(null);
+  const select = (pid) => { selected.current = pid; setOpenPid(pid); };
   const [rowH, setRowH] = useState({});
   const aside = useRef(null);
-  // the playerId whose avatar just called onWatch, so the other click of a double-click does not open the view again
+  // The last navigation target, to avoid duplicate requests while its watched field is updating.
   const askedAt = useRef(/** @type {{ id: string|null, at: number }} */ ({ id: null, at: 0 }));
   const phaseKey = `${pub?.phase}:${pub?.round}`;
-  useEffect(() => { setOpenPid(null); }, [phaseKey, watching, observe?.observing]);
   // 同盟盟约速查（g.peek）：浮窗展开 / 收起时告知服务端，由它回各座位的干员名单。挂载时（以及从未展开过时）
   // 不发 `open: false`：那时没有订阅可解除，每次进入对局画面都会白发一个请求
   const flyAsked = useRef(false);
@@ -473,19 +485,17 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
   useEffect(() => {
     if (phaseRef.current === phaseKey) return;
     phaseRef.current = phaseKey;
-    setBondsOpen(false);
+    select(null);
   }, [phaseKey]);
   // 连接恢复：断线时服务端已丢弃订阅；回到对局的玩家想先看到战场，而不是一个显示着过期速查的面板
   const onlineRef = useRef(online);
   useEffect(() => {
     const was = onlineRef.current;
     onlineRef.current = online;
-    if (online === true && was === false) setBondsOpen(false);
+    if (online === true && was === false) select(null);
   }, [online]);
   const players = sortedPlayers(pub);
-  // The flyout rows sit beside the roster rows: mirror their measured heights, so an expanded 「前往查看」 row (or a
-  // line wrapping in a name) moves the flyout too instead of shifting every row after it. ResizeObserver covers the
-  // expansion; the effect itself re-measures after each render that can change the roster.
+  // Mirror roster row heights without adding a row for navigation actions. ResizeObserver also follows nearby controls.
   useEffect(() => {
     if (!players.length) return undefined;
     const el = aside.current;
@@ -498,19 +508,14 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
       }
       return Math.round(widest);
     };
-    // closed: the bar sits at the roster's right edge (CSS `left: 100%`), which follows the 正在查看 eye badge by
-    // itself; the measured px anchor is only written while the window is open
-    if (!bondsOpen) {
-      el.style.removeProperty('--fly-left');
-      return undefined;
-    }
+    // Keep the last measured anchor through the fade-out. The next opening measures the roster again.
+    if (!bondsOpen) return undefined;
     let frame = null;
-    // The strategy is a square as tall as the shortest roster row; the window then runs from the widest roster row
-    // (the 正在查看 eye badge widens it) to the 指令 column's left edge, and the two scrolling halves (bonds /
-    // operators) split what is left.
+    // The strategy is as tall as the shortest row. The hover card and two scrolling halves share the space
+    // between the widest roster row and the command column.
     const layout = (heights) => {
       const box = el.getBoundingClientRect();
-      const bar = el.querySelector('.team__bonds-toggle')?.getBoundingClientRect().width || 44;
+      const gutter = 6;
       const vw = globalThis.innerWidth || document.documentElement.clientWidth || 1920;
       const square = heights.length ? Math.round(Math.min(...heights)) : 64;
       const left = anchor();
@@ -520,17 +525,22 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
       const reserve = fxRect && fxRect.width > 0 ? Math.round(vw - fxRect.left) + 8 : 18;
       el.style.setProperty('--fly-left', `${left}px`);
       el.style.setProperty('--fly-square', `${square}px`);
-      // the strategy square is a column of the window's row, so only the bar and the reserved gutter come off the width
-      let width = Math.round(vw - box.left - left - bar - reserve);
+      // the strategy square is a column of the window's row, so only the reserved gutters come off the width
+      let width = Math.round(vw - box.left - left - gutter - reserve);
       // a short viewport (640×360) lifts the shop's 剩余可放置角色 / 冻结 / 刷新 into the roster's height: the window ends
       // left of them, so a tap there still reaches the button (and closes the flyout) instead of landing in `.team`
-      const start = box.left + left + bar;
+      const start = box.left + left + gutter;
       for (const tool of document.querySelectorAll('.shopbar__tools .toolbtn, .shopbar__tools .shopbar__remain')) {
         const r = tool.getBoundingClientRect();
         if (r.width > 0 && r.top < box.bottom && r.bottom > box.top && r.right > start) width = Math.min(width, Math.round(r.left - start - 8));
       }
       // The cells scroll individually; a minimum window width would push the strategy off a narrow viewport.
-      el.style.setProperty('--fly-w', `${Math.max(0, width)}px`);
+      // Keep the strategy reachable: two cells have four padding edges, plus 36px for gaps and rounding.
+      const rootSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      const cell = el.querySelector('.team__fly-cell');
+      const cellPadding = cell ? parseFloat(getComputedStyle(cell).paddingLeft) : 0;
+      const tipReserve = Math.max(0, Math.min(rootSize * 3.4, vw * .44, width - square - 4 * cellPadding - 36));
+      el.style.setProperty('--fly-w', `${Math.max(0, width - tipReserve - 8)}px`);
     };
     const measure = () => {
       frame = null;
@@ -561,19 +571,30 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
     };
   }, [bondsOpen, phaseKey, openPid, watching, players.length]);
   // A click anywhere outside the open flyout closes it — the command column, the shop, 升级 / 冻结 / 刷新, the bench,
-  // 查看迎击单位, 本局信息. The roster itself (`.team`: rows, 前往查看 / 返回战场, the toggle) keeps it open, as do a
+  // 查看迎击单位, 本局信息. The roster keeps it open, as do a
   // click in the flyout's own gaps (between rows / cells, the window's padding) and the bond popup / operator card.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!bondsOpen) return undefined;
     const onDown = (e) => {
       const target = e.target;
       // `.bpop-nav`: the popup's ‹ › arrows sit beside the `.bpop` card, not inside it
       if (target instanceof Element && target.closest('.team, .bpop, .bpop-nav, .dpanel')) return;
-      setBondsOpen(false);
+      select(null);
+    };
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || document.querySelector('.bpop, .dpanel, .team__fly-bandpop, .modal, .guide, .st, .offerov[role="dialog"]')) return;
+      e.stopPropagation();
+      select(null);
+      const row = [...(aside.current?.querySelectorAll('.team__row') || [])].find(el => el.dataset.pid === openPid);
+      row?.querySelector('.team__btn')?.focus();
     };
     document.addEventListener('pointerdown', onDown, true);
-    return () => document.removeEventListener('pointerdown', onDown, true);
-  }, [bondsOpen]);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [bondsOpen, openPid]);
   if (!players.length) return null;
   // a boss round: the viewer's pair framed in green from the round's start (item 51 — the official bg_team_border,
   // tinted like the official green; a plain green ring without the local art)
@@ -582,29 +603,11 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
   const askedRecently = (p) => askedAt.current.id === p?.playerId && Date.now() - askedAt.current.at < AVATAR_CLICK_GAP_MS;
   const noteAsked = (p) => { askedAt.current = { id: p.playerId, at: Date.now() }; };
   const click = (p, self) => {
-    if (!observe) {
-      // your own row still goes home; a teammate already on screen (or just opened by this double-click) does not
-      if (self || teammateClickWatches({ watching, player: p, askedRecently: askedRecently(p) })) {
-        if (!self) noteAsked(p);
-        onWatch(p);
-      }
-      return;
-    }
-    if (self) { if (observe.observing) observe.onBack(); setOpenPid(null); return; }
-    const view = observe.canObserve(p) || {};
-    if (!view.fieldId) {
-      setOpenPid(null);
-      if (!askedRecently(p)) { noteAsked(p); onWatch(p); } // the game screen toasts the reason; a double-click toasts once
-      return;
-    }
-    setOpenPid((cur) => (cur === p.playerId ? null : p.playerId));
-  };
-  const dblClick = (e, p, self) => {
-    if (!prepDblClickWatches({ phase: pub?.phase, self, observe, watching, player: p, askedRecently: askedRecently(p) })) return;
-    e.preventDefault();
-    setOpenPid(null);
-    noteAsked(p);
-    onWatch(p);
+    const action = playerAvatarAction({ openPid: selected.current, player: p, self, observe, watching, askedRecently: askedRecently(p) });
+    if (action === 'open') { select(p.playerId); return; }
+    select(null);
+    if (action === 'back') { noteAsked(p); observe.onBack(); }
+    else if (action === 'watch') { noteAsked(p); onWatch(p); }
   };
   return html`<aside ref=${aside} class=${cx('team', compact && 'team--compact')} aria-label=${t('同盟成员')}>
     ${players.map((p) => {
@@ -614,16 +617,19 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
       const watched = teammateFieldShown(watching, p);
       const bubble = bubbles?.get(p.playerId);
       const offline = p.connected === false && !p.isBot;
-      const open = !!observe && openPid === p.playerId && !self;
-      const back = !!observe && self && observe.observing;
-      const title = observe ? (self ? (observe.observing ? t('返回战场') : t('你自己')) : t('查看 {name} 的战场', { name: p.name })) : (self ? t('查看自己的阵地') : t('查看 {name} 的阵地', { name: p.name }));
+      const open = bondsOpen && openPid === p.playerId;
+      const back = self && (observe ? observe.observing : !!watching && !teammateFieldShown(watching, p));
+      const returning = self && (back || (bondsOpen && openPid !== myId));
+      const viewing = !self && open;
+      const title = returning ? t('返回战场') : viewing ? t('前往查看') : `${t('同盟盟约速查')} · ${p.name}`;
       const lp = rowLp(p, pub, self ? selfLive : null, { uniteLocal, cap });
       const inTeam = team.has(p.playerId);
       const streakLevel = p.alive === false ? 0 : Math.trunc(Number(p.winStreakLevel) || 0);
       const damageLevel = p.alive === false ? 0 : Math.trunc(Number(p.bossDamageLevel) || 0);
       const tip = [inTeam && !self ? `${title} · ${t('与你在同一战场')}` : title, ...avatarBadgeTips(p)].join('\n');
       return html`<div key=${p.playerId} data-pid=${p.playerId} class=${cx('team__row', self && 'is-self', inTeam && 'is-team', watched && 'is-watched', p.alive === false && 'is-dead', open && 'is-open')}>
-        <button type="button" class="team__btn" onClick=${() => click(p, self)} onDblClick=${(e) => dblClick(e, p, self)} title=${tip} aria-expanded=${observe && !self ? String(open) : undefined}>
+        <button type="button" class=${cx('team__btn', (returning || viewing) && 'has-action')} onClick=${() => click(p, self)} title=${tip} aria-expanded=${String(bondsOpen)} aria-controls="team-bonds"
+          onKeyDown=${(e) => { if (e.key === ' ') e.stopPropagation(); }}>
           <${PlayerAvatar} player=${p} self=${self} />
           ${damageLevel > 0 ? html`<${BossDamageBadge} pack=${badges?.pack || null} level=${damageLevel} still=${!!badges?.still} />` : null}
           ${inTeam ? html`<span class=${cx('team__frame', !frameArt && 'team__frame--plain')} style=${frameArt ? `--frame:url("${frameArt}")` : undefined} aria-hidden="true"></span>` : null}
@@ -633,6 +639,8 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
           ${streakLevel > 0 ? html`<${WinStreakBadge} pack=${badges?.pack || null} level=${streakLevel} streak=${p.winStreak} still=${!!badges?.still} />` : null}
           ${spMarks?.get(p.playerId) === 'done' ? html`<span class="team__spmark is-done" title=${t('已完成选择')}><${Icon} name="check" /></span>`
             : spMarks?.get(p.playerId) === 'turn' ? html`<span class="team__spmark is-turn" title=${t('正在决策…')}><i></i><i></i><i></i></span>` : null}
+          ${returning || viewing ? html`<span class=${cx('team__avatar-action', returning ? 'is-return' : 'is-view')} aria-hidden="true">
+            <${Icon} name=${returning ? 'return' : 'eye'} /></span>` : null}
         </button>
         <div class="team__info">
           <${DoctorName} player=${p} class="team__name" />
@@ -647,17 +655,12 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
                   : html`<${GIcon} name=${meta.glyph} />`}
               </span>
             <//>
-            ${watched && !self ? html`<span class="team__eye" title=${t('正在查看')}><${GIcon} name="eye" /></span>` : null}
           </div>
-          ${open ? html`<button type="button" class="btn btn--primary btn--sm team__ob"
-            onClick=${() => { setOpenPid(null); onWatch(p); }}><span class="btn__label">${t('前往查看')}</span></button>` : null}
-          ${back ? html`<button type="button" class="btn btn--secondary btn--sm team__back"
-            onClick=${() => observe.onBack()}><span class="btn__label">${t('返回战场')}</span></button>` : null}
         </div>
         ${bubble ? html`<${EmoteBubble} key=${bubble.seq} id=${bubble.id} text=${bubble.text} at=${bubble.at} class="team__bubble" />` : null}
       </div>`;
     })}
-    <${BondsFlyout} players=${players} myId=${myId} open=${bondsOpen} onToggle=${() => setBondsOpen((o) => !o)}
+    <${BondsFlyout} players=${players} myId=${myId} open=${bondsOpen}
       onBond=${onBond} flyOps=${flyOps} seatBonds=${seatBonds} onOp=${onOp} rowH=${rowH} layersDisabled=${layersDisabled} />
   </aside>`;
 }

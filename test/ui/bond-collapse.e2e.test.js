@@ -76,7 +76,7 @@ describe('collapsible bond strip (issue #142)', { skip: !ENABLED && 'set SP_E2E=
 
         await activate('.bonds-toggle');
         await activate('.team__row:not(.is-self) .team__btn');
-        if (await page.$('.team__ob')) await activate('.team__ob');
+        await activate('.team__row:not(.is-self) .team__btn');
         await page.waitForSelector('.gm__watching');
         // .gm__watching shows at the tap; the mock answers the row's g.watch 40–100 ms later (game-mock.js mockRequest)
         // with the teammate's read-only board. Wait for that answer: a phase change before it lets the mock apply the

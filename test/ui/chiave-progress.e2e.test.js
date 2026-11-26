@@ -84,6 +84,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       });
       const memberButtons = await page.$$('.team__btn');
       await memberButtons[2].click();
+      await memberButtons[2].click();
       await page.waitForFunction(id => window.__MOCK__.store.get().match.field?.fieldId === `n:${id}`, {}, otherId);
       await page.evaluate(effect => {
         const store = window.__MOCK__.store;
@@ -105,6 +106,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
         });
         mock.pushPublic();
       }, states.at(-1));
+      await (await page.$$('.team__btn'))[2].click();
       await (await page.$$('.team__btn'))[2].click();
       await page.waitForFunction(id => window.__MOCK__.store.get().match.field?.fieldId === `n:${id}`, {}, otherId);
       await page.evaluate(effect => {

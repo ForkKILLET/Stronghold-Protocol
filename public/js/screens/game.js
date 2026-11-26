@@ -5,7 +5,7 @@ import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 //   RESULT / m.result → the settlement flow (screens/settle.js), everything else → MatchScreen below.
 //
 // MatchScreen = full-screen field view (render engine per DESIGN §9, DOM fallback when it can't load)
-// with the DOM HUD layered on top: top bar, bond strip + popup, team panel (click = g.watch), effects,
+// with the DOM HUD layered on top: top bar, bond strip + popup, team panel (avatar opens info, second click watches), effects,
 // shop bar (prep), merge-reward and 机变 overlays, detail panel, enemy / match-info drawer, combat HUD
 // (DP, "作战结束，等待队友完成作战" + teammates' progress, observing pill, 联防 / 最终攻势 ‹ › camera halves),
 // phase banners, the round's result box at SETTLE (官方「作战结束」 + 「全员无伤！」 / 「生命值减少 −N」 and the BATTLEOVER sound;
@@ -2046,7 +2046,7 @@ function MatchScreen() {
           const id = flyOpChessId(u);
           if (id) setDetail({ kind: 'chess', id, foreign: p?.playerId !== myId, owner: p?.playerId ?? null, tap: ++cardTap.current });
         }}
-        observe=${cc ? { canObserve: (p) => observeTarget(p, pub, myId, { observing: watchingOther, ownDone: localDone, liveWatch: settings.watchDuringBattle === true }), observing: watchingOther, onBack: backHome } : null}
+        observe=${cc ? { observing: watchingOther, onBack: backHome } : null}
         badges=${teamBadges} />
 
       <div class="gm__effects"><${EffectsList} effects=${viewedEffects} command=${showPrep && priv?.command && !spectator && !watchingOther ? html`<${BandCommand} command=${priv.command} priv=${priv} view=${view} editable=${editable} />` : null} /></div>

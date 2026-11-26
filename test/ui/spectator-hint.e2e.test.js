@@ -24,7 +24,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
       };
       const scout = async () => {
         await page.click('.team__row:nth-child(3) .team__btn');
-        if (await page.$('.team__ob')) await page.click('.team__ob');
+        await page.click('.team__row:nth-child(3) .team__btn');
         await page.waitForFunction(() => document.querySelector('.team__row:nth-child(3)')?.classList.contains('is-watched'));
         await page.waitForFunction(() => window.__MOCK__.store.get().match.field?.fieldId === 'n:p3');
       };
@@ -93,7 +93,7 @@ for (const [engine, executablePath] of [['chrome', '/run/current-system/sw/bin/g
         store.patch('match', { public: { ...s.match.public, combatMode: 'client' } });
       });
       await page.click('.team__row:nth-child(3) .team__btn');
-      await page.waitForSelector('.team__ob'); await page.click('.team__ob');
+      await page.waitForSelector('.team__fly-window'); await page.click('.team__row:nth-child(3) .team__btn');
       await page.waitForSelector('.chud__observe .watch-hint__close');
       await page.waitForFunction(() => window.__MOCK__.store.get().match.field?.fieldId === 'n:p3');
       await dismiss();

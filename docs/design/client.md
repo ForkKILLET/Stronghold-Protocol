@@ -1544,6 +1544,24 @@ not an exact reconstruction of decorative meshes and does not change unit positi
 
 ### Alliance flyout layout
 
+The flyout fades in and out over 200 ms; closing disables its input immediately and keeps its measured anchor
+until the fade finishes. Reopening during the fade reverses it smoothly. Reduced motion skips the fade.
+
+Bond and operator cells use equal padding on all four sides, derived from the row height and unchanged icon size.
+Flyout cells, operator buttons, strategy tiles and strategy details use square corners. Strategy details appear
+on hover or keyboard focus, to the right of the strategy tile; the flyout reserves room for this card. Moving into
+the card keeps it open, leaving closes it, and touch devices use tap to toggle.
+
+The first click on a teammate avatar opens alliance information and selects that player. A second click on the
+same avatar opens their field. Clicking another teammate selects it first;
+rapid double-click uses the same flow in every phase and both combat modes. Navigation closes the flyout.
+Clicking outside closes it while preserving the original board/shop action. Bond, operator and strategy details
+remain part of the same interaction; Escape closes the inner detail before the flyout and returns focus to its avatar.
+The selected teammate avatar carries a view icon, while the own avatar carries a return icon. These avatars receive
+a translucent gray mask beneath the unframed glyphs; a subtle contour shadow keeps the glyphs legible. The own avatar
+returns home on one click, or closes teammate information if already home; its return icon remains visible while
+viewing another field. Viewing actions keep roster heights stable. The vertical toggle is removed.
+
 The team flyout follows the roster width and row heights, reserving the effects/command column and any overlapping
 shop controls. While open, its ResizeObserver also follows the effects column, shop bar and shop tools, so a command
 arriving in a private update immediately gets its space. The window uses the remaining width on narrow viewports,

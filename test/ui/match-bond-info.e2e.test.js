@@ -84,6 +84,7 @@ for (const [engine, executablePath] of [
       return { id: p.playerId, name: p.name };
     });
     await (await page.$$('.team__btn'))[2].click();
+    await (await page.$$('.team__btn'))[2].click();
     await page.waitForFunction(id => window.__MOCK__.store.get().match.field?.fieldId === `n:${id}`, {}, mate.id);
     await page.click('[data-testid="check-player"]'); await showCard(chip);
     assert.equal(await page.$eval(card, e => e.dataset.owner), mate.name);

@@ -204,7 +204,7 @@ async function coopMatch(P, base, { bots = 1, prefix }) {
   return { host, guest };
 }
 
-/** A teammate's row → 前往查看 (team panel). */
+/** A teammate's avatar opens information, then watches on the second click. */
 async function watchMate(c, name) {
   const pt = await c.page.evaluate((name) => {
     for (const row of document.querySelectorAll('.team__row')) {
@@ -216,7 +216,8 @@ async function watchMate(c, name) {
   }, name);
   assert.ok(pt, `${c.label}: ${name}'s row`);
   await c.page.mouse.click(pt.x, pt.y);
-  assert.ok(await c.click('.team__ob', '前往查看', { timeout: 4000, optional: true }), `${c.label}: 前往查看 on ${name}`);
+  await c.page.waitForSelector('.team__fly-window');
+  await c.page.mouse.click(pt.x, pt.y);
 }
 
 /** Every player's name and bond ids (count, layers or active), the field listing, the 联防 helpers. */
@@ -289,7 +290,7 @@ describe('DESIGN §20.15 — the bond strip shows the watched teammate\'s bonds 
       let st = await stripOf(host);
       assert.deepEqual([st.owner, st.other, st.bonds], [null, false, hostOwn.ids], 'prep, own board: the host\'s own bonds');
       await host.click('.team__row:not(.is-self) .team__btn', null, { nth: 0 });
-      assert.ok(await host.click('.team__ob', '前往查看', { optional: true, timeout: 3000 }), 'host: 前往查看 in prep');
+      assert.ok(await host.click('.team__row:not(.is-self) .team__btn', null, { optional: true, timeout: 3000 }), 'host: 前往查看 in prep');
       await host.page.waitForSelector('.gm__watching', { timeout: 6000 });
       await host.page.waitForFunction(() => document.querySelector('.gm__bonds .bstrip')?.getAttribute('data-owner') === '阿米娅', { timeout: 6000 });
       st = await stripOf(host);

@@ -299,7 +299,7 @@ describe('user playtest #2 item 6 — 前往查看 → 返回战场 in combat (r
         if (!target || ['phase', 'none', 'timeout'].includes(target)) { c.note(`R${s0.round}: no running teammate field after the own battle (${target})`); continue; }
         await c.page.waitForSelector('.chud__wait', { timeout: 5000 });
         await c.click('.team__row:not(.is-self) .team__btn', null, { nth: 0 });
-        if (!(await c.click('.team__ob', '前往查看', { optional: true, timeout: 3000 }))) { c.note(`R${s0.round}: no 前往查看`); continue; }
+        if (!(await c.click('.team__row:not(.is-self) .team__btn', null, { optional: true, timeout: 3000 }))) { c.note(`R${s0.round}: no 前往查看`); continue; }
         const ok = await c.page.waitForFunction((fid) => { const r = globalThis.__SP_RUNNER__?.state?.(); return !!r && r.fieldId === fid && r.watch; }, { timeout: 15000 }, target).then(() => true, () => false);
         if (!ok || (await c.st()).phase !== 'COMBAT') { c.note(`R${s0.round}: the observed battle ended meanwhile`); continue; }
         await sleep(1300);
@@ -308,7 +308,7 @@ describe('user playtest #2 item 6 — 前往查看 → 返回战场 in combat (r
         assertNoPen(w, 'observing the teammate');
         await c.shot('observe-teammate');
         if ((await c.st()).phase !== 'COMBAT') { c.note(`R${s0.round}: combat ended before 返回战场`); continue; }
-        await c.click('.team__back, .chud__back', '返回战场', { timeout: 4000 });
+        await c.click('.chud__back', '返回战场', { timeout: 4000 });
         await c.page.waitForFunction(() => { const r = globalThis.__SP_RUNNER__?.state?.(); return !r || (r.own && !r.watch); }, { timeout: 10000 });
         await sleep(1300); // the camera flight
         const b = await battleViewState(c);
@@ -432,7 +432,7 @@ describe('user playtest #2 item 10 — boss-round prep on the boss field (real s
       await guest.shot('boss-prep-coop-R');
       // scouting the teammate's board (前往查看) and coming back: no pen with the boards, the boss field again
       await host.click('.team__row:not(.is-self) .team__btn', null, { nth: 0 });
-      assert.ok(await host.click('.team__ob', '前往查看', { optional: true, timeout: 3000 }), 'host: 前往查看 in the boss-round prep');
+      assert.ok(await host.click('.team__row:not(.is-self) .team__btn', null, { optional: true, timeout: 3000 }), 'host: 前往查看 in the boss-round prep');
       {
         await host.page.waitForSelector('.gm__watching', { timeout: 6000 });
         await sleep(900);
@@ -441,7 +441,7 @@ describe('user playtest #2 item 10 — boss-round prep on the boss field (real s
         assert.ok(w.band[1] <= 13, `scouting: no pen rows (${w.band})`);
         assert.equal(w.camKind, 'bossPrep', 'scouting: the boss field');
         assert.deepEqual(w.prepField, { kind: 'bossPrep', side: guestSeat.side, mirror: guestSeat.side === 'R' }, 'scouting: the teammate\'s half');
-        await host.click('.gm__watching button, .team__back', null, { timeout: 4000 });
+        await host.click('.gm__watching button', null, { timeout: 4000 });
         await host.page.waitForFunction(() => document.querySelector('.gm')?.dataset.camera === 'bossPrep', { timeout: 6000 });
         await sleep(900);
         const back = await viewState(host);

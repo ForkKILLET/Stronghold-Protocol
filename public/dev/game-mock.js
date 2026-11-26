@@ -222,7 +222,7 @@ function buildState() {
   // 「同盟盟约速查」 (PR #922): every seat's activated bonds + the drafted strategy, and the own board as
   // m.private.boardOps. The teammates' operators come from the mock's g.peek answer (mockRequest, like
   // server/match/match/peek.js: a snapshot of every other seat when the flyout opens). The data is always present, so
-  // opening the toggle by hand matches `?variant=flyout`; `flyout,teammatedead` (or `flyout,dead`) leaves the eliminated
+  // opening it from an avatar matches `?variant=flyout`; `flyout,teammatedead` (or `flyout,dead`) leaves the eliminated
   // seat's row empty, as the server does with `boardOps: []`.
   const shown = data.list('bonds').filter((b) => b.weight > 0 && !disabled.has(b.bondId)).slice(0, 14);
   players.forEach((p, i) => {
@@ -826,7 +826,7 @@ function applyUiVariants() {
     tryPen();
   }
   if (VARIANTS.has('bond')) clickSel('.bslot .bond', 500);
-  if (VARIANTS.has('flyout')) clickSel('.team__bonds-toggle', 500);
+  if (VARIANTS.has('flyout')) clickSel('.team__row:not(.is-self) .team__btn', 500);
   if (VARIANTS.has('emote')) {
     clickSel('.ewheel__btn', 400);
     setTimeout(() => {
