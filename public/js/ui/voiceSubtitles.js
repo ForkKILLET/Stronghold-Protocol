@@ -13,7 +13,7 @@ import { captionLocale, voiceCaptionIdentity, selectVoiceCaptions, formatVoiceCa
 
 const tables = createVoiceCaptionTables({ urlFor: lang => dataUrl(`/data/voice-captions/${lang}.json`, DATA_CDN) });
 const loadTable = lang => tables.load(lang);
-const OBSTACLES = '.shopbar,.shopbar-tab,.gm__corner,.gm__watching,.gm__dead,.gm__bonds .bslot,.gm__bonds .bonds-toggle,.gm__bonds .bstrip__more,.gm__bonds .bstrip--empty,.gm__effects,.team,.gtop > *, .chud > *, .dpanel,.bpop,.edrawer,.ewheel__dialog,.combat-metrics,.ldmg,.term-help,.gm__ui-slot,.site-notice,.lo button,.lo input,.lo .game-select,.result__actions';
+const OBSTACLES = '.shopbar,.shopbar-tab,.gm__corner,.gm__watching,.gm__dead,.gm__bonds .bslot,.gm__bonds .bonds-toggle,.gm__bonds .bstrip__more,.gm__bonds .bstrip--empty,.gm__effects,.team,.gtop > *, .chud > *, .dpanel,.bpop,.edrawer,.ewheel__dialog,.combat-metrics,.ldmg,.term-help,.room-vote-panel:popover-open,.gm__ui-slot,.site-notice,.lo button,.lo input,.lo .game-select,.result__actions';
 // Full-page surfaces reserve a caption lane; their dimming backdrops are not obstacles.
 const SURFACES = '.modal,.guide,.st,.lo,.spov';
 
@@ -142,8 +142,9 @@ export function VoiceSubtitleHost({ manager = audio }) {
     mutations.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
     window.addEventListener('resize', schedule);
     document.addEventListener('scroll', schedule, true);
+    document.addEventListener('toggle', schedule, true);
     update();
-    return () => { resize.disconnect(); mutations.disconnect(); cancelAnimationFrame(frame); for (const target of reserved) clearReservation(target); window.removeEventListener('resize', schedule); document.removeEventListener('scroll', schedule, true); };
+    return () => { resize.disconnect(); mutations.disconnect(); cancelAnimationFrame(frame); for (const target of reserved) clearReservation(target); window.removeEventListener('resize', schedule); document.removeEventListener('scroll', schedule, true); document.removeEventListener('toggle', schedule, true); };
   }, [current]);
   if (!current) return null;
   return html`<section ref=${ref} class=${`voice-subtitles${held ? ' is-held' : ''}${position?.dock ? ' is-docked' : ''}`} role="status" aria-live="off" aria-label=${t('干员台词')}

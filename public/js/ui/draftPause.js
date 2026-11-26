@@ -14,7 +14,7 @@ export function DraftPause({ pub, standalone }) {
   const [busy, setBusy] = useState(false);
   const participant = pub.players?.find(p => p.playerId === myId);
   const requested = !!pub.pauseRequests?.includes(myId);
-  const toggle = async () => { if (busy) return; setBusy(true); try { await actions.pause(!requested); } finally { setBusy(false); } };
+  const toggle = async () => { if (busy) return; setBusy(true); try { await actions.pause(pub.paused ? false : !requested); } finally { setBusy(false); } };
   useEffect(() => {
     const onKey = e => {
       if (!standalone || e.repeat || !participant?.alive || shortcutFor(e, shortcutsStore.get()) !== 'pause'
@@ -26,6 +26,6 @@ export function DraftPause({ pub, standalone }) {
   }, [requested, busy, participant?.alive, standalone]);
   return html`
     ${participant?.alive ? html`<div class="draft-pause"><${PauseButton} paused=${pub.paused} requested=${requested}
-      votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null}
+      mode=${pub.pauseMode} votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null}
     ${standalone && pub.paused ? html`<${PausedOverlay} canResume=${!!participant?.alive} busy=${busy} onResume=${toggle} />` : null}`;
 }

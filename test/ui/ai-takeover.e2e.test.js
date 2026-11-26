@@ -4,7 +4,7 @@ import {existsSync} from 'node:fs';
 const chrome=process.env.CHROME_PATH;
 test('a spectator requests an AI in the browser, receives majority approval and reloads into the inherited seat', {skip:process.env.SP_E2E!=='1'||!chrome||!existsSync(chrome),timeout:120000},async()=>{
   const {startServer}=await import('../../server/index.js'),{TestClient}=await import('../helpers/wsClient.js'),puppeteer=(await import('puppeteer-core')).default;
-  const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,botRehearsal:0}),clients=[],browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--no-proxy-server',`--explicitly-allowed-ports=${srv.port}`]});
+  const srv=await startServer({port:0,host:'127.0.0.1',quiet:true,botRehearsal:0,clientBuild:false,workers:0,roomWorkers:0,matchWorkers:0,userFile:':memory:',assetIndex:false,serverConfigFile:false,announcementsFile:null}),clients=[],browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--no-proxy-server',`--explicitly-allowed-ports=${srv.port}`]});
   try{
     const player=async name=>{const c=await TestClient.connect(srv.url.replace('http','ws')+'/ws');clients.push(c);c.id=(await c.hello(name)).playerId;return c;};
     const host=await player('Host');await host.request({t:'room.create',mode:'coop',difficulty:'NORMAL'});const room=[...srv.lobby.rooms.values()][0];
@@ -13,12 +13,13 @@ test('a spectator requests an AI in the browser, receives majority approval and 
     const m=room.match;m.startRound(1);m.phase='PREP';m.setDeadline(0);for(const p of m.order)p._botPrepToken=(p._botPrepToken||0)+1;m.flush(true);const bot=m.order[2];bot.funds=71;bot.acquireChess('chess_char_1_01_a',{fromPool:false});bot.dirty();m.flush(true);
     const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setViewport({width:1440,height:900});
     await page.evaluateOnNewDocument(()=>{localStorage.setItem('sp.name','Late');sessionStorage.setItem('sp.entered','1');});await page.goto(srv.url+'/');
-    await page.waitForFunction(async()=>{const {net}=await import('/js/net.js');return net.status==='online';});
+    await page.waitForFunction(async()=>{const {net}=await import('/js/net.js'),{store}=await import('/js/store.js');return net.status==='online'&&!!store.get().me.playerId;});
     await page.evaluate(async code=>{const {net}=await import('/js/net.js');await net.request('room.spectate',{code});},room.code);
-    await page.waitForSelector('.gm__corner .ai-participation-entry');await page.click('.gm__corner .ai-participation-entry');
-    await page.evaluate(id=>{const buttons=[...document.querySelectorAll('.modal button')];const button=buttons.find(b=>b.textContent.includes('申请接替')&&b.textContent.includes(id));if(!button)throw Error('AI request button absent');button.click();},bot.name);
+    await page.waitForSelector('[data-testid="ai-collaboration"]');await page.click('[data-testid="ai-collaboration"]');
+    await page.waitForSelector('.room-vote-panel:popover-open[data-positioned]');
+    await page.evaluate(id=>{const buttons=[...document.querySelectorAll('.room-vote-requests button')];const button=buttons.find(b=>b.textContent.includes('申请接替')&&b.textContent.includes(id));if(!button)throw Error('AI request button absent');button.click();},bot.name);
     await page.waitForFunction(async()=>{const {store}=await import('/js/store.js');return store.get().room?.aiTakeoverVotes?.length===1;});
-    const vote=room.aiTakeoverVotes[0];if(process.env.AI_TAKEOVER_SHOT){const panel=await page.$('.modal__box');await panel.evaluate(el=>{el.style.background='#102019';el.style.animation='none';el.style.transform='none';});const box=await panel.boundingBox();await page.screenshot({path:process.env.AI_TAKEOVER_SHOT,clip:box});}
+    const vote=room.aiTakeoverVotes[0];if(process.env.AI_TAKEOVER_SHOT){const panel=await page.$('.room-vote-panel:popover-open');const box=await panel.boundingBox();await page.screenshot({path:process.env.AI_TAKEOVER_SHOT,clip:box});}
     await host.request({t:'room.aiVote',voteId:vote.id,approve:true});await mate.request({t:'room.aiVote',voteId:vote.id,approve:true});
     await page.waitForFunction(async id=>{const {store}=await import('/js/store.js');const s=store.get();return s.me.playerId===id&&s.match.private?.playerId===id&&!s.ui.restoring;},{},bot.playerId);
     assert.equal(bot.isBot,false);await page.reload();await page.waitForFunction(async id=>{const {store}=await import('/js/store.js');return store.get().me.playerId===id&&store.get().match.private?.playerId===id;},{},bot.playerId);

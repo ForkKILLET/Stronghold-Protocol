@@ -47,6 +47,8 @@ import { PixBot } from './pixbots.js';
 import { t, tParts, N_ } from '../../../shared/i18n.js';
 import { UnofficialMark, ruleLine } from './pluginTag.js';
 import { TestMark } from './testConsole.js';
+import { PauseVoteButton } from './roomVotes.js';
+import { AiTakeoverPanel } from './aiTakeover.js';
 
 /**
  * The match's own mode name when it is not its difficulty's (规程's 规程等级 n / 极速模拟: config.modes[modeId].name), else
@@ -435,25 +437,14 @@ export function OvertimeWarning({ ot }) {
   </div>`;
 }
 
-/** Two-bar pause glyph (the official battle pause button). */
-function PauseGlyph() {
-  return html`<svg class="pausebtn__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4.5v16H6zm7.5 0H18v16h-4.5z" /></svg>`;
-}
-
 /**
  * Solo pause / resume control (g.pause): pressed while paused.
  * @param {{ paused: boolean, busy?: boolean, onToggle: () => void }} props
  */
 export function PauseButton({ paused, requested = paused, mode = 'vote', votes = 0, required = 1, busy = false, onToggle }) {
   const shortcuts = useShortcuts();
-  const label = paused ? mode === 'veto' && !requested ? t('拒绝暂停') : t('继续作战') : requested ? t('撤回暂停请求') : t('请求暂停');
-  return html`<${Tooltip} text=${`${label}（${shortcutLabel(shortcuts, 'pause')}）`} placement="bottom">
-    <button type="button" class=${cx('pausebtn', 'tapx', requested && 'is-on', busy && 'is-busy')} aria-pressed=${requested ? 'true' : 'false'}
-        aria-label=${label} disabled=${busy} data-testid="pause" onClick=${() => onToggle?.()}>
-      ${mode !== 'veto' && required > 1 ? html`<small>${votes}/${required}</small>` : null}
-      ${paused ? html`<${Icon} name="play" class="pausebtn__glyph" />` : html`<${PauseGlyph} />`}
-    </button>
-  <//>`;
+  return html`<${PauseVoteButton} paused=${paused} requested=${requested} mode=${mode} votes=${votes}
+    required=${required} busy=${busy} shortcut=${shortcutLabel(shortcuts, 'pause')} onToggle=${onToggle} />`;
 }
 
 /**
@@ -568,7 +559,8 @@ export function TopBar({ pub, priv, conn, hud, total, drawer, onExit, onDrawer, 
           : frozenSecs != null
             ? html`<${Countdown} seconds=${frozenSecs} total=${total ?? undefined} size="md" label="PAUSED" />`
             : html`<${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />`}
-        ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} requested=${pause.requested} votes=${pause.votes} required=${pause.required} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
+        <${AiTakeoverPanel} />
+        ${pause && (pause.show || pause.paused) ? html`<${PauseButton} paused=${!!pause.paused} mode=${pause.mode} requested=${pause.requested} votes=${pause.votes} required=${pause.required} busy=${pause.busy} onToggle=${pause.onToggle} />` : null}
         ${corner && pfClock && showReady ? html`<${ReadyToggle} priv=${priv} onToggle=${onReady} busy=${readyBusy} readyCount=${readyCount} total=${playerCount} pack=${pack} corner=${true} />` : null}
         <span class="gtop__subtitle-anchor" aria-hidden="true"></span>
       </div>

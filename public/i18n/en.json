@@ -3616,5 +3616,15 @@
   "其他时期的干员暂时无法载入": "Operators from other periods could not be loaded",
   "之前选的名片干员在这里不可用，名片暂时显示默认干员": "Your card operator is not available here; the card shows the default for now",
   "当前版本的游戏文本含非官方翻译（部分为机翻，Terra Archive），可能与正式英文有出入。": "Some game texts for this version are unofficial translations (partly machine-translated, Terra Archive) and may differ from Global.",
-  "向前方发射炮弹造成物理溅射伤害，可以将周围1名重量小于等于{weight}的地面敌人传送至爆炸中心": "Fires a shell forward, dealing Physical splash damage and transporting one nearby ground enemy with Weight at most {weight} to the center of the explosion"
+  "向前方发射炮弹造成物理溅射伤害，可以将周围1名重量小于等于{weight}的地面敌人传送至爆炸中心": "Fires a shell forward, dealing Physical splash damage and transporting one nearby ground enemy with Weight at most {weight} to the center of the explosion",
+  "关闭投票": "Close vote",
+  "同意进度": "Approvals",
+  "已拒绝": "Rejected",
+  "待表态": "Awaiting response",
+  "暂停投票": "Pause vote",
+  "接替成功": "Seat transferred",
+  "申请已过期": "Request expired",
+  "申请已结束": "Request ended",
+  "过半同意后接替 AI": "A majority must approve the AI handover",
+  "剩余 {seconds} 秒": "{seconds} seconds remaining"
 }

@@ -1,4 +1,3 @@
-import { AiTakeoverPanel } from '../ui/aiTakeover.js';
 // Game screen — every in-match screen, dispatched by m.public.phase (DESIGN §10):
 //   INFO_CHECK → Briefing (screens/briefing.js), BAND_DRAFT → Band draft (screens/bandDraft.js),
 //   CUSTOM_CHECK → 选择自编 (screens/diyCheck.js),
@@ -2090,7 +2089,6 @@ function MatchScreen() {
       <div class="ui-slot gm__ui-slot" data-ui-slot="hud.right" aria-label=${t('界面插件')} dangerouslySetInnerHTML=${{ __html: '' }}></div>
 
       <div class="gm__corner">
-        <${AiTakeoverPanel} />
         ${spectator ? null : html`<${EmoteWheel} open=${emoteOpen} onToggle=${setEmoteOpen} pinned=${emotePinned} onPinChange=${setEmotePinned} onSend=${(id) => actions.emote(id)}
           onChat=${actions.chat} history=${chatHistory} myId=${myId} disabled=${conn.status !== 'online'} />`}
         ${html`<${GameTools} myId=${myId} pub=${pub} spectator=${spectator} boss=${leader} connected=${conn.status === 'online'} onOpen=${() => {

@@ -39,7 +39,7 @@ function fixture(t) {
       this.parentNode = null; this.isConnected = false;
     }
     matches(selector) { return selector === ':popover-open' && this.popoverOpen; }
-    showPopover() { this.popoverOpen = true; }
+    showPopover() { this.popoverOpen = true; this.popoverShows = (this.popoverShows || 0) + 1; }
     hidePopover() { this.popoverOpen = false; }
     getContext() { return state.failContext ? null : this.context; }
   }
@@ -160,7 +160,7 @@ test('rapid clicks draw one canvas without native image replacement; DPR changes
   const draws = canvas.draws.length;
   f.pointer('pointermove', { clientX: 120, clientY: 220, buttons: 1 }); f.step(34);
   assert.equal(canvas.draws.length, draws, 'movement of an unchanged pose only moves the canvas');
-  assert.match(canvas.style.transform, /translate3d\(107px, 206px, 0\)/);
+  assert.match(canvas.style.transform, /translate3d\(108px, 208px, 0\)/);
   f.step(67); assert.equal(canvas.dataset.pose, '10'); assert.equal(f.callbacks.size, 0);
   f.pointer('pointerup'); f.step(151); f.pointer('pointerover'); f.step(235);
   assert.equal(canvas.dataset.pose, '0', 'crossing descendants does not restart release');
@@ -242,4 +242,19 @@ test('an older static hand remains usable without treating it as an animation at
   f.pointer('pointerdown'); f.step(100);
   assert.equal(canvas.dataset.pose, '0');
   assert.match(canvas.style.transform, /translate3d\(97px, 198px, 0\)/);
+});
+
+test('opening another top-layer panel raises the hand without restoring the native cursor', async t => {
+  const f = fixture(t); f.manifest = manifest(META);
+  applyCursor(true); await f.load(); f.pointer('pointermove'); f.step(0);
+  const canvas = f.canvases[0], shows = canvas.popoverShows, writes = f.writes.length;
+  const opened = new Event('toggle'); Object.assign(opened, { newState: 'open' });
+  f.doc.dispatchEvent(opened);
+  assert.equal(canvas.popoverShows, shows + 1);
+  assert.equal(canvas.hidden, false);
+  assert.equal(f.writes.length, writes, 'native cursor stays hidden during reordering');
+  const own = new Event('toggle'); Object.assign(own, { newState: 'open' });
+  Object.defineProperty(own, 'target', { value: canvas });
+  f.doc.dispatchEvent(own);
+  assert.equal(canvas.popoverShows, shows + 1, 'the hand never raises itself recursively');
 });

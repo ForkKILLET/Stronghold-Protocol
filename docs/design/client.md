@@ -72,6 +72,18 @@ Resuming continues at the remaining seconds without replaying the last sounded s
 The paused overlay uses the danger variant for abandonment. In veto mode a non-requesting teammate sees
 “拒绝暂停”; the overlay, HUD, draft button and Space all send `g.pause {on:false}` to resume.
 
+Pause consent and AI handover share top-right icon controls and non-modal vote popovers (`ui/roomVotes.js`).
+Opening a multiplayer pause vote presents explicit request/withdraw actions, the required approvals and each
+eligible player's response; all eligible participants must consent. Solo and veto pause controls act directly.
+AI handover is available to spectators during preparation when an active AI exists, and to players with a relevant
+vote. Its cards show majority progress, responses and the server-time expiry countdown. Expired cards disable
+voting. Observed transfers and expired requests have explicit results; other removals say the request ended.
+Outside clicks and Escape dismiss the popover while keeping the vote intact. The shared native popover stays in
+the top layer without a veil or focus trap, and follows viewport resizing. Very narrow HUDs put the round bar on
+its own row. Closing a popover never withdraws consent.
+Vote popovers participate in subtitle clearance. The opt-in Canvas hand stays above newly opened top-layer panels
+without changing the native cursor image during reordering.
+
 Match-information bond entries (#915, history §37.98) open the existing `BondPopup` directly: the in-game chips,
 briefing discs and strategy information discs share its effects, member list and ban marks. `MatchBondDialog` shares
 Modal's focus stack; Escape or its backdrop closes the card alone and restores its trigger. A strategy-turn change

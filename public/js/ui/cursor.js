@@ -194,6 +194,11 @@ function bind() {
   });
   on(doc, 'pointerleave', e => { if (e.target === doc.documentElement || e.target === doc) suspend(); });
   on(doc, 'pointercancel', suspend);
+  on(doc, 'toggle', event => {
+    if (event.newState !== 'open' || event.target === canvas || !canvas?.matches(':popover-open')) return;
+    // A newly opened top-layer panel must not cover the hand. Reorder in one task without swapping native cursors.
+    try { canvas.hidePopover(); canvas.showPopover(); } catch { suspend(); }
+  });
   on(doc, 'visibilitychange', () => { if (doc.hidden) suspend(); else schedule(); });
   on(doc, 'pointerlockchange', suspend);
   on(doc, 'dragstart', () => { dragging = true; suspend(); });
