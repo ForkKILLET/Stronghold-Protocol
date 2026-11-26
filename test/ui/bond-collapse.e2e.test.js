@@ -14,7 +14,8 @@ describe('collapsible bond strip (issue #142)', { skip: !ENABLED && 'set SP_E2E=
   before(async () => {
     const { startServer } = await import('../../server/index.js');
     const puppeteer = (await import('puppeteer-core')).default;
-    srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true });
+    srv = await startServer({ port: 0, host: '127.0.0.1', quiet: true, clientBuild: false,
+      userFile: ':memory:', roomWorkers: 0, workers: 0, assetIndex: false, announcementsFile: null, serverConfigFile: false });
     browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--no-sandbox', '--no-proxy-server'] });
     mkdirSync(OUT, { recursive: true });
   });
@@ -35,10 +36,17 @@ describe('collapsible bond strip (issue #142)', { skip: !ENABLED && 'set SP_E2E=
         assert.equal(await expanded(), 'true');
         const toggle = await page.$eval('.bonds-toggle', (el) => {
           const r = el.getBoundingClientRect();
-          return { width: r.width, height: r.height, controls: el.getAttribute('aria-controls') };
+          return { width: r.width, height: r.height, y: r.y, controls: el.getAttribute('aria-controls') };
         });
         assert.ok(toggle.width >= 44 && toggle.height >= 44, 'visible touch target is at least 44×44');
         assert.equal(toggle.controls, 'match-bond-strip');
+        const alignment = await page.evaluate(() => {
+          const center = (el) => { const r = el.getBoundingClientRect(); return r.y + r.height / 2; };
+          const arrow = center(document.querySelector('.bonds-toggle .icon'));
+          return [...document.querySelectorAll('.bslot .bond__disc')].map((el) => center(el) - arrow);
+        });
+        assert.ok(alignment.length && alignment.every((dy) => Math.abs(dy) < 1),
+          `the collapse arrow is centred on every bond disc: ${JSON.stringify(alignment)}`);
         const covered = await page.$eval('.bslot .bond', (el) => {
           const r = el.getBoundingClientRect();
           return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
@@ -48,6 +56,8 @@ describe('collapsible bond strip (issue #142)', { skip: !ENABLED && 'set SP_E2E=
         await activate('.bonds-toggle');
         await page.waitForSelector('#match-bond-strip', { hidden: true });
         assert.equal(await expanded(), 'false');
+        assert.ok(Math.abs(await page.$eval('.bonds-toggle', (el) => el.getBoundingClientRect().y) - toggle.y) < 1,
+          'collapsing keeps the arrow in place');
         assert.equal(await page.$('.bpop'), null, 'collapsing closes the strip popup');
         assert.equal(await page.$eval('.bonds-toggle', (el) => el.getAttribute('aria-label')), '展开盟约');
         assert.ok(await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.gm__field'), covered),
