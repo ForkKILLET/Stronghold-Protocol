@@ -1446,11 +1446,12 @@ localized descriptions are selected by record identity rather than matching a ne
 
 ### Regulation equipment row
 
-The loaded `config.version.rules.equipHand` switch labels row 8 装备区 and accepts item-card moves within its five
+The loaded `config.version.rules.equipHand` switch uses row 8 as the equipment row and accepts item-card moves within its five
 slots. Equipment can be dropped on a unit to equip it; empty character-hand slots refuse equipment, and equipment
 slots refuse characters/summons. The shop checks capacity in the offered card's row. The permanent row has no red
-pending frame. The HUD, Ready reason and row label use private `stashCount`, with the auto-refill/expiry rule;
-the stash itself is not drawn. Boss prep retains the same bench transform (row 8 → boss row 1, mirrored on the right).
+pending frame. The HUD, Ready reason and overflow notice use private `stashCount`. The notice displays the count and
+auto-refill/expiry rule while that count is positive; the stash itself is not drawn.
+Boss prep retains the same bench transform (row 8 → boss row 1, mirrored on the right).
 Covenant rendering and controls retain the mixed hand and visible temporary row.
 
 顶部盟约卡片左右外侧提供切换箭头，按顶部列表的显示顺序循环浏览上一／下一个盟约；只有一个盟约时不显示箭头。点击箭头保持卡片打开，继续显示当前观看对象的盟约。

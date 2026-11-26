@@ -1921,7 +1921,7 @@ function MatchScreen() {
   // the temp overflow row holds pieces (user playtest #3 item 3): framed and labelled on the own prep board
   const temp = tempInfo(priv);
   const equipHand = data.get('config')?.version?.rules?.equipHand === true;
-  const tempNotice = (equipHand || temp.count > 0) && !!view && viewKind !== 'loading' && showPrep && alive && !pen && !sp;
+  const tempNotice = temp.count > 0 && !!view && viewKind !== 'loading' && showPrep && alive && !pen && !sp;
   // the ready button shows why it is refused under it (ui/hud.js ReadyToggle): the effects column moves down a line
   const readyWhy = phase === PHASE.PREP && alive && !priv?.ready && (hasPersonalChoice || temp.count > 0);
   // the frame the panels are laid out in: the HUD layer (client px; inside the safe-area insets of a notched phone),
