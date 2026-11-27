@@ -1144,6 +1144,8 @@ The strategy table resolves names missing from the active game data using read-o
 (default data, then other versions offered by the server), loading only their `bands.json` as needed. Icons use the
 shared asset manifest. These display lookups never replace the active gameplay content or change aggregated counts;
 unrecognised strategy IDs stay visible as IDs.
+This also applies to a single selected statistics version differing from the active game version, such as viewing
+Regulation strategies while second-season gameplay data remains loaded.
 The peak alliance in 总览 and 成就统计 keeps its alliance and layers across version filters, but draws its lineup and
 gear only when the loaded config names the record's version, including while a newly requested version downloads.
 Otherwise it shows 「切换到「X」查看」: reused chess and item ids refer
