@@ -292,8 +292,8 @@ export function BondGlyph({ bondId, class: cls, mask = false }) {
 }
 
 /** Band (strategy) icon. */
-export function BandIcon({ bandId, class: cls, size = 'md' }) {
-  const b = data.lookup('bands', bandId);
+export function BandIcon({ bandId, rec = null, class: cls, size = 'md' }) {
+  const b = rec || data.lookup('bands', bandId);
   return html`<span class=${cx('bandicon', `bandicon--${size}`, cls)} title=${b?.name || ''}>
     <${Img} src=${bandIconUrl(data.get('assets'), bandId)} fallback=${html`<span class="bandicon__txt">${[...(b?.name || '?')][0]}</span>`} />
   </span>`;

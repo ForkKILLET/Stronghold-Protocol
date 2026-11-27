@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from '../../vendor/hooks.module.
 import { DIFFICULTIES, DIFFICULTY_NAMES, DIFFICULTY_COLORS } from '../../../shared/constants.js';
 import { html, Icon, MicroLabel, Spinner, Button, Modal, confirmDialog } from '../ui/components.js';
 import { useGameData, makeLookups, BandIcon, BondGlyph, Img } from '../ui/gameComponents.js';
+import { useArchiveBands } from '../ui/archiveBands.js';
 import { data, useData } from '../data.js';
 import { fmtNum } from '../ui/gameLogic.js';
 import { titleIconUrl } from '../ui/assetUrls.js';
@@ -178,15 +179,16 @@ export function Overview({ agg, gd, account }) {
 /** 策略: per-band used / passed / pass rate, most used first (the user's headline ask). */
 export function Bands({ agg, gd }) {
   const rows = Object.entries(agg.bands).sort((a, b) => (b[1].games - a[1].games) || (b[1].wins - a[1].wins));
+  const lookupBand = useArchiveBands(rows.map(([id]) => id), gd);
   return html`<${Section} title=${t('策略')} micro="STRATEGIES">
     ${rows.length ? html`<div class="st-tablewrap"><table class="st-table">
       <thead><tr><th>${t('策略')}</th><th class="num">${t('使用局数')}</th><th class="num">${t('通过局数')}</th><th class="st-rate">${t('通过率')}</th></tr></thead>
       <tbody>
         ${rows.map(([bandId, v]) => {
-          const band = gd.band(bandId);
+          const band = lookupBand(bandId);
           const rate = v.games > 0 ? Math.round((v.wins / v.games) * 100) : 0;
           return html`<tr key=${bandId}>
-            <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} size="xs" />${band.name}` : bandId}</span></td>
+            <td><span class="st-band">${band ? html`<${BandIcon} bandId=${band.bandId} rec=${band} size="xs" />${band.name}` : bandId}</span></td>
             <td class="num">${fmtNum(v.games)}</td>
             <td class="num">${fmtNum(v.wins)}</td>
             <td class="st-rate"><span class="st-bar" aria-hidden="true"><i style=${`width:${rate}%`}></i></span><b class="num">${pct(v.wins, v.games)}</b></td>

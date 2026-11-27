@@ -1140,6 +1140,10 @@ a server narrowed to 第二期下半 offers none) is not clickable (「这台服
 Opening a row sets `replayVersion` in a room too (the room's version comes first, so nothing changes while seated): a
 room left while the replay is open (a kick, the room closed) never moves the page to the lobby's version, so the
 settlement stays mounted.
+The strategy table resolves names missing from the active game data using read-only official strategy catalogues
+(default data, then other versions offered by the server), loading only their `bands.json` as needed. Icons use the
+shared asset manifest. These display lookups never replace the active gameplay content or change aggregated counts;
+unrecognised strategy IDs stay visible as IDs.
 The peak alliance in 总览 and 成就统计 keeps its alliance and layers across version filters, but draws its lineup and
 gear only when the loaded config names the record's version, including while a newly requested version downloads.
 Otherwise it shows 「切换到「X」查看」: reused chess and item ids refer
