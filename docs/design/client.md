@@ -1462,7 +1462,10 @@ The loaded `config.version.rules.equipHand` switch uses row 8 as the equipment r
 slots. Equipment can be dropped on a unit to equip it; empty character-hand slots refuse equipment, and equipment
 slots refuse characters/summons. The shop checks capacity in the offered card's row. The permanent row has no red
 pending frame. The HUD, Ready reason and overflow notice use private `stashCount`. The notice displays the count and
-auto-refill/expiry rule while that count is positive; the stash itself is not drawn.
+auto-refill/expiry rule while that count is positive; the stash itself is not drawn. Regulation allows Ready with overflow;
+both the button and shortcut ask for confirmation before sending Ready. The dialog warns that temporary operators/equipment
+are destroyed on battle entry and summons return next prep. Funds/unused-command reminders share that dialog;
+muting the command reminder never mutes the overflow warning.
 Boss prep retains the same bench transform (row 8 → boss row 1, mirrored on the right).
 Covenant rendering and controls retain the mixed hand and visible temporary row.
 

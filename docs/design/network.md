@@ -97,7 +97,7 @@ Optional presentation fields: owned pieces and scouted/battle UnitInfo may carry
 
 `m.private`:
 ```js
-{ playerId, seat, alive, lp, funds, bandId, ready, canReady /* false while a personal choice or temp overflow is pending */,
+{ playerId, seat, alive, lp, funds, bandId, ready, canReady /* false during pending personal/command choices; temp overflow blocks Covenant only */,
   personalChoice: null | { id, round, sourceItemId, cards: [ { kind: 'bounty', id, name, desc, descRaw, ... } ] }, // recipient only, including reconnect; absent from public / scout views
   shop: { level, maxLevel: 6, upgradePrice, refreshPrice /* effective (0 when a free refresh is available) */, freeRefreshes,
           layout: { chess, item }, // actual slot counts, including empty slots; old saved frames may omit this (§36.1)
