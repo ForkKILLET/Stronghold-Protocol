@@ -71,6 +71,8 @@ the requesting public/private view, so pausing, changing phase or becoming ready
 Resuming continues at the remaining seconds without replaying the last sounded second. Music is unchanged.
 The paused overlay uses the danger variant for abandonment. In veto mode a non-requesting teammate sees
 “拒绝暂停”; the overlay, HUD, draft button and Space all send `g.pause {on:false}` to resume.
+On briefing and strategy selection pages, the pause control stays in the header while its mask is a sibling of
+the header, covering the full page and centering the pause message and resume button.
 
 Pause consent and AI handover share top-right icon controls and non-modal vote popovers (`ui/roomVotes.js`).
 Opening a multiplayer pause vote presents explicit request/withdraw actions, the required approvals and each

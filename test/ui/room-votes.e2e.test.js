@@ -129,6 +129,45 @@ describe('room vote controls', { skip: !ENABLED && 'set SP_E2E and browser path'
     } finally { await page.close(); }
   });
 
+  test('pre-game pause covers the page and keeps its controls centered', async () => {
+    for (const phase of ['INFO_CHECK', 'BAND_DRAFT']) for (const [width, height] of [[1600, 900], [1024, 600]]) {
+      const { page, errors } = await pageFor(width, height);
+      try {
+        await page.addStyleTag({ url: `${srv.url}/css/navigation.css` });
+        await page.evaluate(phase => {
+          const mock = globalThis.__MOCK__;
+          mock.setPhase(phase);
+          mock.S().pub.paused = true;
+          mock.pushPublic();
+        }, phase);
+        await page.waitForSelector('[data-testid="paused"]');
+        await page.waitForSelector('[data-testid="turn-banner"]', { hidden: true });
+        await page.screenshot({ path: `${OUT}/pause-${phase}-${width}.png` });
+        const geometry = await page.evaluate(() => {
+          const overlay = document.querySelector('[data-testid="paused"]');
+          const rect = el => {
+            const { x, y, width, height } = el.getBoundingClientRect();
+            return { x, y, width, height };
+          };
+          return {
+            screen: rect(document.querySelector('.screen')), overlay: rect(overlay), box: rect(overlay.firstElementChild),
+            coversFooter: overlay.contains(document.elementFromPoint(innerWidth / 2, innerHeight - 10)),
+          };
+        });
+        for (const axis of ['x', 'y', 'width', 'height']) {
+          assert.ok(Math.abs(geometry.screen[axis] - geometry.overlay[axis]) < 1, `${phase} overlay ${axis} matches page: ${JSON.stringify(geometry)}`);
+        }
+        assert.ok(Math.abs(geometry.box.x + geometry.box.width / 2 - width / 2) < 1, 'pause controls horizontally centered');
+        assert.ok(Math.abs(geometry.box.y + geometry.box.height / 2 - height / 2) < 1, 'pause controls vertically centered');
+        assert.ok(geometry.coversFooter, 'pause mask blocks preparation footer');
+        await page.click('[data-testid="paused"] .btn--primary');
+        await page.waitForSelector('[data-testid="paused"]', { hidden: true });
+        assert.ok(await page.$('.preparation-hud [data-testid="pause"]'), 'pause button stays in header after resuming');
+        assert.deepEqual(errors, []);
+      } finally { await page.close(); }
+    }
+  });
+
   test('AI votes show consent, rejection, expiry and observed transfer results', async () => {
     const { page, errors } = await pageFor();
     try {

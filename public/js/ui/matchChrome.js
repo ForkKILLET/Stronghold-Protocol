@@ -136,7 +136,7 @@ export function AwayOverlay({ onBack = () => {} }) {
 export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
   const conn = useStore(s => s.connection);
   const room = useStore(s => s.room);
-  return html`<header class="stephead preparation-hud" aria-label=${title} data-testid="preparation-hud">
+  return html`<${DraftPause} pub=${pub} standalone=${true} renderControl=${control => html`<header class="stephead preparation-hud" aria-label=${title} data-testid="preparation-hud">
     <div class="gtop__left">
       <${Button} variant="danger" size="lg" square=${true} icon="exit" onClick=${onExit} aria-label=${t('离开')} title=${t('离开 / 暂离')} class="gtop__exit tapx" />
       <div class="gtop__meta">
@@ -154,8 +154,8 @@ export function StepHeader({ step, of, title, micro, pub, total, onExit }) {
     </div>
     <div class="stephead__right">
       <${Countdown} deadline=${pub?.deadline} total=${total ?? undefined} size="md" />
-      <${DraftPause} pub=${pub} standalone=${true} />
+      ${control}
     </div>
-  </header>`;
+  </header>`} />`;
 }
 

@@ -8,8 +8,8 @@ import { actions } from './gameActions.js';
 import { shortcutFor } from './gameLogic.js';
 import { shortcutsStore } from './settings.js';
 
-/** The briefing and strategy draft use the same pause control as the combat HUD. */
-export function DraftPause({ pub, standalone }) {
+/** Keep the control in its header slot, with the pause mask beside the header at page level. */
+export function DraftPause({ pub, standalone, renderControl }) {
   const myId = useStore(s => s.me.playerId);
   const [busy, setBusy] = useState(false);
   const participant = pub.players?.find(p => p.playerId === myId);
@@ -24,8 +24,9 @@ export function DraftPause({ pub, standalone }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [requested, busy, participant?.alive, standalone]);
+  const control = participant?.alive ? html`<div class="draft-pause"><${PauseButton} paused=${pub.paused} requested=${requested}
+    mode=${pub.pauseMode} votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null;
   return html`
-    ${participant?.alive ? html`<div class="draft-pause"><${PauseButton} paused=${pub.paused} requested=${requested}
-      mode=${pub.pauseMode} votes=${pub.pauseRequests?.length || 0} required=${pub.pauseRequired?.length || 1} busy=${busy} onToggle=${toggle} /></div>` : null}
+    ${renderControl(control)}
     ${standalone && pub.paused ? html`<${PausedOverlay} canResume=${!!participant?.alive} busy=${busy} onResume=${toggle} />` : null}`;
 }
