@@ -1567,7 +1567,8 @@ until the fade finishes. Reopening during the fade reverses it smoothly. Reduced
 
 Bond and operator cells use equal padding on all four sides, derived from the row height and unchanged icon size.
 Flyout cells, operator buttons, strategy tiles and strategy details use square corners. Strategy details appear
-on hover or keyboard focus, to the right of the strategy tile; the flyout reserves room for this card. Moving into
+on hover or keyboard focus, to the right of the strategy tile when space permits, otherwise clamped inside the viewport.
+The flyout uses spare horizontal space to show complete bond rows before reserving room for this card. Moving into
 the card keeps it open, leaving closes it, and touch devices use tap to toggle.
 
 The first click on a teammate avatar opens alliance information and selects that player. A second click on the
@@ -1583,4 +1584,6 @@ viewing another field. Viewing actions keep roster heights stable. The vertical 
 The team flyout follows the roster width and row heights, reserving the effects/command column and any overlapping
 shop controls. While open, its ResizeObserver also follows the effects column, shop bar and shop tools, so a command
 arriving in a private update immediately gets its space. The window uses the remaining width on narrow viewports,
-including 320px; the bond and operator cells retain independent horizontal scrolling. Closing the flyout disconnects these observations.
+including 320px. Bond columns align across players and stay at least as wide as operator columns. They grow to fit
+the widest bond row while keeping operator and strategy controls accessible; insufficient space retains independent
+horizontal scrolling. Content track resizing also updates this allocation. Closing the flyout disconnects these observations.

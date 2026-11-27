@@ -723,8 +723,8 @@
 @media (prefers-reduced-motion: reduce) { .abadge--boss.is-css .abadge__scan { animation: none; top: 35%; opacity: .7; } }
 
 /* 「同盟盟约速查」 flyout: opened by teammate avatars, with one aligned row per seat.
-   A row is a three-column grid — bonds 1fr, on-field operators 1fr, the strategy square — so the strategy always
-   shares its row and the two scrolling halves are equally wide. TeamPanel measures the roster's right edge, the
+   Rows share a content-sized bond column, the remaining operator space and a strategy square.
+   TeamPanel measures the roster's right edge, the natural content widths, the
    square and available width (--fly-left / --fly-square / --fly-w), reserving the strategy hover card and the
    right-hand 指令 column beside the widest roster row. */
 .team__fly { --fly-ico: .52rem; position: absolute; top: 0; bottom: 0; left: var(--fly-left, 100%); z-index: 6; width: 0; pointer-events: none; }
@@ -739,7 +739,7 @@
 @media (prefers-reduced-motion: reduce) { .team__fly-window { transition: none; } }
 .team__fly-rows { display: flex; flex-direction: column; gap: .14rem; height: 100%; overflow: hidden; }
 .team__fly-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--fly-square, .86rem);
+  display: grid; grid-template-columns: minmax(0, var(--fly-bonds, 1fr)) minmax(0, 1fr) var(--fly-square, .86rem);
   column-gap: 6px; align-items: center; height: var(--fly-row-h, .8rem); flex: none;
 }
 /* A row's height mirrors the roster, while the three boxes keep the square size and the
@@ -755,7 +755,7 @@
 }
 .team__fly-cell::-webkit-scrollbar { width: 0; height: 0; }
 .team__fly-cell.is-dragging { cursor: grabbing; user-select: none; }
-.team__fly-track { display: flex; align-items: center; gap: .1rem; width: max-content; }
+.team__fly-track { display: flex; flex: none; align-items: center; gap: .1rem; width: max-content; }
 .team__fly-bonds .bond { --disc: var(--fly-ico); }
 /* a count with temporary layers reads gold, as on the strip (bond.css .bslot.has-temp-layers) */
 .team__fly-bonds .bond.has-temp-layers .bond__count { color: var(--gold-2); }

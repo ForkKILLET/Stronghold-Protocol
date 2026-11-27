@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 const FIREFOX = process.env.SP_FLYOUT_BROWSER === 'firefox';
 const CHROME = (FIREFOX ? process.env.FIREFOX_PATH : process.env.CHROME_PATH) || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const ENABLED = process.env.SP_E2E === '1' && existsSync(CHROME);
-const OUT = fileURLToPath(new URL('../e2e/out/', import.meta.url));
+const OUT = process.env.SP_FLYOUT_SCREENSHOTS || fileURLToPath(new URL('../e2e/out/', import.meta.url));
 const URL_FLYOUT = '/dev/game-mock.html?shot=1&render=fallback&phase=PREP&variant=flyout';
 
 describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=1 and CHROME_PATH to run' }, () => {
@@ -92,6 +92,50 @@ describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=
     } finally {
       await page.close();
     }
+  });
+
+  test('available horizontal space shows all bonds before enabling scrolling', async () => {
+    const page = await browser.newPage(), errors = [];
+    page.setDefaultTimeout(7000);
+    page.on('pageerror', e => errors.push(e.message));
+    page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('response', r => { if (r.status() >= 400) errors.push(`${r.status()} ${r.url()}`); });
+    try {
+      await page.setViewport({ width: 1600, height: 900 });
+      await page.goto(`${srv.url}${URL_FLYOUT}`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('.team__fly-row:nth-child(2) .team__fly-ops .uthumb');
+      await page.evaluate(async () => { await document.fonts.ready; await import('/sim/content/index.js'); });
+      const fits = () => page.evaluate(() => [...document.querySelectorAll('.team__fly-bonds')].every(e => e.scrollWidth <= e.clientWidth + 1));
+      await page.screenshot({ path: `${OUT}/team-flyout-full-bonds-1600.png` });
+      assert.ok(await fits(), 'bonds fit when the page has enough horizontal space');
+      const columns = await page.$$eval('.team__fly-row', rows => rows.map(row => [...row.children].map(e => e.getBoundingClientRect().x)));
+      assert.ok(columns.every(row => row.every((x, i) => Math.abs(x - columns[0][i]) < 1)), 'columns align across players');
+      await page.hover('.team__fly-band.is-clickable');
+      await page.waitForSelector('.team__fly-bandpop', { visible: true });
+      const tip = await page.$eval('.team__fly-bandpop', e => e.getBoundingClientRect().toJSON());
+      assert.ok(tip.width >= 200 && tip.left >= 8 && tip.right <= 1592, 'strategy details remain readable within the viewport');
+      await page.mouse.move(2, 2);
+      await page.waitForSelector('.team__fly-bandpop', { hidden: true });
+      await page.setViewport({ width: 320, height: 568 });
+      await page.waitForFunction(() => [...document.querySelectorAll('.team__fly-bonds')].some(e => e.scrollWidth > e.clientWidth + 1));
+      const scroll = await page.$eval('.team__fly-bonds', e => { e.scrollLeft = e.scrollWidth; return e.scrollLeft; });
+      assert.ok(scroll > 0, 'insufficient space retains horizontal scrolling');
+      await page.screenshot({ path: `${OUT}/team-flyout-full-bonds-320.png` });
+      await page.setViewport({ width: 1920, height: 900 });
+      await page.waitForFunction(() => [...document.querySelectorAll('.team__fly-bonds')].every(e => e.scrollWidth <= e.clientWidth + 1 && e.scrollLeft === 0));
+      await page.screenshot({ path: `${OUT}/team-flyout-full-bonds-1920.png` });
+      await page.evaluate(() => {
+        const mock = globalThis.__MOCK__, state = mock.S();
+        state.pub.players.forEach(p => { p.bonds = p.bonds.slice(0, 1); });
+        state.priv.bonds = state.priv.bonds.slice(0, 1);
+        mock.store.patch('match', { private: { ...state.priv } });
+        mock.pushPublic();
+      });
+      await page.waitForFunction(() => [...document.querySelectorAll('.team__fly-bonds')].every(e => e.querySelectorAll('.bond').length <= 1));
+      await page.waitForFunction(() => [...document.querySelectorAll('.team__fly-row')].every(row => row.children[0].clientWidth >= row.children[1].clientWidth - 1));
+      await page.screenshot({ path: `${OUT}/team-flyout-few-bonds-1920.png` });
+      assert.deepEqual(errors, []);
+    } finally { await page.close(); }
   });
 
   test('first avatar click opens information, second click watches and one home click returns without changing row heights', async () => {
@@ -267,7 +311,7 @@ describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=
     } finally { await page.close(); }
   });
 
-  test('strategy hover stays to the right, supports reading and keyboard focus, and closes on leave', async () => {
+  test('strategy hover prefers the right, stays in the viewport, supports reading and keyboard focus, and closes on leave', async () => {
     const page = await browser.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -283,7 +327,9 @@ describe('同盟盟约速查 flyout (PR #922)', { skip: !ENABLED && 'set SP_E2E=
         await page.waitForFunction(sel => {
           const a = document.querySelector(sel).getBoundingClientRect();
           const b = document.querySelector('.team__fly-bandpop').getBoundingClientRect();
-          return b.width >= Math.min(80, innerWidth * .4) && b.left >= a.right + 7 && b.right <= innerWidth - 7 && b.top >= 7 && b.bottom <= innerHeight - 7;
+          const fitsRight = a.right + 8 + b.width <= innerWidth - 8;
+          return b.width >= Math.min(80, innerWidth * .4) && (fitsRight ? b.left >= a.right + 7 : Math.abs(b.right - (innerWidth - 8)) < 1)
+            && b.right <= innerWidth - 7 && b.top >= 7 && b.bottom <= innerHeight - 7;
         }, {}, trigger);
         assert.match(await page.$eval('.team__fly-bandpop', e => e.textContent), /华法琳/);
         assert.equal(await page.$eval('.team__fly-bandpop', e => e.getAttribute('role')), 'tooltip');

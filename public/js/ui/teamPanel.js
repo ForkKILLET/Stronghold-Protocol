@@ -306,7 +306,8 @@ function BandPopup({ band, onHold, onLeave }) {
     const place = () => {
       const r = band.anchor.getBoundingClientRect();
       const vw = globalThis.innerWidth, vh = globalThis.innerHeight;
-      const left = Math.max(8, Math.round(r.right + 8));
+      const cardWidth = Math.min(parseFloat(getComputedStyle(document.documentElement).fontSize) * 3.4, vw * .44);
+      const left = Math.max(8, Math.min(Math.round(r.right + 8), vw - cardWidth - 8));
       const maxWidth = Math.max(0, vw - left - 8);
       el.style.maxWidth = `${maxWidth}px`;
       const top = Math.max(8, Math.min(Math.round(r.top), vh - el.getBoundingClientRect().height - 8));
@@ -338,8 +339,8 @@ function BandPopup({ band, onHold, onLeave }) {
 }
 
 /**
- * 「同盟盟约速查」: the avatar-opened window. A row is a three-column grid — bonds 1fr, on-field operators 1fr,
- * the strategy square — so both halves take the same width and the strategy always shares its row. Rows mirror the
+ * 「同盟盟约速查」: the avatar-opened window. Rows share content-sized bond columns, remaining operator space and
+ * the strategy square. Rows mirror the
  * roster heights (`rowH`, measured by TeamPanel), so each player stays aligned with their information. Every cell
  * pans sideways on its own (mouse drag or native touch pan); each close/reopen starts at the leftmost bond again.
  */
@@ -511,7 +512,7 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
     // Keep the last measured anchor through the fade-out. The next opening measures the roster again.
     if (!bondsOpen) return undefined;
     let frame = null;
-    // The strategy is as tall as the shortest row. The hover card and two scrolling halves share the space
+    // The strategy is as tall as the shortest row. The hover card and content columns share the space
     // between the widest roster row and the command column.
     const layout = (heights) => {
       const box = el.getBoundingClientRect();
@@ -540,7 +541,19 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
       const cell = el.querySelector('.team__fly-cell');
       const cellPadding = cell ? parseFloat(getComputedStyle(cell).paddingLeft) : 0;
       const tipReserve = Math.max(0, Math.min(rootSize * 3.4, vw * .44, width - square - 4 * cellPadding - 36));
-      el.style.setProperty('--fly-w', `${Math.max(0, width - tipReserve - 8)}px`);
+      const contentWidth = (selector) => Math.max(0, ...[...el.querySelectorAll(selector)].map(track => track.getBoundingClientRect().width)) + 2 * cellPadding;
+      const bonds = contentWidth('.team__fly-bonds .team__fly-track');
+      const ops = contentWidth('.team__fly-ops .team__fly-track');
+      const fixed = square + 2 * gutter + 12; // strategy, column gaps and window padding
+      // Use spare space for full rows before reserving the hover card's preferred width.
+      const needed = Math.max(bonds + ops, 2 * ops) + fixed;
+      const windowWidth = Math.max(0, Math.min(width - 8, Math.max(width - tipReserve - 8, needed)));
+      const available = Math.max(0, windowWidth - fixed);
+      // Bonds take at least half the content area, growing to their natural width when possible.
+      // Keep at least one operator visible when space permits.
+      const opMinimum = Math.min(ops, square, available / 2);
+      el.style.setProperty('--fly-w', `${windowWidth}px`);
+      el.style.setProperty('--fly-bonds', `${Math.min(Math.max(bonds, available / 2), available - opMinimum)}px`);
     };
     const measure = () => {
       frame = null;
@@ -558,6 +571,7 @@ export function TeamPanel({ pub, myId, watching, bubbles, onWatch, compact = fal
     const observer = new ResizeObserver(schedule);
     observer.observe(el);
     for (const row of el.querySelectorAll('.team__row')) observer.observe(row);
+    for (const track of el.querySelectorAll('.team__fly-track')) observer.observe(track);
     // Commands and shop tools can change size while the flyout stays open, independently of the roster.
     for (const obstacle of (el.closest('.gm') || document).querySelectorAll('.gm__effects, .shopbar, .shopbar__tools')) {
       observer.observe(obstacle);
